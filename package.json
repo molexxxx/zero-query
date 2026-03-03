@@ -3,9 +3,13 @@
   "version": "0.1.2",
   "description": "Lightweight modern frontend library — jQuery-like selectors, reactive components, SPA router, and state management with zero dependencies.",
   "main": "index.js",
+  "bin": {
+    "zquery": "./cli.js"
+  },
   "files": [
     "src",
     "index.js",
+    "cli.js",
     "LICENSE",
     "README.md"
   ],
@@ -13,7 +17,9 @@
     "build": "node build.js",
     "dev": "node build.js --watch",
     "serve": "node examples/starter-app/local-server.js",
-    "watch": "node watch.js"
+    "watch": "node watch.js",
+    "bundle": "node cli.js bundle",
+    "bundle:app": "node cli.js bundle examples/starter-app/scripts/app.js -o examples/starter-app/dist/app.bundle.js --html examples/starter-app/index.html"
   },
   "keywords": [
     "dom",

@@ -14,7 +14,7 @@
 
 </p>
 
-> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~45 KB minified browser bundle. No build step required.**
+> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~45 KB minified browser bundle. Works out of the box with ES modules — no build step required. An optional CLI bundler is available for single-file distribution.**
 
 ## Features
 
@@ -30,17 +30,21 @@
 
 ---
 
-## Quick Start (Browser Bundle — Recommended)
+## Quick Start (Browser Bundle + ES Modules — Recommended)
 
-The preferred way to use zQuery is with the **pre-built browser bundle** (`zQuery.min.js`). No npm install, no bundler, no transpiler.
+The preferred way to use zQuery is with the **pre-built browser bundle** (`zQuery.min.js`) paired with standard **ES module** `<script type="module">` tags for your app code. No npm install, no bundler, no transpiler — just grab the library and start writing components.
 
-### 1. Build the bundle (one time)
+### 1. Get the library
+
+Download `dist/zQuery.min.js` from the [GitHub releases](https://github.com/tonywied17/zero-query), or clone and build:
 
 ```bash
+git clone https://github.com/tonywied17/zero-query.git
+cd zero-query
 node build.js
+# → dist/zQuery.js  (~78 KB, readable)
+# → dist/zQuery.min.js  (~45 KB, production)
 ```
-
-This creates `dist/zQuery.js` and `dist/zQuery.min.js`.
 
 ### 2. Copy into your project
 
@@ -105,7 +109,9 @@ const router = $.router({
 });
 ```
 
-That's it — a fully working SPA with zero build tools.
+That's it — a fully working SPA with zero build tools. Your files are served as individual ES modules, which means instant browser caching, easy debugging, and native import/export.
+
+> **Want a single-file build instead?** See the [CLI Bundler](#cli-bundler-optional) section below for an optional bundling step that compiles your entire app into one file.
 
 ---
 
@@ -135,6 +141,152 @@ my-app/
 - Store and routes get their own files at the `scripts/` root.
 - `app.js` is the single entry point — import components, create the store, and boot the router.
 - Component names **must contain a hyphen** (Web Component convention): `home-page`, `app-counter`, etc.
+
+---
+
+## CLI Bundler (Optional)
+
+> **Beta.** The CLI bundler is functional but still maturing. The ES module setup above is the recommended and most reliable approach. The bundler is provided as a convenience for use cases where a single-file build is preferred.
+
+zQuery ships with a zero-dependency CLI that can compile your entire app — all ES modules, the library, external templates, and assets — into a **single bundled file**. This is useful for:
+
+- Distributing an app as one `.html` + one `.js` file
+- Deploying to environments without a web server (open `index.html` from disk via `file://`)
+- Reducing HTTP requests on legacy hosting without HTTP/2
+
+### Installation
+
+The CLI is included in the `zero-query` npm package. Install it to get the `zquery` command along with the library source and pre-built bundles:
+
+```bash
+# Add to your project as a dev dependency (recommended)
+npm install zero-query --save-dev
+npx zquery bundle
+
+# Or install globally
+npm install -g zero-query
+zquery bundle
+
+# Or run once without installing (npx fetches it on demand)
+npx zero-query bundle
+```
+
+The package includes:
+- `dist/zQuery.min.js` — pre-built browser bundle (ready to copy into your project)
+- `cli.js` — the CLI tool (`zquery build` / `zquery bundle`)
+- `src/` — library source modules
+
+### Commands
+
+#### `zquery build` — Build the Library
+
+Compiles the zQuery library source into `dist/zQuery.js` and `dist/zQuery.min.js`. This is the same as running `node build.js`.
+
+```bash
+zquery build                # one-time build
+zquery build --watch        # rebuild on source changes
+```
+
+#### `zquery bundle` — Bundle an App
+
+Walks the ES module import graph starting from an entry file, topologically sorts all dependencies, strips `import`/`export` syntax, and concatenates everything into a single IIFE.
+
+```bash
+# Auto-detect entry from index.html's <script type="module">
+zquery bundle
+
+# Specify entry explicitly
+zquery bundle scripts/app.js
+
+# Full example with all options
+zquery bundle scripts/app.js \
+  --out dist/app.bundle.js \
+  --include-lib \
+  --html index.html \
+  --watch
+```
+
+### Bundle Options
+
+| Flag | Short | Description |
+| --- | --- | --- |
+| `--out <path>` | `-o` | Output file path. Default: `dist/<entry>.bundle.js` |
+| `--include-lib` | `-L` | Embed `zquery.min.js` directly in the bundle (no separate script tag needed) |
+| `--html <file>` | — | Rewrite the HTML file: replaces `<script type="module">` with the bundle, copies assets into `dist/`, adjusts `<base href>` |
+| `--watch` | `-w` | Watch source files and rebuild automatically on changes |
+
+### What the Bundler Does
+
+1. **Import graph walking** — Starting from the entry file, recursively resolves all `import` statements (including side-effect `import './foo.js'`) and produces a topologically sorted dependency list.
+
+2. **Module syntax stripping** — Removes `import`/`export` keywords while keeping all declarations. The output is plain browser-compatible JavaScript.
+
+3. **IIFE wrapping** — The concatenated code is wrapped in `(function() { 'use strict'; ... })()` to avoid polluting the global scope.
+
+4. **Library embedding** (`--include-lib`) — Finds `zquery.min.js` in common locations (`scripts/vendor/`, `dist/`, etc.) and embeds it at the top of the bundle. The resulting file is fully self-contained.
+
+5. **External resource inlining** — Automatically detects `pages` configs, `templateUrl`, and `styleUrl` references in your components and inlines the referenced HTML/CSS files into the bundle as a `window.__zqInline` map. This enables `file://` support where `fetch()` would otherwise fail due to CORS.
+
+6. **HTML rewriting** (`--html`) — Rewrites the specified HTML file:
+   - Replaces `<script type="module" src="...">` with `<script defer src="bundle.js">`
+   - Removes the standalone zQuery `<script>` tag when `--include-lib` is used
+   - Rewrites `<base href="/">` to `<base href="./">` for portable deployment
+   - Copies all referenced assets (CSS, images, vendor JS) into the `dist/` folder
+   - Scans CSS files for `url()` references and copies those assets too
+
+7. **Minification** — Produces both a readable `.bundle.js` and a minified `.bundle.min.js` (comment stripping + whitespace collapsing).
+
+### Step-by-Step: Bundling Your Own App
+
+```bash
+# 1. Install zero-query in your project
+cd my-app
+npm init -y                            # if you don't have a package.json yet
+npm install zero-query --save-dev
+
+# 2. Copy the pre-built library into your project
+cp node_modules/zero-query/dist/zQuery.min.js scripts/vendor/
+
+# 3. Bundle the app
+npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html
+
+# Output:
+#   dist/index.html          ← rewritten HTML
+#   dist/app.bundle.js       ← full bundle (library + app + inlined templates)
+#   dist/app.bundle.min.js   ← minified version
+#   dist/styles/             ← copied CSS
+#   dist/scripts/vendor/     ← copied vendor assets
+
+# 4. Open directly in a browser — no server needed
+start dist/index.html    # Windows
+open dist/index.html     # macOS
+```
+
+#### Bundling the Starter App (from source)
+
+If you cloned the zero-query repository:
+
+```bash
+node build.js
+cp dist/zQuery.min.js examples/starter-app/scripts/vendor/
+cd examples/starter-app
+npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html
+start dist/index.html
+```
+
+### Hash Routing on `file://`
+
+When the bundled app is opened via `file://`, the router automatically detects the protocol and switches to **hash-based routing** (`#/about` instead of `/about`). No configuration needed — `z-link` attributes and programmatic navigation work identically.
+
+### Preparing Your App for Bundling
+
+The bundler is designed to work with the standard zQuery project structure out of the box. A few things to keep in mind:
+
+- **Use relative imports** — `import './components/home.js'` (not bare specifiers like `import 'home'`)
+- **One component per file** — The import graph walker resolves each file once
+- **`import.meta.url`** — Automatically replaced with a `document.baseURI`-based equivalent
+- **External templates** — `templateUrl`, `styleUrl`, and `pages` configs are automatically detected and inlined. No changes to your component code are needed.
+- **Vendor scripts** — If using `--include-lib`, the bundler finds `zquery.min.js` in `scripts/vendor/`, `vendor/`, `lib/`, or `dist/`
 
 ---
 
@@ -1146,13 +1298,17 @@ mq('.card').addClass('active');
 ## Building from Source
 
 ```bash
-# One-time build
+# One-time library build
 node build.js
 # → dist/zQuery.js  (development)
 # → dist/zQuery.min.js  (production)
 
 # Watch mode (rebuilds on file changes)
 node build.js --watch
+
+# Or use the CLI
+npx zquery build
+npx zquery build --watch
 ```
 
 The build script is zero-dependency — just Node.js. It concatenates all ES modules into a single IIFE and strips import/export statements. The minified version strips comments and collapses whitespace. For production builds, pipe through Terser for optimal compression.
@@ -1163,7 +1319,7 @@ The build script is zero-dependency — just Node.js. It concatenates all ES mod
 
 ```bash
 # From the project root
-node build.js                                    # build the bundle
+node build.js                                    # build the library
 cp dist/zQuery.min.js examples/starter-app/scripts/vendor/  # copy to app
 
 # Start the dev server (uses zero-http)
@@ -1175,6 +1331,19 @@ npx serve examples/starter-app
 ```
 
 The starter app includes: Home, Counter (reactive state + z-model), Todos (global store + subscriptions), API Docs (full reference), and About pages.
+
+#### Bundled Version (Single-File)
+
+You can also build a fully self-contained bundled version of the starter app:
+
+```bash
+cd examples/starter-app
+npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html
+
+# Open dist/index.html directly — no server needed
+```
+
+See [CLI Bundler](#cli-bundler-optional) for details.
 
 ### Local Dev Server
 
@@ -1261,6 +1430,12 @@ location /my-app/ {
 | `$.bus` | Event bus |
 | `$.version` | Library version |
 | `$.noConflict` | Release `$` global |
+
+| CLI | Description |
+| --- | --- |
+| `zquery build` | Build the zQuery library (`dist/zQuery.min.js`) |
+| `zquery bundle [entry]` | Bundle app ES modules into a single IIFE file |
+| `zquery --help` | Show CLI usage and options |
 
 For full method signatures and options, see [API.md](API.md).
 

@@ -1,6 +1,6 @@
 # zQuery (zeroQuery) — Full API Reference
 
-Complete API documentation for every module, method, option, and type in zQuery. All examples assume the global `$` is available via the built `zQuery.min.js` bundle.
+Complete API documentation for every module, method, option, and type in zQuery. All examples assume the global `$` is available via the built `zQuery.min.js` bundle (the recommended ES module setup). If using the optional [CLI Bundler](#cli-bundler), the same API is available — the bundler simply concatenates your ES modules into a single file.
 
 ---
 
@@ -1642,4 +1642,150 @@ import {
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, bus,
 } from '@tonywied17/zero-query';
+```
+
+---
+
+## CLI Bundler
+
+The `zquery` CLI is a zero-dependency Node.js tool for building the library and optionally bundling your entire app into a single file. It is included in the `zero-query` npm package.
+
+### Installation
+
+Install the `zero-query` npm package to get the CLI along with the library source and pre-built bundles:
+
+```bash
+# Add to your project as a dev dependency (recommended)
+npm install zero-query --save-dev
+npx zquery --help
+
+# Or install globally
+npm install -g zero-query
+zquery --help
+
+# Or run once without installing (npx fetches it on demand)
+npx zero-query --help
+```
+
+The package includes:
+- `dist/zQuery.min.js` — pre-built browser bundle (copy into your project's `vendor/` folder)
+- `cli.js` — the CLI tool (`zquery build` / `zquery bundle`)
+- `src/` — library source modules
+
+> **Quick setup for a new project:**
+> ```bash
+> cd my-app
+> npm init -y
+> npm install zero-query --save-dev
+> cp node_modules/zero-query/dist/zQuery.min.js scripts/vendor/
+> ```
+
+### `zquery build`
+
+Build the zQuery library from source.
+
+```bash
+zquery build [options]
+```
+
+| Option | Short | Description |
+| --- | --- | --- |
+| `--watch` | `-w` | Watch `src/` and `index.js` and rebuild on changes |
+
+**Output:** `dist/zQuery.js` (readable) and `dist/zQuery.min.js` (minified).
+
+### `zquery bundle [entry]`
+
+Bundle an app's ES modules into a single IIFE file.
+
+```bash
+zquery bundle [entry] [options]
+```
+
+| Parameter | Description |
+| --- | --- |
+| `entry` | Path to the app entry file. If omitted, auto-detected from `<script type="module" src="...">` in `index.html`, or from common conventions (`scripts/app.js`, `src/app.js`, `app.js`, `main.js`). |
+
+| Option | Short | Default | Description |
+| --- | --- | --- | --- |
+| `--out <path>` | `-o` | `dist/<entry>.bundle.js` | Output file path |
+| `--include-lib` | `-L` | off | Embed `zquery.min.js` in the bundle. Searches `scripts/vendor/`, `vendor/`, `lib/`, `dist/` |
+| `--html <file>` | — | — | Rewrite the given HTML file to reference the bundle. Copies assets to `dist/` |
+| `--watch` | `-w` | off | Watch source files and rebuild on changes |
+
+**Output:** `<output>.js` (readable) and `<output>.min.js` (minified).
+
+#### Entry Detection
+
+When no entry is provided, the bundler:
+1. Reads `index.html` (or `public/index.html`) and finds `<script type="module" src="...">`.
+2. Falls back to these file paths in order: `scripts/app.js`, `src/app.js`, `js/app.js`, `app.js`, `main.js`.
+
+#### Import Graph Walking
+
+The bundler recursively resolves all `import` statements starting from the entry:
+- `import { foo } from './bar.js'` — standard named imports
+- `import './side-effect.js'` — side-effect imports
+- `import * as mod from './mod.js'` — namespace imports
+- Multi-line destructured imports are handled correctly
+
+Files are topologically sorted (leaves first) so dependencies are defined before use.
+
+#### Automatic Transformations
+
+| What | Transformation |
+| --- | --- |
+| `import ... from './x.js'` | Removed (code is concatenated in dependency order) |
+| `import './x.js'` | Removed |
+| `export default ...` | `export default` keyword removed, declaration kept |
+| `export const ...` / `export function ...` | `export` keyword removed, declaration kept |
+| `export { ... }` | Entire statement removed |
+| `import.meta.url` | Replaced with `new URL('<relative-path>', document.baseURI).href` |
+
+#### HTML Rewriting (`--html`)
+
+When `--html` is provided, the bundler:
+
+| Step | Description |
+| --- | --- |
+| Replace module script | `<script type="module" src="...">` → `<script defer src="bundle.js">` |
+| Remove library tag | When `--include-lib`, removes the standalone `<script src="zquery.min.js">` |
+| Rewrite base href | `<base href="/">` → `<base href="./">` for portable deployment |
+| Copy assets | All `src=` and `href=` references in the HTML are copied to `dist/`, preserving directory structure |
+| Copy CSS sub-assets | CSS files are scanned for `url()` references; those assets are copied too |
+
+#### External Resource Inlining
+
+Components using `templateUrl`, `styleUrl`, or the `pages` config reference external HTML/CSS files loaded at runtime via `fetch()`. On `file://`, these requests fail due to browser CORS restrictions.
+
+The bundler automatically:
+1. Scans your source files for `pages: { dir: '...', items: [...] }`, `templateUrl: '...'`, and `styleUrl: '...'` patterns
+2. Reads those files from disk
+3. Embeds them as a `window.__zqInline` map in the bundle
+4. The library's `_fetchResource` method checks this map before calling `fetch()`, so templates and styles load instantly without network requests
+
+No changes to your component code are needed.
+
+#### Hash Routing on `file://`
+
+When opened via `file://`, the router automatically switches from history mode to hash mode. URLs become `file:///path/index.html#/about` instead of using `pushState`. All `z-link` attributes and programmatic navigation work identically.
+
+### Examples
+
+```bash
+# 1. Install (if you haven't already)
+npm install zero-query --save-dev
+cp node_modules/zero-query/dist/zQuery.min.js scripts/vendor/
+
+# 2. Minimal — auto-detect everything
+npx zquery bundle
+
+# Specify entry and output
+npx zquery bundle scripts/app.js -o dist/app.bundle.js
+
+# Full self-contained build
+npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html
+
+# Watch mode during development
+npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html -w
 ```

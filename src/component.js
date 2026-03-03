@@ -39,6 +39,18 @@ let _uid = 0;
 function _fetchResource(url) {
   if (_resourceCache.has(url)) return _resourceCache.get(url);
 
+  // Check inline resource map (populated by CLI bundler for file:// support).
+  // Keys are relative paths; match against the URL suffix.
+  if (typeof window !== 'undefined' && window.__zqInline) {
+    for (const [path, content] of Object.entries(window.__zqInline)) {
+      if (url === path || url.endsWith('/' + path) || url.endsWith('\\' + path)) {
+        const resolved = Promise.resolve(content);
+        _resourceCache.set(url, resolved);
+        return resolved;
+      }
+    }
+  }
+
   // Resolve relative URLs against <base href> or origin root.
   // This prevents SPA route paths (e.g. /docs/advanced) from
   // breaking relative resource URLs like 'scripts/components/foo.css'.

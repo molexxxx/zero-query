@@ -31,7 +31,8 @@ $.component('home-page', {
           <h2>${this.state.greeting}</h2>
           <p>
             A lightweight frontend library combining the best of jQuery's simplicity
-            with React/Angular's component model. Zero dependencies, no build step required.
+            with React/Angular's component model. Zero dependencies, works out of the box with ES modules.
+            An optional <a z-link="/docs" style="color:#58a6ff;cursor:pointer;">CLI bundler</a> is available for single-file distribution.
           </p>
           <div class="mt flex">
             <span class="badge">v${$.version}</span>

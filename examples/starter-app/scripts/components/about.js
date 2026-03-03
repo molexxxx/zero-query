@@ -28,7 +28,7 @@ $.component('about-page', {
             <tr><td style="color:#8b949e;padding:0.3rem 0;">Version</td><td>${$.version}</td></tr>
             <tr><td style="color:#8b949e;padding:0.3rem 0;">Dependencies</td><td>0</td></tr>
             <tr><td style="color:#8b949e;padding:0.3rem 0;">Bundle size</td><td>${this.state.bundleSize}</td></tr>
-            <tr><td style="color:#8b949e;padding:0.3rem 0;">Build step</td><td>Optional (<code style="background:#21262d;padding:0.1rem 0.3rem;border-radius:4px;color:#79c0ff;font-size:0.85em;">node build.js</code>)</td></tr>
+            <tr><td style="color:#8b949e;padding:0.3rem 0;">Build step</td><td>Optional — works as ES modules out of the box. <code style="background:#21262d;padding:0.1rem 0.3rem;border-radius:4px;color:#79c0ff;font-size:0.85em;">npx zquery bundle</code> available for single-file builds.</td></tr>
             <tr><td style="color:#8b949e;padding:0.3rem 0;">License</td><td>MIT</td></tr>
           </table>
         </div>

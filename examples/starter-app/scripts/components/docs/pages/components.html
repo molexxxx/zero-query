@@ -398,6 +398,10 @@ $.component('my-widget', {
     <strong>How it works:</strong> Templates and styles are fetched once per component definition and cached globally. Multiple instances share the same cached content. If <code>render()</code> is also defined, it takes priority over <code>templateUrl</code>. Relative paths resolve relative to the component file automatically. Absolute paths and full URLs are used as-is.
   </div>
 
+  <div class="docs-tip">
+    <strong>Bundler note:</strong> When using the <a href="#" onclick="window.location.hash='/docs/getting-started';return false;">CLI bundler</a>, external templates and styles referenced via <code>templateUrl</code>, <code>styleUrl</code>, and <code>pages</code> configs are automatically detected and inlined into the bundle. No changes to your component code are needed &mdash; the library checks the inline map before calling <code>fetch()</code>.
+  </div>
+
   <h4>Multiple Templates — <code>templateUrl</code> as object or array</h4>
   <p><code>templateUrl</code> also accepts an <strong>object map</strong> or <strong>array</strong> of URLs. When multiple templates are loaded, they are available inside the component via <code>this.templates</code> — a keyed map you can reference in your <code>render()</code> function.</p>
 

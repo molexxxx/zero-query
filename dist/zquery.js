@@ -685,6 +685,18 @@ let _uid = 0;
 function _fetchResource(url) {
   if (_resourceCache.has(url)) return _resourceCache.get(url);
 
+  // Check inline resource map (populated by CLI bundler for file:// support).
+  // Keys are relative paths; match against the URL suffix.
+  if (typeof window !== 'undefined' && window.__zqInline) {
+    for (const [path, content] of Object.entries(window.__zqInline)) {
+      if (url === path || url.endsWith('/' + path) || url.endsWith('\\' + path)) {
+        const resolved = Promise.resolve(content);
+        _resourceCache.set(url, resolved);
+        return resolved;
+      }
+    }
+  }
+
   // Resolve relative URLs against <base href> or origin root.
   // This prevents SPA route paths (e.g. /docs/advanced) from
   // breaking relative resource URLs like 'scripts/components/foo.css'.
@@ -1469,7 +1481,9 @@ function style(urls, opts = {}) {
 class Router {
   constructor(config = {}) {
     this._el = null;
-    this._mode = config.mode || 'history';      // 'history' | 'hash'
+    // Auto-detect: file:// protocol can't use pushState, fall back to hash
+    const isFile = typeof location !== 'undefined' && location.protocol === 'file:';
+    this._mode = config.mode || (isFile ? 'hash' : 'history');
 
     // Base path for sub-path deployments
     // Priority: explicit config.base → window.__ZQ_BASE → <base href> tag

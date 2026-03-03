@@ -29,6 +29,10 @@
     <strong>Tip:</strong> Use <code>hash</code> mode if you're deploying to a static host (GitHub Pages, S3, file://) where you can't configure server-side URL rewriting. History mode gives cleaner URLs but requires a catch-all rewrite rule on the server.
   </div>
 
+  <div class="docs-callout">
+    <strong><code>file://</code> auto-detection:</strong> When the page is opened from disk (via <code>file://</code> protocol), the router automatically switches to hash mode regardless of configuration. This enables the <a href="#" onclick="window.location.hash='/docs/getting-started';return false;">CLI bundler</a> output to work without any server.
+  </div>
+
   <h3>Route Definition Object</h3>
   <table class="docs-table">
     <tr><th>Property</th><th>Type</th><th>Required</th><th>Description</th></tr>
