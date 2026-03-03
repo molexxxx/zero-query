@@ -1648,148 +1648,90 @@ import {
 
 ## CLI Bundler
 
-The `zquery` CLI is a zero-dependency Node.js tool for building the library and optionally bundling your entire app into a single file. It is included in the `zero-query` npm package.
+The `zquery` CLI is a zero-dependency Node.js tool included in the `zero-query` npm package. It compiles your entire app — ES modules, the library, external templates, and assets — into a single self-contained bundle.
 
 ### Installation
 
-Install the `zero-query` npm package to get the CLI along with the library source and pre-built bundles:
-
 ```bash
-# Add to your project as a dev dependency (recommended)
 npm install zero-query --save-dev
-npx zquery --help
-
-# Or install globally
-npm install -g zero-query
-zquery --help
-
-# Or run once without installing (npx fetches it on demand)
-npx zero-query --help
 ```
 
-The package includes:
-- `dist/zQuery.min.js` — pre-built browser bundle (copy into your project's `vendor/` folder)
-- `cli.js` — the CLI tool (`zquery build` / `zquery bundle`)
-- `src/` — library source modules
-
-> **Quick setup for a new project:**
-> ```bash
-> cd my-app
-> npm init -y
-> npm install zero-query --save-dev
-> cp node_modules/zero-query/dist/zQuery.min.js scripts/vendor/
-> ```
-
-### `zquery build`
-
-Build the zQuery library from source.
+### Bundling
 
 ```bash
-zquery build [options]
+# From inside your project (auto-detects entry from index.html)
+npx zquery bundle
+
+# Or point to an entry from anywhere
+npx zquery bundle path/to/scripts/app.js
 ```
 
-| Option | Short | Description |
+Everything is automatic: the bundler finds your entry point, embeds the zQuery library, resolves all imports, inlines external templates, rewrites `index.html`, and copies assets into `dist/` next to your HTML file.
+
+Output:
+```
+dist/
+  index.html              ← rewritten HTML
+  z-app.a1b2c3d4.js      ← readable bundle (library + app + templates)
+  z-app.a1b2c3d4.min.js  ← minified bundle
+  styles/                 ← copied assets
+```
+
+Filenames are content-hashed for cache-busting. Previous builds are cleaned automatically.
+
+### Building the Library
+
+If you're working on zQuery itself and need to rebuild `dist/zQuery.min.js`:
+
+```bash
+npx zquery build                # one-time build
+```
+
+> **Note:** `npx zquery build` must be run from the zero-query project root (where `src/` and `index.js` live). If you have a `build` script in your `package.json`, `npm run build` will handle the working directory automatically.
+
+### Options
+
+| Flag | Short | Description |
 | --- | --- | --- |
-| `--watch` | `-w` | Watch `src/` and `index.js` and rebuild on changes |
+| `--out <path>` | `-o` | Custom output directory (default: `dist/` next to `index.html`) |
+| `--html <file>` | — | Use a specific HTML file instead of the auto-detected one |
+| `--watch` | `-w` | Watch source files and rebuild on changes |
 
-**Output:** `dist/zQuery.js` (readable) and `dist/zQuery.min.js` (minified).
-
-### `zquery bundle [entry]`
-
-Bundle an app's ES modules into a single IIFE file with content-hashed filenames.
-
-```bash
-zquery bundle [entry] [options]
-```
-
-| Parameter | Description |
-| --- | --- |
-| `entry` | Path to the app entry file. If omitted, auto-detected from `<script type="module" src="...">` in `index.html`, or from common conventions (`scripts/app.js`, `src/app.js`, `app.js`, `main.js`). |
-
-| Option | Short | Default | Description |
-| --- | --- | --- | --- |
-| `--out <path>` | `-o` | `dist/` | Output directory (or file path — directory is extracted) |
-| `--include-lib` | `-L` | off | Embed `zquery.min.js` in the bundle. Searches `scripts/vendor/`, `vendor/`, `lib/`, `dist/` |
-| `--html <file>` | — | — | Rewrite the given HTML file to reference the bundle. Copies assets to `dist/` |
-| `--watch` | `-w` | off | Watch source files and rebuild on changes |
-
-**Output:** `z-<entry>.<hash>.js` (readable) and `z-<entry>.<hash>.min.js` (minified). The 8-character content hash changes only when the bundle content changes, enabling long-lived cache headers. Previous hashed builds are automatically cleaned on each rebuild.
-
-#### Entry Detection
-
-When no entry is provided, the bundler:
-1. Reads `index.html` (or `public/index.html`) and finds `<script type="module" src="...">`.
-2. Falls back to these file paths in order: `scripts/app.js`, `src/app.js`, `js/app.js`, `app.js`, `main.js`.
-
-#### Import Graph Walking
-
-The bundler recursively resolves all `import` statements starting from the entry:
-- `import { foo } from './bar.js'` — standard named imports
-- `import './side-effect.js'` — side-effect imports
-- `import * as mod from './mod.js'` — namespace imports
-- Multi-line destructured imports are handled correctly
-
-Files are topologically sorted (leaves first) so dependencies are defined before use.
-
-#### Automatic Transformations
-
-| What | Transformation |
-| --- | --- |
-| `import ... from './x.js'` | Removed (code is concatenated in dependency order) |
-| `import './x.js'` | Removed |
-| `export default ...` | `export default` keyword removed, declaration kept |
-| `export const ...` / `export function ...` | `export` keyword removed, declaration kept |
-| `export { ... }` | Entire statement removed |
-| `import.meta.url` | Replaced with `new URL('<relative-path>', document.baseURI).href` |
-
-#### HTML Rewriting (`--html`)
-
-When `--html` is provided, the bundler:
+### What the Bundler Does
 
 | Step | Description |
 | --- | --- |
-| Replace module script | `<script type="module" src="...">` → `<script defer src="z-<name>.<hash>.js">` |
-| Remove library tag | When `--include-lib`, removes the standalone `<script src="zquery.min.js">` |
-| Smart base href | Preserves `<base href="/">` for SPA deep-route support; injects a tiny inline script that switches to `./` when opened via `file://` |
-| Copy assets | All `src=` and `href=` references in the HTML are copied to `dist/`, preserving directory structure |
-| Copy CSS sub-assets | CSS files are scanned for `url()` references; those assets are copied too |
+| **Entry detection** | Reads `index.html` for `<script type="module" src="...">`, or falls back to `scripts/app.js`, `app.js`, etc. |
+| **Import graph** | Recursively resolves all `import` statements and topologically sorts dependencies (leaves first) |
+| **Module stripping** | Removes `import`/`export` keywords, keeps declarations — output is plain browser JS wrapped in an IIFE |
+| **Library embedding** | Finds `zquery.min.js` in common locations or auto-builds it from the package source |
+| **Template inlining** | Detects `templateUrl`, `styleUrl`, and `pages` configs; inlines the referenced HTML/CSS so `file://` works |
+| **HTML rewriting** | Replaces `<script type="module">` with the bundle, removes the standalone library tag, copies all assets |
+| **Minification** | Produces both readable and minified builds with content-hashed filenames |
 
-#### External Resource Inlining
+### Automatic Transformations
 
-Components using `templateUrl`, `styleUrl`, or the `pages` config reference external HTML/CSS files loaded at runtime via `fetch()`. On `file://`, these requests fail due to browser CORS restrictions.
-
-The bundler automatically:
-1. Scans your source files for `pages: { dir: '...', items: [...] }`, `templateUrl: '...'`, and `styleUrl: '...'` patterns
-2. Reads those files from disk
-3. Embeds them as a `window.__zqInline` map in the bundle
-4. The library's `_fetchResource` method checks this map before calling `fetch()`, so templates and styles load instantly without network requests
-
-No changes to your component code are needed.
-
-#### Hash Routing on `file://`
-
-When opened via `file://`, the router automatically switches from history mode to hash mode. URLs become `file:///path/index.html#/about` instead of using `pushState`. All `z-link` attributes and programmatic navigation work identically.
+| Source | Result |
+| --- | --- |
+| `import ... from './x.js'` | Removed (code is concatenated in dependency order) |
+| `import './x.js'` | Removed (side-effect import) |
+| `export default ...` | `export default` removed, declaration kept |
+| `export const` / `function` / `class` | `export` removed, declaration kept |
+| `export { ... }` | Entire statement removed |
+| `import.meta.url` | Replaced with `new URL('<relative-path>', document.baseURI).href` |
 
 ### Examples
 
 ```bash
-# 1. Install (if you haven't already)
-npm install zero-query --save-dev
-cp node_modules/zero-query/dist/zQuery.min.js scripts/vendor/
-
-# 2. Minimal — auto-detect everything
+# Bundle your app (auto-detects everything)
 npx zquery bundle
 
-# Specify entry and output directory
-npx zquery bundle scripts/app.js -o dist/
+# Specify entry explicitly
+npx zquery bundle scripts/app.js
 
-# Full self-contained build
-npx zquery bundle scripts/app.js -o dist/ -L --html index.html
+# Custom output directory
+npx zquery bundle -o build/
 
-# Watch mode during development
-npx zquery bundle scripts/app.js -o dist/ -L --html index.html -w
+# Watch mode
+npx zquery bundle --watch
 ```
-
-> **Output filenames** are content-hashed automatically:
-> `z-app.f3a1b2c4.js` / `z-app.f3a1b2c4.min.js`
-> The hash changes only when the bundle content changes.

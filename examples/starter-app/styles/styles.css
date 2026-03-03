@@ -3,7 +3,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* Layout */
 nav { background: #161b22; border-bottom: 1px solid #30363d; padding: 0.75rem 2rem; display: flex; gap: 0; align-items: center; }
-nav .brand { display: flex; align-items: center; margin-right: 2rem; }
+nav .brand { display: flex; align-items: center; margin-right: 2rem; cursor: pointer; }
 nav .brand svg { flex-shrink: 0; }
 nav .nav-links { display: flex; gap: 0.25rem; align-items: center; }
 nav .nav-links a { color: #8b949e; text-decoration: none; cursor: pointer; transition: color 0.15s, background 0.15s; font-size: 0.95rem; font-weight: 500; padding: 0.5rem 1rem; border-radius: 6px; }

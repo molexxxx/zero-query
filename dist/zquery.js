@@ -1668,7 +1668,18 @@ class Router {
 
   get path() {
     if (this._mode === 'hash') {
-      return window.location.hash.slice(1) || '/';
+      const raw = window.location.hash.slice(1) || '/';
+      // If the hash doesn't start with '/', it's an in-page anchor
+      // (e.g. #some-heading), not a route.  Treat it as a scroll target
+      // and resolve to the last known route (or '/').
+      if (raw && !raw.startsWith('/')) {
+        window.__zqScrollTarget = raw;
+        // Restore the route hash silently so the URL stays valid
+        const fallbackPath = (this._current && this._current.path) || '/';
+        window.location.replace('#' + fallbackPath);
+        return fallbackPath;
+      }
+      return raw;
     }
     let pathname = window.location.pathname || '/';
     // Strip trailing slash for consistency (except root '/')

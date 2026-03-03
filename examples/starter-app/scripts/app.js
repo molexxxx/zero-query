@@ -37,7 +37,7 @@ router.onChange((to) => {
 });
 
 $.ready(() => {
-  console.log(`zQuery v${$.version} — Starter App loaded`);
+  console.log(`zQuery v${$.version} — library loaded`);
   const initial = router.path || '/';
   document.querySelectorAll('nav a[z-link]').forEach(link => {
     const href = link.getAttribute('z-link');

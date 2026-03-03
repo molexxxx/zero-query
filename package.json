@@ -1,6 +1,6 @@
 {
   "name": "zero-query",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "Lightweight modern frontend library — jQuery-like selectors, reactive components, SPA router, and state management with zero dependencies.",
   "main": "index.js",
   "bin": {
@@ -8,6 +8,7 @@
   },
   "files": [
     "src",
+    "dist",
     "index.js",
     "cli.js",
     "LICENSE",
@@ -18,7 +19,7 @@
     "dev": "node build.js --watch",
     "serve": "node examples/starter-app/local-server.js",
     "bundle": "node cli.js bundle",
-    "bundle:app": "node cli.js bundle examples/starter-app/scripts/app.js -o examples/starter-app/dist -L --html examples/starter-app/index.html"
+    "bundle:app": "node cli.js bundle examples/starter-app/scripts/app.js"
   },
   "keywords": [
     "dom",

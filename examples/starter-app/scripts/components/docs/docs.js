@@ -182,8 +182,17 @@ $.component('docs-page', {
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // Update URL hash so the link is shareable / survives refresh
-      history.replaceState(null, '', window.location.pathname + '#' + id);
+      // Update URL so the anchor link is shareable / survives refresh.
+      // In hash mode the URL hash is the route path — we can't put the
+      // anchor there without breaking routing.  Use the router's navigate
+      // helper to keep the route intact and store the scroll target.
+      const router = $.router();
+      if (router && router._mode === 'hash') {
+        // Route hash is already correct; just stash target for refresh
+        window.__zqScrollTarget = id;
+      } else {
+        history.replaceState(null, '', window.location.pathname + '#' + id);
+      }
     }
   },
 

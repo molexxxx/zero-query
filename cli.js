@@ -8,21 +8,22 @@
  *
  * Usage:
  *   zquery build                      Build the zQuery library (dist/)
- *   zquery build --watch              Build & watch for library changes
  *
  *   zquery bundle [entry]             Bundle an app's ES modules into one file
  *   zquery bundle scripts/app.js      Specify entry explicitly
- *   zquery bundle -o dist/            Custom output directory
- *   zquery bundle --include-lib       Embed zquery.min.js in the bundle
+ *   zquery bundle -o build/           Custom output directory
+ *   zquery bundle --html other.html   Use a specific HTML file instead of auto-detected
  *   zquery bundle --watch             Watch & rebuild on changes
- *   zquery bundle --html index.html   Rewrite <script type="module"> to use bundle
  *
- * Output files use content-hashed names for cache-busting:
- *   z-<entry>.<hash>.js / z-<entry>.<hash>.min.js
+ * Smart defaults (no flags needed for typical projects):
+ *   - Entry is auto-detected from index.html's <script type="module" src="...">
+ *   - zquery.min.js is always embedded (auto-built if not found)
+ *   - index.html is always rewritten and assets are copied
+ *   - Output goes to dist/ next to the detected index.html
  *
  * Examples:
- *   cd my-zquery-app && npx zero-query bundle
- *   npx zero-query bundle scripts/app.js -o dist/ --include-lib
+ *   cd my-app && npx zero-query bundle              # just works!
+ *   npx zero-query bundle path/to/scripts/app.js     # works from anywhere
  */
 
 const fs     = require('fs');
@@ -410,24 +411,50 @@ function bundleApp() {
     process.exit(1);
   }
 
-  const includeLib = flag('include-lib', 'L');
   const outPath    = option('out', 'o', null);
-  const htmlFile   = option('html', null, null);
   const watchMode  = flag('watch', 'w');
 
-  // Derive output directory (filename is auto-generated with a content hash)
+  // Auto-detect index.html by walking up from the entry file, then check cwd
+  let htmlFile = option('html', null, null);
+  let htmlAbs  = htmlFile ? path.resolve(projectRoot, htmlFile) : null;
+  if (!htmlFile) {
+    const htmlCandidates = [];
+    // Walk up from the entry file's directory to cwd looking for index.html
+    let entryDir = path.dirname(entry);
+    while (entryDir.length >= projectRoot.length) {
+      htmlCandidates.push(path.join(entryDir, 'index.html'));
+      const parent = path.dirname(entryDir);
+      if (parent === entryDir) break;
+      entryDir = parent;
+    }
+    // Also check cwd and public/
+    htmlCandidates.push(path.join(projectRoot, 'index.html'));
+    htmlCandidates.push(path.join(projectRoot, 'public/index.html'));
+    for (const candidate of htmlCandidates) {
+      if (fs.existsSync(candidate)) {
+        htmlAbs  = candidate;
+        htmlFile = path.relative(projectRoot, candidate);
+        break;
+      }
+    }
+  }
+
+  // Derive output directory:
+  //   -o flag  → use that path
+  //   else     → dist/ next to the detected HTML file (or cwd/dist/ as fallback)
   const entryRel  = path.relative(projectRoot, entry);
   const entryName = path.basename(entry, '.js');
   let distDir;
   if (outPath) {
     const resolved = path.resolve(projectRoot, outPath);
-    // -o accepts a directory path or a file path (directory is extracted)
     if (outPath.endsWith('/') || outPath.endsWith('\\') || !path.extname(outPath) ||
         (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory())) {
       distDir = resolved;
     } else {
       distDir = path.dirname(resolved);
     }
+  } else if (htmlAbs) {
+    distDir = path.join(path.dirname(htmlAbs), 'dist');
   } else {
     distDir = path.join(projectRoot, 'dist');
   }
@@ -435,7 +462,8 @@ function bundleApp() {
   console.log(`\n  zQuery App Bundler`);
   console.log(`  Entry:   ${entryRel}`);
   console.log(`  Output:  ${path.relative(projectRoot, distDir)}/z-${entryName}.[hash].js`);
-  if (includeLib) console.log(`  Library: embedded`);
+  console.log(`  Library: embedded`);
+  console.log(`  HTML:    ${htmlFile || 'not found (no index.html detected)'}`);
   console.log('');
 
   function doBuild() {
@@ -457,26 +485,47 @@ function bundleApp() {
       return `// --- ${rel} ${'—'.repeat(Math.max(1, 60 - rel.length))}\n${code.trim()}`;
     });
 
-    // Optionally prepend zquery.min.js
+    // Embed zquery.min.js — always included
     let libSection = '';
-    if (includeLib) {
-      // Look for the library in common locations
+    {
+      const pkgSrcDir  = path.join(__dirname, 'src');
+      const pkgMinFile = path.join(__dirname, 'dist', 'zquery.min.js');
+
+      // Always rebuild the library from source when running from the repo/package
+      // so that dist/ stays current with the latest source changes.
+      if (fs.existsSync(pkgSrcDir) && fs.existsSync(path.join(__dirname, 'index.js'))) {
+        console.log(`\n  Building library from source...`);
+        const prevCwd = process.cwd();
+        try {
+          process.chdir(__dirname);
+          buildLibrary();
+        } finally {
+          process.chdir(prevCwd);
+        }
+      }
+
+      // Now look for the library in common locations
+      const htmlDir = htmlAbs ? path.dirname(htmlAbs) : null;
       const libCandidates = [
+        // Prefer the freshly-built package dist
+        path.join(__dirname, 'dist/zquery.min.js'),
+        // Then check project-local locations
+        htmlDir && path.join(htmlDir, 'scripts/vendor/zquery.min.js'),
+        htmlDir && path.join(htmlDir, 'vendor/zquery.min.js'),
         path.join(projectRoot, 'scripts/vendor/zquery.min.js'),
         path.join(projectRoot, 'vendor/zquery.min.js'),
         path.join(projectRoot, 'lib/zquery.min.js'),
         path.join(projectRoot, 'dist/zquery.min.js'),
         path.join(projectRoot, 'zquery.min.js'),
-        // If run from the zero-query repo itself
-        path.join(__dirname, 'dist/zquery.min.js'),
-      ];
+      ].filter(Boolean);
       const libPath = libCandidates.find(p => fs.existsSync(p));
+
       if (libPath) {
         libSection = `// --- zquery.min.js (library) ${'—'.repeat(34)}\n${fs.readFileSync(libPath, 'utf-8').trim()}\n\n`;
-        console.log(`\n  Embedded library from ${path.relative(projectRoot, libPath)}`);
+        console.log(`  Embedded library from ${path.relative(projectRoot, libPath)}`);
       } else {
-        console.warn(`\n  ⚠  Could not find zquery.min.js — skipping --include-lib`);
-        console.warn(`     Build the library first: zquery build`);
+        console.warn(`\n  ⚠  Could not find zquery.min.js anywhere`);
+        console.warn(`     Place zquery.min.js in scripts/vendor/, vendor/, lib/, or dist/`);
       }
     }
 
@@ -521,10 +570,10 @@ function bundleApp() {
     console.log(`\n  ✓ ${path.relative(projectRoot, bundleFile)} (${sizeKB(fs.readFileSync(bundleFile))} KB)`);
     console.log(`  ✓ ${path.relative(projectRoot, minFile)} (${sizeKB(fs.readFileSync(minFile))} KB)`);
 
-    // Optionally rewrite index.html
+    // Rewrite index.html (always, when detected)
     if (htmlFile) {
       const bundledFileSet = new Set(files);
-      rewriteHtml(projectRoot, htmlFile, bundleFile, includeLib, bundledFileSet);
+      rewriteHtml(projectRoot, htmlFile, bundleFile, true, bundledFileSet);
     }
 
     const elapsed = Date.now() - start;
@@ -693,13 +742,20 @@ function showHelp() {
   COMMANDS
 
     build                      Build the zQuery library → dist/
-      --watch, -w              Watch src/ and rebuild on changes
+                               (must be run from the project root where src/ lives)
 
     bundle [entry]             Bundle app ES modules into a single file
-      --out, -o <path>         Output directory (default: dist/)
-      --include-lib, -L        Embed zquery.min.js in the bundle
-      --html <file>            Rewrite HTML file to reference the bundle
+      --out, -o <path>         Output directory (default: dist/ next to index.html)
+      --html <file>            Use a specific HTML file (default: auto-detected)
       --watch, -w              Watch source files and rebuild on changes
+
+  SMART DEFAULTS
+
+    The bundler works with zero flags for typical projects:
+      • Entry is auto-detected from index.html <script type="module" src="...">
+      • zquery.min.js is always embedded (auto-built from source if not found)
+      • index.html is always rewritten and assets are copied into dist/
+      • Output goes to dist/ next to the detected index.html
 
   OUTPUT
 
@@ -710,14 +766,17 @@ function showHelp() {
 
   EXAMPLES
 
-    # Build the library
+    # Build the library only
     zquery build
 
-    # Bundle an app (auto-detects entry from index.html)
+    # Bundle an app — auto-detects everything
     cd my-app && zquery bundle
 
-    # Bundle with all options
-    zquery bundle scripts/app.js -o dist/ -L --html index.html
+    # Point to an entry from a parent directory
+    zquery bundle path/to/scripts/app.js
+
+    # Custom output directory
+    zquery bundle -o build/
 
     # Watch mode
     zquery bundle --watch
@@ -739,20 +798,6 @@ if (!command || command === '--help' || command === '-h' || command === 'help') 
 } else if (command === 'build') {
   console.log('\n  zQuery Library Build\n');
   buildLibrary();
-  if (flag('watch', 'w')) {
-    console.log('  Watching src/ for changes...\n');
-    const srcDir = path.join(process.cwd(), 'src');
-    let debounceTimer;
-    const rebuild = () => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        console.log('  Rebuilding...');
-        try { buildLibrary(); } catch (e) { console.error(`  ✗ ${e.message}`); }
-      }, 200);
-    };
-    fs.watch(srcDir, { recursive: true }, rebuild);
-    fs.watch(path.join(process.cwd(), 'index.js'), rebuild);
-  }
 } else if (command === 'bundle') {
   bundleApp();
 } else {
