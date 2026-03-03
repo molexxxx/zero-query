@@ -1,0 +1,48 @@
+{
+  "name": "@tonywied17/zero-query",
+  "version": "0.1.0",
+  "description": "Lightweight modern frontend library — jQuery-like selectors, reactive components, SPA router, and state management with zero dependencies.",
+  "main": "index.js",
+  "files": [
+    "src",
+    "index.js",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js --watch",
+    "serve": "node examples/starter-app/local-server.js",
+    "watch": "node watch.js"
+  },
+  "keywords": [
+    "dom",
+    "query",
+    "selector",
+    "components",
+    "spa",
+    "router",
+    "reactive",
+    "lightweight",
+    "frontend",
+    "zero",
+    "zquery",
+    "zero-dependency"
+  ],
+  "author": "Anthony Wiedman",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tonywied17/zero-query.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tonywied17/zero-query/issues"
+  },
+  "homepage": "https://github.com/tonywied17/zero-query#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "zero-http": "^0.2.3"
+  }
+}

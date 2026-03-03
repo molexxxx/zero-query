@@ -1,0 +1,259 @@
+  <h2>Selectors &amp; DOM — <code>$()</code> &amp; <code>$.all()</code></h2>
+  <p>zQuery provides two selector functions that mirror the browser's <code>querySelector</code> and <code>querySelectorAll</code>, with added convenience for DOM elements, NodeLists, and HTML string creation.</p>
+
+  <table class="docs-table">
+    <tr><th>Function</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>$(selector)</code></td><td><code>Element | null</code></td><td>Single element via <code>querySelector</code></td></tr>
+    <tr><td><code>$.all(selector)</code></td><td><code>ZQueryCollection</code></td><td>All matching elements via <code>querySelectorAll</code>, wrapped in a chainable collection</td></tr>
+  </table>
+  <p>Both accept CSS selectors, DOM elements, NodeLists, arrays, and HTML strings. <code>$()</code> additionally accepts a function as a DOM-ready shorthand.</p>
+
+  <h3>Single-Element Selector — <code>$()</code></h3>
+  <pre><code class="language-javascript">// CSS selector — returns first matching element (or null)
+$('.card')                     // first .card element
+$('li', '#myList')             // first li scoped within #myList
+
+// DOM element — returned as-is
+$(document.getElementById('app'))
+
+// ZQueryCollection — returns the first element from the collection
+$($.all('.card'))
+
+// NodeList / Array — returns the first element
+$(document.querySelectorAll('p'))
+
+// Create element from HTML string — returns first created element
+$('&lt;div class="alert"&gt;Hello&lt;/div&gt;')
+
+// DOM-ready callback (like jQuery $(fn))
+$(() =&gt; console.log('DOM is ready'))
+
+// Works with standard DOM API — no wrapper overhead
+const el = $('.card');
+if (el) el.classList.add('active');</code></pre>
+
+  <div class="docs-tip">
+    <strong>When to use <code>$()</code> vs <code>$.all()</code>:</strong> Use <code>$()</code> when you expect a <strong>single element</strong> (a container, a form, a specific ID). Use <code>$.all()</code> when you need to operate on <strong>multiple elements</strong> (all cards, all list items, all buttons of a class). <code>$()</code> returns a raw DOM element, so you can use native DOM methods directly without any abstraction layer.
+  </div>
+
+  <h3>Collection Selector — <code>$.all()</code></h3>
+  <pre><code class="language-javascript">// CSS selector — returns ZQueryCollection of all matches
+$.all('.card')                    // all .card elements
+$.all('li', '#myList')            // all li scoped within #myList
+
+// Wrap a NodeList or array of elements
+$.all(document.querySelectorAll('p'))
+
+// Wrap a single DOM element into a collection
+$.all(document.getElementById('app'))
+
+// Chainable collection methods
+$.all('.card').addClass('active').css({ opacity: '1' });
+
+// Iterable — supports for...of and spread
+for (const el of $.all('.item')) {
+  console.log(el.textContent);
+}
+const arr = [...$.all('.item')];  // spread to plain array</code></pre>
+
+  <h3>Quick-Ref Shortcuts</h3>
+  <p>Convenience methods for common DOM lookups, available directly on the <code>$</code> namespace:</p>
+  <table class="docs-table">
+    <tr><th>Method</th><th>Equivalent</th><th>Returns</th></tr>
+    <tr><td><code>$.id('myId')</code></td><td><code>document.getElementById('myId')</code></td><td><code>Element</code></td></tr>
+    <tr><td><code>$.class('name')</code></td><td><code>document.querySelector('.name')</code></td><td><code>Element | null</code></td></tr>
+    <tr><td><code>$.classes('name')</code></td><td><code>document.getElementsByClassName('name')</code></td><td><code>Array&lt;Element&gt;</code></td></tr>
+    <tr><td><code>$.tag('div')</code></td><td><code>document.getElementsByTagName('div')</code></td><td><code>Array&lt;Element&gt;</code></td></tr>
+    <tr><td><code>$.children('parentId')</code></td><td><code>[...document.getElementById('parentId').children]</code></td><td><code>Array&lt;Element&gt;</code></td></tr>
+    <tr><td><code>$.ready(fn)</code></td><td><code>DOMContentLoaded</code> listener (or immediate if already loaded)</td><td><code>void</code></td></tr>
+  </table>
+
+  <h3>Element Creation — <code>$.create()</code></h3>
+  <p>Create a DOM element programmatically with attributes, styles, event listeners, and children in a single call:</p>
+  <pre><code class="language-javascript">const btn = $.create('button', {
+  class: 'primary',
+  style: { padding: '10px', borderRadius: '6px' },
+  onclick: () =&gt; alert('Clicked!'),
+  data: { action: 'submit', id: '42' }  // sets data-action, data-id
+}, 'Click Me');
+
+document.body.appendChild(btn);</code></pre>
+
+  <table class="docs-table">
+    <tr><th>Attribute Key</th><th>Behavior</th></tr>
+    <tr><td><code>class</code></td><td>Sets <code>className</code> directly</td></tr>
+    <tr><td><code>style</code> (object)</td><td>Assigns each property to <code>el.style</code></td></tr>
+    <tr><td><code>on*</code> (e.g. <code>onclick</code>)</td><td>Adds event listener for the event name after "on"</td></tr>
+    <tr><td><code>data</code> (object)</td><td>Sets <code>dataset</code> properties</td></tr>
+    <tr><td>Anything else</td><td>Calls <code>setAttribute(key, value)</code></td></tr>
+  </table>
+  <p>Additional arguments after <code>attrs</code> are appended as children (strings become text nodes, elements are appended directly).</p>
+
+  <h3>Collection Methods — <code>ZQueryCollection</code></h3>
+  <p>When you call <code>$.all()</code>, the returned <code>ZQueryCollection</code> provides a rich set of chainable methods. Most setters return <code>this</code> for chaining; getters return the value from the first element.</p>
+
+  <h4>Traversal &amp; Filtering</h4>
+  <table class="docs-table">
+    <tr><th>Method</th><th>Signature</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>find</code></td><td><code>find(selector)</code></td><td><code>ZQueryCollection</code></td><td>Find descendants matching selector</td></tr>
+    <tr><td><code>parent</code></td><td><code>parent()</code></td><td><code>ZQueryCollection</code></td><td>Direct parent of each element (deduplicated)</td></tr>
+    <tr><td><code>closest</code></td><td><code>closest(selector)</code></td><td><code>ZQueryCollection</code></td><td>Closest ancestor matching selector</td></tr>
+    <tr><td><code>children</code></td><td><code>children(selector?)</code></td><td><code>ZQueryCollection</code></td><td>Direct children, optionally filtered by selector</td></tr>
+    <tr><td><code>siblings</code></td><td><code>siblings()</code></td><td><code>ZQueryCollection</code></td><td>All sibling elements (excluding self)</td></tr>
+    <tr><td><code>next</code></td><td><code>next()</code></td><td><code>ZQueryCollection</code></td><td>Next sibling element</td></tr>
+    <tr><td><code>prev</code></td><td><code>prev()</code></td><td><code>ZQueryCollection</code></td><td>Previous sibling element</td></tr>
+    <tr><td><code>filter</code></td><td><code>filter(selector | fn)</code></td><td><code>ZQueryCollection</code></td><td>Filter by CSS selector or callback <code>fn(index, el)</code></td></tr>
+    <tr><td><code>not</code></td><td><code>not(selector | fn)</code></td><td><code>ZQueryCollection</code></td><td>Inverse of <code>filter()</code></td></tr>
+    <tr><td><code>has</code></td><td><code>has(selector)</code></td><td><code>ZQueryCollection</code></td><td>Keep elements that have a descendant matching selector</td></tr>
+  </table>
+
+  <h4>Iteration</h4>
+  <table class="docs-table">
+    <tr><th>Method</th><th>Signature</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>each</code></td><td><code>each(fn)</code></td><td><code>this</code></td><td><code>fn.call(el, index, el)</code> — chainable</td></tr>
+    <tr><td><code>map</code></td><td><code>map(fn)</code></td><td><code>Array</code></td><td><code>fn.call(el, index, el)</code> — returns plain array</td></tr>
+    <tr><td><code>first</code></td><td><code>first()</code></td><td><code>Element | null</code></td><td>First element in collection</td></tr>
+    <tr><td><code>last</code></td><td><code>last()</code></td><td><code>Element | null</code></td><td>Last element in collection</td></tr>
+    <tr><td><code>eq</code></td><td><code>eq(index)</code></td><td><code>ZQueryCollection</code></td><td>Single-element collection at given index</td></tr>
+    <tr><td><code>toArray</code></td><td><code>toArray()</code></td><td><code>Array&lt;Element&gt;</code></td><td>Spread to plain array</td></tr>
+  </table>
+
+  <div class="docs-callout">
+    <strong>Numeric indexing:</strong> You can access elements directly by index — <code>$.all('.card')[0]</code> returns the first raw DOM element, just like an array. The collection also implements <code>[Symbol.iterator]</code>, so <code>for...of</code> and spread (<code>...</code>) work natively.
+  </div>
+
+  <h4>Classes &amp; Attributes</h4>
+  <table class="docs-table">
+    <tr><th>Method</th><th>Signature</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>addClass</code></td><td><code>addClass(...names)</code></td><td><code>this</code></td><td>Add one or more classes (space-separated names also work)</td></tr>
+    <tr><td><code>removeClass</code></td><td><code>removeClass(...names)</code></td><td><code>this</code></td><td>Remove one or more classes</td></tr>
+    <tr><td><code>toggleClass</code></td><td><code>toggleClass(name, force?)</code></td><td><code>this</code></td><td>Toggle class; optional <code>force</code> boolean</td></tr>
+    <tr><td><code>hasClass</code></td><td><code>hasClass(name)</code></td><td><code>boolean</code></td><td>Returns true if <strong>first element</strong> has the class</td></tr>
+    <tr><td><code>attr</code></td><td><code>attr(name, value?)</code></td><td><code>string | this</code></td><td>Get (1 arg) or set (2 args) attribute</td></tr>
+    <tr><td><code>removeAttr</code></td><td><code>removeAttr(name)</code></td><td><code>this</code></td><td>Remove attribute from all elements</td></tr>
+    <tr><td><code>prop</code></td><td><code>prop(name, value?)</code></td><td><code>any | this</code></td><td>Get/set DOM property (e.g. <code>checked</code>, <code>disabled</code>)</td></tr>
+    <tr><td><code>data</code></td><td><code>data(key?, value?)</code></td><td><code>any | this</code></td><td>Get/set data attributes. Auto JSON-parses on get, auto JSON-stringifies objects on set</td></tr>
+  </table>
+
+  <h4>Content &amp; DOM Manipulation</h4>
+  <table class="docs-table">
+    <tr><th>Method</th><th>Signature</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>html</code></td><td><code>html(content?)</code></td><td><code>string | this</code></td><td>Get/set innerHTML</td></tr>
+    <tr><td><code>text</code></td><td><code>text(content?)</code></td><td><code>string | this</code></td><td>Get/set textContent</td></tr>
+    <tr><td><code>val</code></td><td><code>val(value?)</code></td><td><code>string | this</code></td><td>Get/set input/textarea value</td></tr>
+    <tr><td><code>append</code></td><td><code>append(content)</code></td><td><code>this</code></td><td>Append HTML string, Node, or ZQueryCollection</td></tr>
+    <tr><td><code>prepend</code></td><td><code>prepend(content)</code></td><td><code>this</code></td><td>Prepend content</td></tr>
+    <tr><td><code>after</code></td><td><code>after(content)</code></td><td><code>this</code></td><td>Insert content after each element</td></tr>
+    <tr><td><code>before</code></td><td><code>before(content)</code></td><td><code>this</code></td><td>Insert content before each element</td></tr>
+    <tr><td><code>wrap</code></td><td><code>wrap(wrapper)</code></td><td><code>this</code></td><td>Wrap each element with HTML string or element (cloned)</td></tr>
+    <tr><td><code>remove</code></td><td><code>remove()</code></td><td><code>this</code></td><td>Remove all elements from DOM</td></tr>
+    <tr><td><code>empty</code></td><td><code>empty()</code></td><td><code>this</code></td><td>Clear innerHTML of all elements</td></tr>
+    <tr><td><code>clone</code></td><td><code>clone(deep = true)</code></td><td><code>ZQueryCollection</code></td><td>Deep-clone all elements</td></tr>
+    <tr><td><code>replaceWith</code></td><td><code>replaceWith(content)</code></td><td><code>this</code></td><td>Replace each element with new content</td></tr>
+  </table>
+
+  <h4>CSS &amp; Dimensions</h4>
+  <table class="docs-table">
+    <tr><th>Method</th><th>Signature</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>css</code></td><td><code>css(prop | object)</code></td><td><code>string | this</code></td><td>Get computed style (string arg) or set styles (object arg)</td></tr>
+    <tr><td><code>width</code></td><td><code>width()</code></td><td><code>number</code></td><td>First element width via <code>getBoundingClientRect</code></td></tr>
+    <tr><td><code>height</code></td><td><code>height()</code></td><td><code>number</code></td><td>First element height via <code>getBoundingClientRect</code></td></tr>
+    <tr><td><code>offset</code></td><td><code>offset()</code></td><td><code>{ top, left, width, height } | null</code></td><td>Position relative to document (includes scroll offset)</td></tr>
+    <tr><td><code>position</code></td><td><code>position()</code></td><td><code>{ top, left } | null</code></td><td>Position relative to offset parent (<code>offsetTop</code>/<code>offsetLeft</code>)</td></tr>
+  </table>
+
+  <h4>Visibility</h4>
+  <table class="docs-table">
+    <tr><th>Method</th><th>Signature</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>show</code></td><td><code>show(display = '')</code></td><td><code>this</code></td><td>Set <code>display</code> style (default removes <code>display: none</code>)</td></tr>
+    <tr><td><code>hide</code></td><td><code>hide()</code></td><td><code>this</code></td><td>Set <code>display: none</code></td></tr>
+    <tr><td><code>toggle</code></td><td><code>toggle(display = '')</code></td><td><code>this</code></td><td>Toggle visibility</td></tr>
+  </table>
+
+  <h4>Events</h4>
+  <table class="docs-table">
+    <tr><th>Method</th><th>Signature</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>on</code></td><td><code>on(event, selectorOrFn, fn?)</code></td><td><code>this</code></td><td>Bind event(s). Supports space-separated events (<code>"click mouseenter"</code>). When <code>selectorOrFn</code> is a string, uses event delegation.</td></tr>
+    <tr><td><code>off</code></td><td><code>off(event, fn)</code></td><td><code>this</code></td><td>Unbind event(s). Space-separated events supported.</td></tr>
+    <tr><td><code>one</code></td><td><code>one(event, fn)</code></td><td><code>this</code></td><td>Bind event that fires once, then auto-removes</td></tr>
+    <tr><td><code>trigger</code></td><td><code>trigger(event, detail?)</code></td><td><code>this</code></td><td>Dispatch <code>CustomEvent</code> with <code>bubbles: true</code></td></tr>
+    <tr><td><code>click</code></td><td><code>click(fn?)</code></td><td><code>this</code></td><td>Shorthand: bind click or trigger click (no args)</td></tr>
+    <tr><td><code>submit</code></td><td><code>submit(fn?)</code></td><td><code>this</code></td><td>Shorthand: bind submit or trigger submit</td></tr>
+    <tr><td><code>focus</code></td><td><code>focus()</code></td><td><code>this</code></td><td>Focus first element</td></tr>
+    <tr><td><code>blur</code></td><td><code>blur()</code></td><td><code>this</code></td><td>Blur first element</td></tr>
+  </table>
+
+  <h3>Events — Direct &amp; Delegated</h3>
+  <pre><code class="language-javascript">// Direct event on all matched elements
+$.all('.btn').on('click', (e) =&gt; { /* ... */ });
+
+// Multiple events at once (space-separated)
+$.all('.btn').on('mouseenter mouseleave', (e) =&gt; {
+  e.target.classList.toggle('hovered');
+});
+
+// Delegated event — listen on parent, filter by child selector
+// (This is like jQuery's $(parent).on('click', '.child', fn))
+$.all('#list').on('click', '.item', function(e) {
+  console.log('Clicked:', this.textContent);
+});
+
+// One-time event — auto-removes after first invocation
+$.all('.btn').one('click', () =&gt; console.log('once'));
+
+// Custom events with detail payload
+$.all('.widget').trigger('update', { value: 42 });
+$.all('.widget').on('update', (e) =&gt; console.log(e.detail));
+// e.detail = { value: 42 }</code></pre>
+
+  <div class="docs-callout">
+    <strong>Delegated events</strong> are essential for dynamic content. If you add elements to the DOM after binding, delegated events on a parent still work because the check happens at event time, not bind time.
+  </div>
+
+  <h3>Animations</h3>
+  <p>All animation methods return <code>Promise</code>s, so you can <code>await</code> them for sequencing:</p>
+  <table class="docs-table">
+    <tr><th>Method</th><th>Signature</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>animate</code></td><td><code>animate(props, duration = 300, easing = 'ease')</code></td><td><code>Promise&lt;ZQueryCollection&gt;</code></td><td>CSS transition to target properties. Includes a fallback timeout at <code>duration + 50ms</code>.</td></tr>
+    <tr><td><code>fadeIn</code></td><td><code>fadeIn(duration = 300)</code></td><td><code>Promise</code></td><td>Fade in from <code>opacity: 0</code> to <code>opacity: 1</code></td></tr>
+    <tr><td><code>fadeOut</code></td><td><code>fadeOut(duration = 300)</code></td><td><code>Promise</code></td><td>Fade out and hide element after completion</td></tr>
+    <tr><td><code>slideToggle</code></td><td><code>slideToggle(duration = 300)</code></td><td><code>this</code></td><td>Toggle height between 0 and natural height</td></tr>
+  </table>
+  <pre><code class="language-javascript">// Sequential animation
+await $.all('.card').animate({ opacity: '0', transform: 'scale(0.9)' }, 300);
+await $.all('.card').fadeIn(400);
+
+// Custom easing
+await $.all('.modal').animate(
+  { transform: 'translateY(0)' }, 500, 'cubic-bezier(0.16, 1, 0.3, 1)'
+);</code></pre>
+
+  <h3>Form Helpers</h3>
+  <pre><code class="language-javascript">// URL-encoded string (like traditional form submission)
+$.all('#form').serialize();        // "name=Tony&amp;email=tony%40x.com"
+
+// Plain object (handles duplicate field names as arrays)
+$.all('#form').serializeObject();  // { name: 'Tony', email: 'tony@x.com' }
+// If multiple checkboxes: { colors: ['red', 'blue'] }</code></pre>
+
+  <h3>Global Event Delegation — <code>$.on()</code></h3>
+  <p>Delegate events on the entire <code>document</code> — useful for handling clicks on elements that don't exist yet:</p>
+  <pre><code class="language-javascript">$.on('click', '.delete-btn', function(e) {
+  this.closest('.row').remove();
+});</code></pre>
+
+  <h3>Extend with Plugins — <code>$.fn</code></h3>
+  <p><code>$.fn</code> is an alias for <code>ZQueryCollection.prototype</code>. Add custom methods to it just like jQuery plugins:</p>
+  <pre><code class="language-javascript">// Define a plugin
+$.fn.highlight = function(color = 'yellow') {
+  return this.css({ background: color });
+};
+
+// Use it
+$.all('.important').highlight('#ff0');
+$.all('p').highlight();  // defaults to yellow</code></pre>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> Always return <code>this</code> from plugin methods to preserve chainability.
+  </div>
+</section>

@@ -1,0 +1,105 @@
+  <h2>Reactive Primitives</h2>
+  <p>Low-level reactivity tools used internally by the component system and store. They are also exposed on <code>$</code> for direct use in custom patterns — reactive proxies for objects, and a signals system for fine-grained reactivity.</p>
+
+  <h3>Deep Reactive Proxy — <code>$.reactive()</code></h3>
+  <p>Wraps an object in a deeply reactive Proxy. Any property mutation (including nested) triggers the <code>onChange</code> callback.</p>
+  <pre><code class="language-javascript">const data = $.reactive(
+  { user: { name: 'Tony' }, list: [1, 2, 3] },
+  (key, value, old) =&gt; {
+    console.log(key + ': ' + old + ' &rarr; ' + value);
+  }
+);
+
+data.user.name = 'Updated';  // fires: "name: Tony → Updated"
+data.list = [1, 2, 3, 4];   // fires: "list: ..." (reassignment)</code></pre>
+
+  <table class="docs-table">
+    <tr><th>Parameter</th><th>Type</th><th>Description</th></tr>
+    <tr><td><code>target</code></td><td><code>object</code></td><td>The object to wrap. Non-objects are returned as-is.</td></tr>
+    <tr><td><code>onChange</code></td><td><code>(key, newValue, oldValue) =&gt; void</code></td><td>Called on every set or delete operation, including deeply nested changes.</td></tr>
+  </table>
+
+  <h4>Special Properties on Reactive Proxies</h4>
+  <table class="docs-table">
+    <tr><th>Property</th><th>Type</th><th>Description</th></tr>
+    <tr><td><code>proxy.__isReactive</code></td><td><code>boolean</code></td><td>Always <code>true</code> on reactive proxies. Useful for checking if an object is already reactive.</td></tr>
+    <tr><td><code>proxy.__raw</code></td><td><code>object</code></td><td>Access the underlying plain (non-proxy) object. Essential when you need to spread arrays: <code>[...state.arr.__raw, newItem]</code></td></tr>
+  </table>
+
+  <div class="docs-warning">
+    <strong>Array mutation caveat:</strong> Methods like <code>.push()</code>, <code>.splice()</code>, and <code>.pop()</code> on reactive arrays may not trigger the <code>onChange</code> callback reliably. Always <strong>reassign the entire array</strong> to guarantee a notification: <code>data.list = [...data.list.__raw, newItem]</code>
+  </div>
+
+  <h3>Signals — <code>$.signal()</code></h3>
+  <p>A signal is a reactive value container. Reading <code>.value</code> inside an <code>effect()</code> or <code>computed()</code> automatically registers a dependency.</p>
+  <pre><code class="language-javascript">const count = $.signal(0);
+
+// Read and write
+console.log(count.value);  // 0
+count.value = 5;           // triggers all subscribers
+
+// Peek without tracking (doesn't register as a dependency)
+count.peek();              // 5
+
+// Manual subscription (independent of effects)
+const unsub = count.subscribe(() =&gt; console.log('count changed'));
+count.value = 10;  // logs: "count changed"
+unsub();           // stop listening</code></pre>
+
+  <table class="docs-table">
+    <tr><th>Member</th><th>Type</th><th>Description</th></tr>
+    <tr><td><code>.value</code> (get)</td><td><code>any</code></td><td>Read current value. Auto-tracks dependency if inside <code>effect()</code>.</td></tr>
+    <tr><td><code>.value</code> (set)</td><td>—</td><td>Set new value. No-op if new value === old value. Notifies all subscribers.</td></tr>
+    <tr><td><code>.peek()</code></td><td><code>() =&gt; any</code></td><td>Read value without tracking (won't create a dependency).</td></tr>
+    <tr><td><code>.subscribe(fn)</code></td><td><code>(fn) =&gt; () =&gt; void</code></td><td>Manual subscription. Returns unsubscribe function.</td></tr>
+    <tr><td><code>.toString()</code></td><td><code>() =&gt; string</code></td><td>Returns <code>String(value)</code> for template literal use.</td></tr>
+  </table>
+
+  <h3>Computed Signals — <code>$.computed()</code></h3>
+  <p>A computed signal derives its value from other signals. It re-evaluates automatically when any dependency changes.</p>
+  <pre><code class="language-javascript">const price = $.signal(100);
+const tax = $.signal(0.1);
+const total = $.computed(() =&gt; price.value * (1 + tax.value));
+
+console.log(total.value);  // 110
+price.value = 200;
+console.log(total.value);  // 220  (auto-recomputed)
+tax.value = 0.2;
+console.log(total.value);  // 240</code></pre>
+
+  <div class="docs-callout">
+    <strong>How it works:</strong> <code>$.computed(fn)</code> creates a signal, then wraps <code>fn</code> in an <code>effect()</code>. Every time a dependency signal's <code>.value</code> is read inside <code>fn</code>, the computed signal auto-subscribes. When any dependency changes, the effect re-runs and updates the computed signal's value.
+  </div>
+
+  <h3>Effects — <code>$.effect()</code></h3>
+  <p>An effect runs a function immediately and re-runs it whenever any signal read during execution changes. Useful for side effects like DOM updates, logging, or syncing external state.</p>
+  <pre><code class="language-javascript">const x = $.signal(1);
+const y = $.signal(2);
+
+// Runs immediately, then re-runs when x or y change
+const dispose = $.effect(() =&gt; {
+  console.log('sum:', x.value + y.value);
+});
+// Logs: "sum: 3"
+
+x.value = 10;
+// Logs: "sum: 12"
+
+y.value = 20;
+// Logs: "sum: 30"
+
+// Stop tracking — effect will no longer re-run
+dispose();</code></pre>
+
+  <table class="docs-table">
+    <tr><th>Function</th><th>Signature</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>$.signal</code></td><td><code>signal(initial)</code></td><td><code>Signal</code></td><td>Create a new reactive signal with the given initial value</td></tr>
+    <tr><td><code>$.computed</code></td><td><code>computed(fn)</code></td><td><code>Signal</code></td><td>Create a derived signal that auto-updates from dependencies</td></tr>
+    <tr><td><code>$.effect</code></td><td><code>effect(fn)</code></td><td><code>() =&gt; void</code></td><td>Run a side-effect function, re-run on dependency changes. Returns a dispose function.</td></tr>
+    <tr><td><code>$.reactive</code></td><td><code>reactive(obj, onChange)</code></td><td><code>Proxy</code></td><td>Create a deep reactive proxy around an object</td></tr>
+  </table>
+
+  <div class="docs-tip">
+    <strong>When to use signals vs. reactive proxy:</strong> Use <strong>signals</strong> for individual primitive values or when you want fine-grained subscriptions (e.g. a counter, a toggle, a computed total). Use <strong>reactive proxies</strong> for complex nested objects where you want a single <code>onChange</code> callback (this is what components and the store use internally).
+  </div>
+</section>

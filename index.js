@@ -1,0 +1,173 @@
+/**
+ * ┌─────────────────────────────────────────────────────────┐
+ * │  zQuery (zeroQuery) — Lightweight Frontend Library     │
+ * │                                                         │
+ * │  jQuery-like selectors · Reactive components            │
+ * │  SPA router · State management · Zero dependencies      │
+ * │                                                         │
+ * │  https://github.com/tonywied17/zero-query              │
+ * └─────────────────────────────────────────────────────────┘
+ */
+
+import { query, queryAll, ZQueryCollection } from './src/core.js';
+import { reactive, signal, computed, effect } from './src/reactive.js';
+import { component, mount, mountAll, getInstance, destroy, getRegistry, style } from './src/component.js';
+import { createRouter, getRouter } from './src/router.js';
+import { createStore, getStore } from './src/store.js';
+import { http } from './src/http.js';
+import {
+  debounce, throttle, pipe, once, sleep,
+  escapeHtml, html, trust, uuid, camelCase, kebabCase,
+  deepClone, deepMerge, isEqual, param, parseQuery,
+  storage, session, bus,
+} from './src/utils.js';
+
+
+// ---------------------------------------------------------------------------
+// $ — The main function & namespace
+// ---------------------------------------------------------------------------
+
+/**
+ * Main selector function
+ * 
+ *   $('selector')         → single Element (querySelector)
+ *   $('<div>hello</div>') → create element (first created node)
+ *   $(element)            → return element as-is
+ *   $(fn)                 → DOMContentLoaded shorthand
+ * 
+ * @param {string|Element|NodeList|Function} selector
+ * @param {string|Element} [context]
+ * @returns {Element|null}
+ */
+function $(selector, context) {
+  // $(fn) → DOM ready shorthand
+  if (typeof selector === 'function') {
+    query.ready(selector);
+    return;
+  }
+  return query(selector, context);
+}
+
+
+// --- Quick refs ------------------------------------------------------------
+$.id       = query.id;
+$.class    = query.class;
+$.classes  = query.classes;
+$.tag      = query.tag;
+$.children = query.children;
+
+// --- Collection selector ---------------------------------------------------
+/**
+ * Collection selector (like jQuery's $)
+ * 
+ *   $.all('selector')         → ZQueryCollection (querySelectorAll)
+ *   $.all('<div>hello</div>') → create elements as collection
+ *   $.all(element)            → wrap element in collection
+ *   $.all(nodeList)           → wrap NodeList in collection
+ * 
+ * @param {string|Element|NodeList|Array} selector
+ * @param {string|Element} [context]
+ * @returns {ZQueryCollection}
+ */
+$.all = function(selector, context) {
+  return queryAll(selector, context);
+};
+
+// --- DOM helpers -----------------------------------------------------------
+$.create   = query.create;
+$.ready    = query.ready;
+$.on       = query.on;
+$.fn       = query.fn;
+
+// --- Reactive primitives ---------------------------------------------------
+$.reactive = reactive;
+$.signal   = signal;
+$.computed = computed;
+$.effect   = effect;
+
+// --- Components ------------------------------------------------------------
+$.component   = component;
+$.mount       = mount;
+$.mountAll    = mountAll;
+$.getInstance = getInstance;
+$.destroy     = destroy;
+$.components  = getRegistry;
+$.style       = style;
+
+// --- Router ----------------------------------------------------------------
+$.router    = createRouter;
+$.getRouter = getRouter;
+
+// --- Store -----------------------------------------------------------------
+$.store    = createStore;
+$.getStore = getStore;
+
+// --- HTTP ------------------------------------------------------------------
+$.http   = http;
+$.get    = http.get;
+$.post   = http.post;
+$.put    = http.put;
+$.patch  = http.patch;
+$.delete = http.delete;
+
+// --- Utilities -------------------------------------------------------------
+$.debounce   = debounce;
+$.throttle   = throttle;
+$.pipe       = pipe;
+$.once       = once;
+$.sleep      = sleep;
+$.escapeHtml = escapeHtml;
+$.html       = html;
+$.trust      = trust;
+$.uuid       = uuid;
+$.camelCase  = camelCase;
+$.kebabCase  = kebabCase;
+$.deepClone  = deepClone;
+$.deepMerge  = deepMerge;
+$.isEqual    = isEqual;
+$.param      = param;
+$.parseQuery = parseQuery;
+$.storage    = storage;
+$.session    = session;
+$.bus        = bus;
+
+// --- Meta ------------------------------------------------------------------
+$.version = '0.1.0';
+
+$.noConflict = () => {
+  if (typeof window !== 'undefined' && window.$ === $) {
+    delete window.$;
+  }
+  return $;
+};
+
+
+// ---------------------------------------------------------------------------
+// Global exposure (browser)
+// ---------------------------------------------------------------------------
+if (typeof window !== 'undefined') {
+  window.$ = $;
+  window.zQuery = $;
+}
+
+
+// ---------------------------------------------------------------------------
+// Named exports (ES modules)
+// ---------------------------------------------------------------------------
+export {
+  $,
+  $ as zQuery,
+  ZQueryCollection,
+  queryAll,
+  reactive, signal, computed, effect,
+  component, mount, mountAll, getInstance, destroy, style,
+  createRouter, getRouter,
+  createStore, getStore,
+  http,
+  debounce, throttle, pipe, once, sleep,
+  escapeHtml, html, trust, uuid,
+  deepClone, deepMerge, isEqual, param, parseQuery,
+  storage, session, bus,
+};
+
+export default $;

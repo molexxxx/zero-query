@@ -1,0 +1,127 @@
+  <h2>HTTP Client</h2>
+  <p>A lightweight wrapper around the native <code>fetch()</code> API with automatic JSON handling, request/response interceptors, configurable base URL, timeout and abort support, and a clean result object.</p>
+
+  <h3>Request Methods</h3>
+  <table class="docs-table">
+    <tr><th>Method</th><th>Signature</th><th>Description</th></tr>
+    <tr><td><code>$.get</code></td><td><code>$.get(url, params?, opts?)</code></td><td>GET request. <code>params</code> object is appended as query string.</td></tr>
+    <tr><td><code>$.post</code></td><td><code>$.post(url, data?, opts?)</code></td><td>POST request. <code>data</code> is JSON-stringified (unless FormData).</td></tr>
+    <tr><td><code>$.put</code></td><td><code>$.put(url, data?, opts?)</code></td><td>PUT request.</td></tr>
+    <tr><td><code>$.patch</code></td><td><code>$.patch(url, data?, opts?)</code></td><td>PATCH request.</td></tr>
+    <tr><td><code>$.delete</code></td><td><code>$.delete(url, data?, opts?)</code></td><td>DELETE request.</td></tr>
+  </table>
+  <pre><code class="language-javascript">// GET with query params — appended as ?page=1&amp;limit=10
+const res = await $.get('/api/users', { page: 1, limit: 10 });
+console.log(res.data);   // parsed JSON body
+console.log(res.status); // 200
+
+// POST with JSON body
+await $.post('/api/users', { name: 'Tony', email: 'tony@x.com' });
+
+// PUT, PATCH, DELETE
+await $.put('/api/users/1', { name: 'Updated' });
+await $.patch('/api/users/1', { email: 'new@x.com' });
+await $.delete('/api/users/1');</code></pre>
+
+  <h3>Configuration</h3>
+  <p>Set defaults that apply to every request:</p>
+  <pre><code class="language-javascript">$.http.configure({
+  baseURL: 'https://api.example.com',   // prepended to all non-absolute URLs
+  headers: { Authorization: 'Bearer token' }, // merged with per-request headers
+  timeout: 15000,  // ms — default is 30000 (30 seconds)
+});</code></pre>
+  <table class="docs-table">
+    <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td><code>baseURL</code></td><td><code>string</code></td><td><code>''</code></td><td>Prepended to URLs that don't start with <code>http</code></td></tr>
+    <tr><td><code>headers</code></td><td><code>Object</code></td><td><code>{ 'Content-Type': 'application/json' }</code></td><td>Default headers for all requests (merged with per-request headers)</td></tr>
+    <tr><td><code>timeout</code></td><td><code>number</code></td><td><code>30000</code></td><td>Request timeout in milliseconds. Set <code>0</code> for no timeout.</td></tr>
+  </table>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> Per-request options override the global config. You can pass custom headers, a different timeout, or an AbortController signal as the third argument to any request method: <code>$.get(url, params, { headers: { ... }, timeout: 5000 })</code>
+  </div>
+
+  <h3>Response Object</h3>
+  <p>Every request resolves with a standardized result object:</p>
+  <table class="docs-table">
+    <tr><th>Property</th><th>Type</th><th>Description</th></tr>
+    <tr><td><code>ok</code></td><td><code>boolean</code></td><td><code>response.ok</code> — true if status is 200-299</td></tr>
+    <tr><td><code>status</code></td><td><code>number</code></td><td>HTTP status code (200, 404, 500, etc.)</td></tr>
+    <tr><td><code>statusText</code></td><td><code>string</code></td><td>HTTP status text ('OK', 'Not Found', etc.)</td></tr>
+    <tr><td><code>headers</code></td><td><code>Object</code></td><td>Response headers as a plain object</td></tr>
+    <tr><td><code>data</code></td><td><code>any</code></td><td>Auto-parsed body: JSON, text, or blob based on Content-Type</td></tr>
+    <tr><td><code>response</code></td><td><code>Response</code></td><td>Raw fetch <code>Response</code> object for advanced use</td></tr>
+  </table>
+
+  <div class="docs-callout">
+    <strong>Auto-parsing:</strong> The response body is parsed automatically based on the <code>Content-Type</code> header: <code>application/json</code> &rarr; JSON, <code>text/*</code> &rarr; string, binary types &rarr; Blob. If no Content-Type is present, it tries JSON first, then falls back to text.
+  </div>
+
+  <h3>Interceptors</h3>
+  <p>Interceptors let you modify requests before they're sent and process responses globally.</p>
+  <pre><code class="language-javascript">// Request interceptor — modify headers, URL, or block the request
+$.http.onRequest((fetchOpts, url) =&gt; {
+  fetchOpts.headers['X-Request-ID'] = $.uuid();
+
+  // Return false to BLOCK the request entirely
+  // Return { url, options } to modify the URL or fetch options
+  // Return void/undefined to proceed unchanged
+});
+
+// Response interceptor — global error handling, token refresh, etc.
+$.http.onResponse((result) =&gt; {
+  if (result.status === 401) {
+    window.location = '/login';
+  }
+});</code></pre>
+  <table class="docs-table">
+    <tr><th>Interceptor</th><th>Callback Signature</th><th>Can Return</th></tr>
+    <tr><td><code>onRequest</code></td><td><code>(fetchOpts, url) =&gt; ...</code></td><td><code>void</code> (proceed), <code>false</code> (block), or <code>{ url?, options? }</code> (modify)</td></tr>
+    <tr><td><code>onResponse</code></td><td><code>(result) =&gt; void</code></td><td>Nothing (read-only)</td></tr>
+  </table>
+
+  <h3>Abort / Cancel</h3>
+  <p>Cancel in-flight requests using the <code>AbortController</code> pattern:</p>
+  <pre><code class="language-javascript">const controller = $.http.createAbort();  // shorthand for new AbortController()
+$.get('/api/slow', null, { signal: controller.signal });
+setTimeout(() =&gt; controller.abort(), 2000);  // cancel after 2s
+
+// You can also pass your own AbortController:
+const ac = new AbortController();
+$.get('/api/data', null, { signal: ac.signal });</code></pre>
+
+  <h3>FormData Upload</h3>
+  <p>When the request body is <code>FormData</code>, the <code>Content-Type</code> header is automatically removed so the browser can set the correct <code>multipart/form-data</code> boundary.</p>
+  <pre><code class="language-javascript">const fd = new FormData();
+fd.append('file', fileInput.files[0]);
+fd.append('name', 'document.pdf');
+await $.post('/api/upload', fd);  // Content-Type set by browser</code></pre>
+
+  <h3>Error Handling</h3>
+  <p>Non-2xx responses throw an <code>Error</code> with a <code>.response</code> property containing the full result object. Timeout errors throw with a descriptive message.</p>
+  <pre><code class="language-javascript">try {
+  const res = await $.get('/api/data');
+} catch (err) {
+  if (err.response) {
+    // HTTP error (4xx, 5xx)
+    console.log(err.response.status);     // 404, 500, etc.
+    console.log(err.response.data);       // error body (parsed)
+  } else {
+    // Network error or timeout
+    console.log(err.message);
+    // e.g. "Request timeout after 30000ms: GET https://..."
+  }
+}</code></pre>
+
+  <h3>Raw Fetch Passthrough</h3>
+  <p>If you need the raw <code>Response</code> (e.g. for streaming), bypass the wrapper:</p>
+  <pre><code class="language-javascript">const raw = await $.http.raw('/api/stream');
+const reader = raw.body.getReader();
+
+// Process stream chunks...
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  processChunk(value);
+}</code></pre>
+</section>

@@ -1,0 +1,74 @@
+  <h2>Recommended Project Structure</h2>
+  <p>zQuery apps follow a simple convention: one HTML file, one boot script, one component per file. No build tools are needed beyond the initial <code>node build.js</code> to create the library bundle.</p>
+  <pre><code class="language-text">my-app/
+  index.html                 &larr; entry point
+  scripts/
+    vendor/
+      zQuery.min.js          &larr; built library
+    app.js                   &larr; boot: imports, router, store
+    app.css                  &larr; global styles (linked in index.html via &lt;link rel&gt;)
+    routes.js                &larr; route definitions
+    store.js                 &larr; global store config
+    components/
+      home.js                &larr; one file per component
+      counter.js
+      todos.js
+      about.js
+      not-found.js</code></pre>
+
+  <h3>Conventions</h3>
+  <table class="docs-table">
+    <tr><th>Rule</th><th>Reason</th></tr>
+    <tr><td>Place <code>zQuery.min.js</code> in <code>vendor/</code></td><td>Keeps third-party code separate from your app code</td></tr>
+    <tr><td>One component per file in <code>components/</code></td><td>Easy to find, easy to delete; filename matches component name</td></tr>
+    <tr><td>Component names <strong>must contain a hyphen</strong></td><td>Required by the HTML custom elements spec (e.g. <code>home-page</code>, <code>app-counter</code>). Single-word names like <code>counter</code> will not work.</td></tr>
+    <tr><td>Store and routes at <code>scripts/</code> root</td><td>Shared across all components; imported from <code>app.js</code></td></tr>
+    <tr><td><code>app.js</code> is the single entry point</td><td>Imports components, creates store, boots router — keeps orchestration in one place</td></tr>    <tr><td>Use <code>&lt;link rel="stylesheet"&gt;</code> in <code>index.html</code> for global styles</td><td>Most reliable FOUC prevention &mdash; browser loads CSS before first paint. Use <code>$.style()</code> to dynamically load additional CSS files (themes, overrides). Use component <code>styleUrl</code> for scoped styles.</td></tr>    <tr><td>Global <code>$</code> — no per-file imports</td><td>Loaded via the script tag before modules, available everywhere</td></tr>
+  </table>
+
+  <h3>SPA Index HTML Template</h3>
+  <pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;My App&lt;/title&gt;
+  &lt;link rel="stylesheet" href="styles/styles.css"&gt;
+  &lt;script src="scripts/vendor/zQuery.min.js"&gt;&lt;/script&gt;
+  &lt;script type="module" src="scripts/app.js"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;nav&gt;
+    &lt;a z-link="/"&gt;Home&lt;/a&gt;
+    &lt;a z-link="/about"&gt;About&lt;/a&gt;
+  &lt;/nav&gt;
+  &lt;div id="app"&gt;&lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> Use <code>z-link</code> attributes instead of plain <code>href</code> on navigation links. The router intercepts these clicks to navigate without a full page reload, preserving SPA state.
+  </div>
+
+  <h3>Sub-Path Deployment &amp; <code>&lt;base href&gt;</code></h3>
+  <p>When deploying under a sub-directory (e.g. <code>https://example.com/my-app/</code>), add a <code>&lt;base href&gt;</code> tag to your HTML <code>&lt;head&gt;</code>:</p>
+  <pre><code class="language-html">&lt;head&gt;
+  &lt;base href="/my-app/"&gt;
+  &lt;!-- scripts, styles, etc. --&gt;
+&lt;/head&gt;</code></pre>
+
+  <p><strong>Auto-detection (default):</strong> The router reads <code>&lt;base href&gt;</code> automatically — no extra code needed. Just call <code>$.router()</code> as usual:</p>
+  <pre><code class="language-javascript">$.router({ el: '#app', routes, fallback: 'not-found' });</code></pre>
+
+  <p><strong>Explicit option:</strong> Or pass <code>base</code> directly to override auto-detection:</p>
+  <pre><code class="language-javascript">$.router({ el: '#app', base: '/my-app', routes });</code></pre>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> Using <code>&lt;base href&gt;</code> is preferred because it also controls how the browser resolves relative URLs for scripts, stylesheets, images, and fetch requests — keeping all path configuration in one place.
+  </div>
+
+  <p>Then configure server-side rewrites so all non-file requests serve <code>index.html</code>.</p>
+
+  <div class="docs-warning">
+    <strong>Server config required:</strong> SPAs need a catch-all rewrite rule. Without it, refreshing on <code>/about</code> returns a 404 from the server. For Apache use <code>FallbackResource /index.html</code>, for Nginx use <code>try_files $uri /index.html</code>.
+  </div>
+</section>

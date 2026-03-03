@@ -1,0 +1,155 @@
+  <h2>Router</h2>
+  <p>A full-featured client-side SPA router with history and hash mode, dynamic route params, query strings, navigation guards, lazy loading, and lifecycle hooks. Handles <code>[z-link]</code> click interception, <code>popstate</code>/<code>hashchange</code> events, and component mounting automatically.</p>
+
+  <h3>Setup</h3>
+  <pre><code class="language-javascript">const router = $.router({
+  el: '#app',               // outlet element (required)
+  mode: 'history',          // 'history' (default) or 'hash'
+  base: '/my-app',          // optional — auto-detected from <base href>
+  routes: [
+    { path: '/',           component: 'home-page' },
+    { path: '/user/:id',   component: 'user-page' },
+    { path: '/settings',   component: 'settings-page' },
+    { path: '/admin/*',    component: 'admin-page' },  // wildcard
+  ],
+  fallback: 'not-found'    // 404 component (when no route matches)
+});</code></pre>
+
+  <h3>Config Options</h3>
+  <table class="docs-table">
+    <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
+    <tr><td><code>el</code></td><td><code>string | Element</code></td><td>—</td><td><strong>Required.</strong> The DOM element (or selector) where matched components are mounted.</td></tr>
+    <tr><td><code>mode</code></td><td><code>'history' | 'hash'</code></td><td><code>'history'</code></td><td><strong>History mode</strong> uses clean URLs (<code>/about</code>) and requires server-side fallback. <strong>Hash mode</strong> uses <code>#/about</code> and works on any static host.</td></tr>
+    <tr><td><code>base</code></td><td><code>string</code></td><td><code>''</code></td><td>Base path prefix for sub-directory deployments. <strong>Auto-detected</strong> from <code>&lt;base href&gt;</code> if not set (also checks <code>window.__ZQ_BASE</code>). Trailing slash is removed.</td></tr>
+    <tr><td><code>routes</code></td><td><code>Array</code></td><td><code>[]</code></td><td>Array of route definitions (see below)</td></tr>
+    <tr><td><code>fallback</code></td><td><code>string | null</code></td><td><code>null</code></td><td>Component name to mount when no route matches (404 page)</td></tr>
+  </table>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> Use <code>hash</code> mode if you're deploying to a static host (GitHub Pages, S3, file://) where you can't configure server-side URL rewriting. History mode gives cleaner URLs but requires a catch-all rewrite rule on the server.
+  </div>
+
+  <h3>Route Definition Object</h3>
+  <table class="docs-table">
+    <tr><th>Property</th><th>Type</th><th>Required</th><th>Description</th></tr>
+    <tr><td><code>path</code></td><td><code>string</code></td><td>Yes</td><td>URL pattern. Use <code>:param</code> for dynamic segments (e.g. <code>/user/:id</code>) and <code>*</code> for wildcards (e.g. <code>/docs/*</code>).</td></tr>
+    <tr><td><code>component</code></td><td><code>string | function</code></td><td>Yes</td><td>Registered component name, or a render function <code>(route) =&gt; htmlString</code> for inline rendering.</td></tr>
+    <tr><td><code>load</code></td><td><code>() =&gt; Promise</code></td><td>No</td><td>Lazy-load function called before mounting. Use for code-splitting: <code>() =&gt; import('./heavy-page.js')</code></td></tr>
+    <tr><td><code>fallback</code></td><td><code>string</code></td><td>No</td><td>An additional path that also matches this route. Useful when a route has a dynamic <code>:param</code> segment but you also want the bare path to render the same component (with the param <code>undefined</code>).</td></tr>
+  </table>
+
+  <pre><code class="language-javascript">// Examples of route definitions:
+{ path: '/',              component: 'home-page' }            // exact match
+{ path: '/user/:id',      component: 'user-page' }            // dynamic param
+{ path: '/user/:id/posts', component: 'user-posts' }          // multi-segment
+{ path: '/docs/:section', component: 'docs-page',             // fallback path
+                           fallback: '/docs' }
+{ path: '/docs/*',         component: 'docs-page' }           // wildcard
+{ path: '/lazy',           component: 'lazy-page',            // lazy-loaded
+                            load: () =&gt; import('./lazy.js') }</code></pre>
+
+  <h3>Navigation</h3>
+  <table class="docs-table">
+    <tr><th>Method</th><th>Signature</th><th>Description</th></tr>
+    <tr><td><code>navigate</code></td><td><code>navigate(path, options?)</code></td><td>Push a new entry to history and resolve. <code>options.state</code> sets <code>history.state</code>.</td></tr>
+    <tr><td><code>replace</code></td><td><code>replace(path, options?)</code></td><td>Replace current history entry (no back button entry). <code>options.state</code> supported.</td></tr>
+    <tr><td><code>back</code></td><td><code>back()</code></td><td><code>history.back()</code></td></tr>
+    <tr><td><code>forward</code></td><td><code>forward()</code></td><td><code>history.forward()</code></td></tr>
+    <tr><td><code>go</code></td><td><code>go(n)</code></td><td><code>history.go(n)</code> — negative values go back, positive go forward</td></tr>
+    <tr><td><code>add</code></td><td><code>add(route)</code></td><td>Dynamically add a route definition at runtime</td></tr>
+    <tr><td><code>remove</code></td><td><code>remove(path)</code></td><td>Remove a route by path string</td></tr>
+    <tr><td><code>destroy</code></td><td><code>destroy()</code></td><td>Tear down the router: destroy mounted component, clear routes/guards/listeners</td></tr>
+  </table>
+  <pre><code class="language-javascript">router.navigate('/user/42');                    // push
+router.navigate('/user/42', { state: { from: 'list' } }); // push with state
+router.replace('/login');                       // replace (no history entry)
+router.back();
+router.go(-2);
+
+// Dynamic routes
+router.add({ path: '/new', component: 'new-page' });
+router.remove('/old');</code></pre>
+
+  <h3>Navigation Links — <code>z-link</code></h3>
+  <p>Use the <code>z-link</code> attribute on anchor tags for SPA navigation. The router intercepts clicks on these elements and calls <code>navigate()</code> instead of triggering a full page reload.</p>
+  <pre><code class="language-html">&lt;a z-link="/"&gt;Home&lt;/a&gt;
+&lt;a z-link="/user/42"&gt;Profile&lt;/a&gt;
+&lt;a z-link="/settings?tab=general"&gt;Settings&lt;/a&gt;</code></pre>
+
+  <div class="docs-callout">
+    <strong>Active link styling:</strong> The router adds an <code>.active</code> class to <code>[z-link]</code> elements whose path matches the current route. Use this in your CSS to highlight the current page in the navigation.
+  </div>
+
+  <h3>Route Params &amp; Query in Components</h3>
+  <p>When the router mounts a component, it passes special props containing route information:</p>
+  <table class="docs-table">
+    <tr><th>Prop</th><th>Type</th><th>Description</th></tr>
+    <tr><td><code>this.props.$params</code></td><td><code>Object</code></td><td>Dynamic route parameters (e.g. <code>{ id: '42' }</code> from <code>/user/:id</code>)</td></tr>
+    <tr><td><code>this.props.$query</code></td><td><code>Object</code></td><td>Parsed query string (e.g. <code>{ tab: 'general' }</code> from <code>?tab=general</code>)</td></tr>
+    <tr><td><code>this.props.$route</code></td><td><code>Object</code></td><td>Full route object: <code>{ route, params, query, path }</code></td></tr>
+    <tr><td><code>this.props.{param}</code></td><td><code>string</code></td><td>Params are also spread as top-level props (e.g. <code>this.props.id</code>)</td></tr>
+  </table>
+  <pre><code class="language-javascript">$.component('user-page', {
+  render() {
+    const id = this.props.$params.id;       // or this.props.id
+    const tab = this.props.$query.tab;      // query string
+    const route = this.props.$route;        // full route info
+    return `
+      &lt;h1&gt;User ${id}&lt;/h1&gt;
+      &lt;p&gt;Tab: ${tab || 'default'}&lt;/p&gt;
+      &lt;p&gt;Path: ${route.path}&lt;/p&gt;
+    `;
+  }
+});</code></pre>
+
+  <h3>Navigation Guards</h3>
+  <p>Guards let you intercept navigation to protect routes, redirect, or run side effects.</p>
+  <table class="docs-table">
+    <tr><th>Guard</th><th>Signature</th><th>Description</th></tr>
+    <tr><td><code>beforeEach</code></td><td><code>beforeEach(fn(to, from))</code></td><td>Runs <em>before</em> route change. Return <code>false</code> to cancel, return a path string to redirect, or <code>void</code> to proceed.</td></tr>
+    <tr><td><code>afterEach</code></td><td><code>afterEach(fn(to, from))</code></td><td>Runs <em>after</em> route change. Good for analytics, scroll restoration, etc.</td></tr>
+  </table>
+  <pre><code class="language-javascript">// Protect a route — redirect to login if not authenticated
+router.beforeEach((to, from) =&gt; {
+  if (to.path === '/admin' &amp;&amp; !isLoggedIn()) {
+    return '/login';   // redirect
+  }
+  // return false to cancel navigation entirely
+});
+
+// Analytics tracking after navigation
+router.afterEach((to, from) =&gt; {
+  analytics.track(to.path);
+  window.scrollTo(0, 0);  // scroll to top on route change
+});</code></pre>
+
+  <div class="docs-warning">
+    <strong>Guard parameters:</strong> Both <code>to</code> and <code>from</code> are route objects with shape <code>{ route, params, query, path }</code>. On the very first navigation, <code>from</code> will be <code>null</code>.
+  </div>
+
+  <h3>Change Listener</h3>
+  <p>Subscribe to route changes without using a guard. Returns an unsubscribe function.</p>
+  <pre><code class="language-javascript">const unsub = router.onChange((to, from) =&gt; {
+  console.log(from?.path, '&rarr;', to.path);
+  document.title = to.route?.title || 'My App';
+});
+
+// Stop listening
+unsub();</code></pre>
+
+  <h3>Current Route State</h3>
+  <table class="docs-table">
+    <tr><th>Property</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>router.current</code></td><td><code>{ route, params, query, path } | null</code></td><td>Full current route state</td></tr>
+    <tr><td><code>router.path</code></td><td><code>string</code></td><td>Current path (base-stripped in history mode)</td></tr>
+    <tr><td><code>router.query</code></td><td><code>Object</code></td><td>Current parsed query parameters</td></tr>
+  </table>
+  <pre><code class="language-javascript">// Check current route programmatically
+if (router.path === '/admin') { /* ... */ }
+console.log(router.query);   // { page: '2', sort: 'name' }
+console.log(router.current); // full route info</code></pre>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> Use <code>$.getRouter()</code> to access the active router instance from anywhere (e.g. inside a component method or a utility module) without importing the variable directly.
+  </div>
+</section>

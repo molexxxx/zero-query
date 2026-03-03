@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="/">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>zQuery Starter App</title>
+  <link rel="stylesheet" href="styles/styles.css">
+  <!-- Prism.js syntax highlighting (dark theme) -->
+  <link rel="stylesheet" href="scripts/vendor/prism-okaidia.css">
+  <link rel="stylesheet" href="scripts/vendor/prism-toolbar.css">
+
+  <!-- Load zQuery (built bundle — works on any server, no ES modules needed) -->
+  <script src="scripts/vendor/zquery.min.js"></script>
+  <script data-manual src="scripts/vendor/prism.min.js"></script>
+  <script src="scripts/vendor/prism-json.min.js"></script>
+  <script src="scripts/vendor/prism-toolbar.min.js"></script>
+  <script src="scripts/vendor/prism-copy-to-clipboard.min.js"></script>
+  <script type="module" src="scripts/app.js"></script>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav>
+    <span class="brand">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="54" height="54">
+        <defs>
+          <linearGradient id="navBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a1f2e"/><stop offset="100%" stop-color="#0d1117"/></linearGradient>
+          <linearGradient id="navZ" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#79c0ff"/><stop offset="50%" stop-color="#58a6ff"/><stop offset="100%" stop-color="#1f6feb"/></linearGradient>
+        </defs>
+        <rect width="512" height="512" rx="88" fill="url(#navBg)"/>
+        <rect x="2" y="2" width="508" height="508" rx="86" fill="none" stroke="#30363d" stroke-width="2"/>
+        <path d="M 128,120 H 384 V 172 L 300,256 L 316,256 L 232,340 H 384 V 392 H 128 V 340 L 212,256 L 228,256 L 312,172 H 128 Z" fill="url(#navZ)"/>
+      </svg>
+    </span>
+    <button class="mobile-nav-toggle" aria-label="Toggle navigation" onclick="this.closest('nav').classList.toggle('nav-open')">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links">
+      <a z-link="/">Home</a>
+      <a z-link="/counter">Counter</a>
+      <a z-link="/todos">Todos</a>
+      <a z-link="/docs">API Docs</a>
+      <a z-link="/about">About</a>
+    </div>
+  </nav>
+
+  <!-- Router outlet -->
+  <div id="app"></div>
+</body>
+</html>
