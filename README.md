@@ -6,8 +6,8 @@
 
 <p align="center">
 
-[![npm version](https://img.shields.io/npm/v/@tonywied17/zero-query.svg)](https://www.npmjs.com/package/@tonywied17/zero-query)
-[![npm downloads](https://img.shields.io/npm/dm/@tonywied17/zero-query.svg)](https://www.npmjs.com/package/@tonywied17/zero-query)
+[![npm version](https://img.shields.io/npm/v/zero-query.svg)](https://www.npmjs.com/package/zero-query)
+[![npm downloads](https://img.shields.io/npm/dm/zero-query.svg)](https://www.npmjs.com/package/zero-query)
 [![GitHub](https://img.shields.io/badge/GitHub-zero--query-blue.svg)](https://github.com/tonywied17/zero-query)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-success.svg)](package.json)

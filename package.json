@@ -1,5 +1,5 @@
 {
-  "name": "@tonywied17/zero-query",
+  "name": "zero-query",
   "version": "0.1.0",
   "description": "Lightweight modern frontend library — jQuery-like selectors, reactive components, SPA router, and state management with zero dependencies.",
   "main": "index.js",
