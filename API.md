@@ -756,7 +756,7 @@ $.component('my-widget', {
 The `pages` option is a high-level shorthand for components that load and display multiple HTML pages from a directory. It auto-generates the `templateUrl` object map, normalizes page metadata, and derives the active page from a route parameter.
 
 ```js
-// File: scripts/components/docs/index.js
+// File: scripts/components/docs/docs.js
 $.component('docs-page', {
   pages: {
     dir:     'pages',                  // → scripts/components/docs/pages/
@@ -1696,7 +1696,7 @@ zquery build [options]
 
 ### `zquery bundle [entry]`
 
-Bundle an app's ES modules into a single IIFE file.
+Bundle an app's ES modules into a single IIFE file with content-hashed filenames.
 
 ```bash
 zquery bundle [entry] [options]
@@ -1708,12 +1708,12 @@ zquery bundle [entry] [options]
 
 | Option | Short | Default | Description |
 | --- | --- | --- | --- |
-| `--out <path>` | `-o` | `dist/<entry>.bundle.js` | Output file path |
+| `--out <path>` | `-o` | `dist/` | Output directory (or file path — directory is extracted) |
 | `--include-lib` | `-L` | off | Embed `zquery.min.js` in the bundle. Searches `scripts/vendor/`, `vendor/`, `lib/`, `dist/` |
 | `--html <file>` | — | — | Rewrite the given HTML file to reference the bundle. Copies assets to `dist/` |
 | `--watch` | `-w` | off | Watch source files and rebuild on changes |
 
-**Output:** `<output>.js` (readable) and `<output>.min.js` (minified).
+**Output:** `z-<entry>.<hash>.js` (readable) and `z-<entry>.<hash>.min.js` (minified). The 8-character content hash changes only when the bundle content changes, enabling long-lived cache headers. Previous hashed builds are automatically cleaned on each rebuild.
 
 #### Entry Detection
 
@@ -1748,9 +1748,9 @@ When `--html` is provided, the bundler:
 
 | Step | Description |
 | --- | --- |
-| Replace module script | `<script type="module" src="...">` → `<script defer src="bundle.js">` |
+| Replace module script | `<script type="module" src="...">` → `<script defer src="z-<name>.<hash>.js">` |
 | Remove library tag | When `--include-lib`, removes the standalone `<script src="zquery.min.js">` |
-| Rewrite base href | `<base href="/">` → `<base href="./">` for portable deployment |
+| Smart base href | Preserves `<base href="/">` for SPA deep-route support; injects a tiny inline script that switches to `./` when opened via `file://` |
 | Copy assets | All `src=` and `href=` references in the HTML are copied to `dist/`, preserving directory structure |
 | Copy CSS sub-assets | CSS files are scanned for `url()` references; those assets are copied too |
 
@@ -1780,12 +1780,16 @@ cp node_modules/zero-query/dist/zQuery.min.js scripts/vendor/
 # 2. Minimal — auto-detect everything
 npx zquery bundle
 
-# Specify entry and output
-npx zquery bundle scripts/app.js -o dist/app.bundle.js
+# Specify entry and output directory
+npx zquery bundle scripts/app.js -o dist/
 
 # Full self-contained build
-npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html
+npx zquery bundle scripts/app.js -o dist/ -L --html index.html
 
 # Watch mode during development
-npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html -w
+npx zquery bundle scripts/app.js -o dist/ -L --html index.html -w
 ```
+
+> **Output filenames** are content-hashed automatically:
+> `z-app.f3a1b2c4.js` / `z-app.f3a1b2c4.min.js`
+> The hash changes only when the bundle content changes.

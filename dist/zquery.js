@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.1.2
+ * zQuery (zeroQuery) v0.2.0
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -1580,22 +1580,31 @@ class Router {
   // --- Navigation ----------------------------------------------------------
 
   navigate(path, options = {}) {
-    let normalized = this._normalizePath(path);
+    // Separate hash fragment (e.g. /docs/getting-started#cli-bundler)
+    const [cleanPath, fragment] = (path || '').split('#');
+    let normalized = this._normalizePath(cleanPath);
+    const hash = fragment ? '#' + fragment : '';
     if (this._mode === 'hash') {
+      // Hash mode uses the URL hash for routing, so a #fragment can't live
+      // in the URL. Store it as a scroll target for the destination component.
+      if (fragment) window.__zqScrollTarget = fragment;
       window.location.hash = '#' + normalized;
     } else {
-      window.history.pushState(options.state || {}, '', this._base + normalized);
+      window.history.pushState(options.state || {}, '', this._base + normalized + hash);
       this._resolve();
     }
     return this;
   }
 
   replace(path, options = {}) {
-    let normalized = this._normalizePath(path);
+    const [cleanPath, fragment] = (path || '').split('#');
+    let normalized = this._normalizePath(cleanPath);
+    const hash = fragment ? '#' + fragment : '';
     if (this._mode === 'hash') {
+      if (fragment) window.__zqScrollTarget = fragment;
       window.location.replace('#' + normalized);
     } else {
-      window.history.replaceState(options.state || {}, '', this._base + normalized);
+      window.history.replaceState(options.state || {}, '', this._base + normalized + hash);
       this._resolve();
     }
     return this;
@@ -2544,7 +2553,7 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.1.2';
+$.version = '0.2.0';
 
 $.noConflict = () => {
   if (typeof window !== 'undefined' && window.$ === $) {

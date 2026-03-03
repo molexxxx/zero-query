@@ -189,7 +189,7 @@ zquery build --watch        # rebuild on source changes
 
 #### `zquery bundle` — Bundle an App
 
-Walks the ES module import graph starting from an entry file, topologically sorts all dependencies, strips `import`/`export` syntax, and concatenates everything into a single IIFE.
+Walks the ES module import graph starting from an entry file, topologically sorts all dependencies, strips `import`/`export` syntax, and concatenates everything into a single IIFE with content-hashed filenames for cache-busting.
 
 ```bash
 # Auto-detect entry from index.html's <script type="module">
@@ -200,7 +200,7 @@ zquery bundle scripts/app.js
 
 # Full example with all options
 zquery bundle scripts/app.js \
-  --out dist/app.bundle.js \
+  --out dist/ \
   --include-lib \
   --html index.html \
   --watch
@@ -210,7 +210,7 @@ zquery bundle scripts/app.js \
 
 | Flag | Short | Description |
 | --- | --- | --- |
-| `--out <path>` | `-o` | Output file path. Default: `dist/<entry>.bundle.js` |
+| `--out <path>` | `-o` | Output directory (or file path — directory is extracted). Default: `dist/` |
 | `--include-lib` | `-L` | Embed `zquery.min.js` directly in the bundle (no separate script tag needed) |
 | `--html <file>` | — | Rewrite the HTML file: replaces `<script type="module">` with the bundle, copies assets into `dist/`, adjusts `<base href>` |
 | `--watch` | `-w` | Watch source files and rebuild automatically on changes |
@@ -230,11 +230,11 @@ zquery bundle scripts/app.js \
 6. **HTML rewriting** (`--html`) — Rewrites the specified HTML file:
    - Replaces `<script type="module" src="...">` with `<script defer src="bundle.js">`
    - Removes the standalone zQuery `<script>` tag when `--include-lib` is used
-   - Rewrites `<base href="/">` to `<base href="./">` for portable deployment
+   - Preserves `<base href="/">` for SPA deep-route support, with an inline `file://` fallback that switches to `./`
    - Copies all referenced assets (CSS, images, vendor JS) into the `dist/` folder
    - Scans CSS files for `url()` references and copies those assets too
 
-7. **Minification** — Produces both a readable `.bundle.js` and a minified `.bundle.min.js` (comment stripping + whitespace collapsing).
+7. **Minification** — Produces both a readable `z-<name>.<hash>.js` and a minified `z-<name>.<hash>.min.js` (comment stripping + whitespace collapsing). The content hash changes only when the bundle changes, enabling long-lived cache headers. Previous hashed builds are automatically cleaned on each rebuild.
 
 ### Step-by-Step: Bundling Your Own App
 
@@ -248,14 +248,14 @@ npm install zero-query --save-dev
 cp node_modules/zero-query/dist/zQuery.min.js scripts/vendor/
 
 # 3. Bundle the app
-npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html
+npx zquery bundle scripts/app.js -o dist/ -L --html index.html
 
-# Output:
-#   dist/index.html          ← rewritten HTML
-#   dist/app.bundle.js       ← full bundle (library + app + inlined templates)
-#   dist/app.bundle.min.js   ← minified version
-#   dist/styles/             ← copied CSS
-#   dist/scripts/vendor/     ← copied vendor assets
+# Output (filenames are content-hashed for cache-busting):
+#   dist/index.html              ← rewritten HTML (src updated automatically)
+#   dist/z-app.a1b2c3d4.js      ← hashed bundle (library + app + inlined templates)
+#   dist/z-app.a1b2c3d4.min.js  ← minified version
+#   dist/styles/                 ← copied CSS
+#   dist/scripts/vendor/         ← copied vendor assets
 
 # 4. Open directly in a browser — no server needed
 start dist/index.html    # Windows
@@ -270,7 +270,7 @@ If you cloned the zero-query repository:
 node build.js
 cp dist/zQuery.min.js examples/starter-app/scripts/vendor/
 cd examples/starter-app
-npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html
+npx zquery bundle scripts/app.js -o dist/ -L --html index.html
 start dist/index.html
 ```
 
@@ -585,7 +585,7 @@ Components can load their HTML templates and CSS from external files instead of 
 Relative `templateUrl`, `styleUrl`, and `pages.dir` paths are automatically resolved **relative to the component file** — no extra configuration needed:
 
 ```js
-// File: scripts/components/widget/index.js
+// File: scripts/components/widget/widget.js
 $.component('my-widget', {
   templateUrl: 'template.html',        // → scripts/components/widget/template.html
   styleUrl:    'styles.css',           // → scripts/components/widget/styles.css
@@ -721,7 +721,7 @@ $.style('overrides.css');
 The `pages` option is a high-level shorthand for components that display content from multiple HTML files in a directory (e.g. documentation, wizards, tabbed content). It replaces the need to manually build a `templateUrl` object map and maintain a separate page list.
 
 ```js
-// File: scripts/components/docs/index.js
+// File: scripts/components/docs/docs.js
 $.component('docs-page', {
   pages: {
     dir:     'pages',                  // → scripts/components/docs/pages/
@@ -1338,7 +1338,7 @@ You can also build a fully self-contained bundled version of the starter app:
 
 ```bash
 cd examples/starter-app
-npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html
+npx zquery bundle scripts/app.js -o dist/ -L --html index.html
 
 # Open dist/index.html directly — no server needed
 ```

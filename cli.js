@@ -12,18 +12,22 @@
  *
  *   zquery bundle [entry]             Bundle an app's ES modules into one file
  *   zquery bundle scripts/app.js      Specify entry explicitly
- *   zquery bundle -o dist/app.js      Custom output path
+ *   zquery bundle -o dist/            Custom output directory
  *   zquery bundle --include-lib       Embed zquery.min.js in the bundle
  *   zquery bundle --watch             Watch & rebuild on changes
  *   zquery bundle --html index.html   Rewrite <script type="module"> to use bundle
  *
+ * Output files use content-hashed names for cache-busting:
+ *   z-<entry>.<hash>.js / z-<entry>.<hash>.min.js
+ *
  * Examples:
  *   cd my-zquery-app && npx zero-query bundle
- *   npx zero-query bundle scripts/app.js -o dist/app.bundle.js --include-lib
+ *   npx zero-query bundle scripts/app.js -o dist/ --include-lib
  */
 
-const fs   = require('fs');
-const path = require('path');
+const fs     = require('fs');
+const path   = require('path');
+const crypto = require('crypto');
 
 // ---------------------------------------------------------------------------
 // CLI argument parsing
@@ -411,20 +415,26 @@ function bundleApp() {
   const htmlFile   = option('html', null, null);
   const watchMode  = flag('watch', 'w');
 
-  // Derive output paths
+  // Derive output directory (filename is auto-generated with a content hash)
   const entryRel  = path.relative(projectRoot, entry);
   const entryName = path.basename(entry, '.js');
-  const distDir   = outPath
-    ? path.dirname(path.resolve(projectRoot, outPath))
-    : path.join(projectRoot, 'dist');
-  const bundleFile = outPath
-    ? path.resolve(projectRoot, outPath)
-    : path.join(distDir, `${entryName}.bundle.js`);
-  const minFile    = bundleFile.replace(/\.js$/, '.min.js');
+  let distDir;
+  if (outPath) {
+    const resolved = path.resolve(projectRoot, outPath);
+    // -o accepts a directory path or a file path (directory is extracted)
+    if (outPath.endsWith('/') || outPath.endsWith('\\') || !path.extname(outPath) ||
+        (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory())) {
+      distDir = resolved;
+    } else {
+      distDir = path.dirname(resolved);
+    }
+  } else {
+    distDir = path.join(projectRoot, 'dist');
+  }
 
   console.log(`\n  zQuery App Bundler`);
   console.log(`  Entry:   ${entryRel}`);
-  console.log(`  Output:  ${path.relative(projectRoot, bundleFile)}`);
+  console.log(`  Output:  ${path.relative(projectRoot, distDir)}/z-${entryName}.[hash].js`);
   if (includeLib) console.log(`  Library: embedded`);
   console.log('');
 
@@ -490,6 +500,20 @@ function bundleApp() {
     }
 
     const bundle = `${banner}\n(function() {\n  'use strict';\n\n${libSection}${inlineSection}${sections.join('\n\n')}\n\n})();\n`;
+
+    // Content-hashed output filenames (z-<name>.<hash>.js)
+    const contentHash = crypto.createHash('sha256').update(bundle).digest('hex').slice(0, 8);
+    const bundleFile  = path.join(distDir, `z-${entryName}.${contentHash}.js`);
+    const minFile     = path.join(distDir, `z-${entryName}.${contentHash}.min.js`);
+
+    // Remove previous hashed builds
+    const escName = entryName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const cleanRe = new RegExp(`^z-${escName}\\.[a-f0-9]{8}\\.(?:min\\.)?js$`);
+    if (fs.existsSync(distDir)) {
+      for (const f of fs.readdirSync(distDir)) {
+        if (cleanRe.test(f)) fs.unlinkSync(path.join(distDir, f));
+      }
+    }
 
     fs.writeFileSync(bundleFile, bundle, 'utf-8');
     fs.writeFileSync(minFile, minify(bundle, banner), 'utf-8');
@@ -641,12 +665,13 @@ function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFi
     );
   }
 
-  // Rewrite <base href="/"> to "./" so the dist folder works when served
-  // from any path (or opened as a file). The SPA router already reads the
-  // base element, so this keeps routing working.
+  // SPA deep-route fix: keep <base href="/"> so refreshing on a route like
+  // /docs/project-structure still resolves assets from the root.  However,
+  // when opened via file:// the root is the drive letter (file:///C:/), so
+  // inject a tiny inline script that switches the base to "./" for file://.
   html = html.replace(
-    /(<base\s+href\s*=\s*["'])\//gi,
-    '$1./'
+    /(<base\s+href\s*=\s*["']\/["'][^>]*>)/i,
+    '$1<script>if(location.protocol==="file:")document.querySelector("base").href="./"</script>'
   );
 
   // Write HTML
@@ -671,10 +696,17 @@ function showHelp() {
       --watch, -w              Watch src/ and rebuild on changes
 
     bundle [entry]             Bundle app ES modules into a single file
-      --out, -o <path>         Output file path (default: dist/<entry>.bundle.js)
+      --out, -o <path>         Output directory (default: dist/)
       --include-lib, -L        Embed zquery.min.js in the bundle
       --html <file>            Rewrite HTML file to reference the bundle
       --watch, -w              Watch source files and rebuild on changes
+
+  OUTPUT
+
+    Bundle filenames are content-hashed for cache-busting:
+      z-<entry>.<hash>.js        readable bundle
+      z-<entry>.<hash>.min.js    minified bundle
+    Previous hashed builds are automatically cleaned on each rebuild.
 
   EXAMPLES
 
@@ -685,15 +717,15 @@ function showHelp() {
     cd my-app && zquery bundle
 
     # Bundle with all options
-    zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html
+    zquery bundle scripts/app.js -o dist/ -L --html index.html
 
     # Watch mode
     zquery bundle --watch
 
   The bundler walks the ES module import graph starting from the entry
   file, topologically sorts dependencies, strips import/export syntax,
-  and concatenates everything into a single IIFE. No dependencies needed
-  — just Node.js.
+  and concatenates everything into a single IIFE with content-hashed
+  filenames for cache-busting. No dependencies needed — just Node.js.
 `);
 }
 
