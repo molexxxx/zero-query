@@ -444,24 +444,28 @@ function bundleApp() {
   //   else     → dist/ next to the detected HTML file (or cwd/dist/ as fallback)
   const entryRel  = path.relative(projectRoot, entry);
   const entryName = path.basename(entry, '.js');
-  let distDir;
+  let baseDistDir;
   if (outPath) {
     const resolved = path.resolve(projectRoot, outPath);
     if (outPath.endsWith('/') || outPath.endsWith('\\') || !path.extname(outPath) ||
         (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory())) {
-      distDir = resolved;
+      baseDistDir = resolved;
     } else {
-      distDir = path.dirname(resolved);
+      baseDistDir = path.dirname(resolved);
     }
   } else if (htmlAbs) {
-    distDir = path.join(path.dirname(htmlAbs), 'dist');
+    baseDistDir = path.join(path.dirname(htmlAbs), 'dist');
   } else {
-    distDir = path.join(projectRoot, 'dist');
+    baseDistDir = path.join(projectRoot, 'dist');
   }
+
+  // Two output sub-directories: server/ (with <base href="/">) and local/ (relative paths)
+  const serverDir = path.join(baseDistDir, 'server');
+  const localDir  = path.join(baseDistDir, 'local');
 
   console.log(`\n  zQuery App Bundler`);
   console.log(`  Entry:   ${entryRel}`);
-  console.log(`  Output:  ${path.relative(projectRoot, distDir)}/z-${entryName}.[hash].js`);
+  console.log(`  Output:  ${path.relative(projectRoot, baseDistDir)}/server/ & local/`);
   console.log(`  Library: embedded`);
   console.log(`  HTML:    ${htmlFile || 'not found (no index.html detected)'}`);
   console.log('');
@@ -469,7 +473,8 @@ function bundleApp() {
   function doBuild() {
     const start = Date.now();
 
-    if (!fs.existsSync(distDir)) fs.mkdirSync(distDir, { recursive: true });
+    if (!fs.existsSync(serverDir)) fs.mkdirSync(serverDir, { recursive: true });
+    if (!fs.existsSync(localDir))  fs.mkdirSync(localDir, { recursive: true });
 
     // Walk the import graph
     const files = walkImportGraph(entry);
@@ -521,8 +526,10 @@ function bundleApp() {
       const libPath = libCandidates.find(p => fs.existsSync(p));
 
       if (libPath) {
-        libSection = `// --- zquery.min.js (library) ${'—'.repeat(34)}\n${fs.readFileSync(libPath, 'utf-8').trim()}\n\n`;
-        console.log(`  Embedded library from ${path.relative(projectRoot, libPath)}`);
+        const libBytes = fs.statSync(libPath).size;
+        libSection = `// --- zquery.min.js (library) ${'—'.repeat(34)}\n${fs.readFileSync(libPath, 'utf-8').trim()}\n\n`
+                   + `// --- Build-time metadata ————————————————————————————\nif(typeof $!=="undefined"){$.meta=Object.assign($.meta||{},{libSize:${libBytes}});}\n\n`;
+        console.log(`  Embedded library from ${path.relative(projectRoot, libPath)} (${(libBytes / 1024).toFixed(1)} KB)`);
       } else {
         console.warn(`\n  ⚠  Could not find zquery.min.js anywhere`);
         console.warn(`     Place zquery.min.js in scripts/vendor/, vendor/, lib/, or dist/`);
@@ -552,28 +559,35 @@ function bundleApp() {
 
     // Content-hashed output filenames (z-<name>.<hash>.js)
     const contentHash = crypto.createHash('sha256').update(bundle).digest('hex').slice(0, 8);
-    const bundleFile  = path.join(distDir, `z-${entryName}.${contentHash}.js`);
-    const minFile     = path.join(distDir, `z-${entryName}.${contentHash}.min.js`);
+    const bundleBase  = `z-${entryName}.${contentHash}.js`;
+    const minBase     = `z-${entryName}.${contentHash}.min.js`;
 
-    // Remove previous hashed builds
+    // Remove previous hashed builds from both output directories
     const escName = entryName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const cleanRe = new RegExp(`^z-${escName}\\.[a-f0-9]{8}\\.(?:min\\.)?js$`);
-    if (fs.existsSync(distDir)) {
-      for (const f of fs.readdirSync(distDir)) {
-        if (cleanRe.test(f)) fs.unlinkSync(path.join(distDir, f));
+    for (const dir of [serverDir, localDir]) {
+      if (fs.existsSync(dir)) {
+        for (const f of fs.readdirSync(dir)) {
+          if (cleanRe.test(f)) fs.unlinkSync(path.join(dir, f));
+        }
       }
     }
 
+    // Write bundle into server/ (canonical), then copy to local/
+    const bundleFile = path.join(serverDir, bundleBase);
+    const minFile    = path.join(serverDir, minBase);
     fs.writeFileSync(bundleFile, bundle, 'utf-8');
     fs.writeFileSync(minFile, minify(bundle, banner), 'utf-8');
+    fs.copyFileSync(bundleFile, path.join(localDir, bundleBase));
+    fs.copyFileSync(minFile, path.join(localDir, minBase));
 
-    console.log(`\n  ✓ ${path.relative(projectRoot, bundleFile)} (${sizeKB(fs.readFileSync(bundleFile))} KB)`);
-    console.log(`  ✓ ${path.relative(projectRoot, minFile)} (${sizeKB(fs.readFileSync(minFile))} KB)`);
+    console.log(`\n  ✓ ${bundleBase} (${sizeKB(fs.readFileSync(bundleFile))} KB)`);
+    console.log(`  ✓ ${minBase} (${sizeKB(fs.readFileSync(minFile))} KB)`);
 
-    // Rewrite index.html (always, when detected)
+    // Rewrite index.html → two variants (server/ and local/)
     if (htmlFile) {
       const bundledFileSet = new Set(files);
-      rewriteHtml(projectRoot, htmlFile, bundleFile, true, bundledFileSet);
+      rewriteHtml(projectRoot, htmlFile, bundleFile, true, bundledFileSet, serverDir, localDir);
     }
 
     const elapsed = Date.now() - start;
@@ -621,18 +635,21 @@ function copyDirSync(src, dest) {
 
 /**
  * Rewrite an HTML file to replace the module <script> with the bundle.
- * Copies all referenced assets (CSS, JS, images) into dist/ so the
- * output folder is fully self-contained and deployable.
+ * Copies all referenced assets into both server/ and local/ dist dirs,
+ * then writes two index.html variants:
+ *   server/index.html — has <base href="/"> for SPA deep-route support
+ *   local/index.html  — no <base>, relative paths for file:// access
+ *
+ * Both are fully static HTML with no dynamic loading.
  */
-function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFiles) {
+function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFiles, serverDir, localDir) {
   const htmlPath = path.resolve(projectRoot, htmlRelPath);
   if (!fs.existsSync(htmlPath)) {
     console.warn(`  ⚠  HTML file not found: ${htmlRelPath}`);
     return;
   }
 
-  const htmlDir  = path.dirname(htmlPath);
-  const distDir  = path.dirname(bundleFile);
+  const htmlDir = path.dirname(htmlPath);
   let html = fs.readFileSync(htmlPath, 'utf-8');
 
   // Collect all asset references from the HTML (src=, href= on link/script/img)
@@ -641,37 +658,29 @@ function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFi
   let m;
   while ((m = assetRe.exec(html)) !== null) {
     const ref = m[1];
-    // Skip absolute URLs, data URIs, protocol-relative, and anchors
     if (ref.startsWith('http') || ref.startsWith('//') || ref.startsWith('data:') || ref.startsWith('#')) continue;
-    // Skip the module entry (already bundled)
     const refAbs = path.resolve(htmlDir, ref);
     if (bundledFiles && bundledFiles.has(refAbs)) continue;
-    // Skip zquery lib if we're embedding it
     if (includeLib && /zquery(?:\.min)?\.js$/i.test(ref)) continue;
     assets.add(ref);
   }
 
-  // Copy each referenced asset into dist/, preserving directory structure
+  // Copy each referenced asset into BOTH dist dirs, preserving directory structure
   let copiedCount = 0;
-  const copiedDirs = new Set();
   for (const asset of assets) {
     const srcFile = path.resolve(htmlDir, asset);
     if (!fs.existsSync(srcFile)) continue;
 
-    const destFile = path.join(distDir, asset);
-    const destDir  = path.dirname(destFile);
-    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-
-    fs.copyFileSync(srcFile, destFile);
+    for (const distDir of [serverDir, localDir]) {
+      const destFile = path.join(distDir, asset);
+      const destDir  = path.dirname(destFile);
+      if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+      fs.copyFileSync(srcFile, destFile);
+    }
     copiedCount++;
-
-    // If this is inside a directory that may contain sibling assets
-    // (fonts referenced by CSS, etc.), track it
-    copiedDirs.add(path.dirname(srcFile));
   }
 
-  // Also copy any CSS-referenced assets: scan copied CSS files for url()
-  // references and copy those too
+  // Also copy any CSS-referenced assets (fonts, images in url() etc.)
   for (const asset of assets) {
     const srcFile = path.resolve(htmlDir, asset);
     if (!fs.existsSync(srcFile) || !asset.endsWith('.css')) continue;
@@ -682,25 +691,27 @@ function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFi
     while ((cm = urlRe.exec(cssContent)) !== null) {
       const ref = cm[1];
       if (ref.startsWith('data:') || ref.startsWith('http') || ref.startsWith('//')) continue;
-      const cssSrcDir  = path.dirname(srcFile);
-      const assetSrc   = path.resolve(cssSrcDir, ref);
-      const cssDestDir = path.dirname(path.join(distDir, asset));
-      const assetDest  = path.resolve(cssDestDir, ref);
-      if (fs.existsSync(assetSrc) && !fs.existsSync(assetDest)) {
-        const dir = path.dirname(assetDest);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.copyFileSync(assetSrc, assetDest);
-        copiedCount++;
+      const cssSrcDir = path.dirname(srcFile);
+      const assetSrc  = path.resolve(cssSrcDir, ref);
+      if (!fs.existsSync(assetSrc)) continue;
+
+      for (const distDir of [serverDir, localDir]) {
+        const cssDestDir = path.dirname(path.join(distDir, asset));
+        const assetDest  = path.resolve(cssDestDir, ref);
+        if (!fs.existsSync(assetDest)) {
+          const dir = path.dirname(assetDest);
+          if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+          fs.copyFileSync(assetSrc, assetDest);
+        }
       }
+      copiedCount++;
     }
   }
 
-  // Make the bundle path relative to the dist/ HTML
-  const bundleRel = path.relative(distDir, bundleFile).replace(/\\/g, '/');
+  // Make the bundle filename relative (same name in both dirs)
+  const bundleRel = path.relative(serverDir, bundleFile).replace(/\\/g, '/');
 
-  // Replace <script type="module" src="..."> with the bundle (regular script)
-  // Use "defer" so the script runs after DOM is parsed — module scripts are
-  // deferred by default, but regular scripts in <head> are not.
+  // Replace <script type="module" src="..."> with the bundle (defer)
   html = html.replace(
     /<script\s+type\s*=\s*["']module["']\s+src\s*=\s*["'][^"']+["']\s*>\s*<\/script>/gi,
     `<script defer src="${bundleRel}"></script>`
@@ -714,20 +725,23 @@ function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFi
     );
   }
 
-  // SPA deep-route fix: keep <base href="/"> so refreshing on a route like
-  // /docs/project-structure still resolves assets from the root.  However,
-  // when opened via file:// the root is the drive letter (file:///C:/), so
-  // inject a tiny inline script that switches the base to "./" for file://.
-  html = html.replace(
-    /(<base\s+href\s*=\s*["']\/["'][^>]*>)/i,
-    '$1<script>if(location.protocol==="file:")document.querySelector("base").href="./"</script>'
-  );
+  // ── server/index.html ──
+  // Keep <base href="/"> as-is — the preload scanner sees it, all resources
+  // resolve from root, deep-route refreshes work perfectly.
+  const serverHtml = html;
 
-  // Write HTML
-  const outHtml = path.join(distDir, path.basename(htmlRelPath));
-  fs.writeFileSync(outHtml, html, 'utf-8');
-  console.log(`  ✓ ${path.relative(projectRoot, outHtml)} (HTML rewritten)`);
-  console.log(`  ✓ Copied ${copiedCount} asset(s) into ${path.relative(projectRoot, distDir)}/`);
+  // ── local/index.html ──
+  // Remove <base href="/"> so relative paths resolve from the HTML file's
+  // directory — correct for file:// with zero console errors.
+  const localHtml = html.replace(/<base\s+href\s*=\s*["']\/["'][^>]*>\s*\n?\s*/i, '');
+
+  // Write both
+  const htmlName = path.basename(htmlRelPath);
+  fs.writeFileSync(path.join(serverDir, htmlName), serverHtml, 'utf-8');
+  fs.writeFileSync(path.join(localDir, htmlName), localHtml, 'utf-8');
+  console.log(`  ✓ server/${htmlName} (with <base href="/">)`);
+  console.log(`  ✓ local/${htmlName}  (relative paths, file:// ready)`);
+  console.log(`  ✓ Copied ${copiedCount} asset(s) into both dist dirs`);
 }
 
 
@@ -754,15 +768,28 @@ function showHelp() {
     The bundler works with zero flags for typical projects:
       • Entry is auto-detected from index.html <script type="module" src="...">
       • zquery.min.js is always embedded (auto-built from source if not found)
-      • index.html is always rewritten and assets are copied into dist/
-      • Output goes to dist/ next to the detected index.html
+      • index.html is rewritten for both server and local (file://) use
+      • Output goes to dist/server/ and dist/local/ next to the detected index.html
 
   OUTPUT
 
-    Bundle filenames are content-hashed for cache-busting:
-      z-<entry>.<hash>.js        readable bundle
-      z-<entry>.<hash>.min.js    minified bundle
+    The bundler produces two self-contained sub-directories:
+
+      dist/server/               deploy to your web server
+        index.html               has <base href="/"> for SPA deep routes
+        z-<entry>.<hash>.js      readable bundle
+        z-<entry>.<hash>.min.js  minified bundle
+
+      dist/local/                open from disk (file://)
+        index.html               relative paths, no <base> tag
+        z-<entry>.<hash>.js      same bundle
+
     Previous hashed builds are automatically cleaned on each rebuild.
+
+  DEVELOPMENT
+
+    npm run serve              start a local dev server (zero-http, SPA routing)
+    npm run dev                watch mode — auto-rebuild bundle on source changes
 
   EXAMPLES
 

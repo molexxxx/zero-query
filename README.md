@@ -36,7 +36,7 @@ The preferred way to use zQuery is with the **pre-built browser bundle** (`zQuer
 
 ### 1. Get the library
 
-Download `dist/zQuery.min.js` from the [GitHub releases](https://github.com/tonywied17/zero-query), or clone and build:
+Download `dist/zQuery.min.js` from the [GitHub releases](https://github.com/tonywied17/zero-query/releases/tag/RELEASE), or clone and build:
 
 ```bash
 git clone https://github.com/tonywied17/zero-query.git
@@ -168,18 +168,25 @@ npx zquery bundle
 npx zquery bundle path/to/scripts/app.js
 ```
 
-That's it. The output goes to `dist/` next to your `index.html`:
+That's it. The output goes to `dist/` next to your `index.html`, with two sub-folders:
 
 ```
 dist/
-  index.html              ← rewritten (module scripts → bundle)
-  z-app.a1b2c3d4.js      ← readable bundle (library + app + templates)
-  z-app.a1b2c3d4.min.js  ← minified bundle
-  styles/                 ← copied CSS
-  scripts/vendor/         ← copied vendor assets
+  server/                   ← deploy to your web server
+    index.html              ← has <base href="/"> for SPA deep routes
+    z-app.a1b2c3d4.js      ← readable bundle (library + app + templates)
+    z-app.a1b2c3d4.min.js  ← minified bundle
+    styles/                 ← copied CSS
+    scripts/vendor/         ← copied vendor assets
+  local/                    ← open from disk (file://)
+    index.html              ← relative paths, no <base> tag
+    z-app.a1b2c3d4.js      ← same bundle
+    ...                     ← same assets
 ```
 
-Open `dist/index.html` directly in a browser — no server needed.
+**`server/`** — includes `<base href="/">` so deep-route refreshes (e.g. `/docs/router`) resolve assets from the site root. Deploy this folder to your web server.
+
+**`local/`** — omits the `<base>` tag so paths resolve relative to the HTML file. Open `local/index.html` directly from disk — no server needed, zero console errors. The router auto-switches to hash mode on `file://`.
 
 ### Bundling the Starter App
 
@@ -208,7 +215,7 @@ npx zquery bundle examples/starter-app/scripts/app.js
 3. **Module syntax stripping** — Removes `import`/`export` keywords, keeps declarations. Output is plain browser JS.
 4. **Library embedding** — Finds `zquery.min.js` in your project or the package. Auto-builds from source if not found.
 5. **Template inlining** — Detects `templateUrl`, `styleUrl`, and `pages` configs and inlines the referenced files so `file://` works without CORS issues.
-6. **HTML rewriting** — Replaces `<script type="module">` with the bundle, removes the standalone library tag, copies all assets, and adds a `file://` base-href fallback.
+6. **HTML rewriting** — Replaces `<script type="module">` with the bundle, removes the standalone library tag, and produces two output directories: `dist/server/` (with `<base href="/">` for web servers) and `dist/local/` (relative paths for `file://`). Assets are copied into both.
 7. **Minification** — Produces hashed filenames (`z-app.<hash>.js` / `.min.js`) for cache-busting. Previous builds are cleaned automatically.
 
 ### Tips
@@ -1267,7 +1274,11 @@ You can also build a fully self-contained bundled version of the starter app:
 ```bash
 npm run bundle:app
 
-# Open dist/index.html directly — no server needed
+# Deploy the server build
+# → dist/server/index.html (with <base href="/"> for web servers)
+
+# Or open the local build from disk — no server needed
+start examples/starter-app/dist/local/index.html
 ```
 
 See [CLI Bundler](#cli-bundler-optional) for details.
@@ -1277,21 +1288,24 @@ See [CLI Bundler](#cli-bundler-optional) for details.
 The project ships with a lightweight dev server powered by [zero-http](https://github.com/tonywied17/zero-http). It handles history-mode SPA routing (all non-file requests serve `index.html`).
 
 ```bash
-# Default: port 3000
+# Serve with SPA fallback routing (recommended during development)
 npm run serve
 
 # Custom port
 node examples/starter-app/local-server.js 8080
 
+# Watch mode — auto-rebuild bundle on file changes
+npm run dev
+
 # Or install zero-http yourself for any project
 npm install zero-http --save-dev
 ```
 
-The server source is at `examples/starter-app/local-server.js` — about 30 lines of code.
+`npm run serve` gives the fastest feedback loop — edit your ES module source files and refresh the browser. Use `npm run dev` when you need the bundled output to update automatically as you work.
 
 ### Production Deployment
 
-For history-mode routing in production, configure your web server to rewrite non-file requests to `index.html`.
+For production, use the bundled `dist/server/` output. It includes `<base href="/">` so deep-route refreshes resolve assets correctly. Configure your web server to rewrite non-file requests to `index.html`:
 
 **Apache (.htaccess):**
 

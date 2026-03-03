@@ -50,6 +50,7 @@ class Router {
     this._guards = { before: [], after: [] };
     this._listeners = new Set();
     this._instance = null;                        // current mounted component
+    this._resolving = false;                      // re-entrancy guard
 
     // Set outlet element
     if (config.el) {
@@ -248,6 +249,17 @@ class Router {
   // --- Internal resolve ----------------------------------------------------
 
   async _resolve() {
+    // Prevent re-entrant calls (e.g. listener triggering navigation)
+    if (this._resolving) return;
+    this._resolving = true;
+    try {
+      await this.__resolve();
+    } finally {
+      this._resolving = false;
+    }
+  }
+
+  async __resolve() {
     const fullPath = this.path;
     const [pathPart, queryString] = fullPath.split('?');
     const path = pathPart || '/';

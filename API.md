@@ -1671,13 +1671,18 @@ Everything is automatic: the bundler finds your entry point, embeds the zQuery l
 Output:
 ```
 dist/
-  index.html              ← rewritten HTML
-  z-app.a1b2c3d4.js      ← readable bundle (library + app + templates)
-  z-app.a1b2c3d4.min.js  ← minified bundle
-  styles/                 ← copied assets
+  server/                   ← deploy to your web server
+    index.html              ← has <base href="/"> for SPA deep routes
+    z-app.a1b2c3d4.js      ← readable bundle (library + app + templates)
+    z-app.a1b2c3d4.min.js  ← minified bundle
+    styles/                 ← copied assets
+  local/                    ← open from disk (file://)
+    index.html              ← relative paths, no <base> tag
+    z-app.a1b2c3d4.js      ← same bundle
+    ...                     ← same assets
 ```
 
-Filenames are content-hashed for cache-busting. Previous builds are cleaned automatically.
+**`server/`** includes `<base href="/">` so deep-route refreshes resolve assets from the site root. **`local/`** omits it so paths resolve relative to the HTML file — works on `file://` with zero console errors.
 
 ### Building the Library
 
@@ -1706,7 +1711,7 @@ npx zquery build                # one-time build
 | **Module stripping** | Removes `import`/`export` keywords, keeps declarations — output is plain browser JS wrapped in an IIFE |
 | **Library embedding** | Finds `zquery.min.js` in common locations or auto-builds it from the package source |
 | **Template inlining** | Detects `templateUrl`, `styleUrl`, and `pages` configs; inlines the referenced HTML/CSS so `file://` works |
-| **HTML rewriting** | Replaces `<script type="module">` with the bundle, removes the standalone library tag, copies all assets |
+| **HTML rewriting** | Replaces `<script type="module">` with the bundle, removes the standalone library tag, produces two output directories: `dist/server/` (with `<base href="/">`) and `dist/local/`(relative paths for `file://`). Assets are copied into both. |
 | **Minification** | Produces both readable and minified builds with content-hashed filenames |
 
 ### Automatic Transformations

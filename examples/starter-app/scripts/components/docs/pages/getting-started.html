@@ -1,5 +1,5 @@
   <h2>Getting Started</h2>
-  <p>zQuery is a lightweight, zero-dependency frontend library (~45 KB minified). It provides a jQuery-inspired selector API, reactive components, an SPA router, global state management, an HTTP client, and utility helpers &mdash; all from a single script tag. Works out of the box with standard ES modules &mdash; no npm install or transpiler required. An optional CLI bundler is available for single-file distribution.</p>
+  <p>zQuery is a lightweight, zero-dependency frontend library (~46 KB minified). It provides a jQuery-inspired selector API, reactive components, an SPA router, global state management, an HTTP client, and utility helpers &mdash; all from a single script tag. Works out of the box with standard ES modules &mdash; no npm install or transpiler required. An optional CLI bundler is available for single-file distribution.</p>
 
   <h3>Quick Start (ES Modules &mdash; Recommended)</h3>
   <p>The preferred way to use zQuery is with the <strong>pre-built browser bundle</strong> (<code>zQuery.min.js</code>) loaded via a <code>&lt;script&gt;</code> tag, with your app code served as standard <strong>ES modules</strong>. No npm install, no transpiler, no build step. Grab the latest build from GitHub and drop it into your project:</p>
@@ -16,7 +16,7 @@
 cd zero-query
 node build.js
 # Creates dist/zQuery.js     (~78 KB, readable)
-# Creates dist/zQuery.min.js (~45 KB, production)</code></pre>
+# Creates dist/zQuery.min.js (~46 KB, production)</code></pre>
   <p>The build script concatenates all source modules into a self-contained IIFE that exposes <code>$</code> and <code>zQuery</code> on the <code>window</code> object. Copy <code>dist/zQuery.min.js</code> into your project's <code>scripts/vendor/</code> folder.</p>
 
   <div class="docs-callout">
@@ -110,14 +110,22 @@ npx zquery bundle
 # Or point to an entry from anywhere
 npx zquery bundle path/to/scripts/app.js</code></pre>
 
-  <p>Output goes to <code>dist/</code> next to your <code>index.html</code>:</p>
+  <p>Output goes to <code>dist/</code> next to your <code>index.html</code>, with two sub-folders:</p>
   <pre><code class="language-text">dist/
-  index.html              &larr; rewritten HTML
-  z-app.a1b2c3d4.js      &larr; readable bundle (library + app + templates)
-  z-app.a1b2c3d4.min.js  &larr; minified bundle
-  styles/                 &larr; copied CSS assets</code></pre>
+  server/                    &larr; deploy to your web server
+    index.html               &larr; has &lt;base href="/"&gt; for SPA deep routes
+    z-app.a1b2c3d4.js        &larr; readable bundle (library + app + templates)
+    z-app.a1b2c3d4.min.js    &larr; minified bundle
+    styles/                  &larr; copied CSS assets
+    scripts/vendor/          &larr; copied vendor assets
+  local/                     &larr; open from disk (file://)
+    index.html               &larr; relative paths, no &lt;base&gt; tag
+    z-app.a1b2c3d4.js        &larr; same bundle
+    ...                      &larr; same assets</code></pre>
 
-  <p>Open <code>dist/index.html</code> directly in a browser &mdash; no server needed.</p>
+  <div class="docs-callout">
+    <strong>Two builds, zero hacks:</strong> The <code>server/</code> build includes <code>&lt;base href="/"&gt;</code> so deep-route refreshes (e.g. <code>/docs/router</code>) resolve assets from the root &mdash; required for server-deployed SPAs. The <code>local/</code> build omits it so paths resolve relative to the HTML file &mdash; perfect for opening via <code>file://</code> with zero console errors.
+  </div>
 
   <h3>Bundling the Starter App</h3>
   <p>If you cloned the <a href="https://github.com/tonywied17/zero-query" target="_blank" rel="noopener" style="color:#58a6ff;">zero-query repository</a>, bundle this starter app from the repo root:</p>
@@ -127,8 +135,10 @@ npm run bundle:app
 # or equivalently
 npx zquery bundle examples/starter-app/scripts/app.js
 
-# open the bundled app
-start examples/starter-app/dist/index.html</code></pre>
+# open the local build directly from disk
+start examples/starter-app/dist/local/index.html
+
+# or deploy dist/server/ to your web server</code></pre>
 
   <h3>Optional Flags</h3>
   <table class="docs-table">
@@ -145,7 +155,7 @@ start examples/starter-app/dist/index.html</code></pre>
     <li><strong>Module stripping</strong> &mdash; Removes <code>import</code>/<code>export</code> keywords, keeps declarations. Output is plain browser JS wrapped in an IIFE.</li>
     <li><strong>Library embedding</strong> &mdash; Finds <code>zquery.min.js</code> in your project or the npm package. Auto-builds from source if not found anywhere.</li>
     <li><strong>Template inlining</strong> &mdash; Detects <code>templateUrl</code>, <code>styleUrl</code>, and <code>pages</code> configs and inlines the referenced HTML/CSS files so <code>file://</code> works without CORS issues.</li>
-    <li><strong>HTML rewriting</strong> &mdash; Replaces <code>&lt;script type="module"&gt;</code> with the bundle, removes the standalone library tag, copies all referenced assets into <code>dist/</code>.</li>
+    <li><strong>HTML rewriting</strong> &mdash; Replaces <code>&lt;script type="module"&gt;</code> with the bundle, removes the standalone library tag, and produces two output directories: <code>dist/server/</code> (with <code>&lt;base href="/"&gt;</code> for web servers) and <code>dist/local/</code> (relative paths for <code>file://</code>). Assets are copied into both.</li>
     <li><strong>Minification</strong> &mdash; Produces content-hashed filenames (<code>z-app.&lt;hash&gt;.js</code> / <code>.min.js</code>) for cache-busting. Previous builds are cleaned automatically.</li>
   </ol>
 
@@ -160,6 +170,16 @@ start examples/starter-app/dist/index.html</code></pre>
     <li><strong>External templates</strong> &mdash; <code>templateUrl</code>, <code>styleUrl</code>, and <code>pages</code> configs are inlined automatically; no code changes needed</li>
   </ul>
 
+  <h3>Development Workflow</h3>
+  <p>During development, the recommended workflow uses ES modules directly &mdash; no bundling needed:</p>
+  <pre><code class="language-bash"># Start a local dev server with live SPA routing (uses zero-http)
+npm run serve
+# &rarr; http://localhost:3000
+
+# Or use watch mode to auto-rebuild the bundle on every save
+npm run dev</code></pre>
+  <p><code>npm run serve</code> starts a lightweight static server with SPA fallback routing &mdash; edit your source files and refresh the browser. <code>npm run dev</code> watches your source files and automatically re-bundles on changes (useful if you&rsquo;re testing the bundled output).</p>
+
   <div class="docs-tip">
-    <strong>Tip:</strong> Use watch mode (<code>-w</code>) during development to automatically rebuild when you save changes: <code>npx zquery bundle --watch</code>
+    <strong>Tip:</strong> Use <code>npm run serve</code> for the fastest feedback loop during development. Only bundle (<code>npm run bundle:app</code>) when you&rsquo;re ready to deploy or distribute.
   </div>

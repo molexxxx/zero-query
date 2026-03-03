@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.2.0
+ * zQuery (zeroQuery) v0.2.2
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -1509,6 +1509,7 @@ class Router {
     this._guards = { before: [], after: [] };
     this._listeners = new Set();
     this._instance = null;                        // current mounted component
+    this._resolving = false;                      // re-entrancy guard
 
     // Set outlet element
     if (config.el) {
@@ -1707,6 +1708,17 @@ class Router {
   // --- Internal resolve ----------------------------------------------------
 
   async _resolve() {
+    // Prevent re-entrant calls (e.g. listener triggering navigation)
+    if (this._resolving) return;
+    this._resolving = true;
+    try {
+      await this.__resolve();
+    } finally {
+      this._resolving = false;
+    }
+  }
+
+  async __resolve() {
     const fullPath = this.path;
     const [pathPart, queryString] = fullPath.split('?');
     const path = pathPart || '/';
@@ -2564,7 +2576,8 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.2.0';
+$.version = '0.2.2';
+$.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {
   if (typeof window !== 'undefined' && window.$ === $) {

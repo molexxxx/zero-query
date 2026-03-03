@@ -133,6 +133,7 @@ $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
 $.version = '__VERSION__';
+$.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {
   if (typeof window !== 'undefined' && window.$ === $) {
