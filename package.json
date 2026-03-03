@@ -1,6 +1,6 @@
 {
   "name": "zero-query",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Lightweight modern frontend library — jQuery-like selectors, reactive components, SPA router, and state management with zero dependencies.",
   "main": "index.js",
   "bin": {
@@ -45,7 +45,7 @@
   "bugs": {
     "url": "https://github.com/tonywied17/zero-query/issues"
   },
-  "homepage": "https://zquery.molex.cloud/docs",
+  "homepage": "https://z-query.com/docs",
   "publishConfig": {
     "access": "public"
   },
