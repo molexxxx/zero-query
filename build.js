@@ -12,6 +12,10 @@
 const { readFileSync, writeFileSync, mkdirSync, existsSync, watch } = require('fs');
 const { join } = require('path');
 
+// Read version from package.json
+const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf-8'));
+const VERSION = pkg.version;
+
 // Source files in dependency order
 const modules = [
   'src/reactive.js',
@@ -55,7 +59,7 @@ function build() {
   indexCode = indexCode.replace(/^export\s+(default\s+)?/gm, '');
 
   const banner = `/**
- * zQuery (zeroQuery) v0.1.0
+ * zQuery (zeroQuery) v${VERSION}
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) ${new Date().getFullYear()} Anthony Wiedman — MIT License
@@ -68,7 +72,7 @@ function build() {
 ${parts.join('\n\n')}
 
 // --- index.js (assembly) ${'—'.repeat(42)}
-${indexCode.trim()}
+${indexCode.trim().replace("'__VERSION__'", `'${VERSION}'`)}
 
 })(typeof window !== 'undefined' ? window : globalThis);
 `;

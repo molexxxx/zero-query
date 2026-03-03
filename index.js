@@ -132,7 +132,7 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.1.0';
+$.version = '__VERSION__';
 
 $.noConflict = () => {
   if (typeof window !== 'undefined' && window.$ === $) {
