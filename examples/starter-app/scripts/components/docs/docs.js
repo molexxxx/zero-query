@@ -43,9 +43,17 @@ $.component('docs-page', {
     this._mql.addEventListener('change', this._onMql);
   },
 
-  mounted() { this._highlight(); this.state._mobile = this._mql.matches; },
+  mounted() {
+    this._highlight();
+    this.state._mobile = this._mql.matches;
+    this._pendingHash = this._readTargetHash();
+    this._scrollToHash();
+  },
   updated() {
     this._highlight();
+    // Pick up any new hash (e.g. from a z-link navigation that just resolved)
+    if (!this._pendingHash) this._pendingHash = this._readTargetHash();
+    this._scrollToHash();
     if (this._filterActive && this.refs.searchInput) {
       const input = this.refs.searchInput;
       input.focus();
@@ -60,6 +68,45 @@ $.component('docs-page', {
   },
 
   /* -- Helpers -- */
+
+  /**
+   * Read the scroll-to target from the URL hash (history mode) or the
+   * global __zqScrollTarget (hash-mode routing where the URL hash is the
+   * route path and can't carry a fragment).
+   */
+  _readTargetHash() {
+    // History mode: hash is a real fragment like #cli-bundler
+    const urlHash = window.location.hash.slice(1);
+    if (urlHash && !urlHash.startsWith('/')) return urlHash;
+    // Hash mode (file://): fragment was stored by the router
+    if (window.__zqScrollTarget) {
+      const target = window.__zqScrollTarget;
+      delete window.__zqScrollTarget;
+      return target;
+    }
+    return null;
+  },
+
+  /**
+   * Scroll to the pending hash target. Persists across updated() calls
+   * so it survives async template loading. Gives up after 30 attempts
+   * (~500 ms) to avoid looping forever on a bad anchor.
+   */
+  _scrollToHash() {
+    const hash = this._pendingHash;
+    if (!hash) return;
+    if (!this._pendingHashAttempts) this._pendingHashAttempts = 0;
+    const el = document.getElementById(hash);
+    if (el) {
+      this._pendingHash = null;
+      this._pendingHashAttempts = 0;
+      requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    } else if (++this._pendingHashAttempts > 30) {
+      // Give up — anchor doesn't exist in this page
+      this._pendingHash = null;
+      this._pendingHashAttempts = 0;
+    }
+  },
 
   _highlight() {
     const root = this.refs.content;
@@ -133,7 +180,11 @@ $.component('docs-page', {
     const id = e.target.closest('[data-id]')?.dataset?.id;
     if (!id) return;
     const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Update URL hash so the link is shareable / survives refresh
+      history.replaceState(null, '', window.location.pathname + '#' + id);
+    }
   },
 
   toggleSidebar() {
@@ -196,7 +247,7 @@ $.component('docs-page', {
                   <a class="docs-nav-item ${isActive ? 'active' : ''}"
                      z-link="/docs/${sec.id}" @click="closeSidebar">${sec.label}</a>
                   ${visibleSubs.length ? `<div class="docs-sub-nav">
-                    ${visibleSubs.map(h => `<a class="docs-sub-nav-item${q && h.text.toLowerCase().includes(q) ? ' match' : ''}" ${isActive ? '@click="scrollTo"' : ''} ${isActive ? `data-id="${h.id}"` : `z-link="/docs/${sec.id}" @click="closeSidebar"`}>${h.text}</a>`).join('')}
+                    ${visibleSubs.map(h => `<a class="docs-sub-nav-item${q && h.text.toLowerCase().includes(q) ? ' match' : ''}" ${isActive ? '@click="scrollTo"' : ''} ${isActive ? `data-id="${h.id}"` : `z-link="/docs/${sec.id}#${h.id}" @click="closeSidebar"`}>${h.text}</a>`).join('')}
                   </div>` : ''}
                 `;
               }).join('')}

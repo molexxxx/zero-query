@@ -7,7 +7,7 @@
 import './components/home.js';
 import './components/counter.js';
 import './components/todos.js';
-import './components/docs/index.js';
+import './components/docs/docs.js';
 import './components/about.js';
 import './components/not-found.js';
 import { store } from './store.js';

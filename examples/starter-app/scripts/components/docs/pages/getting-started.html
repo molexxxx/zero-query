@@ -135,7 +135,7 @@ npx zero-query bundle</code></pre>
 zquery build --watch        # rebuild on source changes</code></pre>
 
   <h4><code>zquery bundle [entry]</code> &mdash; Bundle an App</h4>
-  <p>Walks the ES module import graph starting from an entry file, topologically sorts all dependencies, strips <code>import</code>/<code>export</code> syntax, and concatenates everything into a single IIFE.</p>
+  <p>Walks the ES module import graph starting from an entry file, topologically sorts all dependencies, strips <code>import</code>/<code>export</code> syntax, and concatenates everything into a single IIFE with content-hashed filenames for cache-busting.</p>
   <pre><code class="language-bash"># Auto-detect entry from index.html
 zquery bundle
 
@@ -144,7 +144,7 @@ zquery bundle scripts/app.js
 
 # Full example with all options
 zquery bundle scripts/app.js \
-  --out dist/app.bundle.js \
+  --out dist/ \
   --include-lib \
   --html index.html \
   --watch</code></pre>
@@ -152,7 +152,7 @@ zquery bundle scripts/app.js \
   <h3>Bundle Options</h3>
   <table class="docs-table">
     <tr><th>Flag</th><th>Short</th><th>Description</th></tr>
-    <tr><td><code>--out &lt;path&gt;</code></td><td><code>-o</code></td><td>Output file path. Default: <code>dist/&lt;entry&gt;.bundle.js</code></td></tr>
+    <tr><td><code>--out &lt;path&gt;</code></td><td><code>-o</code></td><td>Output directory (or file path &mdash; directory is extracted). Default: <code>dist/</code></td></tr>
     <tr><td><code>--include-lib</code></td><td><code>-L</code></td><td>Embed <code>zquery.min.js</code> directly in the bundle (no separate script tag needed)</td></tr>
     <tr><td><code>--html &lt;file&gt;</code></td><td>&mdash;</td><td>Rewrite the given HTML file: replaces module script with bundle, copies assets into <code>dist/</code>, adjusts <code>&lt;base href&gt;</code></td></tr>
     <tr><td><code>--watch</code></td><td><code>-w</code></td><td>Watch source files and rebuild automatically on changes</td></tr>
@@ -166,7 +166,7 @@ zquery bundle scripts/app.js \
     <li><strong>Library embedding</strong> (<code>--include-lib</code>) &mdash; Finds <code>zquery.min.js</code> in common locations (<code>scripts/vendor/</code>, <code>dist/</code>, etc.) and embeds it at the top of the bundle. The result is fully self-contained.</li>
     <li><strong>External resource inlining</strong> &mdash; Automatically detects <code>pages</code> configs, <code>templateUrl</code>, and <code>styleUrl</code> references in your components and inlines the referenced HTML/CSS files. This enables <code>file://</code> support where <code>fetch()</code> would otherwise fail due to CORS.</li>
     <li><strong>HTML rewriting</strong> (<code>--html</code>) &mdash; Replaces <code>&lt;script type="module"&gt;</code> with <code>&lt;script defer&gt;</code>, removes the standalone library tag when embedded, rewrites <code>&lt;base href="/"&gt;</code> to <code>&lt;base href="./"&gt;</code>, and copies all referenced assets (CSS, images, vendor JS) into <code>dist/</code>.</li>
-    <li><strong>Minification</strong> &mdash; Produces both a readable <code>.bundle.js</code> and a minified <code>.bundle.min.js</code>.</li>
+    <li><strong>Minification</strong> &mdash; Produces both a readable <code>z-&lt;name&gt;.&lt;hash&gt;.js</code> and a minified <code>z-&lt;name&gt;.&lt;hash&gt;.min.js</code>. The content hash changes only when the bundle changes, enabling long-lived cache headers. Previous hashed builds are automatically cleaned on each rebuild.</li>
   </ol>
 
   <h3>Entry Detection</h3>
@@ -210,26 +210,26 @@ npm install zero-query --save-dev
 cp node_modules/zero-query/dist/zQuery.min.js scripts/vendor/
 
 # 3. Bundle the app
-npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html
+npx zquery bundle scripts/app.js -o dist/ -L --html index.html
 
-# Output:
-#   dist/index.html          &larr; rewritten HTML
-#   dist/app.bundle.js       &larr; full bundle (library + app + inlined templates)
-#   dist/app.bundle.min.js   &larr; minified version
-#   dist/styles/             &larr; copied CSS
-#   dist/scripts/vendor/     &larr; copied vendor assets
+# Output (filenames are content-hashed for cache-busting):
+#   dist/index.html              &larr; rewritten HTML (src updated automatically)
+#   dist/z-app.a1b2c3d4.js      &larr; hashed bundle (library + app + inlined templates)
+#   dist/z-app.a1b2c3d4.min.js  &larr; minified version
+#   dist/styles/                 &larr; copied CSS
+#   dist/scripts/vendor/         &larr; copied vendor assets
 
 # 4. Open directly in a browser &mdash; no server needed
 start dist/index.html</code></pre>
 
   <h4>Bundling the Starter App (from source)</h4>
-  <p>If you cloned the <a href="https://github.com/tonywied17/zero-query" target="_blank" rel="noopener">zero-query repository</a> directly:</p>
+  <p>If you cloned the <a href="https://github.com/tonywied17/zero-query" target="_blank" rel="noopener" style="color:#58a6ff;">zero-query repository</a> directly:</p>
   <pre><code class="language-bash">node build.js
 cp dist/zQuery.min.js examples/starter-app/scripts/vendor/
 cd examples/starter-app
-npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html
+npx zquery bundle scripts/app.js -o dist/ -L --html index.html
 start dist/index.html</code></pre>
 
   <div class="docs-tip">
-    <strong>Tip:</strong> Use watch mode (<code>-w</code>) during development to automatically rebuild when you save changes: <code>npx zquery bundle scripts/app.js -o dist/app.bundle.js -L --html index.html -w</code>
+    <strong>Tip:</strong> Use watch mode (<code>-w</code>) during development to automatically rebuild when you save changes: <code>npx zquery bundle scripts/app.js -o dist/ -L --html index.html -w</code>
   </div>

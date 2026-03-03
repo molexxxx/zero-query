@@ -355,7 +355,7 @@ $.mount('#el', 'user-card', { name: 'Tony', role: 'admin' });
 
   <h4>Relative Path Resolution</h4>
   <p>Relative <code>templateUrl</code>, <code>styleUrl</code>, and <code>pages.dir</code> paths are automatically resolved <strong>relative to the component file</strong>. No extra configuration is needed — just use simple filenames or relative paths:</p>
-  <pre><code class="language-javascript">// File: scripts/components/widget/index.js
+  <pre><code class="language-javascript">// File: scripts/components/widget/widget.js
 $.component('my-widget', {
   templateUrl: 'template.html',          // → scripts/components/widget/template.html
   styleUrl:    'styles.css',             // → scripts/components/widget/styles.css
@@ -495,7 +495,7 @@ $.router({
 
   <p>String items auto-derive labels from the id: <code>'getting-started'</code> becomes <code>'Getting Started'</code>. Use an object when you need a custom label:</p>
 
-  <pre><code class="language-javascript">// File: scripts/components/docs/index.js
+  <pre><code class="language-javascript">// File: scripts/components/docs/docs.js
 $.component('docs-page', {
   pages: {
     dir:     'pages',                    // → scripts/components/docs/pages/

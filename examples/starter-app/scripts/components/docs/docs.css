@@ -189,6 +189,14 @@
   margin-bottom: 0.75rem;
 }
 
+.docs-section a:not(.docs-download-btn) {
+  color: #58a6ff;
+  text-decoration: none;
+}
+.docs-section a:not(.docs-download-btn):hover {
+  text-decoration: underline;
+}
+
 .docs-section pre {
   background: #0d1117;
   border: 1px solid #30363d;
