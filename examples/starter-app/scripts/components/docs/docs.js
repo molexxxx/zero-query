@@ -19,6 +19,8 @@ $.component('docs-page', {
     default: 'getting-started',
     items: [
       'getting-started',
+      { id: 'dev-workflow', label: 'Development' },
+      { id: 'cli-bundler', label: 'CLI Bundler' },
       'project-structure',
       { id: 'selectors', label: 'Selectors & DOM' },
       'components',

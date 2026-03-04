@@ -1,6 +1,6 @@
 # zQuery (zeroQuery) — Full API Reference
 
-Complete API documentation for every module, method, option, and type in zQuery. All examples assume the global `$` is available via the built `zQuery.min.js` bundle (the recommended ES module setup). If using the optional [CLI Bundler](#cli-bundler), the same API is available — the bundler simply concatenates your ES modules into a single file.
+Complete API documentation for every module, method, option, and type in zQuery. All examples assume the global `$` is available via the built `zQuery.min.js` bundle (the recommended ES module setup). If using the optional [CLI bundler](#cli), the same API is available — the bundler simply concatenates your ES modules into a single file.
 
 > **Editor Support:** Install the [zQuery for VS Code](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code) extension for autocomplete, hover docs, directive support, and 55+ code snippets.
 
@@ -1648,15 +1648,42 @@ import {
 
 ---
 
-## CLI Bundler
+## CLI
 
-The `zquery` CLI is a zero-dependency Node.js tool included in the `zero-query` npm package. It compiles your entire app — ES modules, the library, external templates, and assets — into a single self-contained bundle.
+The `zquery` CLI is a zero-dependency Node.js tool included in the `zero-query` npm package. It provides three commands: a dev server with live-reload, an app bundler, and a library builder.
 
 ### Installation
 
 ```bash
 npm install zero-query --save-dev
 ```
+
+### Dev Server
+
+Start a development server with automatic live-reload:
+
+```bash
+# Start dev server (auto-detects index.html in cwd)
+npx zquery dev
+
+# Serve a specific project folder
+npx zquery dev path/to/my-app
+
+# Custom port (default: 3100)
+npx zquery dev --port 8080
+```
+
+The dev server provides:
+- **SPA fallback routing** — all non-file requests serve `index.html`
+- **Live reload** — browser refreshes automatically when `.js`, `.html`, `.json`, or `.svg` files change
+- **CSS hot-swap** — `.css` changes are injected without a full page reload
+- **Change logging** — file changes are logged to the terminal with timestamps
+
+**How it works:** A tiny SSE (Server-Sent Events) client is injected into the served HTML at runtime. A file watcher monitors your project and pushes reload events to the browser over the SSE connection. Your source files are never modified — the injection only happens in the HTTP response.
+
+| Option | Short | Description |
+| --- | --- | --- |
+| `--port <number>` | `-p` | Port number (default: `3100`) |
 
 ### Bundling
 
@@ -1686,6 +1713,14 @@ dist/
 
 **`server/`** includes `<base href="/">` so deep-route refreshes resolve assets from the site root. **`local/`** omits it so paths resolve relative to the HTML file — works on `file://` with zero console errors.
 
+### Bundle Options
+
+| Flag | Short | Description |
+| --- | --- | --- |
+| `--out <path>` | `-o` | Custom output directory (default: `dist/` next to `index.html`) |
+| `--html <file>` | — | Use a specific HTML file instead of the auto-detected one |
+| `--watch` | `-w` | Watch source files and rebuild on changes |
+
 ### Building the Library
 
 If you're working on zQuery itself and need to rebuild `dist/zQuery.min.js`:
@@ -1695,14 +1730,6 @@ npx zquery build                # one-time build
 ```
 
 > **Note:** `npx zquery build` must be run from the zero-query project root (where `src/` and `index.js` live). If you have a `build` script in your `package.json`, `npm run build` will handle the working directory automatically.
-
-### Options
-
-| Flag | Short | Description |
-| --- | --- | --- |
-| `--out <path>` | `-o` | Custom output directory (default: `dist/` next to `index.html`) |
-| `--html <file>` | — | Use a specific HTML file instead of the auto-detected one |
-| `--watch` | `-w` | Watch source files and rebuild on changes |
 
 ### What the Bundler Does
 
@@ -1730,6 +1757,9 @@ npx zquery build                # one-time build
 ### Examples
 
 ```bash
+# Start dev server with live-reload
+npx zquery dev
+
 # Bundle your app (auto-detects everything)
 npx zquery bundle
 
@@ -1739,6 +1769,6 @@ npx zquery bundle scripts/app.js
 # Custom output directory
 npx zquery bundle -o build/
 
-# Watch mode
+# Watch mode (rebuild bundle on changes)
 npx zquery bundle --watch
 ```

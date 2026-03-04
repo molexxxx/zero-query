@@ -3,8 +3,9 @@
 /**
  * zQuery CLI
  *
- * Zero-dependency command-line tool for building the zQuery library
- * and bundling zQuery-based applications into a single file.
+ * Zero-dependency command-line tool for building the zQuery library,
+ * bundling zQuery-based applications, and running a dev server with
+ * live-reload.
  *
  * Usage:
  *   zquery build                      Build the zQuery library (dist/)
@@ -15,6 +16,9 @@
  *   zquery bundle --html other.html   Use a specific HTML file instead of auto-detected
  *   zquery bundle --watch             Watch & rebuild on changes
  *
+ *   zquery dev [root]                 Start dev server with live-reload
+ *   zquery dev --port 8080            Custom port (default: 3100)
+ *
  * Smart defaults (no flags needed for typical projects):
  *   - Entry is auto-detected from index.html's <script type="module" src="...">
  *   - zquery.min.js is always embedded (auto-built if not found)
@@ -24,6 +28,7 @@
  * Examples:
  *   cd my-app && npx zero-query bundle              # just works!
  *   npx zero-query bundle path/to/scripts/app.js     # works from anywhere
+ *   cd my-app && npx zquery dev                       # dev server with live-reload
  */
 
 const fs     = require('fs');
@@ -746,12 +751,206 @@ function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFi
 
 
 // ---------------------------------------------------------------------------
+// "dev" command — development server with live-reload
+// ---------------------------------------------------------------------------
+
+/**
+ * SSE live-reload client script injected into served HTML.
+ * Connects to /__zq_reload, reloads on 'reload' events,
+ * and hot-swaps CSS on 'css' events without a full reload.
+ */
+const LIVE_RELOAD_SNIPPET = `<script>
+(function(){
+  var es, timer;
+  function connect(){
+    es = new EventSource('/__zq_reload');
+    es.addEventListener('reload', function(){ location.reload(); });
+    es.addEventListener('css', function(e){
+      var sheets = document.querySelectorAll('link[rel="stylesheet"]');
+      sheets.forEach(function(l){
+        var href = l.getAttribute('href');
+        if(!href) return;
+        var sep = href.indexOf('?') >= 0 ? '&' : '?';
+        l.setAttribute('href', href.replace(/[?&]_zqr=\\d+/, '') + sep + '_zqr=' + Date.now());
+      });
+    });
+    es.onerror = function(){
+      es.close();
+      clearTimeout(timer);
+      timer = setTimeout(connect, 2000);
+    };
+  }
+  connect();
+})();
+</script>`;
+
+function devServer() {
+  let zeroHttp;
+  try {
+    zeroHttp = require('zero-http');
+  } catch (_) {
+    console.error(`\n  ✗ zero-http is required for the dev server.`);
+    console.error(`    Install it: npm install zero-http --save-dev\n`);
+    process.exit(1);
+  }
+
+  const { createApp, static: serveStatic } = zeroHttp;
+
+  // Determine the project root to serve
+  let root = null;
+  for (let i = 1; i < args.length; i++) {
+    if (!args[i].startsWith('-') && args[i - 1] !== '-p' && args[i - 1] !== '--port') {
+      root = path.resolve(process.cwd(), args[i]);
+      break;
+    }
+  }
+  if (!root) {
+    // Auto-detect: look for index.html in cwd or common sub-dirs
+    const candidates = [
+      process.cwd(),
+      path.join(process.cwd(), 'public'),
+      path.join(process.cwd(), 'src'),
+    ];
+    for (const c of candidates) {
+      if (fs.existsSync(path.join(c, 'index.html'))) { root = c; break; }
+    }
+    if (!root) root = process.cwd();
+  }
+
+  const PORT = parseInt(option('port', 'p', '3100'));
+
+  // SSE clients for live-reload
+  const sseClients = new Set();
+
+  const app = createApp();
+
+  // SSE endpoint — clients connect here for reload notifications
+  app.get('/__zq_reload', (req, res) => {
+    const sse = res.sse({ keepAlive: 30000, keepAliveComment: 'ping' });
+    sseClients.add(sse);
+    sse.on('close', () => sseClients.delete(sse));
+  });
+
+  // Static file serving
+  app.use(serveStatic(root, { index: false, dotfiles: 'ignore' }));
+
+  // SPA fallback — inject live-reload snippet into HTML
+  app.get('*', (req, res) => {
+    if (path.extname(req.url) && path.extname(req.url) !== '.html') {
+      res.status(404).send('Not Found');
+      return;
+    }
+    const indexPath = path.join(root, 'index.html');
+    if (!fs.existsSync(indexPath)) {
+      res.status(404).send('index.html not found');
+      return;
+    }
+    let html = fs.readFileSync(indexPath, 'utf-8');
+    // Inject live-reload snippet before </body> or at end
+    if (html.includes('</body>')) {
+      html = html.replace('</body>', LIVE_RELOAD_SNIPPET + '\n</body>');
+    } else {
+      html += LIVE_RELOAD_SNIPPET;
+    }
+    res.html(html);
+  });
+
+  // Broadcast a reload event to all connected SSE clients
+  function broadcast(eventType, data) {
+    for (const sse of sseClients) {
+      try { sse.event(eventType, data || ''); } catch (_) { sseClients.delete(sse); }
+    }
+  }
+
+  // File watcher — watch the project root for changes
+  const WATCH_EXTS = new Set(['.js', '.css', '.html', '.htm', '.json', '.svg']);
+  const IGNORE_DIRS = new Set(['node_modules', '.git', 'dist', '.cache']);
+  let debounceTimer;
+
+  function shouldWatch(filename) {
+    if (!filename) return false;
+    const ext = path.extname(filename).toLowerCase();
+    return WATCH_EXTS.has(ext);
+  }
+
+  function isIgnored(filepath) {
+    const parts = filepath.split(path.sep);
+    return parts.some(p => IGNORE_DIRS.has(p));
+  }
+
+  // Collect directories to watch (walk root, skip ignored)
+  function collectWatchDirs(dir) {
+    const dirs = [dir];
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        if (IGNORE_DIRS.has(entry.name)) continue;
+        const sub = path.join(dir, entry.name);
+        dirs.push(...collectWatchDirs(sub));
+      }
+    } catch (_) {}
+    return dirs;
+  }
+
+  const watchDirs = collectWatchDirs(root);
+  const watchers = [];
+
+  for (const dir of watchDirs) {
+    try {
+      const watcher = fs.watch(dir, (eventType, filename) => {
+        if (!shouldWatch(filename)) return;
+        const fullPath = path.join(dir, filename || '');
+        if (isIgnored(fullPath)) return;
+
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          const rel = path.relative(root, fullPath).replace(/\\/g, '/');
+          const ext = path.extname(filename).toLowerCase();
+          const now = new Date().toLocaleTimeString();
+
+          if (ext === '.css') {
+            console.log(`  ${now}  \x1b[35m css \x1b[0m ${rel}`);
+            broadcast('css', rel);
+          } else {
+            console.log(`  ${now}  \x1b[36m reload \x1b[0m ${rel}`);
+            broadcast('reload', rel);
+          }
+        }, 100);
+      });
+      watchers.push(watcher);
+    } catch (_) {}
+  }
+
+  app.listen(PORT, () => {
+    console.log(`\n  \x1b[1mzQuery Dev Server\x1b[0m`);
+    console.log(`  \x1b[2m${'─'.repeat(40)}\x1b[0m`);
+    console.log(`  Local:       \x1b[36mhttp://localhost:${PORT}/\x1b[0m`);
+    console.log(`  Root:        ${path.relative(process.cwd(), root) || '.'}`);
+    console.log(`  Live Reload: \x1b[32menabled\x1b[0m (SSE)`);
+    console.log(`  Watching:    ${WATCH_EXTS.size} file types in ${watchDirs.length} director${watchDirs.length === 1 ? 'y' : 'ies'}`);
+    console.log(`  \x1b[2m${'─'.repeat(40)}\x1b[0m`);
+    console.log(`  Press Ctrl+C to stop\n`);
+  });
+
+  // Graceful shutdown
+  process.on('SIGINT', () => {
+    console.log('\n  Shutting down...');
+    watchers.forEach(w => w.close());
+    for (const sse of sseClients) { try { sse.close(); } catch (_) {} }
+    app.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 1000);
+  });
+}
+
+
+// ---------------------------------------------------------------------------
 // Help
 // ---------------------------------------------------------------------------
 
 function showHelp() {
   console.log(`
-  zQuery CLI — build & bundle tool
+  zQuery CLI — build, bundle & dev tool
 
   COMMANDS
 
@@ -762,6 +961,9 @@ function showHelp() {
       --out, -o <path>         Output directory (default: dist/ next to index.html)
       --html <file>            Use a specific HTML file (default: auto-detected)
       --watch, -w              Watch source files and rebuild on changes
+
+    dev [root]                 Start a dev server with live-reload
+      --port, -p <number>     Port number (default: 3100)
 
   SMART DEFAULTS
 
@@ -788,10 +990,14 @@ function showHelp() {
 
   DEVELOPMENT
 
-    npm run serve              start a local dev server (zero-http, SPA routing)
-    npm run dev                watch mode — auto-rebuild bundle on source changes
+    zquery dev                 start a dev server with live-reload (port 3100)
+    zquery dev --port 8080     custom port
+    zquery bundle --watch      watch mode — auto-rebuild bundle on source changes
 
   EXAMPLES
+
+    # Start dev server with live-reload
+    cd my-app && zquery dev
 
     # Build the library only
     zquery build
@@ -805,7 +1011,7 @@ function showHelp() {
     # Custom output directory
     zquery bundle -o build/
 
-    # Watch mode
+    # Watch mode (rebuild bundle on changes)
     zquery bundle --watch
 
   The bundler walks the ES module import graph starting from the entry
@@ -827,6 +1033,8 @@ if (!command || command === '--help' || command === '-h' || command === 'help') 
   buildLibrary();
 } else if (command === 'bundle') {
   bundleApp();
+} else if (command === 'dev') {
+  devServer();
 } else {
   console.error(`\n  Unknown command: ${command}\n  Run "zquery --help" for usage.\n`);
   process.exit(1);

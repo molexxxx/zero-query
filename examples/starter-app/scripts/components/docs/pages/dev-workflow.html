@@ -1,0 +1,73 @@
+  <h2>Development Workflow</h2>
+  <p>zQuery is designed for a <strong>fast, zero-build development experience</strong>. During development you work with standard ES modules directly in the browser &mdash; no transpiler, no bundler, no waiting. The CLI includes a purpose-built <strong>dev server with live-reload</strong> so your changes appear instantly.</p>
+
+  <h3>Starting the Dev Server</h3>
+  <p>From your project directory (the folder containing <code>index.html</code>), run:</p>
+  <pre><code class="language-bash"># Start the dev server (default port 3100)
+npx zquery dev
+
+# Custom port
+npx zquery dev --port 8080</code></pre>
+  <p>The server will print its URL and begin watching for file changes. Open the URL in your browser and start editing &mdash; the page updates automatically when you save.</p>
+
+  <div class="docs-callout">
+    <strong>No build step required.</strong> The dev server serves your ES modules as-is. The browser&rsquo;s native <code>import</code> support handles module resolution, so you get instant feedback without waiting for a bundler.
+  </div>
+
+  <h3>Targeting a Sub-Directory</h3>
+  <p>If your project lives inside a monorepo or nested folder, pass the path as an argument:</p>
+  <pre><code class="language-bash"># Serve a specific project folder
+npx zquery dev path/to/my-app
+
+# From the zero-query repo root
+npm run dev          # serves examples/starter-app (configured in package.json)</code></pre>
+  <p>The server auto-detects <code>index.html</code> in whichever directory you point it at.</p>
+
+  <h3>Live Reload</h3>
+  <p>The dev server watches your entire project tree for changes. When you save a file the browser refreshes automatically:</p>
+  <table class="docs-table">
+    <tr><th>File Type</th><th>Behavior</th></tr>
+    <tr><td><code>.css</code></td><td><strong>CSS hot-swap</strong> &mdash; stylesheets are reloaded in-place without a full page refresh, preserving component state</td></tr>
+    <tr><td><code>.js</code>, <code>.html</code>, <code>.json</code>, <code>.svg</code></td><td><strong>Full reload</strong> &mdash; the browser performs a fresh page load to pick up the changes</td></tr>
+  </table>
+  <p>Changes are also logged to your terminal so you can see exactly which files triggered a reload.</p>
+
+  <h3>How Live-Reload Works (SSE)</h3>
+  <p>The dev server uses <strong>Server-Sent Events (SSE)</strong> &mdash; a lightweight, one-way push channel from the server to the browser. Here&rsquo;s the flow:</p>
+  <ol>
+    <li>When the server responds with <code>index.html</code>, it injects a small <code>&lt;script&gt;</code> block before <code>&lt;/body&gt;</code> that opens an <code>EventSource</code> connection back to the server.</li>
+    <li>A file-system watcher (<code>fs.watch</code>) monitors your project for changes, ignoring <code>node_modules</code>, <code>.git</code>, <code>dist</code>, and other build artifacts.</li>
+    <li>When a file changes, the server pushes a named event (<code>reload</code> or <code>css</code>) over the SSE connection.</li>
+    <li>The injected client script receives the event and either reloads the page or hot-swaps stylesheets.</li>
+  </ol>
+
+  <div class="docs-tip">
+    <strong>Source files are never modified.</strong> The SSE client is injected only in the HTTP response &mdash; your original HTML stays untouched on disk.
+  </div>
+
+  <h3>SPA Fallback Routing</h3>
+  <p>The dev server includes built-in SPA support. Any request that doesn&rsquo;t match an existing file is served <code>index.html</code>, so deep-link routes like <code>/docs/router</code> or <code>/about</code> work correctly during development without additional configuration.</p>
+
+  <h3>Bundle Watch Mode</h3>
+  <p>The dev server is the recommended tool for day-to-day development. However, if you need to continuously rebuild the <strong>production bundle</strong> as you work (e.g. testing the bundled output, verifying inlined templates), use the bundler&rsquo;s watch flag:</p>
+  <pre><code class="language-bash"># Watch mode — auto-rebuild bundle on file changes
+npx zquery bundle --watch</code></pre>
+  <p>This monitors the same file types and rebuilds the single-file bundle each time a source file changes. It does <strong>not</strong> include a dev server or live-reload &mdash; pair it with the dev server if you need both:</p>
+  <pre><code class="language-bash"># Terminal 1 — dev server with live-reload
+npx zquery dev
+
+# Terminal 2 — auto-rebuild bundle in the background
+npx zquery bundle --watch</code></pre>
+
+  <h3>Recommended Workflow</h3>
+  <div class="docs-callout">
+    <strong>Summary:</strong> Use <code>zquery dev</code> as your primary development tool. It gives you the fastest feedback loop &mdash; no build step, instant reload. Only run <code>zquery bundle</code> when you&rsquo;re ready to deploy or distribute a production build.
+  </div>
+  <table class="docs-table">
+    <tr><th>Task</th><th>Command</th></tr>
+    <tr><td>Develop &amp; debug</td><td><code>npx zquery dev</code></td></tr>
+    <tr><td>Develop with custom port</td><td><code>npx zquery dev --port 8080</code></td></tr>
+    <tr><td>Bundle for production</td><td><code>npx zquery bundle</code></td></tr>
+    <tr><td>Bundle with auto-rebuild</td><td><code>npx zquery bundle --watch</code></td></tr>
+    <tr><td>Build library only</td><td><code>npx zquery build</code></td></tr>
+  </table>

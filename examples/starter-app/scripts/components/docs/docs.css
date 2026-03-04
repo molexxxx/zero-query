@@ -421,6 +421,13 @@
 /* ---- Toggle button ---- */
 .docs-mobile .docs-sidebar-toggle {
   display: flex;
+  margin-bottom: 0;
+}
+
+.docs-mobile .docs-sidebar-toggle.expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: none;
 }
 
 /* ---- Sidebar drawer ---- */
@@ -431,14 +438,19 @@
   overflow-y: auto;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
-  margin-top: -0.75rem;
+  margin-top: 0;
   margin-bottom: 0;
   border-top: none;
 }
 
 .docs-mobile .docs-sidebar.sidebar-open {
   display: block;
-  animation: sidebarSlide 0.25s ease;
+  animation: sidebarSlideM 0.25s ease;
+}
+
+@keyframes sidebarSlideM {
+  from { transform: translateY(-8px); }
+  to   { transform: translateY(0); }
 }
 
 /* ---- Content area ---- */

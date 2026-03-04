@@ -1258,9 +1258,9 @@ The build script is zero-dependency — just Node.js. It concatenates all ES mod
 node build.js                                    # build the library
 cp dist/zQuery.min.js examples/starter-app/scripts/vendor/  # copy to app
 
-# Start the dev server (uses zero-http)
-npm run serve
-# → http://localhost:3000
+# Start the dev server with live-reload (port 3100)
+npm run dev
+# → http://localhost:3100
 
 # Or use any static server
 npx serve examples/starter-app
@@ -1284,25 +1284,28 @@ start examples/starter-app/dist/local/index.html
 
 See [CLI Bundler](#cli-bundler-optional) for details.
 
-### Local Dev Server
+### Dev Server (Live Reload)
 
-The project ships with a lightweight dev server powered by [zero-http](https://github.com/tonywied17/zero-http). It handles history-mode SPA routing (all non-file requests serve `index.html`).
+The CLI includes a built-in dev server powered by [zero-http](https://github.com/tonywied17/zero-http). It provides SPA fallback routing, a file watcher, and **automatic live-reload** — the browser refreshes on every save.
 
 ```bash
-# Serve with SPA fallback routing (recommended during development)
-npm run serve
+# Start the dev server (auto-detects index.html in cwd)
+npx zquery dev
+# → http://localhost:3100
 
 # Custom port
-node examples/starter-app/local-server.js 8080
+npx zquery dev --port 8080
+
+# Serve a specific project folder
+npx zquery dev path/to/my-app
 
 # Watch mode — auto-rebuild bundle on file changes
-npm run dev
-
-# Or install zero-http yourself for any project
-npm install zero-http --save-dev
+npx zquery bundle --watch
 ```
 
-`npm run serve` gives the fastest feedback loop — edit your ES module source files and refresh the browser. Use `npm run dev` when you need the bundled output to update automatically as you work.
+**How it works:** The server injects a tiny SSE (Server-Sent Events) client into the served HTML at runtime. A file watcher monitors your project for changes to `.js`, `.css`, `.html`, `.json`, and `.svg` files and pushes reload events to the browser. CSS changes are hot-swapped without a full reload — everything else triggers a page refresh. Your source files are never modified; the snippet is only injected into the HTTP response.
+
+`zquery dev` gives the fastest feedback loop — edit your ES module source files and watch the browser update instantly. Use `zquery bundle --watch` when you need the bundled output to update automatically as you work.
 
 ### Production Deployment
 
@@ -1377,6 +1380,7 @@ location /my-app/ {
 | --- | --- |
 | `zquery build` | Build the zQuery library (`dist/zQuery.min.js`) |
 | `zquery bundle [entry]` | Bundle app ES modules into a single IIFE file |
+| `zquery dev [root]` | Start a dev server with live-reload (port 3100) |
 | `zquery --help` | Show CLI usage and options |
 
 For full method signatures and options, see [API.md](API.md).

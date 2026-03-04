@@ -18,8 +18,7 @@
   ],
   "scripts": {
     "build": "node build.js",
-    "dev": "npx zquery bundle examples/starter-app/scripts/app.js --watch",
-    "serve": "node examples/starter-app/local-server.js",
+    "dev": "node cli.js dev examples/starter-app",
     "dev-lib": "node build.js --watch",
     "bundle": "node cli.js bundle",
     "bundle:app": "node cli.js bundle examples/starter-app/scripts/app.js"
