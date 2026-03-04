@@ -1,8 +1,51 @@
   <h2>Getting Started</h2>
-  <p>zQuery is a lightweight, zero-dependency frontend library (~46 KB minified). It provides a jQuery-inspired selector API, reactive components, an SPA router, global state management, an HTTP client, and utility helpers &mdash; all from a single script tag. Works out of the box with standard ES modules &mdash; no npm install or transpiler required. An optional CLI bundler is available for single-file distribution.</p>
+  <p>zQuery is a lightweight, zero-dependency frontend library (~46 KB minified). It provides a jQuery-inspired selector API, reactive components, an SPA router, global state management, an HTTP client, and utility helpers &mdash; all from a single script tag. Works out of the box with standard ES modules. An optional CLI dev server with live-reload and a production bundler make the full development cycle seamless.</p>
 
-  <h3>Quick Start (ES Modules &mdash; Recommended)</h3>
-  <p>The preferred way to use zQuery is with the <strong>pre-built browser bundle</strong> (<code>zQuery.min.js</code>) loaded via a <code>&lt;script&gt;</code> tag, with your app code served as standard <strong>ES modules</strong>. No npm install, no transpiler, no build step. Grab the latest build from GitHub and drop it into your project:</p>
+  <h3>Quick Start (CLI Dev Server &mdash; Recommended)</h3>
+  <p>The fastest way to develop with zQuery is via the built-in <strong>CLI dev server</strong>. It serves your ES modules as-is with <strong>live-reload</strong>, <strong>CSS hot-swap</strong>, and <strong>SPA fallback routing</strong> &mdash; and automatically resolves the library so you never have to manually download or copy <code>zQuery.min.js</code>.</p>
+
+  <h4>1. Install</h4>
+  <pre><code class="language-bash"># Per-project (recommended)
+npm install zero-query --save-dev
+
+# Or install globally to use zquery anywhere without npx
+npm install zero-query -g</code></pre>
+
+  <h4>2. Create Your Project</h4>
+  <p>Scaffold a ready-to-run project with the <code>create</code> command:</p>
+  <pre><code class="language-bash">npx zquery create my-app
+cd my-app</code></pre>
+  <p>This generates <code>index.html</code>, a router with two routes, two starter components, and a stylesheet &mdash; everything you need to start building. The resulting structure looks like this:</p>
+  <pre><code class="language-text">my-app/
+  index.html
+  scripts/
+    app.js
+    routes.js
+    components/
+      home.js
+      about.js
+  styles/
+    styles.css</code></pre>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> You can also run <code>npx zquery create</code> (without a directory name) to scaffold into the <strong>current directory</strong>.
+  </div>
+
+  <h4>3. Start the Dev Server</h4>
+  <pre><code class="language-bash">npx zquery dev
+
+# Custom port
+npx zquery dev --port 8080</code></pre>
+  <p>The server starts watching for changes and the library is served automatically &mdash; no need to place <code>zQuery.min.js</code> anywhere in your project. Just reference it in your HTML as shown below and the dev server handles the rest.</p>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> See the <a z-link="/docs/dev-workflow">Development Workflow</a> page for full details on live-reload, CSS hot-swap, SSE, and SPA fallback routing.
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin:2rem 0;">
+
+  <h3>Alternative: Manual Setup (No npm Required)</h3>
+  <p>If you prefer <strong>zero tooling</strong>, you can download the pre-built library and open your project directly in the browser &mdash; no Node.js, no npm, no build step:</p>
   <div class="docs-download">
     <a href="https://github.com/tonywied17/zero-query/tree/main/dist" target="_blank" rel="noopener" class="docs-download-btn">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="vertical-align:-2px;margin-right:6px"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -10,20 +53,13 @@
     </a>
     <span class="docs-download-hint">Download <code>dist/zquery.min.js</code> from the repo, or clone and run <code>node build.js</code></span>
   </div>
-
-  <h3>1. Get the Library</h3>
-  <pre><code class="language-text">git clone https://github.com/tonywied17/zero-query.git
-cd zero-query
-node build.js
-# Creates dist/zQuery.js     (~78 KB, readable)
-# Creates dist/zQuery.min.js (~46 KB, production)</code></pre>
-  <p>The build script concatenates all source modules into a self-contained IIFE that exposes <code>$</code> and <code>zQuery</code> on the <code>window</code> object. Copy <code>dist/zQuery.min.js</code> into your project's <code>scripts/vendor/</code> folder.</p>
+  <p>Place the file at <code>scripts/vendor/zQuery.min.js</code> in your project, then open <code>index.html</code> in your browser (or use any static file server).</p>
 
   <div class="docs-callout">
-    <strong>Note:</strong> <code>node build.js</code> and <code>npx zquery build</code> must be run from the zero-query project root (where <code>src/</code> and <code>index.js</code> live). If you&rsquo;ve added a <code>build</code> script to your own <code>package.json</code>, <code>npm run build</code> handles the working directory for you.
+    <strong>Note:</strong> The manual approach works great for quick prototypes and learning. For active development, the <strong>CLI dev server</strong> is highly recommended &mdash; it gives you live-reload, automatic library resolution, and SPA routing out of the box.
   </div>
 
-  <h3>2. Include in HTML</h3>
+  <h3>Include in HTML</h3>
   <pre><code class="language-html">&lt;!-- Load zQuery globally ($ and zQuery available on window) --&gt;
 &lt;script src="scripts/vendor/zQuery.min.js"&gt;&lt;/script&gt;
 
@@ -34,7 +70,11 @@ node build.js
     <strong>Load order matters:</strong> The <code>zQuery.min.js</code> script tag must appear <em>before</em> your module scripts so that <code>$</code> is available globally when your components execute.
   </div>
 
-  <h3>3. Boot Your App</h3>
+  <div class="docs-tip">
+    <strong>Dev server users:</strong> The <code>scripts/vendor/zQuery.min.js</code> path still works as the HTML reference &mdash; the dev server automatically intercepts the request and serves the latest library version from your npm install. No file needs to exist at that path during development.
+  </div>
+
+  <h3>Boot Your App</h3>
   <pre><code class="language-javascript">// scripts/app.js
 import './components/home.js';
 import './components/about.js';
@@ -54,7 +94,7 @@ $.ready(() =&gt; {
 });</code></pre>
   <p>The <code>app.js</code> file is the single entry point: it imports all component files, defines routes, creates the store (if needed), and boots the router. Component files register themselves via <code>$.component()</code>, so importing them is enough.</p>
 
-  <h3>4. Define a Component</h3>
+  <h3>Define a Component</h3>
   <pre><code class="language-javascript">// scripts/components/home.js
 $.component('home-page', {
   state: () =&gt; ({ greeting: 'Hello, World!' }),

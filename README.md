@@ -33,11 +33,28 @@
 
 ## Quick Start
 
-The preferred way to use zQuery is with the **pre-built browser bundle** (`zQuery.min.js`) paired with standard **ES module** `<script type="module">` tags for your app code. No npm install, no bundler, no transpiler — just grab the library and start writing components.
+### Recommended: CLI Dev Server
 
-### 1. Get the Library
+The fastest way to develop with zQuery is via the built-in **CLI dev server** with **live-reload**. It serves your ES modules as-is and automatically resolves the library — no manual downloads required.
 
-Download `dist/zQuery.min.js` from the [GitHub releases](https://github.com/tonywied17/zero-query/releases/tag/RELEASE), or clone and build:
+```bash
+# Install (per-project or globally)
+npm install zero-query --save-dev   # or: npm install zero-query -g
+```
+
+Scaffold a new project and start the server:
+
+```bash
+npx zquery create my-app
+cd my-app
+npx zquery dev
+```
+
+The `create` command generates a ready-to-run project with `index.html`, a router, two components, and styles. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on JS/HTML changes, and handles SPA fallback routing.
+
+### Alternative: Manual Setup (No npm)
+
+If you prefer **zero tooling**, download `dist/zQuery.min.js` from the [GitHub releases](https://github.com/tonywied17/zero-query/releases/tag/RELEASE) and drop it into `scripts/vendor/`. Then open `index.html` directly in a browser — no Node.js required.
 
 ```bash
 git clone https://github.com/tonywied17/zero-query.git
@@ -46,7 +63,7 @@ node build.js
 # → dist/zQuery.min.js  (~45 KB)
 ```
 
-### 2. Include in HTML
+### Include in HTML
 
 ```html
 <!DOCTYPE html>
@@ -68,7 +85,7 @@ node build.js
 </html>
 ```
 
-### 3. Boot Your App
+### Boot Your App
 
 ```js
 // scripts/app.js
@@ -79,7 +96,7 @@ import { routes } from './routes.js';
 $.router({ el: '#app', routes, fallback: 'not-found' });
 ```
 
-### 4. Define a Component
+### Define a Component
 
 ```js
 // scripts/components/home.js
@@ -96,7 +113,7 @@ $.component('home-page', {
 });
 ```
 
-That's it — a fully working SPA with zero build tools.
+That's it — a fully working SPA with the dev server's live-reload.
 
 ---
 
@@ -107,7 +124,7 @@ my-app/
   index.html
   scripts/
     vendor/
-      zQuery.min.js
+      zQuery.min.js       ← only needed for manual setup; dev server auto-resolves
     app.js
     routes.js
     store.js
@@ -120,40 +137,6 @@ my-app/
 - One component per file inside `components/`.
 - Names **must contain a hyphen** (Web Component convention): `home-page`, `app-counter`, etc.
 - `app.js` is the single entry point — import components, create the store, and boot the router.
-
----
-
-## Development Server
-
-The CLI includes a built-in dev server with **live-reload** powered by [zero-http](https://github.com/tonywied17/zero-http). Install once:
-
-```bash
-# Per-project (recommended)
-npm install zero-query --save-dev
-
-# Or install globally to use zquery anywhere without npx
-npm install zero-query -g
-```
-
-Then start the server:
-
-```bash
-# Start dev server (default port 3100)
-npx zquery dev
-
-# Custom port
-npx zquery dev --port 8080
-
-# Serve a specific project folder
-npx zquery dev path/to/my-app
-```
-
-- **No build step** — the server serves your ES modules as-is.
-- **CSS hot-swap** — `.css` changes reload in-place without a full refresh.
-- **Full reload** — `.js`, `.html`, `.json`, and `.svg` changes trigger a page refresh.
-- **SPA fallback** — non-file requests serve `index.html` so deep routes work.
-
-The server injects a tiny SSE (Server-Sent Events) client into the HTTP response at runtime. Your source files are never modified.
 
 ---
 
@@ -252,6 +235,7 @@ location / {
 
 | CLI Command | Description |
 | --- | --- |
+| `zquery create [dir]` | Scaffold a new project (index.html, scripts, styles) |
 | `zquery dev [root]` | Dev server with live-reload (port 3100) |
 | `zquery bundle [entry]` | Bundle app into a single IIFE file |
 | `zquery build` | Build the zQuery library (`dist/zQuery.min.js`) |

@@ -948,24 +948,180 @@ function devServer() {
 
 
 // ---------------------------------------------------------------------------
+// Create — scaffold a new zQuery project
+// ---------------------------------------------------------------------------
+
+function createProject() {
+  const target = args[1] ? path.resolve(args[1]) : process.cwd();
+  const name   = path.basename(target);
+
+  // Guard: refuse to overwrite existing files
+  const conflicts = ['index.html', 'scripts'].filter(f =>
+    fs.existsSync(path.join(target, f))
+  );
+  if (conflicts.length) {
+    console.error(`\n  ✗ Directory already contains: ${conflicts.join(', ')}`);
+    console.error(`  Aborting to avoid overwriting existing files.\n`);
+    process.exit(1);
+  }
+
+  console.log(`\n  zQuery — Create Project\n`);
+  console.log(`  Scaffolding into ${target}\n`);
+
+  // ---- templates ----
+
+  const indexHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${name}</title>
+  <link rel="stylesheet" href="styles/styles.css">
+  <script src="scripts/vendor/zQuery.min.js"></script>
+  <script type="module" src="scripts/app.js"></script>
+</head>
+<body>
+  <nav>
+    <a z-link="/">Home</a>
+    <a z-link="/about">About</a>
+  </nav>
+  <div id="app"></div>
+</body>
+</html>`;
+
+  const appJS = `// scripts/app.js — entry point
+import './components/home.js';
+import './components/about.js';
+import { routes } from './routes.js';
+
+$.router({ el: '#app', routes, fallback: 'not-found' });
+
+$.ready(() => {
+  console.log('zQuery v' + $.version + ' loaded');
+});`;
+
+  const routesJS = `// scripts/routes.js
+export const routes = [
+  { path: '/',      component: 'home-page'  },
+  { path: '/about', component: 'about-page' },
+];`;
+
+  const homeJS = `// scripts/components/home.js
+$.component('home-page', {
+  state: () => ({ count: 0 }),
+
+  increment() { this.state.count++; },
+
+  render() {
+    return \`
+      <h1>Home</h1>
+      <p>Count: \${this.state.count}</p>
+      <button @click="increment">+1</button>
+    \`;
+  }
+});`;
+
+  const aboutJS = `// scripts/components/about.js
+$.component('about-page', {
+  render() {
+    return \`
+      <h1>About</h1>
+      <p>Built with <strong>zQuery</strong> — a lightweight, zero-dependency frontend library.</p>
+    \`;
+  }
+});`;
+
+  const stylesCSS = `/* styles/styles.css */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  color: #e6edf3;
+  background: #0d1117;
+  padding: 2rem;
+}
+
+nav {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #30363d;
+}
+
+nav a {
+  color: #58a6ff;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+nav a:hover { text-decoration: underline; }
+
+h1 { margin-bottom: 0.5rem; }
+
+button {
+  margin-top: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  background: #238636;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+button:hover { background: #2ea043; }`;
+
+  // ---- write files ----
+
+  const files = {
+    'index.html':                  indexHTML,
+    'scripts/app.js':              appJS,
+    'scripts/routes.js':           routesJS,
+    'scripts/components/home.js':  homeJS,
+    'scripts/components/about.js': aboutJS,
+    'styles/styles.css':           stylesCSS,
+  };
+
+  for (const [rel, content] of Object.entries(files)) {
+    const abs = path.join(target, rel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, content, 'utf-8');
+    console.log(`  ✓ ${rel}`);
+  }
+
+  console.log(`
+  Done! Next steps:
+
+    ${target !== process.cwd() ? `cd ${args[1]}\n    ` : ''}npx zquery dev
+`);
+}
+
+
+// ---------------------------------------------------------------------------
 // Help
 // ---------------------------------------------------------------------------
 
 function showHelp() {
   console.log(`
-  zQuery CLI — build, bundle & dev tool
+  zQuery CLI — create, dev, bundle & build
 
   COMMANDS
 
-    build                      Build the zQuery library → dist/
-                               (must be run from the project root where src/ lives)
+    create [dir]               Scaffold a new zQuery project
+                               Creates index.html, scripts/, styles/ in the target directory
+                               (defaults to the current directory)
+
+    dev [root]                 Start a dev server with live-reload
+      --port, -p <number>     Port number (default: 3100)
 
     bundle [entry]             Bundle app ES modules into a single file
       --out, -o <path>         Output directory (default: dist/ next to index.html)
       --html <file>            Use a specific HTML file (default: auto-detected)
 
-    dev [root]                 Start a dev server with live-reload
-      --port, -p <number>     Port number (default: 3100)
+    build                      Build the zQuery library → dist/
+                               (must be run from the project root where src/ lives)
 
   SMART DEFAULTS
 
@@ -997,6 +1153,9 @@ function showHelp() {
 
   EXAMPLES
 
+    # Scaffold a new project and start developing
+    zquery create my-app && cd my-app && zquery dev
+
     # Start dev server with live-reload
     cd my-app && zquery dev
 
@@ -1026,6 +1185,8 @@ function showHelp() {
 
 if (!command || command === '--help' || command === '-h' || command === 'help') {
   showHelp();
+} else if (command === 'create') {
+  createProject();
 } else if (command === 'build') {
   console.log('\n  zQuery Library Build\n');
   buildLibrary();
