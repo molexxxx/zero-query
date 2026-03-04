@@ -50,7 +50,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "devDependencies": {
+  "dependencies": {
     "zero-http": "^0.2.3"
   }
 }
