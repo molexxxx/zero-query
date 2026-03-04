@@ -809,6 +809,31 @@ function devServer() {
     sse.on('close', () => sseClients.delete(sse));
   });
 
+  // Auto-resolve zquery.min.js — serve the freshest version regardless of
+  // what's on disk in the project.  Priority:
+  //   1. Package dist/ (when running from the repo after `npm run build`)
+  //   2. node_modules/zero-query/dist/ (when installed as a dependency)
+  //   3. Fall through to static serving (vendor copy on disk)
+  // Registered as middleware so it runs BEFORE serveStatic.
+  app.use((req, res, next) => {
+    const basename = path.basename(req.url.split('?')[0]).toLowerCase();
+    if (basename !== 'zquery.min.js') return next();
+
+    const candidates = [
+      path.join(__dirname, 'dist', 'zquery.min.js'),                // package repo
+      path.join(root, 'node_modules', 'zero-query', 'dist', 'zquery.min.js'), // npm dep
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        res.set('Content-Type', 'application/javascript; charset=utf-8');
+        res.set('Cache-Control', 'no-cache');
+        res.send(fs.readFileSync(p, 'utf-8'));
+        return;
+      }
+    }
+    next(); // fall through to static / 404
+  });
+
   // Static file serving
   app.use(serveStatic(root, { index: false, dotfiles: 'ignore' }));
 
