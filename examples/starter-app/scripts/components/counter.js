@@ -6,7 +6,7 @@ $.component('counter-page', {
   increment() { this.state.count += this.state.step; },
   decrement() { this.state.count -= this.state.step; },
   reset()     { this.state.count = 0; },
-
+  
   render() {
     return `
       <div>

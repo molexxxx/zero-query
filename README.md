@@ -11,6 +11,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-zero--query-blue.svg)](https://github.com/tonywied17/zero-query)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-success.svg)](package.json)
+[![VS Code Extension](https://img.shields.io/visual-studio-marketplace/v/zQuery.zquery-vs-code?label=VS%20Code&logo=visualstudiocode&color=007acc)](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code)
 
 </p>
 
@@ -1379,6 +1380,19 @@ location /my-app/ {
 | `zquery --help` | Show CLI usage and options |
 
 For full method signatures and options, see [API.md](API.md).
+
+---
+
+## Editor Support
+
+The official **[zQuery for VS Code](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code)** extension for Visual Studio Code provides:
+
+- **Autocomplete** for `$.*`, `$.http.*`, `$.storage.*`, `$.bus.*`, and 50+ collection chain methods
+- **Hover documentation** with signatures and code examples for every method and directive
+- **HTML directive support** — completions and docs for `@event` handlers, `z-model`, `z-ref`, `z-link`
+- **55+ code snippets** — type `zq-` for components, router, store, HTTP, signals, and more
+
+Install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code) or search **"zQuery for VS Code"** in the Extensions view.
 
 ---
 

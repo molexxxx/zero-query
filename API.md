@@ -2,6 +2,8 @@
 
 Complete API documentation for every module, method, option, and type in zQuery. All examples assume the global `$` is available via the built `zQuery.min.js` bundle (the recommended ES module setup). If using the optional [CLI Bundler](#cli-bundler), the same API is available — the bundler simply concatenates your ES modules into a single file.
 
+> **Editor Support:** Install the [zQuery for VS Code](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code) extension for autocomplete, hover docs, directive support, and 55+ code snippets.
+
 ---
 
 ## Table of Contents

@@ -51,9 +51,29 @@ $.component('home-page', {
           </div>
         </div>
 
-        <div class="card" style="text-align:center;padding:1.5rem;">
-          <h2 style="margin-bottom:0.5rem;">Explore the Docs</h2>
-          <p>Check out the <a z-link="/docs" style="color:#58a6ff;cursor:pointer;">API Docs</a> page for full reference documentation with code examples covering every feature, directive, and utility method.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem;">
+          <div class="card" style="text-align:center;padding:1.5rem;display:flex;flex-direction:column;justify-content:center;">
+            <h2 style="margin-bottom:0.5rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#58a6ff" style="width:22px;height:22px;vertical-align:-4px;margin-right:0.35rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+              API Docs
+            </h2>
+            <p style="line-height:1.7;flex:1;">Full reference documentation with code examples covering every method, directive, and utility.</p>
+            <div style="margin-top:1rem;">
+              <a z-link="/docs" style="display:inline-block;padding:0.5rem 1.25rem;background:#238636;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.9rem;cursor:pointer;">Browse Docs</a>
+            </div>
+          </div>
+
+          <div class="card" style="text-align:center;padding:1.5rem;display:flex;flex-direction:column;justify-content:center;">
+            <h2 style="margin-bottom:0.5rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#58a6ff" style="width:22px;height:22px;vertical-align:-4px;margin-right:0.35rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>
+              Editor Support
+            </h2>
+            <p style="line-height:1.7;flex:1;">Autocomplete, hover docs, directive support, and 55+ snippets with the official
+              <a href="https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code" target="_blank" rel="noopener" style="color:#58a6ff;">zQuery for VS Code</a> extension.</p>
+            <div style="margin-top:1rem;">
+              <a href="https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code" target="_blank" rel="noopener" style="display:inline-block;padding:0.5rem 1.25rem;background:#007acc;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.9rem;">Install Extension</a>
+            </div>
+          </div>
         </div>
       </div>
     `;
