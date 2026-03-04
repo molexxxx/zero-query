@@ -14,7 +14,6 @@
  *   zquery bundle scripts/app.js      Specify entry explicitly
  *   zquery bundle -o build/           Custom output directory
  *   zquery bundle --html other.html   Use a specific HTML file instead of auto-detected
- *   zquery bundle --watch             Watch & rebuild on changes
  *
  *   zquery dev [root]                 Start dev server with live-reload
  *   zquery dev --port 8080            Custom port (default: 3100)
@@ -417,7 +416,6 @@ function bundleApp() {
   }
 
   const outPath    = option('out', 'o', null);
-  const watchMode  = flag('watch', 'w');
 
   // Auto-detect index.html by walking up from the entry file, then check cwd
   let htmlFile = option('html', null, null);
@@ -600,26 +598,6 @@ function bundleApp() {
   }
 
   doBuild();
-
-  // Watch mode
-  if (watchMode) {
-    const watchDirs = new Set();
-    const files = walkImportGraph(entry);
-    files.forEach(f => watchDirs.add(path.dirname(f)));
-
-    console.log('  Watching for changes...\n');
-    let debounceTimer;
-    for (const dir of watchDirs) {
-      fs.watch(dir, { recursive: true }, (_, filename) => {
-        if (!filename || !filename.endsWith('.js')) return;
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          console.log(`  Changed: ${filename} — rebuilding...`);
-          try { doBuild(); } catch (e) { console.error(`  ✗ ${e.message}`); }
-        }, 200);
-      });
-    }
-  }
 }
 
 /**
@@ -960,7 +938,6 @@ function showHelp() {
     bundle [entry]             Bundle app ES modules into a single file
       --out, -o <path>         Output directory (default: dist/ next to index.html)
       --html <file>            Use a specific HTML file (default: auto-detected)
-      --watch, -w              Watch source files and rebuild on changes
 
     dev [root]                 Start a dev server with live-reload
       --port, -p <number>     Port number (default: 3100)
@@ -992,7 +969,6 @@ function showHelp() {
 
     zquery dev                 start a dev server with live-reload (port 3100)
     zquery dev --port 8080     custom port
-    zquery bundle --watch      watch mode — auto-rebuild bundle on source changes
 
   EXAMPLES
 
@@ -1010,9 +986,6 @@ function showHelp() {
 
     # Custom output directory
     zquery bundle -o build/
-
-    # Watch mode (rebuild bundle on changes)
-    zquery bundle --watch
 
   The bundler walks the ES module import graph starting from the entry
   file, topologically sorts dependencies, strips import/export syntax,

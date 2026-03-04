@@ -57,17 +57,6 @@ npm run dev          # serves examples/starter-app (configured in package.json)<
   <h3>SPA Fallback Routing</h3>
   <p>The dev server includes built-in SPA support. Any request that doesn&rsquo;t match an existing file is served <code>index.html</code>, so deep-link routes like <code>/docs/router</code> or <code>/about</code> work correctly during development without additional configuration.</p>
 
-  <h3>Bundle Watch Mode</h3>
-  <p>The dev server is the recommended tool for day-to-day development. However, if you need to continuously rebuild the <strong>production bundle</strong> as you work (e.g. testing the bundled output, verifying inlined templates), use the bundler&rsquo;s watch flag:</p>
-  <pre><code class="language-bash"># Watch mode — auto-rebuild bundle on file changes
-npx zquery bundle --watch</code></pre>
-  <p>This monitors the same file types and rebuilds the single-file bundle each time a source file changes. It does <strong>not</strong> include a dev server or live-reload &mdash; pair it with the dev server if you need both:</p>
-  <pre><code class="language-bash"># Terminal 1 — dev server with live-reload
-npx zquery dev
-
-# Terminal 2 — auto-rebuild bundle in the background
-npx zquery bundle --watch</code></pre>
-
   <h3>Recommended Workflow</h3>
   <div class="docs-callout">
     <strong>Summary:</strong> Use <code>zquery dev</code> as your primary development tool. It gives you the fastest feedback loop &mdash; no build step, instant reload. Only run <code>zquery bundle</code> when you&rsquo;re ready to deploy or distribute a production build.
@@ -77,6 +66,5 @@ npx zquery bundle --watch</code></pre>
     <tr><td>Develop &amp; debug</td><td><code>npx zquery dev</code></td></tr>
     <tr><td>Develop with custom port</td><td><code>npx zquery dev --port 8080</code></td></tr>
     <tr><td>Bundle for production</td><td><code>npx zquery bundle</code></td></tr>
-    <tr><td>Bundle with auto-rebuild</td><td><code>npx zquery bundle --watch</code></td></tr>
     <tr><td>Build library only</td><td><code>npx zquery build</code></td></tr>
   </table>

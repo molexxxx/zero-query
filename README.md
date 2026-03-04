@@ -190,7 +190,6 @@ dist/
 | --- | --- | --- |
 | `--out <path>` | `-o` | Custom output directory |
 | `--html <file>` | — | Use a specific HTML file |
-| `--watch` | `-w` | Watch and rebuild on changes |
 
 ### What the Bundler Does
 
