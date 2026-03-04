@@ -3,6 +3,7 @@
   "version": "0.2.3",
   "description": "Lightweight modern frontend library — jQuery-like selectors, reactive components, SPA router, and state management with zero dependencies.",
   "main": "index.js",
+  "types": "index.d.ts",
   "bin": {
     "zquery": "./cli.js"
   },
@@ -10,6 +11,7 @@
     "src",
     "dist",
     "index.js",
+    "index.d.ts",
     "cli.js",
     "LICENSE",
     "README.md"
