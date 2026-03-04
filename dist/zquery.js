@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.2.8
+ * zQuery (zeroQuery) v0.2.9
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -2576,7 +2576,7 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.2.8';
+$.version = '0.2.9';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {
