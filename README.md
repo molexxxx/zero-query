@@ -128,7 +128,11 @@ my-app/
 The CLI includes a built-in dev server with **live-reload** powered by [zero-http](https://github.com/tonywied17/zero-http). Install once:
 
 ```bash
+# Per-project (recommended)
 npm install zero-query --save-dev
+
+# Or install globally to use zquery anywhere without npx
+npm install zero-query -g
 ```
 
 Then start the server:

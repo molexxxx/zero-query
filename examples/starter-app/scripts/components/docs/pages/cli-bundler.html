@@ -5,8 +5,11 @@
   <p>The bundler auto-detects your entry point, embeds the zQuery library, resolves all ES module imports, inlines external templates, rewrites your <code>index.html</code>, and copies assets into a <code>dist/</code> folder. <strong>No flags needed</strong> &mdash; just point it at your app.</p>
 
   <h3>Installation &amp; Usage</h3>
-  <pre><code class="language-bash"># Install the package
+  <pre><code class="language-bash"># Per-project (recommended)
 npm install zero-query --save-dev
+
+# Or install globally to use zquery anywhere without npx
+npm install zero-query -g
 
 # Bundle your app (auto-detects entry from index.html)
 npx zquery bundle
