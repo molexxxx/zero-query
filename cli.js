@@ -815,7 +815,10 @@ function devServer() {
   //   2. node_modules/zero-query/dist/ (when installed as a dependency)
   //   3. Fall through to static serving (vendor copy on disk)
   // Registered as middleware so it runs BEFORE serveStatic.
+  // Use --no-intercept to skip this and serve the on-disk vendor copy instead.
+  const noIntercept = flag('no-intercept');
   app.use((req, res, next) => {
+    if (noIntercept) return next();
     const basename = path.basename(req.url.split('?')[0]).toLowerCase();
     if (basename !== 'zquery.min.js') return next();
 
@@ -866,14 +869,16 @@ function devServer() {
   }
 
   // File watcher — watch the project root for changes
-  const WATCH_EXTS = new Set(['.js', '.css', '.html', '.htm', '.json', '.svg']);
+  // All file types trigger a reload; CSS gets hot-swapped, everything else
+  // triggers a full page reload.  Only ignored directories are skipped.
   const IGNORE_DIRS = new Set(['node_modules', '.git', 'dist', '.cache']);
   let debounceTimer;
 
   function shouldWatch(filename) {
     if (!filename) return false;
-    const ext = path.extname(filename).toLowerCase();
-    return WATCH_EXTS.has(ext);
+    // Ignore dotfiles (e.g. .DS_Store)
+    if (filename.startsWith('.')) return false;
+    return true;
   }
 
   function isIgnored(filepath) {
@@ -931,7 +936,8 @@ function devServer() {
     console.log(`  Local:       \x1b[36mhttp://localhost:${PORT}/\x1b[0m`);
     console.log(`  Root:        ${path.relative(process.cwd(), root) || '.'}`);
     console.log(`  Live Reload: \x1b[32menabled\x1b[0m (SSE)`);
-    console.log(`  Watching:    ${WATCH_EXTS.size} file types in ${watchDirs.length} director${watchDirs.length === 1 ? 'y' : 'ies'}`);
+    if (noIntercept) console.log(`  Intercept:   \x1b[33mdisabled\x1b[0m (--no-intercept)`);
+    console.log(`  Watching:    all files in ${watchDirs.length} director${watchDirs.length === 1 ? 'y' : 'ies'}`);
     console.log(`  \x1b[2m${'─'.repeat(40)}\x1b[0m`);
     console.log(`  Press Ctrl+C to stop\n`);
   });
@@ -1115,6 +1121,8 @@ function showHelp() {
 
     dev [root]                 Start a dev server with live-reload
       --port, -p <number>     Port number (default: 3100)
+      --no-intercept           Disable auto-resolution of zquery.min.js
+                               (serve the on-disk vendor copy instead)
 
     bundle [entry]             Bundle app ES modules into a single file
       --out, -o <path>         Output directory (default: dist/ next to index.html)

@@ -39,7 +39,7 @@ npx zquery dev --port 8080</code></pre>
   <p>The server starts watching for changes and the library is served automatically &mdash; no need to place <code>zQuery.min.js</code> anywhere in your project. Just reference it in your HTML as shown below and the dev server handles the rest.</p>
 
   <div class="docs-tip">
-    <strong>Tip:</strong> See the <a z-link="/docs/dev-workflow">Development Workflow</a> page for full details on live-reload, CSS hot-swap, SSE, and SPA fallback routing.
+    <strong>Tip:</strong> See the <a z-link="/docs/dev-workflow">Development Workflow</a> page for full details on live-reload, CSS hot-swap, and SSE.
   </div>
 
   <hr style="border:none;border-top:1px solid var(--border);margin:2rem 0;">
@@ -71,7 +71,7 @@ npx zquery dev --port 8080</code></pre>
   </div>
 
   <div class="docs-tip">
-    <strong>Dev server users:</strong> The <code>scripts/vendor/zQuery.min.js</code> path still works as the HTML reference &mdash; the dev server automatically intercepts the request and serves the latest library version from your npm install. No file needs to exist at that path during development.
+    <strong>Dev server users:</strong> The <code>scripts/vendor/zQuery.min.js</code> path still works as the HTML reference &mdash; the dev server automatically intercepts the request and serves the latest library version from your npm install. No file needs to exist at that path during development. To disable this and serve your own local copy instead, start the server with <code>--no-intercept</code>.
   </div>
 
   <h3>Boot Your App</h3>

@@ -37,9 +37,9 @@ npm run dev          # serves examples/starter-app (configured in package.json)<
   <table class="docs-table">
     <tr><th>File Type</th><th>Behavior</th></tr>
     <tr><td><code>.css</code></td><td><strong>CSS hot-swap</strong> &mdash; stylesheets are reloaded in-place without a full page refresh, preserving component state</td></tr>
-    <tr><td><code>.js</code>, <code>.html</code>, <code>.json</code>, <code>.svg</code></td><td><strong>Full reload</strong> &mdash; the browser performs a fresh page load to pick up the changes</td></tr>
+    <tr><td>Everything else</td><td><strong>Full reload</strong> &mdash; the browser performs a fresh page load to pick up the changes</td></tr>
   </table>
-  <p>Changes are also logged to your terminal so you can see exactly which files triggered a reload.</p>
+  <p>The watcher monitors <strong>all</strong> file types in your project tree (excluding <code>node_modules</code>, <code>.git</code>, <code>dist</code>, and <code>.cache</code>). Changes are also logged to your terminal so you can see exactly which files triggered a reload.</p>
 
   <h3>How Live-Reload Works (SSE)</h3>
   <p>The dev server uses <strong>Server-Sent Events (SSE)</strong> &mdash; a lightweight, one-way push channel from the server to the browser. Here&rsquo;s the flow:</p>
@@ -57,6 +57,10 @@ npm run dev          # serves examples/starter-app (configured in package.json)<
   <h3>SPA Fallback Routing</h3>
   <p>The dev server includes built-in SPA support. Any request that doesn&rsquo;t match an existing file is served <code>index.html</code>, so deep-link routes like <code>/docs/router</code> or <code>/about</code> work correctly during development without additional configuration.</p>
 
+  <div class="docs-tip">
+    <strong>Note:</strong> SPA routing itself is a <strong>client-side</strong> feature of the zQuery router &mdash; it works everywhere, including production servers and <code>file://</code> (via hash mode). The dev server simply provides the server-side fallback so you don&rsquo;t need to configure Apache/Nginx rewrite rules during development. See the <a z-link="/docs/router">Router</a> docs and <a href="https://github.com/tonywied17/zero-query#production-deployment" target="_blank" rel="noopener">Production Deployment</a> in the README for server config examples.
+  </div>
+
   <h3>Recommended Workflow</h3>
   <div class="docs-callout">
     <strong>Summary:</strong> Use <code>zquery dev</code> as your primary development tool. It gives you the fastest feedback loop &mdash; no build step, instant reload. Only run <code>zquery bundle</code> when you&rsquo;re ready to deploy or distribute a production build.
@@ -65,6 +69,7 @@ npm run dev          # serves examples/starter-app (configured in package.json)<
     <tr><th>Task</th><th>Command</th></tr>
     <tr><td>Develop &amp; debug</td><td><code>npx zquery dev</code></td></tr>
     <tr><td>Develop with custom port</td><td><code>npx zquery dev --port 8080</code></td></tr>
+    <tr><td>Use local zQuery version</td><td><code>npx zquery dev --no-intercept</code></td></tr>
     <tr><td>Bundle for production</td><td><code>npx zquery bundle</code></td></tr>
     <tr><td>Build library only</td><td><code>npx zquery build</code></td></tr>
   </table>

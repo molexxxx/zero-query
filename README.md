@@ -50,7 +50,7 @@ cd my-app
 npx zquery dev
 ```
 
-The `create` command generates a ready-to-run project with `index.html`, a router, two components, and styles. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on JS/HTML changes, and handles SPA fallback routing.
+The `create` command generates a ready-to-run project with `index.html`, a router, two components, and styles. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
 
 ### Alternative: Manual Setup (No npm)
 
