@@ -1,6 +1,6 @@
 # zQuery (zeroQuery) — Full API Reference
 
-Complete API documentation for every module, method, option, and type in zQuery. All examples assume the global `$` is available via the built `zQuery.min.js` bundle (the recommended ES module setup). If using the optional [CLI bundler](#cli), the same API is available — the bundler simply concatenates your ES modules into a single file.
+Complete API documentation for every module, method, option, and type in zQuery. All examples assume the global `$` is available via the built `zQuery.min.js` bundle. For getting started, project setup, the dev server, and the CLI bundler, see [README.md](README.md).
 
 > **Editor Support:** Install the [zQuery for VS Code](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code) extension for autocomplete, hover docs, directive support, and 55+ code snippets.
 
@@ -61,6 +61,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Storage Wrappers](#storage-wrappers)
   - [Event Bus](#event-bus)
 - [Global API](#global-api)
+- [ES Module Exports](#es-module-exports-for-npmbundler-usage)
 
 ---
 
@@ -766,6 +767,8 @@ $.component('docs-page', {
     default: 'getting-started',
     items: [
       'getting-started',
+      { id: 'dev-workflow', label: 'Development' },
+      { id: 'cli-bundler', label: 'CLI Bundler' },
       'project-structure',
       { id: 'selectors', label: 'Selectors & DOM' },
       'components',
@@ -1620,7 +1623,7 @@ $.bus.on('cart:updated', (data) => {
 | Property/Method | Description |
 | --- | --- |
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
-| `$.version` | Library version string (e.g. `'0.1.0'`). |
+| `$.version` | Library version string (e.g. `'0.2.5'`). |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |
 | `window.zQuery` | Global alias (auto-set in browser). |
@@ -1646,129 +1649,4 @@ import {
 } from '@tonywied17/zero-query';
 ```
 
----
 
-## CLI
-
-The `zquery` CLI is a zero-dependency Node.js tool included in the `zero-query` npm package. It provides three commands: a dev server with live-reload, an app bundler, and a library builder.
-
-### Installation
-
-```bash
-npm install zero-query --save-dev
-```
-
-### Dev Server
-
-Start a development server with automatic live-reload:
-
-```bash
-# Start dev server (auto-detects index.html in cwd)
-npx zquery dev
-
-# Serve a specific project folder
-npx zquery dev path/to/my-app
-
-# Custom port (default: 3100)
-npx zquery dev --port 8080
-```
-
-The dev server provides:
-- **SPA fallback routing** — all non-file requests serve `index.html`
-- **Live reload** — browser refreshes automatically when `.js`, `.html`, `.json`, or `.svg` files change
-- **CSS hot-swap** — `.css` changes are injected without a full page reload
-- **Change logging** — file changes are logged to the terminal with timestamps
-
-**How it works:** A tiny SSE (Server-Sent Events) client is injected into the served HTML at runtime. A file watcher monitors your project and pushes reload events to the browser over the SSE connection. Your source files are never modified — the injection only happens in the HTTP response.
-
-| Option | Short | Description |
-| --- | --- | --- |
-| `--port <number>` | `-p` | Port number (default: `3100`) |
-
-### Bundling
-
-```bash
-# From inside your project (auto-detects entry from index.html)
-npx zquery bundle
-
-# Or point to an entry from anywhere
-npx zquery bundle path/to/scripts/app.js
-```
-
-Everything is automatic: the bundler finds your entry point, embeds the zQuery library, resolves all imports, inlines external templates, rewrites `index.html`, and copies assets into `dist/` next to your HTML file.
-
-Output:
-```
-dist/
-  server/                   ← deploy to your web server
-    index.html              ← has <base href="/"> for SPA deep routes
-    z-app.a1b2c3d4.js      ← readable bundle (library + app + templates)
-    z-app.a1b2c3d4.min.js  ← minified bundle
-    styles/                 ← copied assets
-  local/                    ← open from disk (file://)
-    index.html              ← relative paths, no <base> tag
-    z-app.a1b2c3d4.js      ← same bundle
-    ...                     ← same assets
-```
-
-**`server/`** includes `<base href="/">` so deep-route refreshes resolve assets from the site root. **`local/`** omits it so paths resolve relative to the HTML file — works on `file://` with zero console errors.
-
-### Bundle Options
-
-| Flag | Short | Description |
-| --- | --- | --- |
-| `--out <path>` | `-o` | Custom output directory (default: `dist/` next to `index.html`) |
-| `--html <file>` | — | Use a specific HTML file instead of the auto-detected one |
-| `--watch` | `-w` | Watch source files and rebuild on changes |
-
-### Building the Library
-
-If you're working on zQuery itself and need to rebuild `dist/zQuery.min.js`:
-
-```bash
-npx zquery build                # one-time build
-```
-
-> **Note:** `npx zquery build` must be run from the zero-query project root (where `src/` and `index.js` live). If you have a `build` script in your `package.json`, `npm run build` will handle the working directory automatically.
-
-### What the Bundler Does
-
-| Step | Description |
-| --- | --- |
-| **Entry detection** | Reads `index.html` for `<script type="module" src="...">`, or falls back to `scripts/app.js`, `app.js`, etc. |
-| **Import graph** | Recursively resolves all `import` statements and topologically sorts dependencies (leaves first) |
-| **Module stripping** | Removes `import`/`export` keywords, keeps declarations — output is plain browser JS wrapped in an IIFE |
-| **Library embedding** | Finds `zquery.min.js` in common locations or auto-builds it from the package source |
-| **Template inlining** | Detects `templateUrl`, `styleUrl`, and `pages` configs; inlines the referenced HTML/CSS so `file://` works |
-| **HTML rewriting** | Replaces `<script type="module">` with the bundle, removes the standalone library tag, produces two output directories: `dist/server/` (with `<base href="/">`) and `dist/local/`(relative paths for `file://`). Assets are copied into both. |
-| **Minification** | Produces both readable and minified builds with content-hashed filenames |
-
-### Automatic Transformations
-
-| Source | Result |
-| --- | --- |
-| `import ... from './x.js'` | Removed (code is concatenated in dependency order) |
-| `import './x.js'` | Removed (side-effect import) |
-| `export default ...` | `export default` removed, declaration kept |
-| `export const` / `function` / `class` | `export` removed, declaration kept |
-| `export { ... }` | Entire statement removed |
-| `import.meta.url` | Replaced with `new URL('<relative-path>', document.baseURI).href` |
-
-### Examples
-
-```bash
-# Start dev server with live-reload
-npx zquery dev
-
-# Bundle your app (auto-detects everything)
-npx zquery bundle
-
-# Specify entry explicitly
-npx zquery bundle scripts/app.js
-
-# Custom output directory
-npx zquery bundle -o build/
-
-# Watch mode (rebuild bundle on changes)
-npx zquery bundle --watch
-```

@@ -1,6 +1,11 @@
   <h2>Development Workflow</h2>
   <p>zQuery is designed for a <strong>fast, zero-build development experience</strong>. During development you work with standard ES modules directly in the browser &mdash; no transpiler, no bundler, no waiting. The CLI includes a purpose-built <strong>dev server with live-reload</strong> so your changes appear instantly.</p>
 
+  <h3>Installation</h3>
+  <p>The dev server is included in the <code>zero-query</code> npm package. Install it as a dev dependency:</p>
+  <pre><code class="language-bash">npm install zero-query --save-dev</code></pre>
+  <p>This gives you access to the <code>npx zquery</code> CLI, which powers both the dev server and the <a z-link="/docs/cli-bundler">CLI Bundler</a>.</p>
+
   <h3>Starting the Dev Server</h3>
   <p>From your project directory (the folder containing <code>index.html</code>), run:</p>
   <pre><code class="language-bash"># Start the dev server (default port 3100)
