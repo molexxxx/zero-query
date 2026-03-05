@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.3.6
+ * zQuery (zeroQuery) v0.3.7
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -1534,9 +1534,9 @@ function style(urls, opts = {}) {
 class Router {
   constructor(config = {}) {
     this._el = null;
-    // Auto-detect: file:// protocol can't use pushState, fall back to hash
+    // file:// protocol can't use pushState — always force hash mode
     const isFile = typeof location !== 'undefined' && location.protocol === 'file:';
-    this._mode = config.mode || (isFile ? 'hash' : 'history');
+    this._mode = isFile ? 'hash' : (config.mode || 'history');
 
     // Base path for sub-path deployments
     // Priority: explicit config.base → window.__ZQ_BASE → <base href> tag
@@ -2630,7 +2630,7 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.3.6';
+$.version = '0.3.7';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

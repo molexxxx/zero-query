@@ -1117,7 +1117,7 @@ Create and activate a client-side SPA router.
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `el` | `string \| Element` | — | Outlet element where route components are rendered |
-| `mode` | `'history' \| 'hash'` | `'history'` | Routing mode. Hash mode uses `#/path`. |
+| `mode` | `'history' \| 'hash'` | `'history'` | Routing mode. Hash mode uses `#/path`. **Note:** On `file://` protocol, hash mode is always forced regardless of this setting (pushState cannot work on `file://`). |
 | `base` | `string` | `''` | Base path prefix (e.g. `'/my-app'`). Stripped from path matching. **Auto-detected** from `<base href>` if not set (also checks `window.__ZQ_BASE`). |
 | `routes` | `Array<RouteObject>` | `[]` | Initial route definitions |
 | `fallback` | `string` | `null` | Component name to render when no route matches (404) |

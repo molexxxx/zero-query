@@ -22,9 +22,9 @@ import { mount, destroy } from './component.js';
 class Router {
   constructor(config = {}) {
     this._el = null;
-    // Auto-detect: file:// protocol can't use pushState, fall back to hash
+    // file:// protocol can't use pushState — always force hash mode
     const isFile = typeof location !== 'undefined' && location.protocol === 'file:';
-    this._mode = config.mode || (isFile ? 'hash' : 'history');
+    this._mode = isFile ? 'hash' : (config.mode || 'history');
 
     // Base path for sub-path deployments
     // Priority: explicit config.base → window.__ZQ_BASE → <base href> tag
