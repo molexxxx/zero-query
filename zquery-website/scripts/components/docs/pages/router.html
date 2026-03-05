@@ -62,6 +62,7 @@
     <tr><td><code>go</code></td><td><code>go(n)</code></td><td><code>history.go(n)</code> — negative values go back, positive go forward</td></tr>
     <tr><td><code>add</code></td><td><code>add(route)</code></td><td>Dynamically add a route definition at runtime</td></tr>
     <tr><td><code>remove</code></td><td><code>remove(path)</code></td><td>Remove a route by path string</td></tr>
+    <tr><td><code>resolve</code></td><td><code>resolve(path)</code></td><td>Resolve an app-relative path to a full URL path (including base). Useful for programmatic link generation.</td></tr>
     <tr><td><code>destroy</code></td><td><code>destroy()</code></td><td>Tear down the router: destroy mounted component, clear routes/guards/listeners</td></tr>
   </table>
   <pre><code class="language-javascript">router.navigate('/user/42');                    // push
@@ -147,6 +148,7 @@ unsub();</code></pre>
     <tr><td><code>router.current</code></td><td><code>{ route, params, query, path } | null</code></td><td>Full current route state</td></tr>
     <tr><td><code>router.path</code></td><td><code>string</code></td><td>Current path (base-stripped in history mode)</td></tr>
     <tr><td><code>router.query</code></td><td><code>Object</code></td><td>Current parsed query parameters</td></tr>
+    <tr><td><code>router.base</code></td><td><code>string</code></td><td>The resolved base path (from config, <code>window.__ZQ_BASE</code>, or <code>&lt;base href&gt;</code>)</td></tr>
   </table>
   <pre><code class="language-javascript">// Check current route programmatically
 if (router.path === '/admin') { /* ... */ }

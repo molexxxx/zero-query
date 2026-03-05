@@ -452,16 +452,18 @@ $.component('my-dashboard', {
   <p>Directives are processed in a specific order during each render cycle:</p>
   <ol>
     <li><code>z-for</code> &mdash; list expansion (pre-DOM, string level)</li>
+    <li><code>z-pre</code> &mdash; skip directive processing (subtree exempt)</li>
     <li><code>z-if</code> / <code>z-else-if</code> / <code>z-else</code> &mdash; conditional removal</li>
     <li><code>z-show</code> &mdash; visibility toggle</li>
     <li><code>z-bind:</code> / <code>:</code> &mdash; dynamic attributes</li>
     <li><code>z-class</code> &mdash; dynamic classes</li>
     <li><code>z-style</code> &mdash; dynamic styles</li>
-    <li><code>z-html</code> / <code>z-text</code> &mdash; content injection</li>
+    <li><code>z-html</code> &mdash; HTML injection</li>
+    <li><code>z-text</code> &mdash; safe text binding</li>
+    <li><code>z-cloak</code> &mdash; attribute removal</li>
     <li><code>@event</code> / <code>z-on:</code> &mdash; event binding</li>
     <li><code>z-ref</code> &mdash; element references</li>
     <li><code>z-model</code> &mdash; two-way binding</li>
-    <li><code>z-cloak</code> &mdash; attribute removal</li>
   </ol>
 
   <div class="docs-tip">

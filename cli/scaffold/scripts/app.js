@@ -10,6 +10,7 @@ import './components/counter.js';
 import './components/todos.js';
 import './components/api-demo.js';
 import './components/about.js';
+import './components/contacts/contacts.js';
 import './components/not-found.js';
 import { routes } from './routes.js';
 

@@ -39,7 +39,7 @@ $.component('home-page', {
           </p>
           <div style="margin-top:1.25rem;display:flex;justify-content:center;gap:0.75rem;flex-wrap:wrap;">
             <span class="badge">v${$.version}</span>
-            <span class="badge" style="background:#238636;">~46 KB minified</span>
+            <span class="badge" style="background:#238636;">~54 KB minified</span>
             <span class="badge" style="background:#30363d;">0 dependencies</span>
           </div>
         </div>

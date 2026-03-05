@@ -73,6 +73,12 @@ $.component('home-page', {
         </div>
 
         <div class="card">
+          <h3>📇 Contacts</h3>
+          <p>External templates &amp; styles via <code>templateUrl</code> / <code>styleUrl</code>. Directives showcase.</p>
+          <a z-link="/contacts" class="btn btn-outline">Try It →</a>
+        </div>
+
+        <div class="card">
           <h3>🌐 API Demo</h3>
           <p>Fetch data with <code>$.get()</code>, loading states, and <code>$.escapeHtml()</code>.</p>
           <a z-link="/api" class="btn btn-outline">Try It →</a>

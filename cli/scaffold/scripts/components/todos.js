@@ -1,20 +1,23 @@
 // scripts/components/todos.js — todo list with global store
 //
 // Demonstrates: $.getStore, store.dispatch, store.subscribe,
-//               store getters, z-model, z-ref, @click with args,
-//               mounted/destroyed lifecycle, $.bus toast, $.debounce,
-//               conditional rendering, list rendering
+//               store getters, z-model, z-ref, z-class, z-for,
+//               z-if, z-show, @click with args, @submit.prevent,
+//               mounted/destroyed lifecycle, $.bus toast, $.debounce
 
 $.component('todos-page', {
   state: () => ({
     newTodo: '',
     filter: 'all',      // 'all' | 'active' | 'done'
     search: '',
+    filtered: [],        // computed in render() for z-for access
+    total: 0,
+    done: 0,
+    pending: 0,
   }),
 
   mounted() {
     const store = $.getStore('main');
-    // Subscribe to store changes — re-render when todos update
     this._unsub = store.subscribe(() => this.setState({}));
 
     // $.debounce — debounced search filter (300ms)
@@ -24,15 +27,13 @@ $.component('todos-page', {
   },
 
   destroyed() {
-    // Clean up subscription to avoid memory leaks
     if (this._unsub) this._unsub();
   },
 
   addTodo() {
     const text = this.state.newTodo.trim();
     if (!text) return;
-    const store = $.getStore('main');
-    store.dispatch('addTodo', text);
+    $.getStore('main').dispatch('addTodo', text);
     this.state.newTodo = '';
     $.bus.emit('toast', { message: 'Todo added!', type: 'success' });
   },
@@ -64,23 +65,23 @@ $.component('todos-page', {
     const todos = store.state.todos;
     const { filter, search } = this.state;
 
-    // Filter todos
-    let filtered = todos;
-    if (filter === 'active') filtered = todos.filter(t => !t.done);
-    if (filter === 'done')   filtered = todos.filter(t => t.done);
+    // Compute filtered list and store stats into state for directive access
+    let list = todos;
+    if (filter === 'active') list = todos.filter(t => !t.done);
+    if (filter === 'done')   list = todos.filter(t => t.done);
     if (search) {
       const q = search.toLowerCase();
-      filtered = filtered.filter(t => t.text.toLowerCase().includes(q));
+      list = list.filter(t => t.text.toLowerCase().includes(q));
     }
-
-    const total   = store.getters.todoCount;
-    const done    = store.getters.doneCount;
-    const pending = store.getters.pendingCount;
+    this.state.filtered = list;
+    this.state.total    = store.getters.todoCount;
+    this.state.done     = store.getters.doneCount;
+    this.state.pending  = store.getters.pendingCount;
 
     return `
       <div class="page-header">
         <h1>Todos</h1>
-        <p class="subtitle">Global store with <code>$.store()</code>, actions, getters, and <code>subscribe()</code>.</p>
+        <p class="subtitle">Global store with <code>$.store()</code>, <code>z-for</code>, <code>z-class</code>, <code>z-if</code>, and <code>z-show</code>.</p>
       </div>
 
       <div class="card">
@@ -99,34 +100,28 @@ $.component('todos-page', {
       <div class="card">
         <div class="todo-toolbar">
           <div class="todo-filters">
-            <button class="btn btn-sm ${filter === 'all' ? 'btn-primary' : 'btn-ghost'}" @click="setFilter('all')">All (${total})</button>
-            <button class="btn btn-sm ${filter === 'active' ? 'btn-primary' : 'btn-ghost'}" @click="setFilter('active')">Active (${pending})</button>
-            <button class="btn btn-sm ${filter === 'done' ? 'btn-primary' : 'btn-ghost'}" @click="setFilter('done')">Done (${done})</button>
+            <button class="btn btn-sm" z-class="{'btn-primary': filter === 'all', 'btn-ghost': filter !== 'all'}" @click="setFilter('all')">All (${this.state.total})</button>
+            <button class="btn btn-sm" z-class="{'btn-primary': filter === 'active', 'btn-ghost': filter !== 'active'}" @click="setFilter('active')">Active (${this.state.pending})</button>
+            <button class="btn btn-sm" z-class="{'btn-primary': filter === 'done', 'btn-ghost': filter !== 'done'}" @click="setFilter('done')">Done (${this.state.done})</button>
           </div>
           <input type="text" placeholder="Search…" class="input input-sm" @input="onSearch" value="${$.escapeHtml(this.state.search)}" />
         </div>
 
-        ${filtered.length === 0 ? `
-          <div class="empty-state">
-            <p>${total === 0 ? 'No todos yet — add one above!' : 'No matching todos.'}</p>
-          </div>
-        ` : `
-          <ul class="todo-list">
-            ${filtered.map(t => `
-              <li class="todo-item ${t.done ? 'done' : ''}">
-                <button class="todo-check" @click="toggleTodo('${t.id}')"></button>
-                <span class="todo-text">${$.escapeHtml(t.text)}</span>
-                <button class="todo-remove" @click="removeTodo('${t.id}')">✕</button>
-              </li>
-            `).join('')}
-          </ul>
-        `}
+        <div z-if="filtered.length === 0" class="empty-state">
+          <p>${this.state.total === 0 ? 'No todos yet — add one above!' : 'No matching todos.'}</p>
+        </div>
 
-        ${done > 0 ? `
-          <div class="todo-footer">
-            <button class="btn btn-ghost btn-sm" @click="clearCompleted">Clear completed (${done})</button>
-          </div>
-        ` : ''}
+        <ul z-else class="todo-list">
+          <li z-for="t in filtered" class="todo-item {{t.done ? 'done' : ''}}">
+            <button class="todo-check" @click="toggleTodo('{{t.id}}')"></button>
+            <span class="todo-text">{{$.escapeHtml(t.text)}}</span>
+            <button class="todo-remove" @click="removeTodo('{{t.id}}')">✕</button>
+          </li>
+        </ul>
+
+        <div class="todo-footer" z-show="done > 0">
+          <button class="btn btn-ghost btn-sm" @click="clearCompleted">Clear completed (${this.state.done})</button>
+        </div>
       </div>
     `;
   }

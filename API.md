@@ -35,7 +35,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [$.mountAll()](#mountallroot)
   - [$.getInstance()](#getinstancetarget)
   - [$.destroy()](#destroytarget)
-  - [$.components()](#components)
+  - [$.components() / getRegistry()](#components--getregistry)
   - [$.style()](#styleurls)
 - [Router](#router)
   - [$.router() — createRouter](#routerconfig)
@@ -83,6 +83,8 @@ zQuery gives you a full set of selectors for every common lookup pattern — by 
 | `$.tag(name)` | `Array<Element>` | All elements of a tag — `getElementsByTagName` as array |
 | `$.children(parentId)` | `Array<Element>` | Direct children of `#parentId` as array |
 | `$.all(selector)` | `ZQueryCollection` | All matches via `querySelectorAll`, wrapped in a chainable collection |
+
+> `queryAll` is the ES module export name for `$.all()` — they are identical. Use `queryAll` in `import { queryAll } from '...'` contexts.
 
 > **Which one should I use?** Reach for the specific helper first — `$.id()`, `$.class()`, `$.tag()` — they're shorter, faster, and make your intent obvious. Use `$()` for complex CSS selectors or scoped queries. Use `$.all()` only when you actually need to operate on **multiple elements** at once.
 
@@ -853,33 +855,185 @@ $.component('install-wizard', {
 
 ### Directives
 
-Used inside component `render()` HTML templates:
+Directives are special attributes used inside component `render()` HTML templates. They're processed automatically on each render, giving you declarative control over the DOM without manual queries.
 
-#### `@event` — Event Binding
+**Processing order:** `z-for` → `z-pre` → `z-if`/`z-else-if`/`z-else` → `z-show` → `z-bind`/`:attr` → `z-class` → `z-style` → `z-html` → `z-text` → `z-cloak` → `@event`/`z-on` → `z-ref` → `z-model`
+
+#### `z-for` — List Rendering
+
+Expands at the string level (before innerHTML is set). Use `{{expression}}` for interpolation inside the loop body.
+
+| Form | Syntax | Description |
+| --- | --- | --- |
+| Array | `z-for="item in items"` | Iterates each element |
+| Array with index | `z-for="(item, i) in items"` | Destructured — `item` is value, `i` is index |
+| Number range | `z-for="n in 5"` | Produces 1, 2, 3, 4, 5 (1-based) |
+| Object | `z-for="(val, key) in obj"` | Iterates `Object.entries()` |
 
 ```html
-<!-- Simple method binding -->
-<button @click="increment">+1</button>
+<!-- Array -->
+<ul>
+  <li z-for="item in items">{{item.name}}</li>
+</ul>
 
-<!-- With arguments -->
-<button @click="remove(${item.id})">Delete</button>
-<button @click="setMode('edit')">Edit</button>
+<!-- Array with index -->
+<ol>
+  <li z-for="(todo, i) in todos">{{i + 1}}. {{todo.text}}</li>
+</ol>
 
-<!-- With modifiers -->
-<form @submit.prevent="save">...</form>
-<div @click.stop="toggle">...</div>
-<a @click.prevent.stop="navigate('home')">Home</a>
+<!-- Number range -->
+<span z-for="n in 5">Page {{n}} </span>
+
+<!-- Object iteration -->
+<div z-for="(val, key) in settings">{{key}}: {{val}}</div>
 ```
 
-**Supported argument types:** strings (`'value'` or `"value"`), numbers, booleans (`true`/`false`), `null`, state references (`state.key`).
+Nested `z-for` is supported — inner loops are processed first, then the parser recurses outward.
 
-**Supported modifiers:**
-- `.prevent` — calls `e.preventDefault()`
-- `.stop` — calls `e.stopPropagation()`
+#### `z-if` / `z-else-if` / `z-else` — Conditional Rendering
+
+Evaluates the expression. If truthy, the element is kept; if falsy, it's **removed from the DOM entirely**. Chain with immediate siblings:
+
+```html
+<div z-if="status === 'loading'">Loading...</div>
+<div z-else-if="status === 'error'">Something went wrong</div>
+<div z-else>Content here</div>
+```
+
+Only the first truthy branch is kept. All others are removed.
+
+#### `z-show` — Toggle Display
+
+Toggles `display: none` without removing the element from the DOM. Use when you need frequent toggling.
+
+```html
+<div z-show="isVisible">Now you see me</div>
+<p z-show="items.length === 0">No items yet.</p>
+```
+
+#### `z-bind` / `:attr` — Dynamic Attribute Binding
+
+Two equivalent syntaxes for binding any HTML attribute:
+
+```html
+<a z-bind:href="url">Link</a>
+<a :href="url">Link</a>              <!-- shorthand -->
+<img :src="imgPath" :alt="imgAlt">
+<button :disabled="isLoading">Submit</button>
+```
+
+- `false` / `null` / `undefined` → attribute is **removed**
+- `true` → boolean attribute (`<el disabled>`)
+- Any other value → attribute set to `String(val)`
+
+#### `z-class` — Dynamic Class Binding
+
+Accepts a string, array, or object:
+
+| Type | Example | Behavior |
+| --- | --- | --- |
+| String | `z-class="'active bold'"` | Splits on whitespace, adds each class |
+| Array | `z-class="['active', isOpen && 'open']"` | Adds truthy entries as classes |
+| Object | `z-class="{ active: isActive, disabled: !enabled }"` | Toggles each class based on its boolean value |
+
+```html
+<div z-class="{ active: isSelected, 'text-muted': !isEnabled }">...</div>
+```
+
+#### `z-style` — Dynamic Inline Styles
+
+Accepts a string or object:
+
+```html
+<div z-style="{ color: textColor, fontSize: size + 'px' }">Styled</div>
+<div z-style="'color:red;font-weight:bold'">Inline string</div>
+```
+
+Object keys use camelCase (`fontSize`, not `font-size`). String values are appended to existing `cssText`.
+
+#### `z-text` — Safe Text Binding
+
+Sets `el.textContent`. Does **not** parse HTML — safe by default.
+
+```html
+<span z-text="user.name"></span>
+<p z-text="message"></p>
+```
+
+#### `z-html` — HTML Injection
+
+Sets `el.innerHTML`. Use only with trusted content — caller is responsible for sanitization.
+
+```html
+<div z-html="richContent"></div>
+```
+
+#### `z-cloak` — Anti-FOUC
+
+Elements with `z-cloak` are hidden via a global style rule (`[z-cloak]{display:none!important}`) injected at load time. The attribute is removed after the component renders, preventing a flash of unrendered template content.
+
+```html
+<div z-cloak>{{content that would flash}}</div>
+```
+
+#### `z-pre` — Skip Directive Processing
+
+All elements inside a `[z-pre]` subtree are exempt from directive processing. Event bindings are also skipped.
+
+```html
+<div z-pre>
+  <!-- This template syntax is displayed as-is, not evaluated -->
+  <span z-if="show">This stays in the DOM literally</span>
+</div>
+```
+
+#### `@event` / `z-on:event` — Event Binding
+
+Two equivalent syntaxes:
+
+```html
+<button @click="increment">+1</button>
+<button z-on:click="increment">+1</button>    <!-- verbose form -->
+```
+
+Events are bound via delegation on the component root element.
+
+**With arguments:**
+
+```html
+<button @click="remove(${item.id})">Delete</button>
+<button @click="setMode('edit')">Edit</button>
+<button @click="doSomething($event, 'foo', 42)">Mixed args</button>
+```
+
+**Supported argument types:** strings (`'value'` or `"value"`), numbers, booleans (`true`/`false`), `null`, `$event` (native DOM event), state references (`state.key`).
+
+If no parentheses are used (e.g. `@click="handler"`), the native event is automatically passed as the first argument.
+
+**Event modifiers** are chained with dot syntax:
+
+| Modifier | Description |
+| --- | --- |
+| `.prevent` | Calls `e.preventDefault()` |
+| `.stop` | Calls `e.stopPropagation()` |
+| `.self` | Only fires if `e.target` is the element itself (not a child) |
+| `.once` | Handler fires only once, then is ignored |
+| `.capture` | Registers listener in capture phase |
+| `.passive` | Registers listener as passive |
+| `.debounce.{ms}` | Delays invocation until idle for `{ms}` ms (default 250). E.g. `@input.debounce.300="search"` |
+| `.throttle.{ms}` | Fires at most once per `{ms}` ms (default 250). E.g. `@scroll.throttle.100="onScroll"` |
+
+```html
+<form @submit.prevent="save">...</form>
+<div @click.stop.self="toggle">...</div>
+<input @input.debounce.300="search">
+<div @scroll.throttle.100="onScroll">...</div>
+<button @click.once="initialize">Init</button>
+```
 
 #### `z-model` — Two-Way Binding
 
-Creates a **reactive two-way sync** between a form element and a state property. When the user types or selects, the state updates and the rest of the template re-renders. Focus and cursor position are automatically preserved.
+Creates a reactive two-way sync between a form element and a state property. When the user types or selects, the state updates and the rest of the template re-renders. Focus and cursor position are automatically preserved.
 
 | Element / Type | Behavior |
 | --- | --- |
@@ -1007,13 +1161,17 @@ Get the component instance for a given element.
 
 Destroy the component at the given target.
 
-### `components()`
+### `components()` / `getRegistry()`
 
-Returns an object of all registered component definitions (for debugging).
+Returns an object of all registered component definitions (for debugging). Available as `$.components()` on the global `$`, or as `getRegistry` when using ES module imports.
 
 ```js
 console.log($.components());
 // { 'home-page': { render: ..., state: ..., ... }, 'app-counter': { ... } }
+
+// ES module equivalent:
+import { getRegistry } from '@tonywied17/zero-query';
+console.log(getRegistry());
 ```
 
 ### `style(urls)`
@@ -1152,6 +1310,7 @@ Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base hre
 | `beforeEach` | `beforeEach(fn)` | `this` | Add navigation guard. `fn(to, from)` — return `false` to cancel, `string` to redirect. |
 | `afterEach` | `afterEach(fn)` | `this` | Add post-navigation guard. |
 | `onChange` | `onChange(fn)` | `() => void` | Subscribe to route changes. Returns unsubscribe. `fn(to, from)`. |
+| `resolve` | `resolve(path)` | `string` | Resolve an app-relative path to a full URL path (including base). Useful for programmatic link generation. |
 | `destroy` | `destroy()` | — | Teardown router and mounted component. |
 
 ### Router Properties
@@ -1161,6 +1320,7 @@ Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base hre
 | `current` | `object \| null` | `{ route, params, query, path }` for the current route. |
 | `path` | `string` | Current path (with `base` stripped in history mode). |
 | `query` | `object` | Parsed query string as object. |
+| `base` | `string` | The resolved base path (from config, `window.__ZQ_BASE`, or `<base href>`). |
 
 ### Navigation Context
 
@@ -1468,7 +1628,7 @@ window.addEventListener('scroll', scroll);
 
 #### `$.pipe(...fns)`
 
-Left-to-right function composition.
+Left-to-right function composition. Each function receives the return value of the previous one. Functions can change the type along the pipeline.
 
 ```js
 const process = $.pipe(
@@ -1477,6 +1637,14 @@ const process = $.pipe(
   str => str.replace(/\s+/g, '-'),
 );
 process('  Hello World  ');  // 'hello-world'
+
+// Type-changing pipeline:
+const toLength = $.pipe(
+  (s) => s.trim(),           // string → string
+  (s) => s.split(','),       // string → string[]
+  (arr) => arr.length,       // string[] → number
+);
+toLength('a, b, c');  // 3
 ```
 
 #### `$.once(fn)`
@@ -1645,7 +1813,8 @@ $.bus.on('cart:updated', (data) => {
 | Property/Method | Description |
 | --- | --- |
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
-| `$.version` | Library version string (e.g. `'0.2.5'`). |
+| `$.version` | Library version string (e.g. `'0.4.1'`). |
+| `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |
 | `window.zQuery` | Global alias (auto-set in browser). |
@@ -1660,12 +1829,12 @@ When used as an ES module (not the built bundle), the library exports:
 import {
   $, zQuery, ZQueryCollection, queryAll,
   reactive, signal, computed, effect,
-  component, mount, mountAll, getInstance, destroy, style,
+  component, mount, mountAll, getInstance, destroy, getRegistry, style,
   createRouter, getRouter,
   createStore, getStore,
   http,
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, uuid,
+  escapeHtml, html, trust, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, bus,
 } from '@tonywied17/zero-query';

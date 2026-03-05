@@ -15,14 +15,14 @@
 
 </p>
 
-> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~45 KB minified browser bundle. Works out of the box with ES modules — no build step required. An optional CLI bundler is available for single-file distribution.**
+> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~54 KB minified browser bundle. Works out of the box with ES modules — no build step required. An optional CLI bundler is available for single-file distribution.**
 
 ## Features
 
 | Module | Highlights |
 | --- | --- |
 | **Core `$()`** | jQuery-like chainable selectors, traversal, DOM manipulation, events, animation |
-| **Components** | Reactive state, template literals, `@event` delegation, `z-model` two-way binding, scoped styles, lifecycle hooks |
+| **Components** | Reactive state, template literals, `@event` delegation (8 modifiers), `z-model` two-way binding, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`), scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks |
 | **Router** | History & hash mode, route params (`:id`), guards, lazy loading, `z-link` navigation |
 | **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions |
 | **HTTP** | Fetch wrapper with auto-JSON, interceptors, timeout/abort, base URL |
@@ -51,7 +51,7 @@ npx zquery dev my-app
 
 > **Tip:** Stay in the project root (where `node_modules` lives) instead of `cd`-ing into `my-app`. This keeps `index.d.ts` accessible to your IDE for full type/intellisense support.
 
-The `create` command generates a ready-to-run project with a sidebar layout, router, multiple components, and responsive styles. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
+The `create` command generates a ready-to-run project with a sidebar layout, router, multiple components (including a folder component with external template and styles), and responsive styles. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
 
 ### Alternative: Manual Setup (No npm)
 
@@ -61,7 +61,7 @@ If you prefer **zero tooling**, download `dist/zQuery.min.js` from the [GitHub r
 git clone https://github.com/tonywied17/zero-query.git
 cd zero-query
 npx zquery build
-# → dist/zQuery.min.js  (~45 KB)
+# → dist/zQuery.min.js  (~54 KB)
 ```
 
 ### Include in HTML
@@ -92,6 +92,7 @@ npx zquery build
 // scripts/app.js
 import './components/home.js';
 import './components/about.js';
+import './components/contacts/contacts.js';
 import { routes } from './routes.js';
 
 $.router({ el: '#app', routes, fallback: 'not-found' });
@@ -136,12 +137,17 @@ my-app/
       api-demo.js
       about.js
       not-found.js
+      contacts/           ← folder component (templateUrl + styleUrl)
+        contacts.js
+        contacts.html
+        contacts.css
   styles/
     styles.css
 ```
 
 - One component per file inside `components/`.
 - Names **must contain a hyphen** (Web Component convention): `home-page`, `app-counter`, etc.
+- Components with external templates or styles can use a subfolder (e.g. `contacts/contacts.js` + `contacts.html` + `contacts.css`).
 - `app.js` is the single entry point — import components, create the store, and boot the router.
 
 ---
@@ -237,11 +243,12 @@ location / {
 | `$.storage` `$.session` | Storage wrappers |
 | `$.bus` | Event bus |
 | `$.version` | Library version |
+| `$.meta` | Build metadata (populated by CLI bundler) |
 | `$.noConflict` | Release `$` global |
 
 | CLI Command | Description |
 | --- | --- |
-| `zquery create [dir]` | Scaffold a new project (index.html, scripts, styles) |
+| `zquery create [dir]` | Scaffold a new project (index.html, components, store, styles) |
 | `zquery dev [root]` | Dev server with live-reload (port 3100) |
 | `zquery bundle [entry]` | Bundle app into a single IIFE file |
 | `zquery build` | Build the zQuery library (`dist/zQuery.min.js`) |

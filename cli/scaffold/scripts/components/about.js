@@ -87,6 +87,18 @@ $.component('about-page', {
             <span>Two-way data binding and DOM element references</span>
           </div>
           <div class="feature-item">
+            <strong>templateUrl / styleUrl</strong>
+            <span>External HTML templates and CSS with auto-scoping (contacts page)</span>
+          </div>
+          <div class="feature-item">
+            <strong>z-if / z-for / z-show</strong>
+            <span>Structural directives for conditional &amp; list rendering</span>
+          </div>
+          <div class="feature-item">
+            <strong>z-bind / z-class / z-style</strong>
+            <span>Dynamic attributes, classes, and inline styles</span>
+          </div>
+          <div class="feature-item">
             <strong>$.on()</strong>
             <span>Global delegated event listeners for the hamburger menu</span>
           </div>

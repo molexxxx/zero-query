@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.3.9
+ * @version 0.4.1
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -121,8 +121,8 @@ export class ZQueryCollection {
   data(key: string, value: any): this;
 
   // -- CSS & Dimensions ----------------------------------------------------
-  /** Get computed style property of the first element. */
-  css(property: string): string;
+  /** Get computed style property of the first element, or `undefined` if empty. */
+  css(property: string): string | undefined;
   /** Set inline styles on all elements. */
   css(props: Partial<CSSStyleDeclaration>): this;
 
@@ -139,18 +139,18 @@ export class ZQueryCollection {
   position(): { top: number; left: number } | null;
 
   // -- Content -------------------------------------------------------------
-  /** Get `innerHTML` of the first element. */
-  html(): string;
+  /** Get `innerHTML` of the first element, or `undefined` if empty. */
+  html(): string | undefined;
   /** Set `innerHTML` on all elements. */
   html(content: string): this;
 
-  /** Get `textContent` of the first element. */
-  text(): string;
+  /** Get `textContent` of the first element, or `undefined` if empty. */
+  text(): string | undefined;
   /** Set `textContent` on all elements. */
   text(content: string): this;
 
-  /** Get value of the first input/select/textarea. */
-  val(): string;
+  /** Get value of the first input/select/textarea, or `undefined` if empty. */
+  val(): string | undefined;
   /** Set value on all inputs. */
   val(value: string): this;
 
@@ -393,8 +393,14 @@ interface ComponentInstance {
   /** Reactive state proxy. Mutating triggers re-render. */
   state: Record<string, any> & ReactiveProxy;
 
-  /** Frozen props passed from parent / router. */
-  readonly props: Readonly<Record<string, any>>;
+  /** Frozen props passed from parent / router.
+   * When mounted by the router, includes `$route` (NavigationContext), `$query`, and `$params`.
+   */
+  readonly props: Readonly<Record<string, any> & {
+    $route?: NavigationContext;
+    $query?: Record<string, string>;
+    $params?: Record<string, string>;
+  }>;
 
   /** Map of `z-ref` name → DOM element. Populated after each render. */
   refs: Record<string, Element>;
@@ -595,6 +601,8 @@ type EventModifier =
   | `debounce.${number}`
   | `throttle`
   | `throttle.${number}`;
+
+export { EventModifier };
 
 
 // ---------------------------------------------------------------------------
@@ -922,7 +930,11 @@ export function debounce<T extends (...args: any[]) => any>(fn: T, ms?: number):
 export function throttle<T extends (...args: any[]) => any>(fn: T, ms?: number): (...args: Parameters<T>) => void;
 
 /** Left-to-right function composition. */
-export function pipe<T>(...fns: Array<(value: T) => T>): (input: T) => T;
+export function pipe<A, B>(f1: (a: A) => B): (input: A) => B;
+export function pipe<A, B, C>(f1: (a: A) => B, f2: (b: B) => C): (input: A) => C;
+export function pipe<A, B, C, D>(f1: (a: A) => B, f2: (b: B) => C, f3: (c: C) => D): (input: A) => D;
+export function pipe<A, B, C, D, E>(f1: (a: A) => B, f2: (b: B) => C, f3: (c: C) => D, f4: (d: D) => E): (input: A) => E;
+export function pipe<T>(...fns: Array<(value: any) => any>): (input: T) => any;
 
 /**
  * Returns a function that only executes once, caching the result.
@@ -1171,7 +1183,11 @@ interface ZQueryStatic {
 /** The main `$` / `zQuery` function + namespace. */
 export const $: ZQueryStatic;
 export { $ as zQuery };
-export const queryAll: typeof ZQueryCollection;
+
+/** Collection selector function — same as `$.all()`. */
+export function queryAll(selector: string, context?: string | Element): ZQueryCollection;
+export function queryAll(element: Element): ZQueryCollection;
+export function queryAll(nodeList: NodeList | HTMLCollection | Element[]): ZQueryCollection;
 
 export default $;
 

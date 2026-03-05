@@ -19,6 +19,10 @@ npx zquery dev my-app</code></pre>
       api-demo.js
       about.js
       not-found.js
+      contacts/              &larr; folder component (templateUrl + styleUrl)
+        contacts.js           &larr; component definition
+        contacts.html         &larr; external template
+        contacts.css          &larr; scoped stylesheet
   styles/
     styles.css               &larr; global styles (linked in index.html via &lt;link rel&gt;)</code></pre>
 
@@ -26,7 +30,7 @@ npx zquery dev my-app</code></pre>
   <table class="docs-table">
     <tr><th>Rule</th><th>Reason</th></tr>
     <tr><td>Place <code>zQuery.min.js</code> in <code>vendor/</code></td><td>Keeps third-party code separate from your app code</td></tr>
-    <tr><td>One component per file in <code>components/</code></td><td>Easy to find, easy to delete; filename matches component name (e.g. <code>docs/docs.js</code> not <code>docs/index.js</code>)</td></tr>
+    <tr><td>One component per file in <code>components/</code></td><td>Easy to find, easy to delete; filename matches component name (e.g. <code>docs/docs.js</code> not <code>docs/index.js</code>). Components with external templates or styles can use a subfolder (e.g. <code>contacts/contacts.js</code> + <code>contacts.html</code> + <code>contacts.css</code>).</td></tr>
     <tr><td>Component names <strong>must contain a hyphen</strong></td><td>Required by the HTML custom elements spec (e.g. <code>home-page</code>, <code>app-counter</code>). Single-word names like <code>counter</code> will not work.</td></tr>
     <tr><td>Store and routes at <code>scripts/</code> root</td><td>Shared across all components; imported from <code>app.js</code></td></tr>
     <tr><td><code>app.js</code> is the single entry point</td><td>Imports components, creates store, boots router — keeps orchestration in one place</td></tr>    <tr><td>Use <code>&lt;link rel="stylesheet"&gt;</code> in <code>index.html</code> for global styles</td><td>Most reliable FOUC prevention &mdash; browser loads CSS before first paint. Use <code>$.style()</code> to dynamically load additional CSS files (themes, overrides). Use component <code>styleUrl</code> for scoped styles.</td></tr>    <tr><td>Global <code>$</code> — no per-file imports</td><td>Loaded via the script tag before modules, available everywhere</td></tr>

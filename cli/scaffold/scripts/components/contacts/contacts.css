@@ -1,0 +1,231 @@
+/* contacts.css — scoped styles for contacts-page component
+ *
+ * Loaded via styleUrl — these styles are automatically scoped
+ * to the contacts-page component by zQuery.
+ */
+
+/* -- Toolbar -- */
+.contacts-toolbar-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* -- Add Form -- */
+.contacts-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.contacts-form .input:first-child {
+  grid-column: 1 / -1;
+}
+
+.contacts-form .btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+/* -- Count -- */
+.contacts-count {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* -- List -- */
+.contacts-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.contacts-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.contacts-item:hover {
+  background: var(--bg-hover);
+}
+
+.contacts-item.selected {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.contacts-item.is-favorite {
+  border-left: 3px solid var(--accent);
+}
+
+/* -- Status dot -- */
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+
+.status-online  { background: var(--success); }
+.status-away    { background: var(--info); }
+.status-offline { background: var(--text-muted); }
+
+/* -- Contact info -- */
+.contacts-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.contacts-info strong {
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contacts-info small {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* -- Role badge -- */
+.role-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 99px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.role-developer {
+  background: rgba(96, 165, 250, 0.15);
+  color: #60a5fa;
+}
+
+.role-designer {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+}
+
+.role-manager {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+}
+
+.role-qa {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+
+/* -- Favorite button -- */
+.fav-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0.2rem;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.fav-btn:hover {
+  transform: scale(1.2);
+}
+
+.fav-btn.is-fav {
+  color: var(--accent);
+}
+
+/* -- Detail panel -- */
+.contact-detail {
+  border-left: 3px solid var(--accent);
+  animation: slide-in 0.2s ease;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.detail-header h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.15rem;
+}
+
+.detail-header .muted {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.detail-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* -- Confirm group -- */
+.confirm-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.confirm-text {
+  font-size: 0.82rem;
+  color: var(--danger);
+  font-weight: 500;
+}
+
+/* -- Animation -- */
+@keyframes slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* -- Responsive -- */
+@media (max-width: 768px) {
+  .contacts-toolbar-row {
+    flex-direction: column;
+  }
+
+  .contacts-form {
+    grid-template-columns: 1fr;
+  }
+
+  .contacts-item {
+    flex-wrap: wrap;
+  }
+
+  .role-badge {
+    order: 10;
+    margin-left: calc(10px + 0.75rem);
+  }
+
+  .detail-header {
+    flex-direction: column;
+  }
+}

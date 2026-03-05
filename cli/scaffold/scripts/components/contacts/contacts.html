@@ -1,0 +1,130 @@
+<!--
+  contacts.html — external template for contacts-page component
+
+  This template is fetched via templateUrl and uses {{expression}} syntax
+  for data binding. All zQuery directives work here: z-if, z-else,
+  z-for, z-show, z-bind, z-class, z-style, z-text, z-model, z-ref,
+  z-cloak, @click, @submit.prevent, etc.
+
+  Expressions have access to `state` and `props` automatically.
+  Inside z-for loops, use {{item.prop}} for per-item values.
+-->
+<div class="page-header" z-cloak>
+  <h1>Contacts</h1>
+  <p class="subtitle">
+    External template &amp; styles via <code>templateUrl</code> / <code>styleUrl</code>.
+    Directives: <code>z-if</code>, <code>z-for</code>, <code>z-show</code>,
+    <code>z-bind</code>, <code>z-class</code>, <code>z-model</code>, and more.
+  </p>
+</div>
+
+<!-- Toolbar: add button -->
+<div class="card contacts-toolbar">
+  <div class="contacts-toolbar-row">
+    <span class="contacts-count" z-if="contacts.length > 0">
+      <strong z-text="contacts.length"></strong> contacts
+      <span z-show="totalAdded > 0"> · <span z-text="totalAdded"></span> added this session</span>
+    </span>
+    <span class="contacts-count" z-else>No contacts yet</span>
+    <button class="btn btn-primary" @click="toggleForm">
+      <span z-if="showForm">✕ Cancel</span>
+      <span z-else>+ Add Contact</span>
+    </button>
+  </div>
+
+  <!-- Add contact form — toggled via z-show -->
+  <form class="contacts-form" z-show="showForm" @submit.prevent="addContact">
+    <input
+      type="text"
+      z-model="newName"
+      z-trim
+      placeholder="Full name"
+      class="input"
+    />
+    <input
+      type="email"
+      z-model="newEmail"
+      z-trim
+      placeholder="Email address"
+      class="input"
+    />
+    <select z-model="newRole" class="input">
+      <option value="Developer">Developer</option>
+      <option value="Designer">Designer</option>
+      <option value="Manager">Manager</option>
+      <option value="QA">QA</option>
+    </select>
+    <button type="submit" class="btn btn-primary">Save Contact</button>
+  </form>
+</div>
+
+<!-- Contact count -->
+<div class="card" z-if="contacts.length > 0">
+  <!-- Contacts list — z-for renders each item -->
+  <ul class="contacts-list">
+    <li
+      z-for="contact in contacts"
+      class="contacts-item {{contact.id === selectedId ? 'selected' : ''}} {{contact.favorite ? 'is-favorite' : ''}}"
+      @click="selectContact({{contact.id}})"
+    >
+      <!-- Status indicator — class set per status -->
+      <span
+        class="status-dot status-{{contact.status}}"
+        title="{{contact.status}}"
+      ></span>
+
+      <!-- Contact info -->
+      <div class="contacts-info">
+        <strong>{{contact.name}}</strong>
+        <small>{{contact.email}}</small>
+      </div>
+
+      <!-- Role badge -->
+      <span class="role-badge role-{{contact.role.toLowerCase()}}">{{contact.role}}</span>
+
+      <!-- Favorite toggle — .stop modifier prevents row click -->
+      <button
+        class="fav-btn {{contact.favorite ? 'is-fav' : ''}}"
+        @click.stop="toggleFavorite({{contact.id}})"
+      >{{contact.favorite ? '★' : '☆'}}</button>
+    </li>
+  </ul>
+</div>
+
+<!-- Empty state -->
+<div class="card" z-else>
+  <div class="empty-state">
+    <p>No contacts yet — add one above!</p>
+  </div>
+</div>
+
+<!-- Selected contact detail panel — z-if conditional rendering -->
+<div class="card contact-detail" z-if="selectedId !== null">
+  <div class="detail-header">
+    <div>
+      <h3 z-text="contacts.find(c => c.id === selectedId)?.name || ''"></h3>
+      <p class="muted" z-text="contacts.find(c => c.id === selectedId)?.email || ''"></p>
+    </div>
+    <div class="detail-actions">
+      <button
+        class="btn btn-outline btn-sm"
+        @click="cycleStatus(selectedId)"
+      >
+        Status: <span z-text="contacts.find(c => c.id === selectedId)?.status || ''"></span>
+      </button>
+
+      <!-- Confirm delete pattern using z-if / z-else -->
+      <button
+        class="btn btn-danger btn-sm"
+        z-if="confirmDeleteId !== selectedId"
+        @click.stop="confirmDelete(selectedId)"
+      >Delete</button>
+
+      <span z-else class="confirm-group">
+        <span class="confirm-text">Sure?</span>
+        <button class="btn btn-danger btn-sm" @click.stop="deleteContact(selectedId)">Yes</button>
+        <button class="btn btn-ghost btn-sm" @click.stop="cancelDelete">No</button>
+      </span>
+    </div>
+  </div>
+</div>

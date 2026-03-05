@@ -1,5 +1,5 @@
   <h2>Getting Started</h2>
-  <p>zQuery is a lightweight, zero-dependency frontend library (~46 KB minified). It provides a jQuery-inspired selector API, reactive components, an SPA router, global state management, an HTTP client, and utility helpers &mdash; all from a single script tag. Works out of the box with standard ES modules. An optional CLI dev server with live-reload and a production bundler make the full development cycle seamless.</p>
+  <p>zQuery is a lightweight, zero-dependency frontend library (~54 KB minified). It provides a jQuery-inspired selector API, reactive components, an SPA router, global state management, an HTTP client, and utility helpers &mdash; all from a single script tag. Works out of the box with standard ES modules. An optional CLI dev server with live-reload and a production bundler make the full development cycle seamless.</p>
 
   <h3>Quick Start (CLI Dev Server &mdash; Recommended)</h3>
   <p>The fastest way to develop with zQuery is via the built-in <strong>CLI dev server</strong>. It serves your ES modules as-is with <strong>live-reload</strong>, <strong>CSS hot-swap</strong>, and <strong>SPA fallback routing</strong> &mdash; and automatically resolves the library so you never have to manually download or copy <code>zQuery.min.js</code>.</p>
@@ -14,7 +14,7 @@ npm install zero-query -g</code></pre>
   <h4>2. Create Your Project</h4>
   <p>Scaffold a ready-to-run project with the <code>create</code> command:</p>
   <pre><code class="language-bash">npx zquery create my-app</code></pre>
-  <p>This generates a fully-featured starter app with a router, global store, six demo components, a responsive sidebar layout, and a stylesheet &mdash; everything you need to start building. The resulting structure looks like this:</p>
+  <p>This generates a fully-featured starter app with a router, global store, seven demo components, a responsive sidebar layout, and a stylesheet &mdash; everything you need to start building. The resulting structure looks like this:</p>
   <pre><code class="language-text">my-app/
   index.html
   scripts/
@@ -28,11 +28,15 @@ npm install zero-query -g</code></pre>
       api-demo.js
       about.js
       not-found.js
+      contacts/          &larr; folder component (templateUrl + styleUrl)
+        contacts.js
+        contacts.html
+        contacts.css
   styles/
     styles.css</code></pre>
 
   <div class="docs-tip">
-    <strong>What&rsquo;s included:</strong> The scaffold wires up a <strong>global store</strong> (<code>store.js</code>) with todos and a visit counter, five routed pages (<code>/</code>, <code>/counter</code>, <code>/todos</code>, <code>/api</code>, <code>/about</code>), a 404 fallback component, and a responsive sidebar with mobile menu &mdash; giving you working examples of <code>$.store</code>, <code>$.router</code>, <code>$.http</code>, <code>$.bus</code>, reactive state, and more.
+    <strong>What&rsquo;s included:</strong> The scaffold wires up a <strong>global store</strong> (<code>store.js</code>) with todos and a visit counter, six routed pages (<code>/</code>, <code>/counter</code>, <code>/todos</code>, <code>/contacts</code>, <code>/api</code>, <code>/about</code>), a 404 fallback component, and a responsive sidebar with mobile menu. The pages demonstrate <code>$.store</code>, <code>$.router</code>, <code>$.http</code>, <code>$.bus</code>, reactive state, template directives (<code>z-if</code>, <code>z-for</code>, <code>z-show</code>, <code>z-class</code>, <code>z-model</code>, <code>z-text</code>), and external templates via <code>templateUrl</code> / <code>styleUrl</code>.
   </div>
 
   <div class="docs-tip">
@@ -90,6 +94,7 @@ npx zquery dev my-app --port 8080</code></pre>
   <pre><code class="language-javascript">// scripts/app.js
 import './components/home.js';
 import './components/about.js';
+import './components/contacts/contacts.js';
 import { routes } from './routes.js';
 
 // Global styles are loaded via &lt;link rel="stylesheet"&gt; in index.html (recommended).
@@ -133,11 +138,12 @@ $.component('home-page', {
   <p>If you prefer ES modules over the global <code>$</code>, the source entry (<code>index.js</code>) exports everything as named exports:</p>
   <pre><code class="language-javascript">import { $, zQuery, ZQueryCollection, queryAll,
   reactive, signal, computed, effect,
-  component, mount, mountAll, getInstance, destroy,
+  component, mount, mountAll, getInstance, destroy, getRegistry, style,
   createRouter, getRouter, createStore, getStore,
   http, debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, uuid, deepClone, deepMerge,
-  isEqual, param, parseQuery, storage, session, bus
+  escapeHtml, html, trust, uuid, camelCase, kebabCase,
+  deepClone, deepMerge, isEqual, param, parseQuery,
+  storage, session, bus
 } from './index.js';</code></pre>
 
   <div class="docs-callout">

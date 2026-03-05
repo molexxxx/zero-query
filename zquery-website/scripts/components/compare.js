@@ -89,7 +89,7 @@
   _overviewPanel() {
     const rows = [
       ['First Release',           '2006',           '2016',           '2013',           '2026'],
-      ['Bundle Size (min)',       '~87 KB',         '~150 KB+',      '~44 KB (+ DOM)', '~46 KB'],
+      ['Bundle Size (min)',       '~87 KB',         '~150 KB+',      '~44 KB (+ DOM)', '~54 KB'],
       ['Dependencies',            '0',              '5+ (RxJS&hellip;)',    '0 (core)',  '0'],
       ['Build Step Required',     'No',             'Yes (CLI)',      'Typical (JSX)',  'Optional (CLI)'],
       ['Component Model',         'No',             'Yes',            'Yes',            'Yes'],
@@ -560,11 +560,11 @@ store.subscribe('count', val =&gt;
           ${this._bar('jQuery 3.x',  87,  150, '#0769ad')}
           ${this._bar('Angular 17+', 150, 150, '#c3002f')}
           ${this._bar('React + DOM', 44,  150, '#58a6ff')}
-          ${this._bar('zQuery',      46,  150, '#e3b341')}
+          ${this._bar('zQuery',      54,  150, '#e3b341')}
         </div>
 
         <div class="cmp-callout" style="margin-top:1rem;">
-          <strong>Real-world note:</strong> Angular and React rarely ship alone &mdash; routing, state management, and HTTP utilities add significantly more weight. zQuery bundles <strong>all of those</strong> in its ~46 KB core.
+          <strong>Real-world note:</strong> Angular and React rarely ship alone &mdash; routing, state management, and HTTP utilities add significantly more weight. zQuery bundles <strong>all of those</strong> in its ~54 KB core.
         </div>
       </div>
     `;
@@ -582,7 +582,7 @@ store.subscribe('count', val =&gt;
         </h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0.75rem;">
           ${this._verdictCard('jQuery', 'Great for simple DOM tasks, but no component model, no reactivity, no router. Still useful â€” zQuery just gives you all that <em>and</em> the familiar <code>$()</code> API.')}
-          ${this._verdictCard('Angular', 'Full-featured enterprise framework. Powerful but heavyweight â€” requires TypeScript, a CLI, and significant learning curve. zQuery covers 90% of the same surface in ~46 KB with zero setup.')}
+          ${this._verdictCard('Angular', 'Full-featured enterprise framework. Powerful but heavyweight â€” requires TypeScript, a CLI, and significant learning curve. zQuery covers 90% of the same surface in ~54 KB with zero setup.')}
           ${this._verdictCard('React', 'Excellent ecosystem and component model, but you need a router package, a state library, and an HTTP library separately. zQuery ships everything batteries-included out of the box.')}
         </div>
       </div>

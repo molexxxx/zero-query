@@ -1,8 +1,8 @@
 // scripts/components/counter.js — interactive counter
 //
 // Demonstrates: component state, instance methods, @click event binding,
-//               z-model two-way binding with z-number modifier,
-//               $.bus for toast notifications, conditional rendering
+//               z-model two-way binding with z-number modifier, z-class,
+//               z-if, z-for, $.bus toast notifications
 
 $.component('counter-page', {
   state: () => ({
@@ -26,21 +26,19 @@ $.component('counter-page', {
   reset() {
     this.state.count = 0;
     this.state.history = [];
-    // $.bus — emit a toast notification to the global listener in app.js
     $.bus.emit('toast', { message: 'Counter reset!', type: 'info' });
   },
 
   render() {
-    const h = this.state.history;
     return `
       <div class="page-header">
         <h1>Counter</h1>
-        <p class="subtitle">Component state, <code>@click</code> handlers, and <code>z-model</code> two‑way binding.</p>
+        <p class="subtitle">Component state, <code>@click</code> handlers, <code>z-model</code>, <code>z-class</code>, and <code>z-for</code>.</p>
       </div>
 
       <div class="card counter-card">
         <div class="counter-display">
-          <span class="counter-value ${this.state.count < 0 ? 'negative' : ''}">${this.state.count}</span>
+          <span class="counter-value" z-class="{'negative': count < 0}">${this.state.count}</span>
         </div>
 
         <div class="counter-controls">
@@ -56,16 +54,12 @@ $.component('counter-page', {
         </div>
       </div>
 
-      ${h.length ? `
-        <div class="card card-muted">
-          <h3>History</h3>
-          <div class="history-list">
-            ${h.map(e =>
-              `<span class="history-item">${e.action}${e.value} → <strong>${e.result}</strong></span>`
-            ).join('')}
-          </div>
+      <div class="card card-muted" z-if="history.length > 0">
+        <h3>History</h3>
+        <div class="history-list">
+          <span z-for="e in history" class="history-item">{{e.action}}{{e.value}} → <strong>{{e.result}}</strong></span>
         </div>
-      ` : ''}
+      </div>
     `;
   }
 });

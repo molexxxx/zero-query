@@ -1,8 +1,9 @@
 // scripts/components/api-demo.js — HTTP client demonstration
 //
-// Demonstrates: $.get() for fetching JSON, loading/error states,
-//               $.escapeHtml() for safe rendering, async patterns,
-//               mounted lifecycle, component state updates
+// Demonstrates: $.get() for fetching JSON, z-if/z-else conditional
+//               rendering, z-show visibility, z-for list rendering,
+//               z-text content binding, @click event handling,
+//               loading/error states, $.escapeHtml(), async patterns
 
 $.component('api-demo', {
   state: () => ({
@@ -49,39 +50,38 @@ $.component('api-demo', {
   },
 
   render() {
-    const { users, selectedUser, posts, loading, error } = this.state;
+    const { selectedUser } = this.state;
 
     return `
       <div class="page-header">
         <h1>API Demo</h1>
-        <p class="subtitle">Fetching data with <code>$.get()</code> from JSONPlaceholder. Safe rendering with <code>$.escapeHtml()</code>.</p>
+        <p class="subtitle">Fetching data with <code>$.get()</code>. Directives: <code>z-if</code>, <code>z-show</code>, <code>z-for</code>, <code>z-text</code>.</p>
       </div>
 
-      ${error ? `<div class="card card-error"><p>⚠ ${$.escapeHtml(error)}</p></div>` : ''}
-      ${loading ? '<div class="loading-bar"></div>' : ''}
+      <div class="card card-error" z-show="error"><p>⚠ <span z-text="error"></span></p></div>
+      <div class="loading-bar" z-show="loading"></div>
 
-      ${!selectedUser ? `
+      <div z-if="!selectedUser">
         <div class="card">
           <h3>Users</h3>
           <p class="muted">Click a user to fetch their posts.</p>
-          ${users.length ? `
-            <div class="user-grid">
-              ${users.map(u => `
-                <button class="user-card" @click="selectUser(${u.id})">
-                  <strong>${$.escapeHtml(u.name)}</strong>
-                  <small>@${$.escapeHtml(u.username)}</small>
-                  <small class="muted">${$.escapeHtml(u.company.name)}</small>
-                </button>
-              `).join('')}
-            </div>
-          ` : (!loading ? '<p>No users loaded.</p>' : '')}
+          <div class="user-grid" z-if="users.length > 0">
+            <button z-for="u in users" class="user-card" @click="selectUser({{u.id}})">
+              <strong>{{u.name}}</strong>
+              <small>@{{u.username}}</small>
+              <small class="muted">{{u.company.name}}</small>
+            </button>
+          </div>
+          <p z-else z-show="!loading">No users loaded.</p>
         </div>
-      ` : `
+      </div>
+
+      <div z-else>
         <div class="card">
           <div class="user-detail-header">
             <div>
-              <h3>${$.escapeHtml(selectedUser.name)}</h3>
-              <p class="muted">@${$.escapeHtml(selectedUser.username)} · ${$.escapeHtml(selectedUser.email)}</p>
+              <h3>${selectedUser ? $.escapeHtml(selectedUser.name) : ''}</h3>
+              <p class="muted">${selectedUser ? `@${$.escapeHtml(selectedUser.username)} · ${$.escapeHtml(selectedUser.email)}` : ''}</p>
             </div>
             <button class="btn btn-ghost btn-sm" @click="clearSelection">← Back</button>
           </div>
@@ -89,18 +89,15 @@ $.component('api-demo', {
 
         <div class="card">
           <h3>Recent Posts</h3>
-          ${posts.length ? `
-            <div class="posts-list">
-              ${posts.map(p => `
-                <article class="post-item">
-                  <h4>${$.escapeHtml(p.title)}</h4>
-                  <p>${$.escapeHtml(p.body.substring(0, 120))}…</p>
-                </article>
-              `).join('')}
-            </div>
-          ` : (!loading ? '<p class="muted">No posts found.</p>' : '')}
+          <div class="posts-list" z-if="posts.length > 0">
+            <article z-for="p in posts" class="post-item">
+              <h4>{{p.title}}</h4>
+              <p>{{p.body.substring(0, 120)}}…</p>
+            </article>
+          </div>
+          <p z-else class="muted" z-show="!loading">No posts found.</p>
         </div>
-      `}
+      </div>
     `;
   }
 });

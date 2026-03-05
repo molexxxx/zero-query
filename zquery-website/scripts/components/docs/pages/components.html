@@ -75,7 +75,8 @@ const inst = $.getInstance('#app');
 $.destroy('#app');
 
 // Get all registered component definitions
-const defs = $.components();  // { 'app-counter': {...}, 'home-page': {...} }</code></pre>
+const defs = $.components();  // { 'app-counter': {...}, 'home-page': {...} }
+// ES module equivalent: import { getRegistry } from './index.js';</code></pre>
 
   <div class="docs-callout">
     <strong>How auto-mount works:</strong> When <code>$.mountAll()</code> runs, it scans the DOM for any tags matching registered component names (e.g. <code>&lt;app-counter&gt;&lt;/app-counter&gt;</code>). HTML attributes on the tag are extracted as props — object/array values are auto-parsed from JSON.
