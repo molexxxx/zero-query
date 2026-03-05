@@ -52,16 +52,16 @@ function showHelp() {
   EXAMPLES
 
     # Scaffold a new project and start developing
-    zquery create my-app && cd my-app && zquery dev
+    zquery create my-app && zquery dev my-app
 
     # Start dev server with live-reload
-    cd my-app && zquery dev
+    zquery dev my-app
 
     # Build the library only
     zquery build
 
-    # Bundle an app \u2014 auto-detects everything
-    cd my-app && zquery bundle
+    # Bundle an app from the project root
+    zquery bundle my-app/scripts/app.js
 
     # Point to an entry from a parent directory
     zquery bundle path/to/scripts/app.js

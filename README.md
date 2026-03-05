@@ -46,9 +46,10 @@ Scaffold a new project and start the server:
 
 ```bash
 npx zquery create my-app
-cd my-app
-npx zquery dev
+npx zquery dev my-app
 ```
+
+> **Tip:** Stay in the project root (where `node_modules` lives) instead of `cd`-ing into `my-app`. This keeps `index.d.ts` accessible to your IDE for full type/intellisense support.
 
 The `create` command generates a ready-to-run project with a sidebar layout, router, multiple components, and responsive styles. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
 

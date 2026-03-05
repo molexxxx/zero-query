@@ -38,10 +38,9 @@ npx zquery bundle path/to/scripts/app.js</code></pre>
   <p>To get started, scaffold a new project with the CLI and then bundle it:</p>
   <pre><code class="language-bash"># Scaffold a new project
 npx zquery create my-app
-cd my-app
 
 # Bundle for production
-npx zquery bundle
+npx zquery bundle my-app/scripts/app.js
 
 # Open the local build directly from disk
 start dist/local/index.html

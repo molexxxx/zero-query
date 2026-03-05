@@ -2,8 +2,7 @@
   <p>zQuery apps follow a simple convention: one HTML file, one boot script, one component per file. The default setup uses ES modules served directly by the browser &mdash; no build tools are needed during development. Use <code>npx zquery create</code> to scaffold this structure automatically. An optional <a href="#" onclick="window.location.hash='/docs/getting-started';return false;">CLI bundler</a> is available when you need a single-file production build.</p>
   <p>The easiest way to get this structure is with the CLI scaffold:</p>
   <pre><code class="language-bash">npx zquery create my-app
-cd my-app
-npx zquery dev</code></pre>
+npx zquery dev my-app</code></pre>
   <p>This generates the following layout:</p>
   <pre><code class="language-text">my-app/
   index.html                 &larr; entry point

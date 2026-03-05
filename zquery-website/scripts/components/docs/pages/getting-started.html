@@ -13,8 +13,7 @@ npm install zero-query -g</code></pre>
 
   <h4>2. Create Your Project</h4>
   <p>Scaffold a ready-to-run project with the <code>create</code> command:</p>
-  <pre><code class="language-bash">npx zquery create my-app
-cd my-app</code></pre>
+  <pre><code class="language-bash">npx zquery create my-app</code></pre>
   <p>This generates a fully-featured starter app with a router, global store, six demo components, a responsive sidebar layout, and a stylesheet &mdash; everything you need to start building. The resulting structure looks like this:</p>
   <pre><code class="language-text">my-app/
   index.html
@@ -41,11 +40,15 @@ cd my-app</code></pre>
   </div>
 
   <h4>3. Start the Dev Server</h4>
-  <pre><code class="language-bash">npx zquery dev
+  <pre><code class="language-bash">npx zquery dev my-app
 
 # Custom port
-npx zquery dev --port 8080</code></pre>
+npx zquery dev my-app --port 8080</code></pre>
   <p>The server starts watching for changes and the library is served automatically &mdash; no need to place <code>zQuery.min.js</code> anywhere in your project. Just reference it in your HTML as shown below and the dev server handles the rest.</p>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> Stay in the project root (where <code>node_modules</code> lives) instead of <code>cd</code>-ing into your app folder. This keeps <code>index.d.ts</code> accessible to your IDE for full type&nbsp;/&nbsp;IntelliSense support.
+  </div>
 
   <div class="docs-tip">
     <strong>Tip:</strong> See the <a z-link="/docs/dev-workflow">Development Workflow</a> page for full details on live-reload, CSS hot-swap, and SSE.
