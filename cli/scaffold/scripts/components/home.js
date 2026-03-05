@@ -74,7 +74,7 @@ $.component('home-page', {
 
         <div class="card">
           <h3>📇 Contacts</h3>
-          <p>External templates &amp; styles via <code>templateUrl</code> / <code>styleUrl</code>. Directives showcase.</p>
+          <p>External templates &amp; styles via <code>templateUrl</code> / <code>styleUrl</code>. <strong>${store.getters.contactCount}</strong> contacts, <strong>${store.getters.favoriteCount}</strong> ★ favorited.</p>
           <a z-link="/contacts" class="btn btn-outline">Try It →</a>
         </div>
 
@@ -87,18 +87,47 @@ $.component('home-page', {
 
       <div class="card card-muted">
         <h3>📊 App Stats</h3>
-        <div class="stats-row">
-          <div class="stat">
-            <span class="stat-value">${store.state.visits}</span>
-            <span class="stat-label">Page Views</span>
+        <div class="stats-grid">
+          <div class="stat-group">
+            <span class="stat-group-title">🏠 General</span>
+            <div class="stat-group-values">
+              <div class="stat">
+                <span class="stat-value">${store.state.visits}</span>
+                <span class="stat-label">Page Views</span>
+              </div>
+            </div>
           </div>
-          <div class="stat">
-            <span class="stat-value">${store.getters.todoCount}</span>
-            <span class="stat-label">Todos</span>
+
+          <div class="stat-group">
+            <span class="stat-group-title">✅ Todos</span>
+            <div class="stat-group-values">
+              <div class="stat">
+                <span class="stat-value">${store.getters.todoCount}</span>
+                <span class="stat-label">Total</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value">${store.getters.pendingCount}</span>
+                <span class="stat-label">Pending</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value">${store.getters.doneCount}</span>
+                <span class="stat-label">Done</span>
+              </div>
+            </div>
           </div>
-          <div class="stat">
-            <span class="stat-value">${store.getters.pendingCount}</span>
-            <span class="stat-label">Pending</span>
+
+          <div class="stat-group">
+            <span class="stat-group-title">📇 Contacts</span>
+            <div class="stat-group-values">
+              <div class="stat">
+                <span class="stat-value">${store.getters.contactCount}</span>
+                <span class="stat-label">Total</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value">${store.getters.favoriteCount}</span>
+                <span class="stat-label">★ Favorited</span>
+              </div>
+            </div>
           </div>
         </div>
         <small class="muted">Stats powered by <code>$.store()</code> getters — visit count tracked globally.</small>

@@ -219,6 +219,17 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
   margin-bottom: 1.25rem;
 }
 
+.card-grid > .card {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-grid > .card > .btn,
+.card-grid > .card > a.btn {
+  margin-top: auto;
+  align-self: flex-end;
+}
+
 /* -- Buttons -- */
 .btn {
   display: inline-flex;
@@ -368,6 +379,50 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
 .stat { display: flex; flex-direction: column; }
 .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
 .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+
+/* -- Stats Groups -- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 0.75rem;
+}
+
+.stat-group {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.15rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.stat-group-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.stat-group-values {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+}
+
+.stat-group-values .stat {
+  align-items: center;
+}
+
+.stat-group .stat-value {
+  font-size: 1.35rem;
+}
+
+.stat-group .stat-label {
+  font-size: 0.75rem;
+}
 
 /* -- API Demo -- */
 .user-grid {

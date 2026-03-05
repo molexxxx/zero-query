@@ -23,6 +23,7 @@
   <div class="contacts-toolbar-row">
     <span class="contacts-count" z-if="contacts.length > 0">
       <strong z-text="contacts.length"></strong> contacts
+      · <strong z-text="favoriteCount"></strong> ★ favorited
       <span z-show="totalAdded > 0"> · <span z-text="totalAdded"></span> added this session</span>
     </span>
     <span class="contacts-count" z-else>No contacts yet</span>
@@ -34,20 +35,28 @@
 
   <!-- Add contact form — toggled via z-show -->
   <form class="contacts-form" z-show="showForm" @submit.prevent="addContact">
-    <input
-      type="text"
-      z-model="newName"
-      z-trim
-      placeholder="Full name"
-      class="input"
-    />
-    <input
-      type="email"
-      z-model="newEmail"
-      z-trim
-      placeholder="Email address"
-      class="input"
-    />
+    <div class="form-field form-field-full">
+      <input
+        type="text"
+        z-model="newName"
+        z-trim
+        placeholder="Full name"
+        class="input"
+        @blur="validateName"
+      />
+      <small class="field-error" z-show="nameError" z-text="nameError"></small>
+    </div>
+    <div class="form-field">
+      <input
+        type="email"
+        z-model="newEmail"
+        z-trim
+        placeholder="Email address"
+        class="input"
+        @blur="validateEmail"
+      />
+      <small class="field-error" z-show="emailError" z-text="emailError"></small>
+    </div>
     <select z-model="newRole" class="input">
       <option value="Developer">Developer</option>
       <option value="Designer">Designer</option>
@@ -108,7 +117,7 @@
     <div class="detail-actions">
       <button
         class="btn btn-outline btn-sm"
-        @click="cycleStatus(selectedId)"
+        @click="cycleStatus({{selectedId}})"
       >
         Status: <span z-text="contacts.find(c => c.id === selectedId)?.status || ''"></span>
       </button>
@@ -117,12 +126,12 @@
       <button
         class="btn btn-danger btn-sm"
         z-if="confirmDeleteId !== selectedId"
-        @click.stop="confirmDelete(selectedId)"
+        @click.stop="confirmDelete({{selectedId}})"
       >Delete</button>
 
       <span z-else class="confirm-group">
         <span class="confirm-text">Sure?</span>
-        <button class="btn btn-danger btn-sm" @click.stop="deleteContact(selectedId)">Yes</button>
+        <button class="btn btn-danger btn-sm" @click.stop="deleteContact({{selectedId}})">Yes</button>
         <button class="btn btn-ghost btn-sm" @click.stop="cancelDelete">No</button>
       </span>
     </div>
