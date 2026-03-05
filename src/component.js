@@ -505,10 +505,11 @@ class Component {
             const fn = this[methodName];
             if (typeof fn === 'function') {
               if (match[2] !== undefined) {
-                // Parse arguments (supports strings, numbers, state refs)
+                // Parse arguments (supports strings, numbers, state refs, $event)
                 const args = match[2].split(',').map(a => {
                   a = a.trim();
                   if (a === '') return undefined;
+                  if (a === '$event') return e;
                   if (a === 'true') return true;
                   if (a === 'false') return false;
                   if (a === 'null') return null;
@@ -518,7 +519,7 @@ class Component {
                   if (a.startsWith('state.')) return this.state[a.slice(6)];
                   return a;
                 }).filter(a => a !== undefined);
-                fn(e, ...args);
+                fn(...args);
               } else {
                 fn(e);
               }
@@ -610,8 +611,13 @@ class Component {
   }
 
   // Programmatic state update (batch-friendly)
+  // Passing an empty object forces a re-render (useful for external state changes).
   setState(partial) {
-    Object.assign(this.state, partial);
+    if (partial && Object.keys(partial).length > 0) {
+      Object.assign(this.state, partial);
+    } else {
+      this._scheduleUpdate();
+    }
   }
 
   // Emit custom event up the DOM

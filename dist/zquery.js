@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.3.3
+ * zQuery (zeroQuery) v0.3.5
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -1164,10 +1164,11 @@ class Component {
             const fn = this[methodName];
             if (typeof fn === 'function') {
               if (match[2] !== undefined) {
-                // Parse arguments (supports strings, numbers, state refs)
+                // Parse arguments (supports strings, numbers, state refs, $event)
                 const args = match[2].split(',').map(a => {
                   a = a.trim();
                   if (a === '') return undefined;
+                  if (a === '$event') return e;
                   if (a === 'true') return true;
                   if (a === 'false') return false;
                   if (a === 'null') return null;
@@ -1177,7 +1178,7 @@ class Component {
                   if (a.startsWith('state.')) return this.state[a.slice(6)];
                   return a;
                 }).filter(a => a !== undefined);
-                fn(e, ...args);
+                fn(...args);
               } else {
                 fn(e);
               }
@@ -1269,8 +1270,13 @@ class Component {
   }
 
   // Programmatic state update (batch-friendly)
+  // Passing an empty object forces a re-render (useful for external state changes).
   setState(partial) {
-    Object.assign(this.state, partial);
+    if (partial && Object.keys(partial).length > 0) {
+      Object.assign(this.state, partial);
+    } else {
+      this._scheduleUpdate();
+    }
   }
 
   // Emit custom event up the DOM
@@ -2624,7 +2630,7 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.3.3';
+$.version = '0.3.5';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {
