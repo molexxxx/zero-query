@@ -207,13 +207,13 @@ function devServer() {
 
   app.listen(PORT, () => {
     console.log(`\n  \x1b[1mzQuery Dev Server\x1b[0m`);
-    console.log(`  \x1b[2m${'─'.repeat(40)}\x1b[0m`);
+    console.log(`  \x1b[2m${'-'.repeat(40)}\x1b[0m`);
     console.log(`  Local:       \x1b[36mhttp://localhost:${PORT}/\x1b[0m`);
     console.log(`  Root:        ${path.relative(process.cwd(), root) || '.'}`);
     console.log(`  Live Reload: \x1b[32menabled\x1b[0m (SSE)`);
     if (noIntercept) console.log(`  Intercept:   \x1b[33mdisabled\x1b[0m (--no-intercept)`);
     console.log(`  Watching:    all files in ${watchDirs.length} director${watchDirs.length === 1 ? 'y' : 'ies'}`);
-    console.log(`  \x1b[2m${'─'.repeat(40)}\x1b[0m`);
+    console.log(`  \x1b[2m${'-'.repeat(40)}\x1b[0m`);
     console.log(`  Press Ctrl+C to stop\n`);
   });
 

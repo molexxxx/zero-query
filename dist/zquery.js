@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.3.8
+ * zQuery (zeroQuery) v0.3.9
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -690,6 +690,18 @@ const _resourceCache = new Map(); // url → Promise<string>
 // Unique ID counter
 let _uid = 0;
 
+// Inject z-cloak base style (once, globally)
+if (typeof document !== 'undefined' && !document.querySelector('[data-zq-cloak]')) {
+  const _s = document.createElement('style');
+  _s.textContent = '[z-cloak]{display:none!important}';
+  _s.setAttribute('data-zq-cloak', '');
+  document.head.appendChild(_s);
+}
+
+// Debounce / throttle helpers for event modifiers
+const _debounceTimers = new WeakMap();
+const _throttleTimers = new WeakMap();
+
 /**
  * Fetch and cache a text resource (HTML template or CSS file).
  * @param {string} url — URL to fetch
@@ -910,7 +922,7 @@ class Component {
     const def = this._def;
     const base = def._base; // auto-detected or explicit
 
-    // ── Pages config ─────────────────────────────────────────────
+    // -- Pages config ---------------------------------------------
     if (def.pages && !def._pagesNormalized) {
       const p = def.pages;
       const ext = p.ext || '.html';
@@ -935,7 +947,7 @@ class Component {
       def._pagesNormalized = true;
     }
 
-    // ── External templates ──────────────────────────────────────
+    // -- External templates --------------------------------------
     if (def.templateUrl && !def._templateLoaded) {
       const tu = def.templateUrl;
       if (typeof tu === 'string') {
@@ -957,7 +969,7 @@ class Component {
       def._templateLoaded = true;
     }
 
-    // ── External styles ─────────────────────────────────────────
+    // -- External styles -----------------------------------------
     if (def.styleUrl && !def._styleLoaded) {
       const su = def.styleUrl;
       if (typeof su === 'string') {
@@ -1030,9 +1042,13 @@ class Component {
     if (this._def.render) {
       // Inline render function takes priority
       html = this._def.render.call(this);
+      // Expand z-for in render templates ({{}} expressions for iteration items)
+      html = this._expandZFor(html);
     } else if (this._def._externalTemplate) {
-      // External template with {{expression}} interpolation
-      html = this._def._externalTemplate.replace(/\{\{(.+?)\}\}/g, (_, expr) => {
+      // Expand z-for FIRST (before global {{}} interpolation)
+      html = this._expandZFor(this._def._externalTemplate);
+      // Then do global {{expression}} interpolation on the remaining content
+      html = html.replace(/\{\{(.+?)\}\}/g, (_, expr) => {
         try {
           return new Function('state', 'props', '$', `with(state){return ${expr.trim()}}`)(
             this.state.__raw || this.state,
@@ -1065,7 +1081,7 @@ class Component {
       this._styleEl = styleEl;
     }
 
-    // ── Focus preservation for z-model ────────────────────────────
+    // -- Focus preservation for z-model ----------------------------
     // Before replacing innerHTML, save focus state so we can restore
     // cursor position after the DOM is rebuilt.
     let _focusInfo = null;
@@ -1085,7 +1101,10 @@ class Component {
     // Update DOM
     this._el.innerHTML = html;
 
-    // Process directives
+    // Process structural & attribute directives
+    this._processDirectives();
+
+    // Process event, ref, and model bindings
     this._bindEvents();
     this._bindRefs();
     this._bindModels();
@@ -1114,7 +1133,7 @@ class Component {
     }
   }
 
-  // Bind @event="method" handlers via delegation
+  // Bind @event="method" and z-on:event="method" handlers via delegation
   _bindEvents() {
     // Clean up old delegated listeners
     this._listeners.forEach(({ event, handler }) => {
@@ -1122,15 +1141,25 @@ class Component {
     });
     this._listeners = [];
 
-    // Find all elements with @event attributes
+    // Find all elements with @event or z-on:event attributes
     const allEls = this._el.querySelectorAll('*');
     const eventMap = new Map(); // event → [{ selector, method, modifiers }]
 
     allEls.forEach(child => {
-      [...child.attributes].forEach(attr => {
-        if (!attr.name.startsWith('@')) return;
+      // Skip elements inside z-pre subtrees
+      if (child.closest('[z-pre]')) return;
 
-        const raw = attr.name.slice(1); // e.g. "click.prevent"
+      [...child.attributes].forEach(attr => {
+        // Support both @event and z-on:event syntax
+        let raw;
+        if (attr.name.startsWith('@')) {
+          raw = attr.name.slice(1); // @click.prevent → click.prevent
+        } else if (attr.name.startsWith('z-on:')) {
+          raw = attr.name.slice(5); // z-on:click.prevent → click.prevent
+        } else {
+          return;
+        }
+
         const parts = raw.split('.');
         const event = parts[0];
         const modifiers = parts.slice(1);
@@ -1149,44 +1178,83 @@ class Component {
 
     // Register delegated listeners on the component root
     for (const [event, bindings] of eventMap) {
+      // Determine listener options from modifiers
+      const needsCapture = bindings.some(b => b.modifiers.includes('capture'));
+      const needsPassive = bindings.some(b => b.modifiers.includes('passive'));
+      const listenerOpts = (needsCapture || needsPassive)
+        ? { capture: needsCapture, passive: needsPassive }
+        : false;
+
       const handler = (e) => {
         for (const { selector, methodExpr, modifiers, el } of bindings) {
           if (!e.target.closest(selector)) continue;
+
+          // .self — only fire if target is the element itself
+          if (modifiers.includes('self') && e.target !== el) continue;
 
           // Handle modifiers
           if (modifiers.includes('prevent')) e.preventDefault();
           if (modifiers.includes('stop')) e.stopPropagation();
 
-          // Parse method expression:  "method"  or  "method(arg1, arg2)"
-          const match = methodExpr.match(/^(\w+)(?:\(([^)]*)\))?$/);
-          if (match) {
+          // Build the invocation function
+          const invoke = (evt) => {
+            const match = methodExpr.match(/^(\w+)(?:\(([^)]*)\))?$/);
+            if (!match) return;
             const methodName = match[1];
             const fn = this[methodName];
-            if (typeof fn === 'function') {
-              if (match[2] !== undefined) {
-                // Parse arguments (supports strings, numbers, state refs, $event)
-                const args = match[2].split(',').map(a => {
-                  a = a.trim();
-                  if (a === '') return undefined;
-                  if (a === '$event') return e;
-                  if (a === 'true') return true;
-                  if (a === 'false') return false;
-                  if (a === 'null') return null;
-                  if (/^-?\d+(\.\d+)?$/.test(a)) return Number(a);
-                  if ((a.startsWith("'") && a.endsWith("'")) || (a.startsWith('"') && a.endsWith('"'))) return a.slice(1, -1);
-                  // State reference
-                  if (a.startsWith('state.')) return this.state[a.slice(6)];
-                  return a;
-                }).filter(a => a !== undefined);
-                fn(...args);
-              } else {
-                fn(e);
-              }
+            if (typeof fn !== 'function') return;
+            if (match[2] !== undefined) {
+              const args = match[2].split(',').map(a => {
+                a = a.trim();
+                if (a === '') return undefined;
+                if (a === '$event') return evt;
+                if (a === 'true') return true;
+                if (a === 'false') return false;
+                if (a === 'null') return null;
+                if (/^-?\d+(\.\d+)?$/.test(a)) return Number(a);
+                if ((a.startsWith("'") && a.endsWith("'")) || (a.startsWith('"') && a.endsWith('"'))) return a.slice(1, -1);
+                if (a.startsWith('state.')) return _getPath(this.state, a.slice(6));
+                return a;
+              }).filter(a => a !== undefined);
+              fn(...args);
+            } else {
+              fn(evt);
             }
+          };
+
+          // .debounce.{ms} — delay invocation until idle
+          const debounceIdx = modifiers.indexOf('debounce');
+          if (debounceIdx !== -1) {
+            const ms = parseInt(modifiers[debounceIdx + 1], 10) || 250;
+            const timers = _debounceTimers.get(el) || {};
+            clearTimeout(timers[event]);
+            timers[event] = setTimeout(() => invoke(e), ms);
+            _debounceTimers.set(el, timers);
+            continue;
           }
+
+          // .throttle.{ms} — fire at most once per interval
+          const throttleIdx = modifiers.indexOf('throttle');
+          if (throttleIdx !== -1) {
+            const ms = parseInt(modifiers[throttleIdx + 1], 10) || 250;
+            const timers = _throttleTimers.get(el) || {};
+            if (timers[event]) continue;
+            invoke(e);
+            timers[event] = setTimeout(() => { timers[event] = null; }, ms);
+            _throttleTimers.set(el, timers);
+            continue;
+          }
+
+          // .once — fire once then ignore
+          if (modifiers.includes('once')) {
+            if (el.dataset.zqOnce === event) continue;
+            el.dataset.zqOnce = event;
+          }
+
+          invoke(e);
         }
       };
-      this._el.addEventListener(event, handler);
+      this._el.addEventListener(event, handler, listenerOpts);
       this._listeners.push({ event, handler });
     }
   }
@@ -1227,7 +1295,7 @@ class Component {
       // Read current state value (supports dot-path keys)
       const currentVal = _getPath(this.state, key);
 
-      // ── Set initial DOM value from state ────────────────────────
+      // -- Set initial DOM value from state ------------------------
       if (tag === 'input' && type === 'checkbox') {
         el.checked = !!currentVal;
       } else if (tag === 'input' && type === 'radio') {
@@ -1243,12 +1311,12 @@ class Component {
         el.value = currentVal ?? '';
       }
 
-      // ── Determine event type ────────────────────────────────────
+      // -- Determine event type ------------------------------------
       const event = isLazy || tag === 'select' || type === 'checkbox' || type === 'radio'
         ? 'change'
         : isEditable ? 'input' : 'input';
 
-      // ── Handler: read DOM → write to reactive state ─────────────
+      // -- Handler: read DOM → write to reactive state -------------
       const handler = () => {
         let val;
         if (type === 'checkbox')           val = el.checked;
@@ -1266,6 +1334,232 @@ class Component {
       };
 
       el.addEventListener(event, handler);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Expression evaluator — runs expr in component context (state, props, refs)
+  // ---------------------------------------------------------------------------
+  _evalExpr(expr) {
+    try {
+      return new Function('state', 'props', 'refs', '$',
+        `with(state){return (${expr})}`)(
+        this.state.__raw || this.state,
+        this.props,
+        this.refs,
+        typeof window !== 'undefined' ? window.$ : undefined
+      );
+    } catch { return undefined; }
+  }
+
+  // ---------------------------------------------------------------------------
+  // z-for — Expand list-rendering directives (pre-innerHTML, string level)
+  //
+  //   <li z-for="item in items">{{item.name}}</li>
+  //   <li z-for="(item, i) in items">{{i}}: {{item.name}}</li>
+  //   <div z-for="n in 5">{{n}}</div>                     (range)
+  //   <div z-for="(val, key) in obj">{{key}}: {{val}}</div> (object)
+  //
+  // Uses a temporary DOM to parse, clone elements per item, and evaluate
+  // {{}} expressions with the iteration variable in scope.
+  // ---------------------------------------------------------------------------
+  _expandZFor(html) {
+    if (!html.includes('z-for')) return html;
+
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    const _recurse = (root) => {
+      // Process innermost z-for elements first (no nested z-for inside)
+      let forEls = [...root.querySelectorAll('[z-for]')]
+        .filter(el => !el.querySelector('[z-for]'));
+      if (!forEls.length) return;
+
+      for (const el of forEls) {
+        if (!el.parentNode) continue; // already removed
+        const expr = el.getAttribute('z-for');
+        const m = expr.match(
+          /^\s*(?:\(\s*(\w+)(?:\s*,\s*(\w+))?\s*\)|(\w+))\s+in\s+(.+)\s*$/
+        );
+        if (!m) { el.removeAttribute('z-for'); continue; }
+
+        const itemVar  = m[1] || m[3];
+        const indexVar = m[2] || '$index';
+        const listExpr = m[4].trim();
+
+        let list = this._evalExpr(listExpr);
+        if (list == null) { el.remove(); continue; }
+        // Number range: z-for="n in 5" → [1, 2, 3, 4, 5]
+        if (typeof list === 'number') {
+          list = Array.from({ length: list }, (_, i) => i + 1);
+        }
+        // Object iteration: z-for="(val, key) in obj" → entries
+        if (!Array.isArray(list) && typeof list === 'object' && typeof list[Symbol.iterator] !== 'function') {
+          list = Object.entries(list).map(([k, v]) => ({ key: k, value: v }));
+        }
+        if (!Array.isArray(list) && typeof list[Symbol.iterator] === 'function') {
+          list = [...list];
+        }
+        if (!Array.isArray(list)) { el.remove(); continue; }
+
+        const parent = el.parentNode;
+        const tplEl = el.cloneNode(true);
+        tplEl.removeAttribute('z-for');
+        const tplOuter = tplEl.outerHTML;
+
+        const fragment = document.createDocumentFragment();
+        const evalReplace = (str, item, index) =>
+          str.replace(/\{\{(.+?)\}\}/g, (_, inner) => {
+            try {
+              return new Function(itemVar, indexVar, 'state', 'props', '$',
+                `with(state){return (${inner.trim()})}`)(
+                item, index,
+                this.state.__raw || this.state,
+                this.props,
+                typeof window !== 'undefined' ? window.$ : undefined
+              );
+            } catch { return ''; }
+          });
+
+        for (let i = 0; i < list.length; i++) {
+          const processed = evalReplace(tplOuter, list[i], i);
+          const wrapper = document.createElement('div');
+          wrapper.innerHTML = processed;
+          while (wrapper.firstChild) fragment.appendChild(wrapper.firstChild);
+        }
+
+        parent.replaceChild(fragment, el);
+      }
+
+      // Handle remaining nested z-for (now exposed)
+      if (root.querySelector('[z-for]')) _recurse(root);
+    };
+
+    _recurse(temp);
+    return temp.innerHTML;
+  }
+
+  // ---------------------------------------------------------------------------
+  // _processDirectives — Post-innerHTML DOM-level directive processing
+  // ---------------------------------------------------------------------------
+  _processDirectives() {
+    // z-pre: skip all directive processing on subtrees
+    // (we leave z-pre elements in the DOM, but skip their descendants)
+
+    // -- z-if / z-else-if / z-else (conditional rendering) --------
+    const ifEls = [...this._el.querySelectorAll('[z-if]')];
+    for (const el of ifEls) {
+      if (!el.parentNode || el.closest('[z-pre]')) continue;
+
+      const show = !!this._evalExpr(el.getAttribute('z-if'));
+
+      // Collect chain: adjacent z-else-if / z-else siblings
+      const chain = [{ el, show }];
+      let sib = el.nextElementSibling;
+      while (sib) {
+        if (sib.hasAttribute('z-else-if')) {
+          chain.push({ el: sib, show: !!this._evalExpr(sib.getAttribute('z-else-if')) });
+          sib = sib.nextElementSibling;
+        } else if (sib.hasAttribute('z-else')) {
+          chain.push({ el: sib, show: true });
+          break;
+        } else {
+          break;
+        }
+      }
+
+      // Keep the first truthy branch, remove the rest
+      let found = false;
+      for (const item of chain) {
+        if (!found && item.show) {
+          found = true;
+          item.el.removeAttribute('z-if');
+          item.el.removeAttribute('z-else-if');
+          item.el.removeAttribute('z-else');
+        } else {
+          item.el.remove();
+        }
+      }
+    }
+
+    // -- z-show (toggle display) -----------------------------------
+    this._el.querySelectorAll('[z-show]').forEach(el => {
+      if (el.closest('[z-pre]')) return;
+      const show = !!this._evalExpr(el.getAttribute('z-show'));
+      el.style.display = show ? '' : 'none';
+      el.removeAttribute('z-show');
+    });
+
+    // -- z-bind:attr / :attr (dynamic attribute binding) -----------
+    this._el.querySelectorAll('*').forEach(el => {
+      if (el.closest('[z-pre]')) return;
+      [...el.attributes].forEach(attr => {
+        let attrName;
+        if (attr.name.startsWith('z-bind:')) attrName = attr.name.slice(7);
+        else if (attr.name.startsWith(':') && !attr.name.startsWith('::')) attrName = attr.name.slice(1);
+        else return;
+
+        const val = this._evalExpr(attr.value);
+        el.removeAttribute(attr.name);
+        if (val === false || val === null || val === undefined) {
+          el.removeAttribute(attrName);
+        } else if (val === true) {
+          el.setAttribute(attrName, '');
+        } else {
+          el.setAttribute(attrName, String(val));
+        }
+      });
+    });
+
+    // -- z-class (dynamic class binding) ---------------------------
+    this._el.querySelectorAll('[z-class]').forEach(el => {
+      if (el.closest('[z-pre]')) return;
+      const val = this._evalExpr(el.getAttribute('z-class'));
+      if (typeof val === 'string') {
+        val.split(/\s+/).filter(Boolean).forEach(c => el.classList.add(c));
+      } else if (Array.isArray(val)) {
+        val.filter(Boolean).forEach(c => el.classList.add(String(c)));
+      } else if (val && typeof val === 'object') {
+        for (const [cls, active] of Object.entries(val)) {
+          el.classList.toggle(cls, !!active);
+        }
+      }
+      el.removeAttribute('z-class');
+    });
+
+    // -- z-style (dynamic inline styles) ---------------------------
+    this._el.querySelectorAll('[z-style]').forEach(el => {
+      if (el.closest('[z-pre]')) return;
+      const val = this._evalExpr(el.getAttribute('z-style'));
+      if (typeof val === 'string') {
+        el.style.cssText += ';' + val;
+      } else if (val && typeof val === 'object') {
+        for (const [prop, v] of Object.entries(val)) {
+          el.style[prop] = v;
+        }
+      }
+      el.removeAttribute('z-style');
+    });
+
+    // -- z-html (innerHTML injection) ------------------------------
+    this._el.querySelectorAll('[z-html]').forEach(el => {
+      if (el.closest('[z-pre]')) return;
+      const val = this._evalExpr(el.getAttribute('z-html'));
+      el.innerHTML = val != null ? String(val) : '';
+      el.removeAttribute('z-html');
+    });
+
+    // -- z-text (safe textContent binding) -------------------------
+    this._el.querySelectorAll('[z-text]').forEach(el => {
+      if (el.closest('[z-pre]')) return;
+      const val = this._evalExpr(el.getAttribute('z-text'));
+      el.textContent = val != null ? String(val) : '';
+      el.removeAttribute('z-text');
+    });
+
+    // -- z-cloak (remove after render) -----------------------------
+    this._el.querySelectorAll('[z-cloak]').forEach(el => {
+      el.removeAttribute('z-cloak');
     });
   }
 
@@ -2503,14 +2797,14 @@ const bus = new EventBus();
 
 // --- index.js (assembly) ——————————————————————————————————————————
 /**
- * ┌─────────────────────────────────────────────────────────┐
+ * ┌---------------------------------------------------------┐
  * │  zQuery (zeroQuery) — Lightweight Frontend Library     │
  * │                                                         │
  * │  jQuery-like selectors · Reactive components            │
  * │  SPA router · State management · Zero dependencies      │
  * │                                                         │
  * │  https://github.com/tonywied17/zero-query              │
- * └─────────────────────────────────────────────────────────┘
+ * └---------------------------------------------------------┘
  */
 
 
@@ -2630,7 +2924,7 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.3.8';
+$.version = '0.3.9';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

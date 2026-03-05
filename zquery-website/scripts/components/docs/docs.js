@@ -24,6 +24,7 @@ $.component('docs-page', {
       'project-structure',
       { id: 'selectors', label: 'Selectors & DOM' },
       'components',
+      'directives',
       'router',
       'store',
       { id: 'http', label: 'HTTP Client' },

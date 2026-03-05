@@ -82,14 +82,18 @@ const defs = $.components();  // { 'app-counter': {...}, 'home-page': {...} }</c
   </div>
 
   <h3>Directives</h3>
-  <p>Directives are special attributes in your <code>render()</code> template HTML that zQuery processes after each render:</p>
+  <p>Directives are special attributes in your <code>render()</code> template HTML that zQuery processes after each render. The table below shows the most common directives used in components. For the <strong>full directive reference</strong> &mdash; including <code>z-if</code>, <code>z-for</code>, <code>z-show</code>, <code>z-bind</code>, <code>z-class</code>, <code>z-style</code>, <code>z-html</code>, <code>z-text</code>, event modifiers (debounce, throttle, once, self), and more &mdash; see the <a z-link="/docs/directives"><strong>Directives</strong></a> section.</p>
   <table class="docs-table">
     <tr><th>Directive</th><th>Syntax</th><th>Purpose</th></tr>
-    <tr><td><code>@event</code></td><td><code>@click="save"</code></td><td>Delegated event binding — calls the named method on the component instance</td></tr>
-    <tr><td><code>@event.prevent</code></td><td><code>@submit.prevent="handleForm"</code></td><td>Calls <code>event.preventDefault()</code> before invoking the method</td></tr>
-    <tr><td><code>@event.stop</code></td><td><code>@click.stop="toggle"</code></td><td>Calls <code>event.stopPropagation()</code> before invoking the method</td></tr>
+    <tr><td><code>@event</code> / <code>z-on:event</code></td><td><code>@click="save"</code></td><td>Delegated event binding — calls the named method on the component instance</td></tr>
+    <tr><td><code>@event.modifier</code></td><td><code>@submit.prevent="handleForm"</code></td><td>Event modifiers: <code>.prevent</code>, <code>.stop</code>, <code>.self</code>, <code>.once</code>, <code>.capture</code>, <code>.passive</code>, <code>.debounce.{ms}</code>, <code>.throttle.{ms}</code></td></tr>
+    <tr><td><code>z-if</code> / <code>z-else</code></td><td><code>&lt;div z-if="show"&gt;</code></td><td>Conditional rendering — removes element from DOM when falsy</td></tr>
+    <tr><td><code>z-for</code></td><td><code>&lt;li z-for="item in items"&gt;</code></td><td>List rendering — repeats element per item with <code>{{item}}</code> interpolation</td></tr>
+    <tr><td><code>z-show</code></td><td><code>&lt;div z-show="visible"&gt;</code></td><td>Toggle visibility via <code>display: none</code> (element stays in DOM)</td></tr>
     <tr><td><code>z-model</code></td><td><code>&lt;input z-model="name"&gt;</code></td><td>Two-way data binding — syncs the input value with <code>this.state[key]</code></td></tr>
     <tr><td><code>z-ref</code></td><td><code>&lt;input z-ref="myInput"&gt;</code></td><td>Element reference — accessible via <code>this.refs.myInput</code></td></tr>
+    <tr><td><code>z-bind:</code> / <code>:</code></td><td><code>&lt;a :href="url"&gt;</code></td><td>Dynamic attribute binding</td></tr>
+    <tr><td><code>z-class</code></td><td><code>&lt;div z-class="{active: isOn}"&gt;</code></td><td>Dynamic class binding (string, array, or object)</td></tr>
   </table>
 
   <h3>Event Arguments</h3>

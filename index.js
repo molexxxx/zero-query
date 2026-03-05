@@ -1,12 +1,12 @@
 /**
- * ┌─────────────────────────────────────────────────────────┐
+ * ┌---------------------------------------------------------┐
  * │  zQuery (zeroQuery) — Lightweight Frontend Library     │
  * │                                                         │
  * │  jQuery-like selectors · Reactive components            │
  * │  SPA router · State management · Zero dependencies      │
  * │                                                         │
  * │  https://github.com/tonywied17/zero-query              │
- * └─────────────────────────────────────────────────────────┘
+ * └---------------------------------------------------------┘
  */
 
 import { query, queryAll, ZQueryCollection } from './src/core.js';

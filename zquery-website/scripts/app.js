@@ -7,6 +7,7 @@
 import './components/home.js';
 import './components/docs/docs.js';
 import './components/about.js';
+import './components/compare.js';
 import './components/not-found.js';
 import { store } from './store.js';
 import { routes } from './routes.js';

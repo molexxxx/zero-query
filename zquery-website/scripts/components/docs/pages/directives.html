@@ -1,0 +1,469 @@
+  <h2>Directives</h2>
+  <p>Directives are special attributes in your templates that zQuery processes after each render. They provide declarative DOM manipulation &mdash; conditional rendering, list iteration, dynamic attributes, and more &mdash; without writing imperative JavaScript. Directives work in both <code>render()</code> template literals and external <code>templateUrl</code> HTML files.</p>
+
+  <div class="docs-callout">
+    <strong>Naming convention:</strong> All built-in directives use the <code>z-</code> prefix (e.g. <code>z-if</code>, <code>z-for</code>, <code>z-show</code>). Event binding uses either <code>@event</code> or <code>z-on:event</code> syntax. The <code>:</code> shorthand (e.g. <code>:href</code>) is an alias for <code>z-bind:</code>.
+  </div>
+
+  <h3>Quick Reference</h3>
+  <table class="docs-table">
+    <thead><tr><th>Directive</th><th>Example</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><code>z-if</code></td><td><code>&lt;div z-if="items.length"&gt;</code></td><td>Conditional rendering &mdash; removes element from DOM when falsy</td></tr>
+      <tr><td><code>z-else-if</code></td><td><code>&lt;div z-else-if="loading"&gt;</code></td><td>Else-if branch (must follow <code>z-if</code> or <code>z-else-if</code>)</td></tr>
+      <tr><td><code>z-else</code></td><td><code>&lt;div z-else&gt;</code></td><td>Default branch (must follow <code>z-if</code> or <code>z-else-if</code>)</td></tr>
+      <tr><td><code>z-for</code></td><td><code>&lt;li z-for="item in items"&gt;</code></td><td>List rendering &mdash; repeats element for each item</td></tr>
+      <tr><td><code>z-show</code></td><td><code>&lt;div z-show="visible"&gt;</code></td><td>Toggle <code>display: none</code> (element stays in DOM)</td></tr>
+      <tr><td><code>z-bind:</code> / <code>:</code></td><td><code>&lt;a :href="url"&gt;</code></td><td>Dynamic attribute binding</td></tr>
+      <tr><td><code>z-class</code></td><td><code>&lt;div z-class="{active: isOn}"&gt;</code></td><td>Dynamic class binding (string, array, or object)</td></tr>
+      <tr><td><code>z-style</code></td><td><code>&lt;div z-style="{color: accent}"&gt;</code></td><td>Dynamic inline styles (string or object)</td></tr>
+      <tr><td><code>z-html</code></td><td><code>&lt;div z-html="richContent"&gt;</code></td><td>Set <code>innerHTML</code> from expression</td></tr>
+      <tr><td><code>z-text</code></td><td><code>&lt;span z-text="label"&gt;</code></td><td>Set <code>textContent</code> from expression (safe, no HTML)</td></tr>
+      <tr><td><code>z-model</code></td><td><code>&lt;input z-model="name"&gt;</code></td><td>Two-way data binding (see <a z-link="/docs/components">Components</a>)</td></tr>
+      <tr><td><code>z-ref</code></td><td><code>&lt;div z-ref="box"&gt;</code></td><td>Element reference &mdash; <code>this.refs.box</code></td></tr>
+      <tr><td><code>z-on:</code> / <code>@</code></td><td><code>&lt;button z-on:click="save"&gt;</code></td><td>Event binding with delegation</td></tr>
+      <tr><td><code>z-cloak</code></td><td><code>&lt;div z-cloak&gt;</code></td><td>Hidden until rendered (prevents flash of unprocessed content)</td></tr>
+      <tr><td><code>z-pre</code></td><td><code>&lt;code z-pre&gt;</code></td><td>Skip directive processing for this element and children</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Conditional Rendering &mdash; <code>z-if</code> / <code>z-else-if</code> / <code>z-else</code></h3>
+  <p>Conditionally include or exclude elements from the DOM based on an expression. Unlike <code>z-show</code>, elements removed by <code>z-if</code> are fully removed from the document &mdash; they don&rsquo;t exist in the DOM at all.</p>
+
+  <pre><code class="language-html">&lt;!-- Simple conditional --&gt;
+&lt;div z-if="items.length &gt; 0"&gt;
+  &lt;p&gt;You have items!&lt;/p&gt;
+&lt;/div&gt;
+&lt;div z-else&gt;
+  &lt;p&gt;No items yet.&lt;/p&gt;
+&lt;/div&gt;</code></pre>
+
+  <pre><code class="language-html">&lt;!-- Multi-branch chain --&gt;
+&lt;div z-if="status === 'loading'"&gt;Loading&hellip;&lt;/div&gt;
+&lt;div z-else-if="status === 'error'"&gt;Something went wrong.&lt;/div&gt;
+&lt;div z-else-if="status === 'empty'"&gt;No results found.&lt;/div&gt;
+&lt;div z-else&gt;Showing results&lt;/div&gt;</code></pre>
+
+  <h4>In a Component</h4>
+  <pre><code class="language-javascript">$.component('status-card', {
+  state: () =&gt; ({ status: 'loading', data: null }),
+
+  render() {
+    return `
+      &lt;div z-if="status === 'loading'"&gt;
+        &lt;span class="spinner"&gt;&lt;/span&gt; Loading&hellip;
+      &lt;/div&gt;
+      &lt;div z-else-if="status === 'error'"&gt;
+        &lt;p class="error"&gt;Failed to load.&lt;/p&gt;
+        &lt;button @click="retry"&gt;Retry&lt;/button&gt;
+      &lt;/div&gt;
+      &lt;div z-else&gt;
+        &lt;h2&gt;${this.state.data?.title}&lt;/h2&gt;
+      &lt;/div&gt;
+    `;
+  },
+
+  retry() { this.state.status = 'loading'; /* ... */ }
+});</code></pre>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> <code>z-else-if</code> and <code>z-else</code> elements must be <strong>immediate siblings</strong> of the preceding <code>z-if</code> or <code>z-else-if</code> element &mdash; no other elements in between. The expression is evaluated in the component&rsquo;s state context, so <code>z-if="count &gt; 0"</code> reads <code>this.state.count</code>.
+  </div>
+
+  <h3><code>z-if</code> vs <code>z-show</code></h3>
+  <table class="docs-table">
+    <tr><th></th><th><code>z-if</code></th><th><code>z-show</code></th></tr>
+    <tr><td><strong>DOM behaviour</strong></td><td>Element is <strong>removed</strong> when falsy</td><td>Element stays in DOM, <code>display: none</code> applied</td></tr>
+    <tr><td><strong>Performance</strong></td><td>Better for rarely-toggled content</td><td>Better for frequently-toggled content (avoids DOM add/remove)</td></tr>
+    <tr><td><strong>Supports else chain</strong></td><td>Yes (<code>z-else-if</code>, <code>z-else</code>)</td><td>No</td></tr>
+    <tr><td><strong>Use when</strong></td><td>Content may never be shown, or has expensive children</td><td>Content toggles often (tabs, dropdowns, tooltips)</td></tr>
+  </table>
+
+  <h3>List Rendering &mdash; <code>z-for</code></h3>
+  <p>Repeat an element once for each item in an array (or object, or number range). Inner content uses <code>{{expression}}</code> syntax to reference the current item and index.</p>
+
+  <h4>Basic Array Iteration</h4>
+  <pre><code class="language-html">&lt;ul&gt;
+  &lt;li z-for="item in items"&gt;{{item.name}} &mdash; ${{item.price}}&lt;/li&gt;
+&lt;/ul&gt;</code></pre>
+
+  <h4>With Index</h4>
+  <pre><code class="language-html">&lt;ol&gt;
+  &lt;li z-for="(item, i) in items"&gt;{{i + 1}}. {{item.name}}&lt;/li&gt;
+&lt;/ol&gt;</code></pre>
+
+  <h4>Number Range</h4>
+  <pre><code class="language-html">&lt;!-- z-for="n in 5" iterates [1, 2, 3, 4, 5] --&gt;
+&lt;div class="stars"&gt;
+  &lt;span z-for="n in 5"&gt;&starf;&lt;/span&gt;
+&lt;/div&gt;</code></pre>
+
+  <h4>Object Iteration</h4>
+  <pre><code class="language-html">&lt;!-- Iterating an object produces {key, value} entries --&gt;
+&lt;dl z-for="(entry, i) in settings"&gt;
+  &lt;dt&gt;{{entry.key}}&lt;/dt&gt;
+  &lt;dd&gt;{{entry.value}}&lt;/dd&gt;
+&lt;/dl&gt;</code></pre>
+
+  <h4>Complete z-for Component Example</h4>
+  <pre><code class="language-javascript">$.component('todo-list', {
+  state: () =&gt; ({
+    newTodo: '',
+    todos: [
+      { text: 'Learn zQuery', done: true },
+      { text: 'Build something', done: false },
+    ]
+  }),
+
+  render() {
+    return `
+      &lt;input z-model="newTodo" placeholder="Add todo&hellip;" @keydown.prevent="addOnEnter"&gt;
+      &lt;ul&gt;
+        &lt;li z-for="(todo, i) in todos"
+            class="{{todo.done ? 'done' : ''}}"&gt;
+          {{todo.text}}
+          &lt;button @click="remove(${'{{'} i {{'}}'}})"&gt;&times;&lt;/button&gt;
+        &lt;/li&gt;
+      &lt;/ul&gt;
+      &lt;p z-if="!todos.length"&gt;All done! &lt;/p&gt;
+    `;
+  },
+
+  addOnEnter(e) {
+    if (e.key !== 'Enter' || !this.state.newTodo.trim()) return;
+    this.state.todos = [
+      ...this.state.todos.__raw,
+      { text: this.state.newTodo.trim(), done: false }
+    ];
+    this.state.newTodo = '';
+  },
+
+  remove(index) {
+    this.state.todos = this.state.todos.__raw.filter((_, i) =&gt; i !== index);
+  }
+});</code></pre>
+
+  <div class="docs-callout">
+    <strong>How <code>z-for</code> works:</strong> zQuery expands <code>z-for</code> elements <em>before</em> inserting into the DOM. The <code>{{expression}}</code> syntax inside the element is evaluated once per item with the item variable in scope. This means <code>{{item.name}}</code> resolves to each item&rsquo;s <code>name</code> property. In <code>render()</code> templates, use <code>{{}}</code> (double braces) for z-for item expressions &mdash; <code>${}</code> is evaluated by JavaScript before zQuery sees it.
+  </div>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> For complex rendering logic, you can always use native JavaScript <code>.map().join('')</code> in your <code>render()</code> function. <code>z-for</code> is a convenience for simple iteration, especially in external <code>templateUrl</code> HTML files where JavaScript isn&rsquo;t available.
+  </div>
+
+  <h3>Toggle Visibility &mdash; <code>z-show</code></h3>
+  <p>Toggle an element&rsquo;s visibility by setting <code>display: none</code>. Unlike <code>z-if</code>, the element remains in the DOM &mdash; it&rsquo;s just hidden.</p>
+
+  <pre><code class="language-html">&lt;div z-show="isOpen"&gt;
+  &lt;p&gt;Dropdown content&lt;/p&gt;
+&lt;/div&gt;
+
+&lt;!-- Common pattern: loading overlay --&gt;
+&lt;div class="overlay" z-show="loading"&gt;Loading&hellip;&lt;/div&gt;</code></pre>
+
+  <pre><code class="language-javascript">$.component('toggle-panel', {
+  state: () =&gt; ({ open: false }),
+  render() {
+    return `
+      &lt;button @click="toggle"&gt;
+        ${this.state.open ? 'Hide' : 'Show'} Panel
+      &lt;/button&gt;
+      &lt;div class="panel" z-show="open"&gt;
+        &lt;p&gt;Panel content here&lt;/p&gt;
+      &lt;/div&gt;
+    `;
+  },
+  toggle() { this.state.open = !this.state.open; }
+});</code></pre>
+
+  <h3>Dynamic Attributes &mdash; <code>z-bind:</code> / <code>:</code></h3>
+  <p>Dynamically bind any HTML attribute to an expression. Use the full <code>z-bind:attr</code> syntax or the shorthand <code>:attr</code>.</p>
+
+  <pre><code class="language-html">&lt;!-- Full syntax --&gt;
+&lt;a z-bind:href="url"&gt;Link&lt;/a&gt;
+&lt;img z-bind:src="imageUrl" z-bind:alt="imageAlt"&gt;
+
+&lt;!-- Shorthand (recommended) --&gt;
+&lt;a :href="url"&gt;Link&lt;/a&gt;
+&lt;img :src="imageUrl" :alt="imageAlt"&gt;
+
+&lt;!-- Boolean attributes: false/null/undefined removes the attribute --&gt;
+&lt;button :disabled="isSubmitting"&gt;Submit&lt;/button&gt;
+&lt;input :readonly="!canEdit"&gt;</code></pre>
+
+  <pre><code class="language-javascript">$.component('dynamic-link', {
+  state: () =&gt; ({
+    url: 'https://z-query.com',
+    external: true,
+    disabled: false,
+  }),
+  render() {
+    return `
+      &lt;a :href="url"
+         :target="external ? '_blank' : null"
+         :rel="external ? 'noopener' : null"&gt;
+        Visit Site
+      &lt;/a&gt;
+      &lt;button :disabled="disabled" @click="navigate"&gt;Go&lt;/button&gt;
+    `;
+  },
+  navigate() { window.location.href = this.state.url; }
+});</code></pre>
+
+  <div class="docs-tip">
+    <strong>Behaviour with special values:</strong> <code>false</code>, <code>null</code>, and <code>undefined</code> <strong>remove</strong> the attribute entirely (important for boolean attributes like <code>disabled</code>, <code>readonly</code>, <code>hidden</code>). <code>true</code> sets the attribute with an empty value (<code>disabled=""</code>).
+  </div>
+
+  <h3>Dynamic Classes &mdash; <code>z-class</code></h3>
+  <p>Add CSS classes dynamically using a string, array, or object map. Merges with any existing <code>class</code> attribute on the element.</p>
+
+  <pre><code class="language-html">&lt;!-- Object syntax: keys are class names, values are booleans --&gt;
+&lt;div z-class="{ active: isActive, 'text-danger': hasError }"&gt;
+
+&lt;!-- String syntax --&gt;
+&lt;div z-class="currentTheme"&gt;
+
+&lt;!-- Array syntax --&gt;
+&lt;div z-class="['base', isLarge ? 'lg' : 'sm']"&gt;</code></pre>
+
+  <pre><code class="language-javascript">$.component('tab-button', {
+  state: () =&gt; ({ activeTab: 'home' }),
+  render() {
+    const tabs = ['home', 'about', 'contact'];
+    return tabs.map(tab =&gt; `
+      &lt;button class="tab"
+              z-class="{ active: activeTab === '${tab}' }"
+              @click="setTab('${tab}')"&gt;
+        ${tab}
+      &lt;/button&gt;
+    `).join('');
+  },
+  setTab(tab) { this.state.activeTab = tab; }
+});</code></pre>
+
+  <h3>Dynamic Styles &mdash; <code>z-style</code></h3>
+  <p>Apply inline CSS styles dynamically using a string or object map.</p>
+
+  <pre><code class="language-html">&lt;!-- Object syntax: camelCase or quoted kebab-case keys --&gt;
+&lt;div z-style="{ color: textColor, fontSize: size + 'px' }"&gt;
+
+&lt;!-- String syntax --&gt;
+&lt;div z-style="'background:' + bgColor + ';opacity:' + alpha"&gt;</code></pre>
+
+  <pre><code class="language-javascript">$.component('color-picker', {
+  state: () =&gt; ({ hue: 200, size: 80 }),
+  render() {
+    return `
+      &lt;div class="preview"
+           z-style="{ backgroundColor: 'hsl(' + hue + ', 70%, 50%)',
+                      width: size + 'px', height: size + 'px' }"&gt;
+      &lt;/div&gt;
+      &lt;input z-model="hue" type="range" min="0" max="360"&gt;
+      &lt;input z-model="size" type="range" min="20" max="200"&gt;
+    `;
+  }
+});</code></pre>
+
+  <h3>Content Directives &mdash; <code>z-html</code> &amp; <code>z-text</code></h3>
+  <p>Set an element&rsquo;s content from a state expression. <code>z-text</code> uses safe <code>textContent</code> (no HTML parsing), while <code>z-html</code> uses <code>innerHTML</code>.</p>
+
+  <pre><code class="language-html">&lt;!-- z-text: safe — HTML entities are escaped --&gt;
+&lt;span z-text="userName"&gt;&lt;/span&gt;
+
+&lt;!-- z-html: raw HTML injection (use with trusted content only) --&gt;
+&lt;div z-html="markdownOutput"&gt;&lt;/div&gt;</code></pre>
+
+  <pre><code class="language-javascript">$.component('article-view', {
+  state: () =&gt; ({
+    title: 'Hello &lt;World&gt;',
+    body: '&lt;p&gt;This is &lt;strong&gt;rich&lt;/strong&gt; content.&lt;/p&gt;',
+  }),
+  render() {
+    return `
+      &lt;!-- Title is safely escaped — no XSS risk --&gt;
+      &lt;h2 z-text="title"&gt;&lt;/h2&gt;
+
+      &lt;!-- Body is injected as raw HTML (trusted source only) --&gt;
+      &lt;div class="body" z-html="body"&gt;&lt;/div&gt;
+    `;
+  }
+});</code></pre>
+
+  <div class="docs-warning">
+    <strong>Security:</strong> <code>z-html</code> injects raw HTML. Never use it with user-supplied content without sanitizing first. Use <code>z-text</code> for user input &mdash; it escapes HTML automatically.
+  </div>
+
+  <h3>Event Binding &mdash; <code>@event</code> / <code>z-on:event</code></h3>
+  <p>Bind DOM events to component methods with delegated event handling. Both <code>@event</code> and <code>z-on:event</code> syntax are supported (they are identical in behaviour).</p>
+
+  <pre><code class="language-html">&lt;!-- Shorthand (recommended) --&gt;
+&lt;button @click="save"&gt;Save&lt;/button&gt;
+
+&lt;!-- Full syntax --&gt;
+&lt;button z-on:click="save"&gt;Save&lt;/button&gt;
+
+&lt;!-- With arguments --&gt;
+&lt;button @click="remove(3)"&gt;Remove&lt;/button&gt;
+&lt;button @click="setFilter('active')"&gt;Active&lt;/button&gt;
+
+&lt;!-- Access the native event --&gt;
+&lt;input @input="search($event)"&gt;</code></pre>
+
+  <h4>Event Modifiers</h4>
+  <p>Append modifiers after the event name with dots. Multiple modifiers can be chained:</p>
+
+  <table class="docs-table">
+    <thead><tr><th>Modifier</th><th>Syntax</th><th>Effect</th></tr></thead>
+    <tbody>
+      <tr><td><code>.prevent</code></td><td><code>@submit.prevent="save"</code></td><td>Calls <code>event.preventDefault()</code></td></tr>
+      <tr><td><code>.stop</code></td><td><code>@click.stop="toggle"</code></td><td>Calls <code>event.stopPropagation()</code></td></tr>
+      <tr><td><code>.self</code></td><td><code>@click.self="close"</code></td><td>Only fires if <code>event.target</code> is the element itself (not a child)</td></tr>
+      <tr><td><code>.once</code></td><td><code>@click.once="init"</code></td><td>Handler fires at most once per element</td></tr>
+      <tr><td><code>.capture</code></td><td><code>@click.capture="log"</code></td><td>Uses capture phase (<code>addEventListener</code> with <code>{capture: true}</code>)</td></tr>
+      <tr><td><code>.passive</code></td><td><code>@scroll.passive="track"</code></td><td>Registers a passive listener (improves scroll performance)</td></tr>
+      <tr><td><code>.debounce.{ms}</code></td><td><code>@input.debounce.300="search"</code></td><td>Debounce &mdash; delays invocation until <code>{ms}</code> of inactivity (default 250 ms)</td></tr>
+      <tr><td><code>.throttle.{ms}</code></td><td><code>@scroll.throttle.100="update"</code></td><td>Throttle &mdash; invokes at most once per <code>{ms}</code> interval (default 250 ms)</td></tr>
+    </tbody>
+  </table>
+
+  <pre><code class="language-html">&lt;!-- Prevent form submission + call method --&gt;
+&lt;form @submit.prevent="handleSubmit"&gt;
+
+&lt;!-- Debounce search input by 300ms --&gt;
+&lt;input @input.debounce.300="search" placeholder="Search&hellip;"&gt;
+
+&lt;!-- Throttle scroll tracking to 100ms --&gt;
+&lt;div class="feed" @scroll.throttle.100="trackScroll"&gt;
+
+&lt;!-- Close modal only when clicking the backdrop (not inner content) --&gt;
+&lt;div class="modal-backdrop" @click.self="close"&gt;
+  &lt;div class="modal"&gt;&hellip;&lt;/div&gt;
+&lt;/div&gt;
+
+&lt;!-- Initialize once, then ignore subsequent clicks --&gt;
+&lt;button @click.once="loadMore"&gt;Load More&lt;/button&gt;
+
+&lt;!-- Chain modifiers --&gt;
+&lt;a @click.prevent.stop="navigate"&gt;Link&lt;/a&gt;</code></pre>
+
+  <h3>Two-Way Binding &mdash; <code>z-model</code></h3>
+  <p><code>z-model</code> creates a <strong>reactive two-way sync</strong> between a form element and a state property. See the <a z-link="/docs/components">Components</a> documentation for full coverage including supported elements, nested keys, and modifiers (<code>z-lazy</code>, <code>z-trim</code>, <code>z-number</code>).</p>
+
+  <pre><code class="language-html">&lt;input z-model="name" placeholder="Your name"&gt;
+&lt;input z-model="age" type="number"&gt;
+&lt;input z-model="agreed" type="checkbox"&gt;
+&lt;select z-model="color"&gt;
+  &lt;option value="red"&gt;Red&lt;/option&gt;
+  &lt;option value="blue"&gt;Blue&lt;/option&gt;
+&lt;/select&gt;
+&lt;textarea z-model="notes" z-lazy&gt;&lt;/textarea&gt;</code></pre>
+
+  <h3>Element References &mdash; <code>z-ref</code></h3>
+  <p>Capture a direct reference to a DOM element so you can access it in your methods via <code>this.refs.name</code>. Refs are refreshed after every render.</p>
+
+  <pre><code class="language-javascript">$.component('focus-input', {
+  state: () =&gt; ({ query: '' }),
+  render() {
+    return `
+      &lt;input z-ref="searchInput" z-model="query" placeholder="Search"&gt;
+      &lt;button @click="focusInput"&gt;Focus&lt;/button&gt;
+    `;
+  },
+  focusInput() {
+    this.refs.searchInput.focus();
+  }
+});</code></pre>
+
+  <h3>Prevent Flash &mdash; <code>z-cloak</code></h3>
+  <p>Elements with <code>z-cloak</code> are hidden (via <code>display: none !important</code>) until the component renders and removes the attribute. This prevents users from seeing raw template syntax like <code>{{expression}}</code> before the component hydrates.</p>
+
+  <pre><code class="language-html">&lt;!-- Hidden until the component renders --&gt;
+&lt;div z-cloak&gt;
+  {{greeting}}
+&lt;/div&gt;</code></pre>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> zQuery automatically injects a <code>[z-cloak] { display: none !important }</code> style rule. You don&rsquo;t need to add it yourself.
+  </div>
+
+  <h3>Skip Processing &mdash; <code>z-pre</code></h3>
+  <p>Tells zQuery to skip all directive processing for this element and its descendants. Useful for displaying raw template syntax in documentation or code examples.</p>
+
+  <pre><code class="language-html">&lt;!-- This content is NOT processed — directives are preserved as-is --&gt;
+&lt;div z-pre&gt;
+  &lt;span z-if="show"&gt;This z-if is not evaluated&lt;/span&gt;
+  &lt;span z-for="item in list"&gt;{{item}}&lt;/span&gt;
+&lt;/div&gt;</code></pre>
+
+  <h3>Expression Context</h3>
+  <p>All directive expressions are evaluated in the component&rsquo;s state context. This means bare property names resolve to <code>this.state.*</code>. You also have access to <code>props</code> and <code>refs</code>:</p>
+
+  <table class="docs-table">
+    <thead><tr><th>Expression</th><th>Resolves To</th></tr></thead>
+    <tbody>
+      <tr><td><code>count</code></td><td><code>this.state.count</code></td></tr>
+      <tr><td><code>items.length &gt; 0</code></td><td><code>this.state.items.length &gt; 0</code></td></tr>
+      <tr><td><code>props.title</code></td><td><code>this.props.title</code></td></tr>
+      <tr><td><code>refs.input</code></td><td><code>this.refs.input</code></td></tr>
+      <tr><td><code>true</code> / <code>42</code> / <code>'hello'</code></td><td>Literal values</td></tr>
+    </tbody>
+  </table>
+
+  <div class="docs-callout">
+    <strong>External templates:</strong> In <code>templateUrl</code> HTML files, directives work exactly the same way. The <code>{{expression}}</code> interpolation and <code>z-for</code> / <code>z-if</code> directives are fully supported, making external templates just as powerful as inline <code>render()</code> functions.
+  </div>
+
+  <h3>Directives in External Templates</h3>
+  <p>Directives are especially useful in <code>templateUrl</code> HTML files, where you don&rsquo;t have access to JavaScript template literal expressions. The full directive set is available:</p>
+
+  <pre><code class="language-html">&lt;!-- template.html (loaded via templateUrl) --&gt;
+&lt;div class="dashboard"&gt;
+  &lt;h2 z-text="title"&gt;&lt;/h2&gt;
+
+  &lt;div z-if="loading"&gt;Loading&hellip;&lt;/div&gt;
+  &lt;div z-else&gt;
+    &lt;ul&gt;
+      &lt;li z-for="item in items"&gt;
+        {{item.name}} &mdash; ${{item.price.toFixed(2)}}
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/div&gt;
+
+  &lt;p z-show="items.length === 0"&gt;No items found.&lt;/p&gt;
+  &lt;button :disabled="loading" z-on:click="refresh"&gt;Refresh&lt;/button&gt;
+&lt;/div&gt;</code></pre>
+
+  <pre><code class="language-javascript">// component.js
+$.component('my-dashboard', {
+  state: () =&gt; ({ title: 'Dashboard', loading: false, items: [] }),
+  templateUrl: 'template.html',
+
+  mounted() { this.refresh(); },
+
+  async refresh() {
+    this.state.loading = true;
+    const res = await $.get('/api/items');
+    this.state.items = res.data;
+    this.state.loading = false;
+  }
+});</code></pre>
+
+  <h3>Processing Order</h3>
+  <p>Directives are processed in a specific order during each render cycle:</p>
+  <ol>
+    <li><code>z-for</code> &mdash; list expansion (pre-DOM, string level)</li>
+    <li><code>z-if</code> / <code>z-else-if</code> / <code>z-else</code> &mdash; conditional removal</li>
+    <li><code>z-show</code> &mdash; visibility toggle</li>
+    <li><code>z-bind:</code> / <code>:</code> &mdash; dynamic attributes</li>
+    <li><code>z-class</code> &mdash; dynamic classes</li>
+    <li><code>z-style</code> &mdash; dynamic styles</li>
+    <li><code>z-html</code> / <code>z-text</code> &mdash; content injection</li>
+    <li><code>@event</code> / <code>z-on:</code> &mdash; event binding</li>
+    <li><code>z-ref</code> &mdash; element references</li>
+    <li><code>z-model</code> &mdash; two-way binding</li>
+    <li><code>z-cloak</code> &mdash; attribute removal</li>
+  </ol>
+
+  <div class="docs-tip">
+    <strong>Performance note:</strong> Unlike frameworks that use a virtual DOM, zQuery processes directives as a single pass over the real DOM after each <code>innerHTML</code> update. This is fast for typical component sizes. For very large lists (1000+ items), consider using <code>.map().join('')</code> in <code>render()</code> for maximum performance.
+  </div>

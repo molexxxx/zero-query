@@ -4,14 +4,14 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.3.8
+ * @version 0.3.9
  * @license MIT
  * @see https://z-query.com/docs
  */
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // ZQueryCollection
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /**
  * Chainable wrapper around an array of DOM elements, similar to a jQuery object.
@@ -26,7 +26,7 @@ export class ZQueryCollection {
 
   constructor(elements: Element | Element[]);
 
-  // ── Iteration ───────────────────────────────────────────────────────────
+  // -- Iteration -----------------------------------------------------------
   /**
    * Iterate over each element. `this` inside the callback is the element.
    * @returns The collection (for chaining).
@@ -53,7 +53,7 @@ export class ZQueryCollection {
   /** Iterable protocol — works with `for...of` and spread. */
   [Symbol.iterator](): IterableIterator<Element>;
 
-  // ── Traversal ───────────────────────────────────────────────────────────
+  // -- Traversal -----------------------------------------------------------
   /** Descendants matching `selector`. */
   find(selector: string): ZQueryCollection;
 
@@ -75,7 +75,7 @@ export class ZQueryCollection {
   /** Previous sibling of each element. */
   prev(): ZQueryCollection;
 
-  // ── Filtering ───────────────────────────────────────────────────────────
+  // -- Filtering -----------------------------------------------------------
   /** Keep elements matching a CSS selector or predicate. */
   filter(selector: string): ZQueryCollection;
   filter(fn: (element: Element, index: number) => boolean): ZQueryCollection;
@@ -87,7 +87,7 @@ export class ZQueryCollection {
   /** Keep elements that have a descendant matching `selector`. */
   has(selector: string): ZQueryCollection;
 
-  // ── Classes ─────────────────────────────────────────────────────────────
+  // -- Classes -------------------------------------------------------------
   /** Add one or more classes (space-separated strings accepted). */
   addClass(...names: string[]): this;
 
@@ -100,7 +100,7 @@ export class ZQueryCollection {
   /** Check whether the first element has the given class. */
   hasClass(name: string): boolean;
 
-  // ── Attributes & Properties ─────────────────────────────────────────────
+  // -- Attributes & Properties ---------------------------------------------
   /** Get attribute value of the first element. */
   attr(name: string): string | null;
   /** Set attribute on all elements. */
@@ -120,7 +120,7 @@ export class ZQueryCollection {
   /** Set data attribute on all elements. Objects are JSON-stringified. */
   data(key: string, value: any): this;
 
-  // ── CSS & Dimensions ────────────────────────────────────────────────────
+  // -- CSS & Dimensions ----------------------------------------------------
   /** Get computed style property of the first element. */
   css(property: string): string;
   /** Set inline styles on all elements. */
@@ -138,7 +138,7 @@ export class ZQueryCollection {
   /** Position relative to the offset parent. */
   position(): { top: number; left: number } | null;
 
-  // ── Content ─────────────────────────────────────────────────────────────
+  // -- Content -------------------------------------------------------------
   /** Get `innerHTML` of the first element. */
   html(): string;
   /** Set `innerHTML` on all elements. */
@@ -154,7 +154,7 @@ export class ZQueryCollection {
   /** Set value on all inputs. */
   val(value: string): this;
 
-  // ── DOM Manipulation ────────────────────────────────────────────────────
+  // -- DOM Manipulation ----------------------------------------------------
   /** Insert content at the end of each element. */
   append(content: string | Node | ZQueryCollection): this;
 
@@ -182,7 +182,7 @@ export class ZQueryCollection {
   /** Replace elements with new content. */
   replaceWith(content: string | Node): this;
 
-  // ── Visibility ──────────────────────────────────────────────────────────
+  // -- Visibility ----------------------------------------------------------
   /** Show elements. Optional display value (default: `''`). */
   show(display?: string): this;
 
@@ -192,7 +192,7 @@ export class ZQueryCollection {
   /** Toggle visibility. */
   toggle(display?: string): this;
 
-  // ── Events ──────────────────────────────────────────────────────────────
+  // -- Events --------------------------------------------------------------
   /** Attach event handler. Space-separated events accepted. */
   on(events: string, handler: (event: Event) => void): this;
   /** Delegated event handler. */
@@ -222,7 +222,7 @@ export class ZQueryCollection {
   /** Blur the first element. */
   blur(): this;
 
-  // ── Animation ───────────────────────────────────────────────────────────
+  // -- Animation -----------------------------------------------------------
   /**
    * CSS transition animation.
    * @param props   CSS properties to animate to.
@@ -244,7 +244,7 @@ export class ZQueryCollection {
   /** Toggle height with a slide animation. Default 300 ms. */
   slideToggle(duration?: number): this;
 
-  // ── Form Helpers ────────────────────────────────────────────────────────
+  // -- Form Helpers --------------------------------------------------------
   /** URL-encoded form data string. */
   serialize(): string;
 
@@ -253,9 +253,9 @@ export class ZQueryCollection {
 }
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // Reactive
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /** Marker properties added to every reactive proxy. */
 interface ReactiveProxy<T extends object = object> {
@@ -308,9 +308,9 @@ export function computed<T>(fn: () => T): Signal<T>;
 export function effect(fn: () => void): () => void;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // Component System
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /** Item in a `pages` config — either a string id or an `{ id, label }` object. */
 type PageItem = string | { id: string; label?: string };
@@ -485,9 +485,121 @@ interface StyleOptions {
 export function style(urls: string | string[], opts?: StyleOptions): StyleHandle;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Directive System
+// ---------------------------------------------------------------------------
+//
+// Directives are special attributes processed by zQuery's component renderer.
+// They work in both `render()` template literals and external `templateUrl`
+// HTML files. All expressions evaluate in the component's state context
+// (bare names resolve to `this.state.*`; `props` and `refs` also available).
+//
+// ─── Structural Directives ──────────────────────────────────────────────
+//
+//   z-if="expression"          Conditional rendering — element removed when falsy.
+//   z-else-if="expression"     Else-if branch (must be immediate sibling of z-if).
+//   z-else                     Default branch (must follow z-if or z-else-if).
+//
+//   z-for="item in items"      List rendering — repeats the element per item.
+//     {{item.prop}}              Use double-brace interpolation for item data.
+//     (item, index) in items     Destructured index support.
+//     n in 5                     Number range → [1, 2, 3, 4, 5].
+//     (val, key) in object       Object iteration → {key, value} entries.
+//
+//   z-show="expression"        Toggle `display: none` (element stays in DOM).
+//
+// ─── Attribute Directives ───────────────────────────────────────────────
+//
+//   z-bind:attr="expression"   Dynamic attribute binding.
+//   :attr="expression"         Shorthand for z-bind:attr.
+//                              false/null/undefined → removes the attribute.
+//                              true → sets empty attribute (e.g. disabled="").
+//
+//   z-class="expression"       Dynamic class binding.
+//                              String: space-separated class names.
+//                              Array: list of class names (falsy filtered).
+//                              Object: { className: condition } map.
+//
+//   z-style="expression"       Dynamic inline styles.
+//                              String: appended to existing cssText.
+//                              Object: { property: value } map (camelCase keys).
+//
+//   z-html="expression"        Set innerHTML from expression (use trusted content only).
+//   z-text="expression"        Set textContent from expression (safe, no HTML).
+//
+// ─── Form & Reference Directives ────────────────────────────────────────
+//
+//   z-model="stateKey"         Two-way binding for form elements.
+//     Supports: input, textarea, select, select[multiple], contenteditable.
+//     Nested keys: z-model="user.name" → this.state.user.name.
+//     Modifiers (boolean attributes on same element):
+//       z-lazy    — update on 'change' instead of 'input' (update on blur).
+//       z-trim    — auto .trim() whitespace before writing to state.
+//       z-number  — force Number() conversion regardless of input type.
+//
+//   z-ref="name"               Element reference → this.refs.name.
+//
+// ─── Event Directives ───────────────────────────────────────────────────
+//
+//   @event="method"            Event binding with delegation (shorthand).
+//   z-on:event="method"        Event binding with delegation (full syntax).
+//   @event="method(args)"      Pass arguments: strings, numbers, booleans,
+//                              null, $event, state.key references.
+//
+//   Event Modifiers (chainable with dots):
+//     .prevent                 event.preventDefault()
+//     .stop                    event.stopPropagation()
+//     .self                    Only fire if event.target === element itself.
+//     .once                    Handler fires at most once per element.
+//     .capture                 addEventListener with { capture: true }.
+//     .passive                 addEventListener with { passive: true }.
+//     .debounce.{ms}           Debounce: delay until {ms}ms idle (default 250).
+//     .throttle.{ms}           Throttle: invoke at most once per {ms}ms (default 250).
+//
+// ─── Special Directives ─────────────────────────────────────────────────
+//
+//   z-cloak                    Hidden until rendered (auto-removed after mount).
+//                              Global CSS: [z-cloak] { display: none !important }.
+//
+//   z-pre                      Skip all directive processing for this element
+//                              and its descendants.
+//
+// ─── Processing Order ───────────────────────────────────────────────────
+//
+//   1. z-for        (pre-innerHTML expansion)
+//   2. z-if chain   (DOM removal)
+//   3. z-show       (display toggle)
+//   4. z-bind / :   (dynamic attributes)
+//   5. z-class      (dynamic classes)
+//   6. z-style      (dynamic styles)
+//   7. z-html/text  (content injection)
+//   8. @/z-on       (event binding)
+//   9. z-ref        (element references)
+//  10. z-model      (two-way binding)
+//  11. z-cloak      (attribute removal)
+//
+// ---------------------------------------------------------------------------
+
+/**
+ * Supported event modifier strings for `@event` and `z-on:event` bindings.
+ * Modifiers are appended to the event name with dots, e.g. `@click.prevent.stop`.
+ */
+type EventModifier =
+  | 'prevent'
+  | 'stop'
+  | 'self'
+  | 'once'
+  | 'capture'
+  | 'passive'
+  | `debounce`
+  | `debounce.${number}`
+  | `throttle`
+  | `throttle.${number}`;
+
+
+// ---------------------------------------------------------------------------
 // Router
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /** A single route definition. */
 interface RouteDefinition {
@@ -586,7 +698,7 @@ interface RouterInstance {
   /** Resolve a path applying the base prefix. */
   resolve(path: string): string;
 
-  // ── Properties ──────────────────────────────────────────────────────────
+  // -- Properties ----------------------------------------------------------
   /** Current navigation context. */
   readonly current: NavigationContext | null;
   /** Current path (base-stripped in history mode). */
@@ -604,9 +716,9 @@ export function createRouter(config: RouterConfig): RouterInstance;
 export function getRouter(): RouterInstance | null;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // Store
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /** Store configuration. */
 interface StoreConfig<
@@ -705,9 +817,9 @@ export function getStore<
 >(name?: string): StoreInstance<S, A, G> | null;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // HTTP Client
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /** The response object resolved by all HTTP request methods (except `raw`). */
 interface HttpResponse<T = any> {
@@ -786,9 +898,9 @@ interface HttpClient {
 export const http: HttpClient;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // Utilities — Functions
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /** Debounced function with a `.cancel()` helper. */
 interface DebouncedFunction<T extends (...args: any[]) => any> {
@@ -821,9 +933,9 @@ export function once<T extends (...args: any[]) => any>(fn: T): (...args: Parame
 export function sleep(ms: number): Promise<void>;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // Utilities — Strings
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /** Escape HTML entities: `&`, `<`, `>`, `"`, `'`. */
 export function escapeHtml(str: string): string;
@@ -852,9 +964,9 @@ export function camelCase(str: string): string;
 export function kebabCase(str: string): string;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // Utilities — Objects
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /** Deep clone using `structuredClone` (JSON fallback). */
 export function deepClone<T>(obj: T): T;
@@ -866,9 +978,9 @@ export function deepMerge<T extends object>(target: T, ...sources: Partial<T>[])
 export function isEqual(a: any, b: any): boolean;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // Utilities — URL
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /** Serialize an object to a URL query string. */
 export function param(obj: Record<string, any>): string;
@@ -877,9 +989,9 @@ export function param(obj: Record<string, any>): string;
 export function parseQuery(str: string): Record<string, string>;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // Utilities — Storage
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /** JSON-aware `localStorage` wrapper. */
 interface StorageWrapper {
@@ -900,9 +1012,9 @@ export const storage: StorageWrapper;
 export const session: StorageWrapper;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // Utilities — Event Bus
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /** Singleton pub/sub event bus for cross-component communication. */
 interface EventBus {
@@ -921,9 +1033,9 @@ interface EventBus {
 export const bus: EventBus;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // $ — Main function & namespace
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 /**
  * Main selector / DOM-ready function.
@@ -939,7 +1051,7 @@ interface ZQueryStatic {
   (nodeList: NodeList | HTMLCollection | Element[]): Element | null;
   (fn: () => void): void;
 
-  // ── Collection selector ─────────────────────────────────────────────────
+  // -- Collection selector -------------------------------------------------
   /**
    * Collection selector — returns a `ZQueryCollection`.
    *
@@ -952,7 +1064,7 @@ interface ZQueryStatic {
   all(element: Element): ZQueryCollection;
   all(nodeList: NodeList | HTMLCollection | Element[]): ZQueryCollection;
 
-  // ── Quick-ref shortcuts ─────────────────────────────────────────────────
+  // -- Quick-ref shortcuts -------------------------------------------------
   /** `document.getElementById(id)` */
   id(id: string): Element | null;
   /** `document.querySelector('.name')` */
@@ -964,7 +1076,7 @@ interface ZQueryStatic {
   /** Children of `#parentId` as array. */
   children(parentId: string): Element[];
 
-  // ── Static helpers ──────────────────────────────────────────────────────
+  // -- Static helpers ------------------------------------------------------
   /**
    * Create a DOM element.
    * Special `attrs` keys: `class`, `style` (object), `on*` (handler), `data` (object).
@@ -990,13 +1102,13 @@ interface ZQueryStatic {
   /** Alias for `ZQueryCollection.prototype` — extend to add custom collection methods. */
   fn: typeof ZQueryCollection.prototype;
 
-  // ── Reactive ────────────────────────────────────────────────────────────
+  // -- Reactive ------------------------------------------------------------
   reactive: typeof reactive;
   signal: typeof signal;
   computed: typeof computed;
   effect: typeof effect;
 
-  // ── Components ──────────────────────────────────────────────────────────
+  // -- Components ----------------------------------------------------------
   component: typeof component;
   mount: typeof mount;
   mountAll: typeof mountAll;
@@ -1006,15 +1118,15 @@ interface ZQueryStatic {
   components: typeof getRegistry;
   style: typeof style;
 
-  // ── Router ──────────────────────────────────────────────────────────────
+  // -- Router --------------------------------------------------------------
   router: typeof createRouter;
   getRouter: typeof getRouter;
 
-  // ── Store ───────────────────────────────────────────────────────────────
+  // -- Store ---------------------------------------------------------------
   store: typeof createStore;
   getStore: typeof getStore;
 
-  // ── HTTP ────────────────────────────────────────────────────────────────
+  // -- HTTP ----------------------------------------------------------------
   http: HttpClient;
   get: HttpClient['get'];
   post: HttpClient['post'];
@@ -1022,7 +1134,7 @@ interface ZQueryStatic {
   patch: HttpClient['patch'];
   delete: HttpClient['delete'];
 
-  // ── Utilities ───────────────────────────────────────────────────────────
+  // -- Utilities -----------------------------------------------------------
   debounce: typeof debounce;
   throttle: typeof throttle;
   pipe: typeof pipe;
@@ -1047,7 +1159,7 @@ interface ZQueryStatic {
   session: StorageWrapper;
   bus: EventBus;
 
-  // ── Meta ────────────────────────────────────────────────────────────────
+  // -- Meta ----------------------------------------------------------------
   /** Library version string. */
   version: string;
   /** Populated at build time by the CLI bundler. */
@@ -1064,9 +1176,9 @@ export const queryAll: typeof ZQueryCollection;
 export default $;
 
 
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 // Global augmentation (browser)
-// ───────────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
 
 declare global {
   interface Window {

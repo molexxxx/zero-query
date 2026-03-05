@@ -5,7 +5,7 @@
  * Mobile-first: sidebar collapses to a hamburger nav below 768px.
  */
 
-/* ── Theme Variables ── */
+/* -- Theme Variables -- */
 :root {
   --bg:          #13141f;
   --bg-surface:  #1b1d2e;
@@ -43,7 +43,7 @@
   --info:        #2563eb;
 }
 
-/* ── Reset ── */
+/* -- Reset -- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { scroll-behavior: smooth; }
@@ -61,7 +61,7 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-hover); }
 code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
 
-/* ── Sidebar ── */
+/* -- Sidebar -- */
 .sidebar {
   position: fixed;
   top: 0; left: 0; bottom: 0;
@@ -124,7 +124,7 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
   font-size: 0.8rem;
 }
 
-/* ── Mobile Top Bar ── */
+/* -- Mobile Top Bar -- */
 .topbar {
   display: none;
   position: fixed;
@@ -182,7 +182,7 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
 
 .overlay.visible { display: block; opacity: 1; }
 
-/* ── Main Content ── */
+/* -- Main Content -- */
 .content {
   margin-left: var(--sidebar-w);
   padding: 2rem 2.5rem;
@@ -190,13 +190,13 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
   max-width: 900px;
 }
 
-/* ── Page Header ── */
+/* -- Page Header -- */
 .page-header { margin-bottom: 1.75rem; }
 .page-header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
 .page-header.center { text-align: center; padding: 4rem 1rem; }
 .subtitle { color: var(--text-muted); font-size: 0.95rem; }
 
-/* ── Cards ── */
+/* -- Cards -- */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -218,7 +218,7 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
   margin-bottom: 1.25rem;
 }
 
-/* ── Buttons ── */
+/* -- Buttons -- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -247,7 +247,7 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
 
 .btn-sm { padding: 0.35rem 0.75rem; font-size: 0.82rem; }
 
-/* ── Inputs ── */
+/* -- Inputs -- */
 .input {
   width: 100%;
   padding: 0.55rem 0.85rem;
@@ -264,7 +264,7 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
 .input:focus { border-color: var(--accent); }
 .input-sm { width: auto; padding: 0.35rem 0.6rem; font-size: 0.82rem; }
 
-/* ── Counter ── */
+/* -- Counter -- */
 .counter-card { text-align: center; }
 .counter-display { padding: 1.5rem 0 1rem; }
 .counter-value { font-size: 3.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -283,7 +283,7 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Todos ── */
+/* -- Todos -- */
 .todo-form { display: flex; gap: 0.75rem; }
 .todo-form .input { flex: 1; }
 
@@ -346,7 +346,7 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
 .todo-footer { padding-top: 0.75rem; border-top: 1px solid var(--border); margin-top: 0.75rem; }
 .empty-state { text-align: center; padding: 2rem 0; color: var(--text-muted); }
 
-/* ── Signal Demo ── */
+/* -- Signal Demo -- */
 .signal-demo { display: flex; align-items: center; gap: 1rem; margin-top: 0.75rem; }
 .signal-value { font-weight: 600; font-size: 1.1rem; color: var(--accent); font-variant-numeric: tabular-nums; }
 .signal-demo .btn-sm {
@@ -362,13 +362,13 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
 .signal-demo .btn-sm:hover { opacity: 0.85; }
 .signal-demo .btn-sm:active { transform: scale(0.96); }
 
-/* ── Stats ── */
+/* -- Stats -- */
 .stats-row { display: flex; gap: 2rem; margin: 0.75rem 0; }
 .stat { display: flex; flex-direction: column; }
 .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
 .stat-label { font-size: 0.8rem; color: var(--text-muted); }
 
-/* ── API Demo ── */
+/* -- API Demo -- */
 .user-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -412,7 +412,7 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
 }
 @keyframes loading { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
 
-/* ── About ── */
+/* -- About -- */
 .theme-toggle { display: flex; align-items: center; gap: 1rem; }
 .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.5rem; }
 .feature-item {
@@ -432,7 +432,7 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
 
 .muted { color: var(--text-muted); }
 
-/* ── Toast Notifications ── */
+/* -- Toast Notifications -- */
 .toast-container {
   position: fixed;
   bottom: 1.5rem;
@@ -463,11 +463,11 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
 @keyframes toast-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes toast-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
 
-/* ── Route Transition ── */
+/* -- Route Transition -- */
 #app { animation: fade-in 0.25s ease; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
-/* ── Responsive: Mobile ── */
+/* -- Responsive: Mobile -- */
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
