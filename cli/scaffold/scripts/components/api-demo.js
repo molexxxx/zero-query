@@ -22,8 +22,8 @@ $.component('api-demo', {
     this.state.error = '';
     try {
       // $.get() — zero-config JSON fetching
-      const data = await $.get('https://jsonplaceholder.typicode.com/users');
-      this.state.users = data.slice(0, 6);
+      const res = await $.get('https://jsonplaceholder.typicode.com/users');
+      this.state.users = res.data.slice(0, 6);
     } catch (err) {
       this.state.error = 'Failed to load users. Check your connection.';
     }
@@ -34,8 +34,8 @@ $.component('api-demo', {
     this.state.selectedUser = this.state.users.find(u => u.id === Number(id));
     this.state.loading = true;
     try {
-      const posts = await $.get(`https://jsonplaceholder.typicode.com/posts?userId=${id}`);
-      this.state.posts = posts.slice(0, 4);
+      const res = await $.get(`https://jsonplaceholder.typicode.com/posts?userId=${id}`);
+      this.state.posts = res.data.slice(0, 4);
     } catch (err) {
       this.state.error = 'Failed to load posts.';
     }

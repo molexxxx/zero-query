@@ -59,7 +59,7 @@ $.component('about-page', {
             <span>HTTP client for fetching JSON APIs with async/await</span>
           </div>
           <div class="feature-item">
-            <strong>signal() / computed()</strong>
+            <strong>$.signal() / $.computed()</strong>
             <span>Fine-grained reactive primitives for derived state</span>
           </div>
           <div class="feature-item">

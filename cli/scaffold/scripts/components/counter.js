@@ -50,7 +50,7 @@ $.component('counter-page', {
 
         <div class="counter-step">
           <label>Step size:
-            <input type="number" z-model.number="step" min="1" max="100" class="input input-sm" />
+            <input type="number" z-model="step" z-number min="1" max="100" class="input input-sm" />
           </label>
           <button class="btn btn-ghost btn-sm" @click="reset">Reset</button>
         </div>

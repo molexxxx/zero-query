@@ -11,14 +11,14 @@ $.component('home-page', {
   }),
 
   mounted() {
-    // signal() — fine-grained reactive primitive
-    const count = signal(0);
+    // $.signal() — fine-grained reactive primitive
+    const count = $.signal(0);
 
-    // computed() — derived reactive value that auto-updates
-    const doubled = computed(() => count.value * 2);
+    // $.computed() — derived reactive value that auto-updates
+    const doubled = $.computed(() => count.value * 2);
 
-    // effect() — runs whenever its dependencies change
-    effect(() => {
+    // $.effect() — runs whenever its dependencies change
+    $.effect(() => {
       this.state.signalDemo = doubled.value;
     });
 

@@ -15,7 +15,7 @@ $.component('todos-page', {
   mounted() {
     const store = $.getStore('main');
     // Subscribe to store changes — re-render when todos update
-    this._unsub = store.subscribe('todos', () => this.render && this.setState({}));
+    this._unsub = store.subscribe(() => this.setState({}));
 
     // $.debounce — debounced search filter (300ms)
     this._debouncedSearch = $.debounce((val) => {
@@ -87,7 +87,7 @@ $.component('todos-page', {
         <form class="todo-form" @submit.prevent="addTodo">
           <input
             type="text"
-            z-model.trim="newTodo"
+            z-model="newTodo" z-trim
             placeholder="What needs to be done?"
             class="input"
             z-ref="todoInput"
@@ -114,7 +114,7 @@ $.component('todos-page', {
           <ul class="todo-list">
             ${filtered.map(t => `
               <li class="todo-item ${t.done ? 'done' : ''}">
-                <button class="todo-check" @click="toggleTodo('${t.id}')">${t.done ? '☑' : '☐'}</button>
+                <button class="todo-check" @click="toggleTodo('${t.id}')"></button>
                 <span class="todo-text">${$.escapeHtml(t.text)}</span>
                 <button class="todo-remove" @click="removeTodo('${t.id}')">✕</button>
               </li>
