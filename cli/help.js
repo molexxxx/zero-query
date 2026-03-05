@@ -15,7 +15,7 @@ function showHelp() {
       --no-intercept           Disable auto-resolution of zquery.min.js
                                (serve the on-disk vendor copy instead)
 
-    bundle [entry]             Bundle app ES modules into a single file
+    bundle [dir]              Bundle app ES modules into a single file
       --out, -o <path>         Output directory (default: dist/ next to index.html)
       --html <file>            Use a specific HTML file (default: auto-detected)
 
@@ -61,13 +61,10 @@ function showHelp() {
     zquery build
 
     # Bundle an app from the project root
-    zquery bundle my-app/scripts/app.js
-
-    # Point to an entry from a parent directory
-    zquery bundle path/to/scripts/app.js
+    zquery bundle my-app/
 
     # Custom output directory
-    zquery bundle -o build/
+    zquery bundle my-app/ -o build/
 
   The bundler walks the ES module import graph starting from the entry
   file, topologically sorts dependencies, strips import/export syntax,

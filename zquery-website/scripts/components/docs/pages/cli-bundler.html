@@ -14,8 +14,8 @@ npm install zero-query -g
 # Bundle your app (auto-detects entry from index.html)
 npx zquery bundle
 
-# Or point to an entry from anywhere
-npx zquery bundle path/to/scripts/app.js</code></pre>
+# Or point to an app directory from anywhere
+npx zquery bundle my-app/</code></pre>
 
   <p>Output goes to <code>dist/</code> next to your <code>index.html</code>, with two sub-folders:</p>
   <pre><code class="language-text">dist/
@@ -40,7 +40,7 @@ npx zquery bundle path/to/scripts/app.js</code></pre>
 npx zquery create my-app
 
 # Bundle for production
-npx zquery bundle my-app/scripts/app.js
+npx zquery bundle my-app/
 
 # Open the local build directly from disk
 start dist/local/index.html

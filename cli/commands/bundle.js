@@ -276,19 +276,26 @@ function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFi
 function bundleApp() {
   const projectRoot = process.cwd();
 
-  // Entry point
+  // Entry point — accepts a directory (auto-detects entry inside it) or a file
   let entry = null;
+  let targetDir = null;
   for (let i = 1; i < args.length; i++) {
     if (!args[i].startsWith('-') && args[i - 1] !== '-o' && args[i - 1] !== '--out' && args[i - 1] !== '--html') {
-      entry = path.resolve(projectRoot, args[i]);
+      const resolved = path.resolve(projectRoot, args[i]);
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+        targetDir = resolved;
+        entry = detectEntry(resolved);
+      } else {
+        entry = resolved;
+      }
       break;
     }
   }
   if (!entry) entry = detectEntry(projectRoot);
 
   if (!entry || !fs.existsSync(entry)) {
-    console.error(`\n  ✗ Could not find entry file.`);
-    console.error(`    Provide one explicitly: zquery bundle scripts/app.js\n`);
+    console.error(`\n  \u2717 Could not find entry file.`);
+    console.error(`    Provide an app directory: zquery bundle my-app/\n`);
     process.exit(1);
   }
 

@@ -160,8 +160,8 @@ The CLI can compile your entire app — ES modules, the library, external templa
 # Auto-detect entry from index.html
 npx zquery bundle
 
-# Or specify an entry point
-npx zquery bundle path/to/scripts/app.js
+# Or point to an app directory from anywhere
+npx zquery bundle my-app/
 ```
 
 Output goes to `dist/` next to your `index.html`:
@@ -250,7 +250,7 @@ location / {
 | --- | --- |
 | `zquery create [dir]` | Scaffold a new project (index.html, components, store, styles) |
 | `zquery dev [root]` | Dev server with live-reload (port 3100) |
-| `zquery bundle [entry]` | Bundle app into a single IIFE file |
+| `zquery bundle [dir]` | Bundle app into a single IIFE file |
 | `zquery build` | Build the zQuery library (`dist/zQuery.min.js`) |
 | `zquery --help` | Show CLI usage |
 
