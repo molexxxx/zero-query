@@ -15,17 +15,26 @@ npm install zero-query -g</code></pre>
   <p>Scaffold a ready-to-run project with the <code>create</code> command:</p>
   <pre><code class="language-bash">npx zquery create my-app
 cd my-app</code></pre>
-  <p>This generates <code>index.html</code>, a router with two routes, two starter components, and a stylesheet &mdash; everything you need to start building. The resulting structure looks like this:</p>
+  <p>This generates a fully-featured starter app with a router, global store, six demo components, a responsive sidebar layout, and a stylesheet &mdash; everything you need to start building. The resulting structure looks like this:</p>
   <pre><code class="language-text">my-app/
   index.html
   scripts/
     app.js
     routes.js
+    store.js
     components/
       home.js
+      counter.js
+      todos.js
+      api-demo.js
       about.js
+      not-found.js
   styles/
     styles.css</code></pre>
+
+  <div class="docs-tip">
+    <strong>What&rsquo;s included:</strong> The scaffold wires up a <strong>global store</strong> (<code>store.js</code>) with todos and a visit counter, five routed pages (<code>/</code>, <code>/counter</code>, <code>/todos</code>, <code>/api</code>, <code>/about</code>), a 404 fallback component, and a responsive sidebar with mobile menu &mdash; giving you working examples of <code>$.store</code>, <code>$.router</code>, <code>$.http</code>, <code>$.bus</code>, reactive state, and more.
+  </div>
 
   <div class="docs-tip">
     <strong>Tip:</strong> You can also run <code>npx zquery create</code> (without a directory name) to scaffold into the <strong>current directory</strong>.
