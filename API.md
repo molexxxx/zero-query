@@ -434,6 +434,28 @@ $.on('click', '.nav-link', function(e) {
 });
 ```
 
+#### `$.on(event, handler)`
+
+Direct event listener on `document` (no delegation). Useful for keyboard shortcuts, global key handlers, and other events where a CSS selector doesn't apply.
+
+```js
+// Close a modal on Escape
+$.on('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+```
+
+#### `$.off(event, handler)`
+
+Remove a direct global event listener previously attached with `$.on(event, handler)`.
+
+```js
+const onResize = () => console.log(window.innerWidth);
+$.on('resize', onResize);
+// later:
+$.off('resize', onResize);
+```
+
 #### `$.fn`
 
 Alias for `ZQueryCollection.prototype` — extend to add custom methods to all collections.

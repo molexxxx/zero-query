@@ -1,20 +1,27 @@
   <h2>Recommended Project Structure</h2>
-  <p>zQuery apps follow a simple convention: one HTML file, one boot script, one component per file. The default setup uses ES modules served directly by the browser &mdash; no build tools are needed beyond the initial <code>node build.js</code> to create the library bundle. An optional <a href="#" onclick="window.location.hash='/docs/getting-started';return false;">CLI bundler</a> is available if you need a single-file build.</p>
+  <p>zQuery apps follow a simple convention: one HTML file, one boot script, one component per file. The default setup uses ES modules served directly by the browser &mdash; no build tools are needed during development. Use <code>npx zquery create</code> to scaffold this structure automatically. An optional <a href="#" onclick="window.location.hash='/docs/getting-started';return false;">CLI bundler</a> is available when you need a single-file production build.</p>
+  <p>The easiest way to get this structure is with the CLI scaffold:</p>
+  <pre><code class="language-bash">npx zquery create my-app
+cd my-app
+npx zquery dev</code></pre>
+  <p>This generates the following layout:</p>
   <pre><code class="language-text">my-app/
   index.html                 &larr; entry point
   scripts/
     vendor/
-      zQuery.min.js          &larr; built library
+      zQuery.min.js          &larr; only needed for manual setup; dev server auto-resolves
     app.js                   &larr; boot: imports, router, store
-    app.css                  &larr; global styles (linked in index.html via &lt;link rel&gt;)
     routes.js                &larr; route definitions
     store.js                 &larr; global store config
     components/
       home.js                &larr; one file per component
       counter.js
       todos.js
+      api-demo.js
       about.js
-      not-found.js</code></pre>
+      not-found.js
+  styles/
+    styles.css               &larr; global styles (linked in index.html via &lt;link rel&gt;)</code></pre>
 
   <h3>Conventions</h3>
   <table class="docs-table">

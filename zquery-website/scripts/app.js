@@ -5,8 +5,6 @@
 // loaded stylesheets, runtime overrides, or theme switching at any point.
 
 import './components/home.js';
-import './components/counter.js';
-import './components/todos.js';
 import './components/docs/docs.js';
 import './components/about.js';
 import './components/not-found.js';

@@ -77,6 +77,7 @@ $.all = function(selector, context) {
 $.create   = query.create;
 $.ready    = query.ready;
 $.on       = query.on;
+$.off      = query.off;
 $.fn       = query.fn;
 
 // --- Reactive primitives ---------------------------------------------------

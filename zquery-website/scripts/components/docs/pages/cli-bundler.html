@@ -34,18 +34,19 @@ npx zquery bundle path/to/scripts/app.js</code></pre>
     <strong>Two builds, zero hacks:</strong> The <code>server/</code> build includes <code>&lt;base href="/"&gt;</code> so deep-route refreshes (e.g. <code>/docs/router</code>) resolve assets from the root &mdash; required for server-deployed SPAs. The <code>local/</code> build omits it so paths resolve relative to the HTML file &mdash; perfect for opening via <code>file://</code> with zero console errors.
   </div>
 
-  <h3>Bundling the Starter App</h3>
-  <p>If you cloned the <a href="https://github.com/tonywied17/zero-query" target="_blank" rel="noopener" style="color:#58a6ff;">zero-query repository</a>, bundle this starter app from the repo root:</p>
-  <pre><code class="language-bash"># npm script (defined in package.json)
-npm run bundle:app
+  <h3>Bundling Your App</h3>
+  <p>To get started, scaffold a new project with the CLI and then bundle it:</p>
+  <pre><code class="language-bash"># Scaffold a new project
+npx zquery create my-app
+cd my-app
 
-# or equivalently
-npx zquery bundle examples/starter-app/scripts/app.js
+# Bundle for production
+npx zquery bundle
 
-# open the local build directly from disk
-start examples/starter-app/dist/local/index.html
+# Open the local build directly from disk
+start dist/local/index.html
 
-# or deploy dist/server/ to your web server</code></pre>
+# Or deploy dist/server/ to your web server</code></pre>
 
   <h3>Optional Flags</h3>
   <table class="docs-table">

@@ -10,6 +10,7 @@
   "files": [
     "src",
     "dist",
+    "cli",
     "index.js",
     "index.d.ts",
     "cli.js",
@@ -18,10 +19,10 @@
   ],
   "scripts": {
     "build": "node build.js",
-    "dev": "node cli.js dev examples/starter-app",
+    "dev": "node cli.js dev zquery-website",
     "dev-lib": "node build.js --watch",
     "bundle": "node cli.js bundle",
-    "bundle:app": "node cli.js bundle examples/starter-app/scripts/app.js"
+    "bundle:app": "node cli.js bundle zquery-website/scripts/app.js"
   },
   "keywords": [
     "dom",

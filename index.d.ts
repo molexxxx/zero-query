@@ -976,6 +976,12 @@ interface ZQueryStatic {
   /** Global event delegation on `document`. */
   on(event: string, selector: string, handler: (this: Element, e: Event) => void): void;
 
+  /** Direct event listener on `document` (for keydown, resize, etc.). */
+  on(event: string, handler: (e: Event) => void): void;
+
+  /** Remove a direct global event listener previously attached with `$.on(event, handler)`. */
+  off(event: string, handler: (e: Event) => void): void;
+
   /** Alias for `ZQueryCollection.prototype` — extend to add custom collection methods. */
   fn: typeof ZQueryCollection.prototype;
 

@@ -50,7 +50,7 @@ cd my-app
 npx zquery dev
 ```
 
-The `create` command generates a ready-to-run project with `index.html`, a router, two components, and styles. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
+The `create` command generates a ready-to-run project with a sidebar layout, router, multiple components, and responsive styles. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
 
 ### Alternative: Manual Setup (No npm)
 
@@ -131,7 +131,12 @@ my-app/
     components/
       home.js
       counter.js
+      todos.js
+      api-demo.js
       about.js
+      not-found.js
+  styles/
+    styles.css
 ```
 
 - One component per file inside `components/`.
@@ -216,7 +221,7 @@ location / {
 | `$.all()` | Collection selector → `ZQueryCollection` |
 | `$.id` `$.class` `$.classes` `$.tag` `$.children` | Quick DOM refs |
 | `$.create` | Element factory |
-| `$.ready` `$.on` | DOM ready, global delegation |
+| `$.ready` `$.on` `$.off` | DOM ready, global event delegation & direct listeners |
 | `$.fn` | Collection prototype (extend it) |
 | `$.component` `$.mount` `$.mountAll` `$.getInstance` `$.destroy` `$.components` | Component system |
 | `$.style` | Dynamically load global stylesheet file(s) at runtime |

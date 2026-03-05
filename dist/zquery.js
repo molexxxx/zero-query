@@ -633,12 +633,25 @@ query.ready = (fn) => {
   else document.addEventListener('DOMContentLoaded', fn);
 };
 
-// Global event delegation
-query.on = (event, selector, handler) => {
+// Global event listeners — supports direct and delegated forms
+//   $.on('keydown', handler)           → direct listener on document
+//   $.on('click', '.btn', handler)     → delegated via closest()
+query.on = (event, selectorOrHandler, handler) => {
+  if (typeof selectorOrHandler === 'function') {
+    // 2-arg: direct document listener (keydown, resize, etc.)
+    document.addEventListener(event, selectorOrHandler);
+    return;
+  }
+  // 3-arg: delegated
   document.addEventListener(event, (e) => {
-    const target = e.target.closest(selector);
+    const target = e.target.closest(selectorOrHandler);
     if (target) handler.call(target, e);
   });
+};
+
+// Remove a direct global listener
+query.off = (event, handler) => {
+  document.removeEventListener(event, handler);
 };
 
 // Extend collection prototype (like $.fn in jQuery)
@@ -2521,6 +2534,7 @@ $.all = function(selector, context) {
 $.create   = query.create;
 $.ready    = query.ready;
 $.on       = query.on;
+$.off      = query.off;
 $.fn       = query.fn;
 
 // --- Reactive primitives ---------------------------------------------------
