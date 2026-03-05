@@ -183,7 +183,7 @@ $('.box').html('Hello')
     return `
       <div class="cmp-section">
         <h3>Defining Components</h3>
-        <p>Angular requires decorators, modules, CLI generation, and TypeScript. React typically uses JSX with a build tool. zQuery lets you define a component in one call with plain JavaScript template literals &mdash; no special syntax needed.</p>
+        <p>Each framework has its own component model. Angular uses decorated classes with a module system. React uses functions or classes with JSX. zQuery takes a single-call approach &mdash; one function, one options object, plain JavaScript.</p>
 
         <div class="cmp-grid cmp-grid-3">
           <div class="cmp-code-card">
@@ -286,7 +286,7 @@ export class MyWidget {
     return `
       <div class="cmp-section">
         <h3>Template Directives</h3>
-        <p>Angular pioneered template directives. React chose JSX expressions instead. zQuery brings a familiar directive syntax that works in plain HTML template literals &mdash; no compiler, no build step, no module imports.</p>
+        <p>Angular pioneered template directives. React chose JSX expressions instead. zQuery brings a familiar directive syntax that works in plain HTML template literals &mdash; just write and run.</p>
 
         <h3 style="margin-top:1.5rem;">Conditional Rendering</h3>
         <div class="cmp-grid cmp-grid-3">
@@ -546,8 +546,8 @@ store.subscribe('count', val =&gt;
               <li><span class="cmp-yes">&#10003;</span> Native <code>querySelectorAll</code></li>
               <li><span class="cmp-yes">&#10003;</span> Native <code>addEventListener</code></li>
               <li><span class="cmp-yes">&#10003;</span> ES modules out of the box</li>
-              <li><span class="cmp-yes">&#10003;</span> Template literals â€” no compiler</li>
-              <li><span class="cmp-yes">&#10003;</span> Build step optional (CLI)</li>
+              <li><span class="cmp-yes">&#10003;</span> Template literals &mdash; plain JS</li>
+              <li><span class="cmp-yes">&#10003;</span> Optional CLI bundler for production</li>
             </ul>
           </div>
 

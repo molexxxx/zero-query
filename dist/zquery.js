@@ -661,7 +661,7 @@ query.fn = ZQueryCollection.prototype;
 /**
  * zQuery Component — Lightweight reactive component system
  * 
- * Declarative components using template literals (no JSX, no build step).
+ * Declarative components using template literals with directive support.
  * Proxy-based state triggers targeted re-renders via event delegation.
  * 
  * Features:

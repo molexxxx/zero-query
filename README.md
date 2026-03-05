@@ -15,7 +15,7 @@
 
 </p>
 
-> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~54 KB minified browser bundle. Works out of the box with ES modules — no build step required. An optional CLI bundler is available for single-file distribution.**
+> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~54 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
 
 ## Features
 

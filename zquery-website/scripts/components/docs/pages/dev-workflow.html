@@ -1,5 +1,5 @@
   <h2>Development Workflow</h2>
-  <p>zQuery is designed for a <strong>fast, zero-build development experience</strong>. During development you work with standard ES modules directly in the browser &mdash; no transpiler, no bundler, no waiting. The CLI includes a purpose-built <strong>dev server with live-reload</strong> so your changes appear instantly.</p>
+  <p>zQuery is designed for a <strong>fast, streamlined development experience</strong>. During development you work with standard ES modules directly in the browser &mdash; write code, save, and see results instantly. The CLI includes a purpose-built <strong>dev server with live-reload</strong> so your changes appear in real time.</p>
 
   <h3>Installation</h3>
   <p>The dev server is included in the <code>zero-query</code> npm package. Install it as a dev dependency, or globally to use <code>zquery</code> anywhere without <code>npx</code>:</p>
@@ -20,7 +20,7 @@ npx zquery dev --port 8080</code></pre>
   <p>The server will print its URL and begin watching for file changes. Open the URL in your browser and start editing &mdash; the page updates automatically when you save.</p>
 
   <div class="docs-callout">
-    <strong>No build step required.</strong> The dev server serves your ES modules as-is. The browser&rsquo;s native <code>import</code> support handles module resolution, so you get instant feedback without waiting for a bundler.
+    <strong>Instant feedback.</strong> The dev server serves your ES modules as-is. The browser&rsquo;s native <code>import</code> support handles module resolution, so you see changes the moment you save.
   </div>
 
   <h3>Targeting a Sub-Directory</h3>
@@ -60,7 +60,7 @@ npx zquery dev path/to/my-app</code></pre>
 
   <h3>Recommended Workflow</h3>
   <div class="docs-callout">
-    <strong>Summary:</strong> Use <code>zquery dev</code> as your primary development tool. It gives you the fastest feedback loop &mdash; no build step, instant reload. Only run <code>zquery bundle</code> when you&rsquo;re ready to deploy or distribute a production build.
+    <strong>Summary:</strong> Use <code>zquery dev</code> as your primary development tool. It gives you the fastest feedback loop with instant reload. Run <code>zquery bundle</code> when you&rsquo;re ready to deploy or distribute a production build.
   </div>
   <table class="docs-table">
     <tr><th>Task</th><th>Command</th></tr>
