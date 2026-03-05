@@ -209,12 +209,12 @@ $.component('docs-page', {
   /* -- Render -- */
 
   render() {
-    if (!this.templates) {
-      return '<div class="docs-layout"><p style="padding:2rem;color:#8b949e;">Loading documentation&hellip;</p></div>';
-    }
-
     const s = this.state;
     const active = this.activePage;
+
+    if (!this.templates || !this.templates[active]) {
+      return '<div class="docs-layout"><p style="padding:2rem;color:#8b949e;">Loading documentation&hellip;</p></div>';
+    }
     const q = s.searchQuery.trim().toLowerCase();
 
     // Build heading cache per page (used for sub-nav + search)

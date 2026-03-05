@@ -2,7 +2,7 @@
  * cli/commands/build.js — library build command
  *
  * Concatenates the zQuery source modules into dist/zquery.js and
- * dist/zquery.min.js, identical to what build.js does.
+ * dist/zquery.min.js.
  */
 
 'use strict';

@@ -1,72 +1,92 @@
-  <h2>Selectors &amp; DOM — <code>$()</code> &amp; <code>$.all()</code></h2>
-  <p>zQuery provides two selector functions that mirror the browser's <code>querySelector</code> and <code>querySelectorAll</code>, with added convenience for DOM elements, NodeLists, and HTML string creation.</p>
+  <h2>Selectors &amp; DOM</h2>
+  <p>zQuery gives you a full set of selectors for every common lookup pattern &mdash; by ID, class, tag, CSS query, or parent. Most of the time you&rsquo;re grabbing <strong>one element</strong>, so the API is designed around that. <code>$.all()</code> is there when you genuinely need a collection.</p>
 
   <table class="docs-table">
-    <tr><th>Function</th><th>Returns</th><th>Description</th></tr>
-    <tr><td><code>$(selector)</code></td><td><code>Element | null</code></td><td>Single element via <code>querySelector</code></td></tr>
-    <tr><td><code>$.all(selector)</code></td><td><code>ZQueryCollection</code></td><td>All matching elements via <code>querySelectorAll</code>, wrapped in a chainable collection</td></tr>
+    <tr><th>Selector</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>$(selector)</code></td><td><code>Element | null</code></td><td>First match via <code>querySelector</code>. Also accepts elements, NodeLists, HTML strings, and functions (DOM-ready).</td></tr>
+    <tr><td><code>$.id(id)</code></td><td><code>Element | null</code></td><td><code>document.getElementById</code></td></tr>
+    <tr><td><code>$.class(name)</code></td><td><code>Element | null</code></td><td>First element with the class &mdash; <code>querySelector('.name')</code></td></tr>
+    <tr><td><code>$.classes(name)</code></td><td><code>Array&lt;Element&gt;</code></td><td>All elements with the class &mdash; <code>getElementsByClassName</code> as array</td></tr>
+    <tr><td><code>$.tag(name)</code></td><td><code>Array&lt;Element&gt;</code></td><td>All elements of a tag &mdash; <code>getElementsByTagName</code> as array</td></tr>
+    <tr><td><code>$.children(parentId)</code></td><td><code>Array&lt;Element&gt;</code></td><td>Direct children of <code>#parentId</code> as array</td></tr>
+    <tr><td><code>$.all(selector)</code></td><td><code>ZQueryCollection</code></td><td>All matches via <code>querySelectorAll</code>, wrapped in a chainable collection</td></tr>
   </table>
-  <p>Both accept CSS selectors, DOM elements, NodeLists, arrays, and HTML strings. <code>$()</code> additionally accepts a function as a DOM-ready shorthand.</p>
-
-  <h3>Single-Element Selector — <code>$()</code></h3>
-  <pre><code class="language-javascript">// CSS selector — returns first matching element (or null)
-$('.card')                     // first .card element
-$('li', '#myList')             // first li scoped within #myList
-
-// DOM element — returned as-is
-$(document.getElementById('app'))
-
-// ZQueryCollection — returns the first element from the collection
-$($.all('.card'))
-
-// NodeList / Array — returns the first element
-$(document.querySelectorAll('p'))
-
-// Create element from HTML string — returns first created element
-$('&lt;div class="alert"&gt;Hello&lt;/div&gt;')
-
-// DOM-ready callback (like jQuery $(fn))
-$(() =&gt; console.log('DOM is ready'))
-
-// Works with standard DOM API — no wrapper overhead
-const el = $('.card');
-if (el) el.classList.add('active');</code></pre>
 
   <div class="docs-tip">
-    <strong>When to use <code>$()</code> vs <code>$.all()</code>:</strong> Use <code>$()</code> when you expect a <strong>single element</strong> (a container, a form, a specific ID). Use <code>$.all()</code> when you need to operate on <strong>multiple elements</strong> (all cards, all list items, all buttons of a class). <code>$()</code> returns a raw DOM element, so you can use native DOM methods directly without any abstraction layer.
+    <strong>Which one should I use?</strong> Reach for the specific helper first &mdash; <code>$.id()</code>, <code>$.class()</code>, <code>$.tag()</code> &mdash; they&rsquo;re shorter, faster, and make your intent obvious. Use <code>$()</code> for complex CSS selectors or scoped queries. Use <code>$.all()</code> only when you actually need to operate on <strong>multiple elements</strong> at once.
   </div>
 
-  <h3>Collection Selector — <code>$.all()</code></h3>
-  <pre><code class="language-javascript">// CSS selector — returns ZQueryCollection of all matches
-$.all('.card')                    // all .card elements
-$.all('li', '#myList')            // all li scoped within #myList
+  <h3>Selecting Elements</h3>
+  <pre><code class="language-javascript">// By ID — grab a specific container, form, or section
+const app      = $.id('app');
+const sidebar  = $.id('sidebar');
+const modal    = $.id('confirm-dialog');
 
-// Wrap a NodeList or array of elements
-$.all(document.querySelectorAll('p'))
+// By class — first matching element
+const hero     = $.class('hero-banner');
+const active   = $.class('tab-active');
 
-// Wrap a single DOM element into a collection
-$.all(document.getElementById('app'))
+// All elements with a class — returns a plain array
+const errors   = $.classes('field-error');    // [span.field-error, span.field-error, ...]
 
-// Chainable collection methods
-$.all('.card').addClass('active').css({ opacity: '1' });
+// By tag — all elements of that type
+const images   = $.tag('img');               // every &lt;img&gt; on the page
+const rows     = $.tag('tr');                // every table row
 
-// Iterable — supports for...of and spread
-for (const el of $.all('.item')) {
-  console.log(el.textContent);
-}
-const arr = [...$.all('.item')];  // spread to plain array</code></pre>
+// Children of a specific parent
+const navItems = $.children('main-nav');     // direct children of #main-nav
 
-  <h3>Quick-Ref Shortcuts</h3>
-  <p>Convenience methods for common DOM lookups, available directly on the <code>$</code> namespace:</p>
-  <table class="docs-table">
-    <tr><th>Method</th><th>Equivalent</th><th>Returns</th></tr>
-    <tr><td><code>$.id('myId')</code></td><td><code>document.getElementById('myId')</code></td><td><code>Element</code></td></tr>
-    <tr><td><code>$.class('name')</code></td><td><code>document.querySelector('.name')</code></td><td><code>Element | null</code></td></tr>
-    <tr><td><code>$.classes('name')</code></td><td><code>document.getElementsByClassName('name')</code></td><td><code>Array&lt;Element&gt;</code></td></tr>
-    <tr><td><code>$.tag('div')</code></td><td><code>document.getElementsByTagName('div')</code></td><td><code>Array&lt;Element&gt;</code></td></tr>
-    <tr><td><code>$.children('parentId')</code></td><td><code>[...document.getElementById('parentId').children]</code></td><td><code>Array&lt;Element&gt;</code></td></tr>
-    <tr><td><code>$.ready(fn)</code></td><td><code>DOMContentLoaded</code> listener (or immediate if already loaded)</td><td><code>void</code></td></tr>
-  </table>
+// CSS selector — for anything more specific
+const email    = $('input[name="email"]');   // first matching input
+const featured = $('article.featured');      // first featured article
+const nested   = $('li', '#todo-list');      // first &lt;li&gt; inside #todo-list
+
+// Create an element from an HTML string
+const alert    = $('&lt;div class="alert"&gt;Saved!&lt;/div&gt;');
+
+// DOM-ready callback
+$(() =&gt; console.log('DOM is ready'));</code></pre>
+
+  <h3>Working with Single Elements</h3>
+  <p>Every selector above (except <code>$.all</code>) returns a <strong>raw DOM element</strong> &mdash; no wrapper, no abstraction. You use the standard DOM API directly:</p>
+  <pre><code class="language-javascript">// Toggle a sidebar
+const sidebar = $.id('sidebar');
+sidebar.classList.toggle('collapsed');
+
+// Read and update a form field
+const emailInput = $('input[name="email"]');
+console.log(emailInput.value);
+emailInput.value = '';
+emailInput.focus();
+
+// Show/hide a modal
+const modal = $.id('confirm-dialog');
+modal.style.display = 'flex';         // show
+modal.style.display = 'none';         // hide
+
+// Update text content
+$.id('cart-count').textContent = '3';
+
+// Set attributes on a specific element
+$.class('avatar').setAttribute('src', user.photoUrl);
+
+// Loop over a plain array from $.classes / $.tag / $.children
+$.classes('notification').forEach(el =&gt; el.remove());
+$.tag('input').forEach(el =&gt; { el.disabled = true; });</code></pre>
+
+  <div class="docs-callout">
+    <strong>No wrapper overhead.</strong> Because <code>$()</code>, <code>$.id()</code>, <code>$.class()</code>, etc. return native DOM elements, you get full access to the browser API. There&rsquo;s no collection object to unwrap &mdash; just the element you asked for.
+  </div>
+
+  <h3>Collection Selector &mdash; <code>$.all()</code></h3>
+  <p>When you need to apply the same operation to <strong>many elements at once</strong>, <code>$.all()</code> returns a <code>ZQueryCollection</code> with chainable helper methods:</p>
+  <pre><code class="language-javascript">// Disable all submit buttons in a form while saving
+$.all('#checkout-form button[type="submit"]').prop('disabled', true).addClass('saving');
+
+// The collection is iterable — for...of and spread both work
+for (const row of $.all('table.report tbody tr')) {
+  console.log(row.cells[0].textContent);
+}</code></pre>
 
   <h3>Element Creation — <code>$.create()</code></h3>
   <p>Create a DOM element programmatically with attributes, styles, event listeners, and children in a single call:</p>
@@ -183,31 +203,39 @@ document.body.appendChild(btn);</code></pre>
     <tr><td><code>blur</code></td><td><code>blur()</code></td><td><code>this</code></td><td>Blur first element</td></tr>
   </table>
 
-  <h3>Events — Direct &amp; Delegated</h3>
-  <pre><code class="language-javascript">// Direct event on all matched elements
-$.all('.btn').on('click', (e) =&gt; { /* ... */ });
+  <h3>Events — DOM &amp; Global</h3>
+  <p>Single elements use native <code>addEventListener</code>. Collections get chainable <code>.on()</code>. Global events use <code>$.on()</code> / <code>$.off()</code>.</p>
+  <pre><code class="language-javascript">// Single element — native DOM API
+const saveBtn = $.id('save-btn');
+saveBtn.addEventListener('click', () =&gt; { /* save logic */ });
 
-// Multiple events at once (space-separated)
-$.all('.btn').on('mouseenter mouseleave', (e) =&gt; {
+// Keyboard shortcut on document via $.on()
+$.on('keydown', (e) =&gt; {
+  if (e.key === 'Escape') $.id('modal').style.display = 'none';
+});
+
+// Delegated — listen on a parent, filter by child selector
+$.on('click', '.delete-btn', function(e) {
+  this.closest('.todo-item').remove();
+});
+
+// Remove a global listener
+const handler = (e) =&gt; console.log(e.detail);
+$.on('theme:change', handler);
+$.off('theme:change', handler);
+
+// Collection .on() — when you truly need the same handler on many elements
+$.all('nav a').on('mouseenter mouseleave', (e) =&gt; {
   e.target.classList.toggle('hovered');
 });
 
-// Delegated event — listen on parent, filter by child selector
-// (This is like jQuery's $(parent).on('click', '.child', fn))
-$.all('#list').on('click', '.item', function(e) {
-  console.log('Clicked:', this.textContent);
-});
-
-// One-time event — auto-removes after first invocation
-$.all('.btn').one('click', () =&gt; console.log('once'));
-
-// Custom events with detail payload
-$.all('.widget').trigger('update', { value: 42 });
-$.all('.widget').on('update', (e) =&gt; console.log(e.detail));
-// e.detail = { value: 42 }</code></pre>
+// One-time event on a collection
+$.all('.onboarding-step').one('click', function() {
+  this.classList.add('completed');
+});</code></pre>
 
   <div class="docs-callout">
-    <strong>Delegated events</strong> are essential for dynamic content. If you add elements to the DOM after binding, delegated events on a parent still work because the check happens at event time, not bind time.
+    <strong>Delegated events</strong> are essential for dynamic content. Elements added to the DOM after binding still trigger delegated handlers because the check happens at event time, not bind time.
   </div>
 
   <h3>Animations</h3>
@@ -219,39 +247,34 @@ $.all('.widget').on('update', (e) =&gt; console.log(e.detail));
     <tr><td><code>fadeOut</code></td><td><code>fadeOut(duration = 300)</code></td><td><code>Promise</code></td><td>Fade out and hide element after completion</td></tr>
     <tr><td><code>slideToggle</code></td><td><code>slideToggle(duration = 300)</code></td><td><code>this</code></td><td>Toggle height between 0 and natural height</td></tr>
   </table>
-  <pre><code class="language-javascript">// Sequential animation
-await $.all('.card').animate({ opacity: '0', transform: 'scale(0.9)' }, 300);
-await $.all('.card').fadeIn(400);
+  <pre><code class="language-javascript">// Fade in a single modal
+const modal = $.id('modal');
+await $.all([modal]).fadeIn(200);  // wrap in collection for animation helpers
 
-// Custom easing
-await $.all('.modal').animate(
-  { transform: 'translateY(0)' }, 500, 'cubic-bezier(0.16, 1, 0.3, 1)'
-);</code></pre>
+// Or target by selector when animating multiple elements
+await $.all('.row.removing').animate({ opacity: '0', transform: 'translateX(-20px)' }, 300);
+$.all('.row.removing').remove();</code></pre>
 
   <h3>Form Helpers</h3>
-  <pre><code class="language-javascript">// URL-encoded string (like traditional form submission)
-$.all('#form').serialize();        // "name=Tony&amp;email=tony%40x.com"
+  <pre><code class="language-javascript">// Grab the form as a collection for serialize helpers
+const form = $.all('#checkout-form');
+
+// URL-encoded string (like traditional form submission)
+form.serialize();        // "name=Tony&amp;email=tony%40x.com"
 
 // Plain object (handles duplicate field names as arrays)
-$.all('#form').serializeObject();  // { name: 'Tony', email: 'tony@x.com' }
+form.serializeObject();  // { name: 'Tony', email: 'tony@x.com' }
 // If multiple checkboxes: { colors: ['red', 'blue'] }</code></pre>
-
-  <h3>Global Event Delegation — <code>$.on()</code></h3>
-  <p>Delegate events on the entire <code>document</code> — useful for handling clicks on elements that don't exist yet:</p>
-  <pre><code class="language-javascript">$.on('click', '.delete-btn', function(e) {
-  this.closest('.row').remove();
-});</code></pre>
 
   <h3>Extend with Plugins — <code>$.fn</code></h3>
   <p><code>$.fn</code> is an alias for <code>ZQueryCollection.prototype</code>. Add custom methods to it just like jQuery plugins:</p>
   <pre><code class="language-javascript">// Define a plugin
-$.fn.highlight = function(color = 'yellow') {
-  return this.css({ background: color });
+$.fn.disable = function() {
+  return this.prop('disabled', true).addClass('disabled');
 };
 
-// Use it
-$.all('.important').highlight('#ff0');
-$.all('p').highlight();  // defaults to yellow</code></pre>
+// Use it on any collection
+$.all('#settings-form input').disable();</code></pre>
 
   <div class="docs-tip">
     <strong>Tip:</strong> Always return <code>this</code> from plugin methods to preserve chainability.

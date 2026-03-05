@@ -43,7 +43,7 @@
     <tr><td><code>styles</code></td><td><code>string</code></td><td>No</td><td>CSS string auto-scoped to the component via a unique <code>[z-s{uid}]</code> attribute selector. A <code>&lt;style&gt;</code> tag with <code>data-zq-component</code> attribute is injected into the document head.</td></tr>
     <tr><td><code>templateUrl</code></td><td><code>string | string[] | {key: url}</code></td><td>No</td><td>URL to an external HTML template, or an array/object map of URLs for multi-template components. If <code>render()</code> is also defined, <code>render()</code> takes priority.</td></tr>
     <tr><td><code>styleUrl</code></td><td><code>string | string[]</code></td><td>No</td><td>URL (or array of URLs) to external CSS file(s). Fetched, scoped, and cached on first mount. Merged with inline <code>styles</code> if both present.</td></tr>
-    <tr><td><code>pages</code></td><td><code>object</code></td><td>No</td><td>Declarative multi-page config. Auto-generates <code>templateUrl</code> map and exposes <code>this.pages</code>, <code>this.activePage</code>, <code>this.templates</code>. See <strong>Pages Config</strong> below.</td></tr>
+    <tr><td><code>pages</code></td><td><code>object</code></td><td>No</td><td>Declarative multi-page config with lazy loading. Exposes <code>this.pages</code>, <code>this.activePage</code>, <code>this.templates</code>. See <strong>Pages Config</strong> below.</td></tr>
     <tr><td><code>base</code></td><td><code>string</code></td><td>No</td><td>Optional override for the base path used to resolve relative <code>templateUrl</code>, <code>styleUrl</code>, and <code>pages.dir</code> paths. By default, paths resolve relative to the component file automatically — you only need <code>base</code> if you want to point somewhere else.</td></tr>
     <tr><td><code>init()</code></td><td><code>function</code></td><td>No</td><td>Runs during construction, before the first render. Good for setting up non-reactive properties.</td></tr>
     <tr><td><code>mounted()</code></td><td><code>function</code></td><td>No</td><td>Runs once after the first render. DOM is available; safe to access <code>this.refs</code>, set up subscriptions, etc.</td></tr>
@@ -296,7 +296,7 @@ render() {
     <tr><td><code>inst.state</code></td><td><code>Proxy</code></td><td>Reactive state — mutating any property triggers a re-render</td></tr>
     <tr><td><code>inst.props</code></td><td><code>Object (frozen)</code></td><td>Read-only props from parent or mount call</td></tr>
     <tr><td><code>inst.refs</code></td><td><code>Object</code></td><td>Map of <code>z-ref</code> names to DOM elements (refreshed each render)</td></tr>
-    <tr><td><code>inst.templates</code></td><td><code>Object</code></td><td>Keyed map of loaded templates (when using multi-<code>templateUrl</code> or <code>pages</code> config)</td></tr>
+    <tr><td><code>inst.templates</code></td><td><code>Object</code></td><td>Keyed map of loaded templates (when using multi-<code>templateUrl</code> or <code>pages</code> config). With <code>pages</code>, the active page is always present; other pages fill in via background prefetch.</td></tr>
     <tr><td><code>inst.pages</code></td><td><code>Array&lt;{id, label}&gt;</code></td><td>Normalized page metadata (when using <code>pages</code> config)</td></tr>
     <tr><td><code>inst.activePage</code></td><td><code>string</code></td><td>Active page id derived from route param (when using <code>pages</code> config)</td></tr>
     <tr><td><code>inst.setState(partial)</code></td><td><code>function</code></td><td>Batch-update multiple state keys: <code>Object.assign(this.state, partial)</code></td></tr>
@@ -466,15 +466,15 @@ $.style('overrides.css');</code></pre>
     <strong>When to use:</strong> Use a <code>&lt;link rel="stylesheet"&gt;</code> in <code>index.html</code> for global styles (best FOUC prevention). Use <code>$.style()</code> to dynamically load additional CSS files (themes, overrides). Use <code>styleUrl</code> for styles scoped to a component. Use component <code>styles</code> (inline string) for scoped inline CSS.
   </div>
 
-  <h4>Pages Config &mdash; Declarative Multi-Page Components</h4>
-  <p>The <code>pages</code> option is a high-level shorthand for components that display multiple pages loaded from a directory (e.g. documentation, wizards, tabbed content). It replaces the need to manually build a <code>templateUrl</code> object map and maintain a separate list of page metadata.</p>
+  <h3>Pages Config &mdash; Declarative Multi-Page Components</h3>
+  <p>The <code>pages</code> option is a high-level shorthand for components that display multiple pages loaded from a directory (e.g. documentation, wizards, tabbed content). Pages are <strong>lazy-loaded</strong> &mdash; only the active page is fetched on first render, and remaining pages are prefetched in the background for instant navigation.</p>
 
   <table class="docs-table">
     <thead><tr><th>Property</th><th>Type</th><th>Description</th></tr></thead>
     <tbody>
       <tr><td><code>dir</code></td><td><code>string</code></td><td>Directory path containing the page HTML files</td></tr>
       <tr><td><code>param</code></td><td><code>string</code></td><td>Name of the dynamic route parameter that determines the active page. Must match a <code>:param</code> segment in your route definition (see below).</td></tr>
-      <tr><td><code>default</code></td><td><code>string</code></td><td>Page id to show when the route param is absent or doesn't match any item</td></tr>
+      <tr><td><code>default</code></td><td><code>string</code></td><td>Page id to show when the route param is absent or doesn't match any item. Also used as the fallback when a URL points to an unknown page.</td></tr>
       <tr><td><code>ext</code></td><td><code>string</code></td><td>File extension (default <code>'.html'</code>)</td></tr>
       <tr><td><code>items</code></td><td><code>Array</code></td><td>List of page ids (strings) or <code>{id, label}</code> objects</td></tr>
     </tbody>
@@ -532,8 +532,43 @@ $.component('docs-page', {
     <strong>Flow summary:</strong> User clicks <code>z-link="/docs/store"</code> → router matches <code>/docs/:section</code> → extracts <code>$params.section = 'store'</code> → pages config reads <code>param: 'section'</code> → sets <code>this.activePage = 'store'</code> → <code>render()</code> displays <code>this.templates['store']</code>.</div>
 
   <div class="docs-tip">
-    <strong>How it works:</strong> Under the hood, <code>pages</code> auto-generates a <code>templateUrl</code> object map (<code>{ id: 'dir/id.html', … }</code>) and normalizes items into a <code>{id, label}</code> array. The component then exposes <code>this.pages</code> (metadata), <code>this.activePage</code> (current id from the route param), and <code>this.templates</code> (loaded HTML keyed by id). All three are available inside <code>render()</code>.</div>
+    <strong>How it works:</strong> Under the hood, <code>pages</code> builds a URL map (<code>{ id: 'dir/id.html', &hellip; }</code>) and normalizes items into a <code>{id, label}</code> array. On first render, only the <strong>active page</strong> is fetched &mdash; the component renders as soon as that single file is ready. All remaining pages are then prefetched in the background so subsequent navigation is instant. The component exposes <code>this.pages</code> (metadata), <code>this.activePage</code> (current id from the route param), and <code>this.templates</code> (loaded HTML keyed by id).</div>
 
   <div class="docs-tip">
-    <strong>Real-world example:</strong> This very docs page uses the <code>pages</code> config to load 9 API sections from individual HTML files under <code>pages/</code>, with route-driven section switching via <code>/docs/:section</code>.</div>
+    <strong>Real-world example:</strong> This very docs page uses the <code>pages</code> config to load 11 API sections from individual HTML files under <code>pages/</code>, with route-driven section switching via <code>/docs/:section</code>.</div>
+
+  <h4>Adding Interactivity to Pages</h4>
+  <p>Page HTML files are static content by default &mdash; perfect for docs, help text, and reference material. But if a page needs interactivity, you can <strong>embed a component</strong> directly inside the HTML. The component system automatically initializes any custom elements it finds in rendered content:</p>
+
+  <pre><code class="language-html">&lt;!-- pages/getting-started.html --&gt;
+&lt;h2&gt;Getting Started&lt;/h2&gt;
+&lt;p&gt;Follow the steps below to set up your project.&lt;/p&gt;
+
+&lt;!-- Interactive component embedded in a static page --&gt;
+&lt;install-wizard&gt;&lt;/install-wizard&gt;
+
+&lt;h3&gt;Next Steps&lt;/h3&gt;
+&lt;p&gt;Once installed, explore the &lt;strong&gt;Components&lt;/strong&gt; section.&lt;/p&gt;</code></pre>
+
+  <pre><code class="language-javascript">// components/install-wizard.js
+$.component('install-wizard', {
+  state: () => ({ step: 1 }),
+  render() {
+    return `
+      &lt;div class="wizard"&gt;
+        &lt;p&gt;Step ${this.state.step} of 3&lt;/p&gt;
+        &lt;button @click="next"&gt;Next&lt;/button&gt;
+      &lt;/div&gt;
+    `;
+  },
+  next() { if (this.state.step &lt; 3) this.state.step++; },
+});</code></pre>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> Keep page files as plain HTML for content. When you need interactive widgets, create a component and drop its tag into the page HTML. This keeps content files simple and reusable while still allowing rich interactivity where needed.
+  </div>
+
+  <div class="docs-callout">
+    <strong>When to use pages vs. routes:</strong> Use <code>pages</code> for content that shares the same layout (sidebar nav, search, shared chrome) and only swaps the main content area. If a &ldquo;page&rdquo; needs its own layout, lifecycle, or completely different UI, make it a <strong>separate route + component</strong> instead &mdash; that&rsquo;s what the router is for.
+  </div>
 </section>

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/logo.svg" alt="zQuery logo" width="300" height="300">
+  <img src=".github/images/logo.svg" alt="zQuery logo" width="300" height="300">
 </p>
 
 <h1 align="center">zQuery</h1>
@@ -59,7 +59,7 @@ If you prefer **zero tooling**, download `dist/zQuery.min.js` from the [GitHub r
 ```bash
 git clone https://github.com/tonywied17/zero-query.git
 cd zero-query
-node build.js
+npx zquery build
 # → dist/zQuery.min.js  (~45 KB)
 ```
 

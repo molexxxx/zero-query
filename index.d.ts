@@ -315,7 +315,12 @@ export function effect(fn: () => void): () => void;
 /** Item in a `pages` config — either a string id or an `{ id, label }` object. */
 type PageItem = string | { id: string; label?: string };
 
-/** Declarative multi-page configuration for a component. */
+/**
+ * Declarative multi-page configuration for a component.
+ *
+ * Pages are **lazy-loaded**: only the active page is fetched on first render.
+ * Remaining pages are prefetched in the background for instant navigation.
+ */
 interface PagesConfig {
   /** Directory containing the page HTML files (resolved relative to `base`). */
   dir?: string;

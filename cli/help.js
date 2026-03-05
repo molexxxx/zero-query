@@ -19,8 +19,7 @@ function showHelp() {
       --out, -o <path>         Output directory (default: dist/ next to index.html)
       --html <file>            Use a specific HTML file (default: auto-detected)
 
-    build                      Build the zQuery library \u2192 dist/
-                               (must be run from the project root where src/ lives)
+    build                      Build the zQuery library \u2192 dist/      --watch, -w              Watch src/ and rebuild on changes                               (must be run from the project root where src/ lives)
 
   SMART DEFAULTS
 

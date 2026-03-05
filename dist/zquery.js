@@ -903,6 +903,8 @@ class Component {
   //     items:   ['page-a', { id: 'page-b', label: 'Page B' }, ...]
   //   }
   //   Exposes this.pages (array of {id,label}), this.activePage (current id)
+  //   Pages are lazy-loaded: only the active page is fetched on first render,
+  //   remaining pages are prefetched in the background for instant navigation.
   //
   async _loadExternals() {
     const def = this._def;
@@ -920,13 +922,15 @@ class Component {
         return { id: item.id, label: item.label || _titleCase(item.id) };
       });
 
-      // Auto-generate templateUrl object map
-      if (!def.templateUrl) {
-        def.templateUrl = {};
-        for (const { id } of def._pages) {
-          def.templateUrl[id] = `${dir}/${id}${ext}`;
-        }
+      // Build URL map for lazy per-page loading.
+      // Pages are fetched on demand (active page first, rest prefetched in
+      // the background) so the component renders as soon as the visible
+      // page is ready instead of waiting for every page to download.
+      def._pageUrls = {};
+      for (const { id } of def._pages) {
+        def._pageUrls[id] = `${dir}/${id}${ext}`;
       }
+      if (!def._externalTemplates) def._externalTemplates = {};
 
       def._pagesNormalized = true;
     }
@@ -988,7 +992,37 @@ class Component {
     if (this._def._pages) {
       this.pages = this._def._pages;
       const pc = this._def.pages;
-      this.activePage = (pc.param && this.props.$params?.[pc.param]) || pc.default || this._def._pages[0]?.id || '';
+      let active = (pc.param && this.props.$params?.[pc.param]) || pc.default || this._def._pages[0]?.id || '';
+
+      // Fall back to default if the param doesn't match any known page
+      if (this._def._pageUrls && !(active in this._def._pageUrls)) {
+        active = pc.default || this._def._pages[0]?.id || '';
+      }
+      this.activePage = active;
+
+      // Lazy-load: fetch only the active page's template on demand
+      if (this._def._pageUrls && !(active in this._def._externalTemplates)) {
+        const url = this._def._pageUrls[active];
+        if (url) {
+          _fetchResource(url).then(html => {
+            this._def._externalTemplates[active] = html;
+            if (!this._destroyed) this._render();
+          });
+          return; // Wait for active page before rendering
+        }
+      }
+
+      // Prefetch remaining pages in background (once, after active page is ready)
+      if (this._def._pageUrls && !this._def._pagesPrefetched) {
+        this._def._pagesPrefetched = true;
+        for (const [id, url] of Object.entries(this._def._pageUrls)) {
+          if (!(id in this._def._externalTemplates)) {
+            _fetchResource(url).then(html => {
+              this._def._externalTemplates[id] = html;
+            });
+          }
+        }
+      }
     }
 
     // Determine HTML content

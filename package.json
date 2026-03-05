@@ -5,7 +5,7 @@
   "main": "index.js",
   "types": "index.d.ts",
   "bin": {
-    "zquery": "./cli.js"
+    "zquery": "./cli/index.js"
   },
   "files": [
     "src",
@@ -13,16 +13,15 @@
     "cli",
     "index.js",
     "index.d.ts",
-    "cli.js",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
-    "build": "node build.js",
-    "dev": "node cli.js dev zquery-website",
-    "dev-lib": "node build.js --watch",
-    "bundle": "node cli.js bundle",
-    "bundle:app": "node cli.js bundle zquery-website/scripts/app.js"
+    "build": "node cli/index.js build",
+    "dev": "node cli/index.js dev zquery-website",
+    "dev-lib": "node cli/index.js build --watch",
+    "bundle": "node cli/index.js bundle",
+    "bundle:app": "node cli/index.js bundle zquery-website/scripts/app.js"
   },
   "keywords": [
     "dom",

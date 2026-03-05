@@ -138,11 +138,11 @@ $.all(selector, context?)
 Collection is iterable — works with `for...of` and spread `[...$.all('.items')]`.
 
 ```js
-$.all('.card').each((i, el) => {
+$.all('.notification').each((i, el) => {
   console.log(i, el.textContent);
 });
 
-const texts = $.all('.card').map((i, el) => el.textContent);
+const prices = $.all('.product .price').map((i, el) => parseFloat(el.textContent));
 ```
 
 #### Traversal
@@ -158,13 +158,13 @@ const texts = $.all('.card').map((i, el) => el.textContent);
 | `prev` | `prev()` | `ZQueryCollection` | Previous sibling of each element. |
 
 ```js
-$.all('#nav').find('a')           // all <a> inside #nav
-$.all('.item').parent()           // parent of each .item
-$.all('.child').closest('.card')  // nearest .card ancestor
-$.all('#list').children('li')     // direct <li> children
-$.all('.active').siblings()       // all siblings of .active
-$.all('.item').next()             // next sibling
-$.all('.item').prev()             // previous sibling
+$.all('#sidebar').find('a')           // all <a> inside #sidebar
+$.all('.comment').parent()            // parent of each .comment
+$.all('.reply').closest('.thread')    // nearest .thread ancestor
+$.all('#nav').children('li')          // direct <li> children
+$.all('.tab.active').siblings()       // all siblings of .active tab
+$.all('.step.current').next()         // next sibling
+$.all('.step.current').prev()         // previous sibling
 ```
 
 #### Filtering
@@ -176,10 +176,10 @@ $.all('.item').prev()             // previous sibling
 | `has` | `has(selector)` | `ZQueryCollection` | Keep elements that have a descendant matching selector. |
 
 ```js
-$.all('.item').filter('.active')            // only .active items
-$.all('.item').filter(el => el.id)          // only items with an id
-$.all('.item').not('.disabled')             // exclude disabled
-$.all('.card').has('.badge')                // cards that contain a .badge
+$.all('tr').filter('.selected')                 // only selected rows
+$.all('input').filter(el => el.value !== '')     // only filled inputs
+$.all('li').not('.disabled')                     // exclude disabled items
+$.all('.card').has('img')                        // cards that contain an image
 ```
 
 #### Classes
@@ -192,11 +192,11 @@ $.all('.card').has('.badge')                // cards that contain a .badge
 | `hasClass` | `hasClass(name)` | `boolean` | Check if first element has class. |
 
 ```js
-$.all('.card').addClass('active highlight');
-$.all('.card').removeClass('pending');
-$.all('.card').toggleClass('open');
-$.all('.card').toggleClass('visible', true);  // force add
-$.all('.card').hasClass('active');            // true/false
+$.all('#results tr').addClass('striped');
+$.all('.alert').removeClass('hidden');
+$.all('.menu-item').toggleClass('expanded');
+$.all('.panel').toggleClass('pinned', true);    // force add
+$.all('.tab').hasClass('active');                // true/false (first element)
 ```
 
 #### Attributes & Properties
@@ -212,14 +212,14 @@ $.all('.card').hasClass('active');            // true/false
 | `data` | `data(key, value)` | `this` | Set data attribute. Objects are JSON-stringified. |
 
 ```js
-$.all('img').attr('src');                         // get
-$.all('img').attr('alt', 'Photo');                // set
-$.all('a').removeAttr('target');
-$.all('input').prop('disabled');                  // get boolean property
-$.all('input').prop('disabled', true);            // set
-$.all('.card').data('config');                    // reads data-config, parses JSON
-$.all('.card').data('config', { theme: 'dark' }); // sets data-config='{"theme":"dark"}'
-$.all('.card').data();                            // returns full dataset object
+$.all('img[data-src]').attr('loading');                    // get
+$.all('img').attr('alt', 'Product photo');                 // set
+$.all('a.external').removeAttr('target');
+$.all('#login-form input').prop('disabled');                // get boolean property
+$.all('#login-form button').prop('disabled', true);        // set
+$.all('.widget').data('config');                            // reads data-config, parses JSON
+$.all('.widget').data('refresh', { interval: 5000 });      // sets data-refresh as JSON
+$.all('.user-card').data();                                // returns full dataset object
 ```
 
 #### CSS & Dimensions
@@ -234,12 +234,12 @@ $.all('.card').data();                            // returns full dataset object
 | `position` | `position()` | `{ top, left }` | Position relative to offset parent. |
 
 ```js
-$.all('.box').css('background-color');              // get
-$.all('.box').css({ background: '#333', padding: '1rem' });  // set
-$.all('.box').width();    // 320
-$.all('.box').height();   // 200
-$.all('.box').offset();   // { top: 100, left: 50, width: 320, height: 200 }
-$.all('.box').position(); // { top: 10, left: 10 }
+$.all('.progress-bar').css('width');                            // get computed width
+$.all('.toast').css({ background: '#333', padding: '1rem' });   // set
+$.all('#hero').width();     // 1200
+$.all('#hero').height();    // 400
+$.all('#tooltip').offset(); // { top: 100, left: 50, width: 320, height: 200 }
+$.all('#dropdown').position(); // { top: 10, left: 10 }
 ```
 
 #### Content
@@ -254,12 +254,12 @@ $.all('.box').position(); // { top: 10, left: 10 }
 | `val` | `val(value)` | `this` | Set value on all inputs. |
 
 ```js
-$.all('.card').html();                    // get innerHTML
-$.all('.card').html('<p>New content</p>');  // set innerHTML
-$.all('.card').text();                    // get textContent
-$.all('.card').text('Plain text');         // set textContent
-$.all('input').val();                     // get value
-$.all('input').val('Hello');              // set value
+$.all('.message').html();                      // get innerHTML
+$.all('.message').html('<p>Updated</p>');       // set innerHTML
+$.all('.price').text();                         // get textContent
+$.all('.price').text('$9.99');                  // set textContent
+$.all('#search').val();                         // get input value
+$.all('#search').val('');                       // clear input
 ```
 
 #### DOM Manipulation
@@ -277,15 +277,15 @@ $.all('input').val('Hello');              // set value
 | `replaceWith` | `replaceWith(content)` | `this` | Replace elements with new content. |
 
 ```js
-$.all('#list').append('<li>New item</li>');
-$.all('#list').prepend('<li>First item</li>');
-$.all('.item').after('<div class="separator"></div>');
-$.all('.item').before('<div class="header"></div>');
-$.all('.card').wrap('<div class="wrapper"></div>');
-$.all('.temp').remove();
-$.all('#container').empty();
-const copy = $.all('.card').clone();
-$.all('.old').replaceWith('<div class="new">Replaced</div>');
+$.all('#chat-log').append('<div class="message">New message</div>');
+$.all('#chat-log').prepend('<div class="pinned">Pinned message</div>');
+$.all('.section').after('<hr class="divider">');
+$.all('h2').before('<span class="anchor-icon">#</span>');
+$.all('.avatar').wrap('<div class="avatar-frame"></div>');
+$.all('.expired').remove();
+$.all('#preview').empty();
+const copy = $.all('#template').clone();
+$.all('.placeholder').replaceWith('<div class="loaded">Content loaded</div>');
 ```
 
 #### Visibility
@@ -297,10 +297,10 @@ $.all('.old').replaceWith('<div class="new">Replaced</div>');
 | `toggle` | `toggle(display?)` | `this` | Toggle visibility. |
 
 ```js
-$.all('.panel').show();
-$.all('.panel').show('flex');  // show as flex
-$.all('.panel').hide();
-$.all('.panel').toggle();
+$.all('#sidebar').show();
+$.all('#sidebar').show('flex');   // show as flex
+$.all('.tooltip').hide();
+$.all('.drawer').toggle();
 ```
 
 #### Events
@@ -319,26 +319,26 @@ $.all('.panel').toggle();
 
 ```js
 // Direct
-$.all('.btn').on('click', (e) => { /* ... */ });
+$.all('.dropdown-toggle').on('click', (e) => { /* ... */ });
 
 // Multiple events
-$.all('.input').on('focus blur', (e) => { /* ... */ });
+$.all('#email').on('focus blur', (e) => { /* ... */ });
 
 // Delegated
-$.all('#list').on('click', '.item', function(e) {
-  // 'this' is the matched .item element
+$.all('#task-list').on('click', '.delete-btn', function(e) {
+  this.closest('li').remove();
 });
 
 // One-time
-$.all('.btn').one('click', () => alert('Once!'));
+$.all('#welcome-banner').one('click', () => $.all('#welcome-banner').fadeOut());
 
 // Custom event
-$.all('.widget').trigger('refresh', { force: true });
-$.all('.widget').on('refresh', (e) => console.log(e.detail.force));
+$.all('#cart').trigger('refresh', { force: true });
+$.all('#cart').on('refresh', (e) => console.log(e.detail.force));
 
 // Shorthand
-$.all('.btn').click(() => console.log('clicked'));
-$.all('.btn').click();  // trigger
+$.all('#save-btn').click(() => console.log('saved'));
+$.all('#save-btn').click();  // trigger
 ```
 
 #### Animation
@@ -352,14 +352,14 @@ $.all('.btn').click();  // trigger
 
 ```js
 // Custom animation
-await $.all('.card').animate({ opacity: '0', transform: 'translateY(-20px)' }, 500, 'ease-out');
+await $.all('.notification').animate({ opacity: '0', transform: 'translateY(-20px)' }, 500, 'ease-out');
 
 // Fade
-await $.all('.overlay').fadeIn(400);
-await $.all('.overlay').fadeOut(400);
+await $.all('#loading-overlay').fadeIn(200);
+await $.all('#loading-overlay').fadeOut(400);
 
 // Slide toggle
-$.all('.panel').slideToggle(300);
+$.all('#faq .answer').slideToggle(300);
 ```
 
 #### Form Helpers
@@ -370,8 +370,8 @@ $.all('.panel').slideToggle(300);
 | `serializeObject` | `serializeObject()` | `object` | Form data as key/value object. Handles duplicate keys as arrays. |
 
 ```js
-$.all('#myForm').serialize();        // "name=Tony&email=tony%40x.com"
-$.all('#myForm').serializeObject();  // { name: 'Tony', email: 'tony@x.com' }
+$.all('#checkout-form').serialize();        // "name=Tony&email=tony%40x.com"
+$.all('#checkout-form').serializeObject();  // { name: 'Tony', email: 'tony@x.com' }
 ```
 
 ---
@@ -595,7 +595,7 @@ $.component('app-counter', {
 | `styles` | `string` | No | CSS string — automatically scoped to this component's root element on first render. |
 | `templateUrl` | `string \| string[] \| { key: url }` | No | URL to an external HTML template file, or an array/object map of URLs for multi-template components. If `render()` is also defined, `render()` takes priority. See [External Templates & Styles](#external-templates--styles). |
 | `styleUrl` | `string \| string[]` | No | URL (or array of URLs) to external CSS file(s). Fetched and scoped automatically on first mount. Merged with inline `styles` if both are present. |
-| `pages` | `object` | No | Declarative multi-page config. Auto-generates `templateUrl` map and exposes `this.pages`, `this.activePage`, `this.templates`. See [Pages Config](#pages-config). |
+| `pages` | `object` | No | Declarative multi-page config with lazy loading. Exposes `this.pages`, `this.activePage`, `this.templates`. See [Pages Config](#pages-config). |
 | `base` | `string` | No | Optional override for the base path used to resolve relative `templateUrl`, `styleUrl`, and `pages.dir` paths. By default, paths resolve relative to the component file automatically — you only need `base` if you want to point somewhere else (e.g. `base: 'scripts/shared/'`). |
 | `init` | `() => void` | No | Called before first render (during construction). |
 | `mounted` | `() => void` | No | Called once after first render and DOM insertion. |
@@ -675,7 +675,7 @@ Available inside component methods as `this`, or from `$.mount()` / `$.getInstan
 | `this.state.__raw` | `object` | Raw (unwrapped) state object. Write here to avoid triggering re-render. |
 | `this.props` | `object` | Frozen props passed from parent. |
 | `this.refs` | `object` | Map of `z-ref` name → DOM element. Populated after each render. |
-| `this.templates` | `object` | Keyed map of loaded templates (when using multi-`templateUrl` or `pages`). |
+| `this.templates` | `object` | Keyed map of loaded templates (when using multi-`templateUrl` or `pages`). With `pages`, templates are populated lazily — the active page is always available, others fill in via background prefetch. |
 | `this.pages` | `Array<{id, label}>` | Normalized page metadata (when using `pages` config). |
 | `this.activePage` | `string` | Active page id derived from route param (when using `pages` config). |
 | `this.setState(partial)` | `(object) => void` | Merge partial state (triggers re-render). |
@@ -778,7 +778,7 @@ $.component('my-widget', {
 
 ### Pages Config
 
-The `pages` option is a high-level shorthand for components that load and display multiple HTML pages from a directory. It auto-generates the `templateUrl` object map, normalizes page metadata, and derives the active page from a route parameter.
+The `pages` option is a high-level shorthand for components that load and display multiple HTML pages from a directory. It normalizes page metadata, derives the active page from a route parameter, and **lazy-loads templates** — only the active page is fetched on first render, and remaining pages are prefetched in the background for instant navigation.
 
 ```js
 // File: scripts/components/docs/docs.js
@@ -844,10 +844,46 @@ $.router({
 #### How `pages` Works
 
 1. **Normalizes items** — Strings auto-derive labels by converting kebab-case to Title Case: `'getting-started'` → `{ id: 'getting-started', label: 'Getting Started' }`. Objects pass through with an optional auto-label.
-2. **Auto-generates `templateUrl`** — Creates `{ id: 'dir/id.ext', … }` for each item (only if `templateUrl` is not already set).
-3. **Exposes `this.pages`** — Array of `{ id, label }` objects available inside `render()`.
-4. **Exposes `this.activePage`** — The current page id, derived from `this.props.$params[param]` (falling back to `default` or the first item).
-5. **Exposes `this.templates`** — The usual keyed template map (from the auto-generated `templateUrl`).
+2. **Builds a URL map** — Creates `{ id: 'dir/id.ext', … }` for each item.
+3. **Lazy-loads the active page** — On first render only the active page’s HTML is fetched. The component renders as soon as that single file is ready.
+4. **Prefetches remaining pages** — After the active page renders, all other page templates are fetched in the background. Navigation to those pages is then instant.
+5. **Exposes `this.pages`** — Array of `{ id, label }` objects available inside `render()`.
+6. **Exposes `this.activePage`** — The current page id, derived from `this.props.$params[param]` (falling back to `default` or the first item). If the param doesn’t match any known page, it falls back to the default.
+7. **Exposes `this.templates`** — Keyed template map. The active page is always present; other pages appear as their background prefetch completes.
+
+#### Adding Interactivity to Pages
+
+Page HTML files are static content by default. If a page needs interactivity, embed a component tag directly in the HTML — the component system automatically initializes custom elements found in rendered content:
+
+```html
+<!-- pages/getting-started.html -->
+<h2>Getting Started</h2>
+<p>Follow the steps below to set up your project.</p>
+
+<!-- Interactive component embedded in a static page -->
+<install-wizard></install-wizard>
+
+<h3>Next Steps</h3>
+<p>Once installed, explore the Components section.</p>
+```
+
+```js
+// components/install-wizard.js — registered separately
+$.component('install-wizard', {
+  state: () => ({ step: 1 }),
+  render() {
+    return `
+      <div class="wizard">
+        <p>Step ${this.state.step} of 3</p>
+        <button @click="next">Next</button>
+      </div>
+    `;
+  },
+  next() { if (this.state.step < 3) this.state.step++; },
+});
+```
+
+> **Tip:** Keep page files as plain HTML for content. When you need interactive widgets, create a component and drop its tag into the page HTML. If a "page" needs its own layout, lifecycle, or completely different UI, make it a separate route + component instead.
 
 > **Tip:** The `pages` config is the recommended approach for documentation pages, multi-step wizards, tabbed views, or any component that switches between multiple HTML files driven by a route parameter.
 
