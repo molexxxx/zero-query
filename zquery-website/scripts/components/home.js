@@ -35,7 +35,7 @@ $.component('home-page', {
           <p style="max-width:640px;margin:0 auto;line-height:1.7;">
             A lightweight frontend library combining the best of jQuery's simplicity
             with React/Angular's component model. Zero dependencies, works out of the box with ES modules.
-            An optional <a z-link="/docs/getting-started#cli-bundler" style="color:#58a6ff;cursor:pointer;">CLI bundler</a> is available for single-file distribution.
+            An optional <a z-link="/docs/cli-bundler" style="color:#58a6ff;cursor:pointer;">CLI bundler</a> is available for single-file distribution.
           </p>
           <div style="margin-top:1.25rem;display:flex;justify-content:center;gap:0.75rem;flex-wrap:wrap;">
             <span class="badge">v${$.version}</span>

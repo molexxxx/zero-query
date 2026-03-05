@@ -11,7 +11,7 @@ npm install zero-query --save-dev
 # Or install globally to use zquery anywhere without npx
 npm install zero-query -g
 
-# Bundle your app (auto-detects entry from index.html)
+# Bundle your app (auto-detects entry from any .html with a module script)
 npx zquery bundle
 
 # Or point to an app directory from anywhere
@@ -56,7 +56,7 @@ start dist/local/index.html
 
   <h3>Under the Hood</h3>
   <ol>
-    <li><strong>Entry detection</strong> &mdash; Reads <code>index.html</code> for <code>&lt;script type="module" src="..."&gt;</code>, or falls back to <code>scripts/app.js</code>, <code>app.js</code>, etc.</li>
+    <li><strong>Entry detection</strong> &mdash; Three-tier strategy: <strong>(1)</strong> scans <code>.html</code> files in the target root and one level deep for <code>&lt;script type="module" src="..."&gt;</code>; <strong>(2)</strong> if no HTML match, searches <code>.js</code> files (up to 2 levels) for entry-point signatures like <code>$.router(</code>, <code>$.mount(</code>, <code>$.store(</code>, or <code>mountAll(</code>; <strong>(3)</strong> convention fallbacks: <code>scripts/app.js</code>, <code>src/app.js</code>, <code>js/app.js</code>, <code>app.js</code>, <code>main.js</code>. Custom file and folder names are fully supported.</li>
     <li><strong>Import graph</strong> &mdash; Recursively resolves all <code>import</code> statements and topologically sorts them (leaves first).</li>
     <li><strong>Module stripping</strong> &mdash; Removes <code>import</code>/<code>export</code> keywords, keeps declarations. Output is plain browser JS wrapped in an IIFE.</li>
     <li><strong>Library embedding</strong> &mdash; Finds <code>zquery.min.js</code> in your project or the npm package. Auto-builds from source if not found anywhere.</li>
@@ -68,10 +68,20 @@ start dist/local/index.html
   <h3>Hash Routing on <code>file://</code></h3>
   <p>When the bundled app is opened via <code>file://</code>, the router automatically switches to <strong>hash-based routing</strong> (<code>#/about</code> instead of <code>/about</code>). No configuration needed &mdash; <code>z-link</code> attributes and programmatic navigation work identically.</p>
 
+  <p>For example, the same app behaves differently depending on how it's served:</p>
+  <table class="docs-table">
+    <tr><th>Mode</th><th>URL</th><th>How It Works</th></tr>
+    <tr><td>Server (<code>dist/server/</code>)</td><td><code>https://mysite.com/docs/router</code></td><td>History API &mdash; clean paths, requires server-side fallback to <code>index.html</code></td></tr>
+    <tr><td>Local (<code>dist/local/</code>)</td><td><code>file:///C:/app/index.html#/docs/router</code></td><td>Hash mode &mdash; everything after <code>#</code> is the route; no server needed</td></tr>
+  </table>
+  <p>The switch is transparent to your code. Links created with <code>z-link</code>, calls to <code>$.router().navigate()</code>, route guards, and params all work the same way in both modes. The router detects the <code>file://</code> protocol at boot and handles the rest.</p>
+
   <h3>Tips</h3>
   <ul>
     <li><strong>Use relative imports</strong> &mdash; <code>import './components/home.js'</code> (not bare specifiers like <code>import 'home'</code>)</li>
     <li><strong>One component per file</strong> &mdash; the import walker resolves each file once</li>
     <li><strong><code>import.meta.url</code></strong> &mdash; automatically replaced at bundle time</li>
     <li><strong>External templates</strong> &mdash; <code>templateUrl</code>, <code>styleUrl</code>, and <code>pages</code> configs are inlined automatically; no code changes needed</li>
+    <li><strong>Vendor scripts</strong> &mdash; third-party files referenced via <code>&lt;script&gt;</code> tags in your HTML (e.g. Prism, analytics) are left untouched and copied to both output directories as-is</li>
+    <li><strong>Re-bundle anytime</strong> &mdash; previous <code>dist/</code> contents are cleaned automatically on each build, so you can re-run <code>zquery bundle</code> without manually deleting old files</li>
   </ul>

@@ -145,6 +145,11 @@
   background: #21262d;
 }
 
+.docs-sub-nav-item.active {
+  color: #58a6ff;
+  border-left-color: #58a6ff;
+}
+
 .docs-sub-nav-item.match {
   color: #58a6ff;
 }
@@ -181,6 +186,7 @@
   font-size: 1.1rem;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
+  scroll-margin-top: 20px;
 }
 
 .docs-section p {
@@ -216,7 +222,7 @@
 .docs-section p code,
 .docs-section li code,
 .docs-section td code {
-  background: #161b22;
+  background: #21262d;
   padding: 0.15rem 0.4rem;
   border-radius: 4px;
   color: #79c0ff;
@@ -226,17 +232,62 @@
   list-style: none;
   padding: 0;
   margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .docs-section ul li {
-  padding: 0.25rem 0;
+  padding: 0.3rem 0.65rem 0.3rem 1.25rem;
   color: #8b949e;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  position: relative;
+  border-left: 2px solid #21262d;
 }
 
 .docs-section ul li::before {
-  content: "•";
-  color: #30363d;
-  margin-right: 0.5rem;
+  content: "";
+  position: absolute;
+  left: 0.45rem;
+  top: 0.65rem;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #484f58;
+}
+
+/* ---- Ordered lists ---- */
+.docs-section ol {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 1rem;
+  counter-reset: docs-ol;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.docs-section ol li {
+  padding: 0.3rem 0.65rem 0.3rem 1.75rem;
+  color: #8b949e;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  position: relative;
+  counter-increment: docs-ol;
+  border-left: 2px solid #21262d;
+}
+
+.docs-section ol li::before {
+  content: counter(docs-ol) ".";
+  position: absolute;
+  left: 0.25rem;
+  top: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #484f58;
+  width: 1.25rem;
+  text-align: right;
 }
 
 .docs-table {
@@ -529,8 +580,27 @@
 }
 
 /* ---- Lists ---- */
+.docs-mobile .docs-section ul li,
+.docs-mobile .docs-section ol li {
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
 .docs-mobile .docs-section ul li {
-  font-size: 0.88rem;
+  padding-left: 1.1rem;
+}
+
+.docs-mobile .docs-section ul li::before {
+  left: 0.35rem;
+  top: 0.55rem;
+}
+
+.docs-mobile .docs-section ol li {
+  padding-left: 1.6rem;
+}
+
+.docs-mobile .docs-section ol li::before {
+  font-size: 0.68rem;
 }
 
 /* ---- Download ---- */

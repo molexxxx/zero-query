@@ -157,7 +157,7 @@ my-app/
 The CLI can compile your entire app — ES modules, the library, external templates, and assets — into a **single bundled file**.
 
 ```bash
-# Auto-detect entry from index.html
+# Auto-detect entry from any .html with a module script
 npx zquery bundle
 
 # Or point to an app directory from anywhere
@@ -188,7 +188,7 @@ dist/
 
 ### What the Bundler Does
 
-1. Reads `index.html` for the `<script type="module">` entry point
+1. Scans `.html` files (root + one level deep) for `<script type="module" src="...">` — if no HTML match, searches `.js` files for entry signatures (`$.router(`, `$.mount(`, etc.), then convention fallbacks (`scripts/app.js`, `app.js`, …)
 2. Resolves all `import` statements and topologically sorts dependencies
 3. Strips `import`/`export` syntax, wraps in an IIFE
 4. Embeds zQuery library and inlines `templateUrl` / `styleUrl` / `pages` files

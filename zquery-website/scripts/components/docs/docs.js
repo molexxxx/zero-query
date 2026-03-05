@@ -44,19 +44,40 @@ $.component('docs-page', {
     this._mql = window.matchMedia('(max-width: 768px)');
     this._onMql = () => { this.state._mobile = this._mql.matches; };
     this._mql.addEventListener('change', this._onMql);
+
+    // Scroll-spy: highlight the sidebar sub-item matching the visible heading
+    this._onScroll = () => this._updateScrollSpy();
+    window.addEventListener('scroll', this._onScroll, { passive: true });
   },
 
   mounted() {
     this._highlight();
     this.state._mobile = this._mql.matches;
+    this._lastPage = this.activePage;
     this._pendingHash = this._readTargetHash();
-    this._scrollToHash();
+    if (this._pendingHash) {
+      // Immediately highlight the hash target in the sidebar
+      this._applySpyActive(this._pendingHash);
+      this._scrollToHash();
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    this._updateScrollSpy();
   },
   updated() {
     this._highlight();
     // Pick up any new hash (e.g. from a z-link navigation that just resolved)
     if (!this._pendingHash) this._pendingHash = this._readTargetHash();
+    // Scroll to top when switching main sections (no hash target)
+    const cur = this.activePage;
+    if (cur !== this._lastPage) {
+      this._lastPage = cur;
+      if (!this._pendingHash) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
     this._scrollToHash();
+    this._updateScrollSpy();
     if (this._filterActive && this.refs.searchInput) {
       const input = this.refs.searchInput;
       input.focus();
@@ -68,6 +89,7 @@ $.component('docs-page', {
 
   destroyed() {
     if (this._mql && this._onMql) this._mql.removeEventListener('change', this._onMql);
+    if (this._onScroll) window.removeEventListener('scroll', this._onScroll);
   },
 
   /* -- Helpers -- */
@@ -103,12 +125,81 @@ $.component('docs-page', {
     if (el) {
       this._pendingHash = null;
       this._pendingHashAttempts = 0;
+      this._pinSpy(hash);
       requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }));
     } else if (++this._pendingHashAttempts > 30) {
       // Give up — anchor doesn't exist in this page
       this._pendingHash = null;
       this._pendingHashAttempts = 0;
     }
+  },
+
+  /**
+   * Scroll-spy: highlight the sidebar sub-item matching the heading
+   * currently in view.
+   *
+   * Two modes:
+   *   1. PINNED — after a click or hash navigation the chosen ID is
+   *      pinned.  The pin stays until the user manually scrolls 80+ px
+   *      away from the settle position.  This guarantees the clicked
+   *      item stays highlighted regardless of page geometry.
+   *   2. FREE — normal scroll listening with a fixed offset.
+   */
+
+  /** Pin a heading ID as active.  Smooth-scroll settle is tracked
+   *  automatically; once settled the pin is held until manual scroll. */
+  _pinSpy(id) {
+    this._pinnedId = id;
+    this._pinScrollY = null;          // set once scroll settles
+    this._applySpyActive(id);
+    // Track scroll settle (no movement for 150 ms)
+    const arm = () => {
+      clearTimeout(this._pinTimer);
+      this._pinTimer = setTimeout(() => {
+        this._pinScrollY = window.scrollY;
+        window.removeEventListener('scroll', arm);
+      }, 150);
+    };
+    window.addEventListener('scroll', arm, { passive: true });
+    arm();
+  },
+
+  _updateScrollSpy() {
+    // --- Pinned mode: hold active until user scrolls away ---
+    if (this._pinnedId) {
+      if (this._pinScrollY !== null &&
+          Math.abs(window.scrollY - this._pinScrollY) > 80) {
+        // User scrolled away — release pin, fall through to free mode
+        this._pinnedId = null;
+        this._pinScrollY = null;
+      } else {
+        this._applySpyActive(this._pinnedId);
+        return;
+      }
+    }
+
+    // --- Free mode: simple fixed-offset scan ---
+    const content = this.refs.content;
+    if (!content) return;
+    const headings = content.querySelectorAll('h3[id]');
+    if (!headings.length) return;
+
+    const scanLine = 100;          // fixed px from viewport top
+    let activeId = null;
+    for (const h of headings) {
+      if (h.getBoundingClientRect().top <= scanLine) activeId = h.id;
+    }
+
+    this._applySpyActive(activeId);
+  },
+
+  _applySpyActive(activeId) {
+    const nav = this._el?.querySelector('.docs-sub-nav');
+    if (!nav) return;
+    nav.querySelectorAll('.docs-sub-nav-item').forEach(a => {
+      const id = a.dataset.id || '';
+      a.classList.toggle('active', id === activeId);
+    });
   },
 
   _highlight() {
@@ -182,6 +273,8 @@ $.component('docs-page', {
   scrollTo(e) {
     const id = e.target.closest('[data-id]')?.dataset?.id;
     if (!id) return;
+    // Immediately highlight the clicked sub-item
+    this._pinSpy(id);
     const el = document.getElementById(id);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });

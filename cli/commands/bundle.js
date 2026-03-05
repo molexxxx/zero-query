@@ -152,17 +152,69 @@ function collectInlineResources(files, projectRoot) {
   return inlineMap;
 }
 
-/** Auto-detect the app entry point from index.html or conventions. */
+/**
+ * Auto-detect the app entry point.
+ *
+ * Strategy (first match wins):
+ *   1. Find HTML files in the project root (and one level deep) that contain
+ *      a <script type="module" src="…"> tag — the src IS the entry.
+ *   2. Search for JS files that look like an app entry point (contain
+ *      $.router(, $.mount(, mountAll(, or $.store( calls).
+ *   3. Fall back to common convention paths.
+ */
 function detectEntry(projectRoot) {
-  const htmlCandidates = ['index.html', 'public/index.html'];
-  for (const htmlFile of htmlCandidates) {
-    const htmlPath = path.join(projectRoot, htmlFile);
-    if (fs.existsSync(htmlPath)) {
-      const html = fs.readFileSync(htmlPath, 'utf-8');
-      const m = html.match(/<script[^>]+type\s*=\s*["']module["'][^>]+src\s*=\s*["']([^"']+)["']/);
-      if (m) return path.join(projectRoot, m[1]);
+  const moduleScriptRe = /<script[^>]+type\s*=\s*["']module["'][^>]+src\s*=\s*["']([^"']+)["']/;
+
+  // Collect HTML files: root level + one directory deep
+  const htmlFiles = [];
+  for (const entry of fs.readdirSync(projectRoot, { withFileTypes: true })) {
+    if (entry.isFile() && entry.name.endsWith('.html')) {
+      htmlFiles.push(path.join(projectRoot, entry.name));
+    } else if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules' && entry.name !== 'dist') {
+      const sub = path.join(projectRoot, entry.name);
+      try {
+        for (const child of fs.readdirSync(sub, { withFileTypes: true })) {
+          if (child.isFile() && child.name.endsWith('.html')) {
+            htmlFiles.push(path.join(sub, child.name));
+          }
+        }
+      } catch { /* permission error — skip */ }
     }
   }
+
+  // 1. Parse <script type="module" src="…"> from any discovered HTML file
+  for (const htmlPath of htmlFiles) {
+    const html = fs.readFileSync(htmlPath, 'utf-8');
+    const m = html.match(moduleScriptRe);
+    if (m) {
+      const entryPath = path.resolve(path.dirname(htmlPath), m[1]);
+      if (fs.existsSync(entryPath)) return entryPath;
+    }
+  }
+
+  // 2. Search JS files for entry-point patterns ($.router, $.mount, mountAll)
+  const entryPatternRe = /\$\.(router|mount|store)\s*\(|mountAll\s*\(/;
+  function findEntryJS(dir, depth = 0) {
+    if (depth > 2) return null;
+    try {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === 'dist') continue;
+        const full = path.join(dir, entry.name);
+        if (entry.isFile() && entry.name.endsWith('.js')) {
+          const code = fs.readFileSync(full, 'utf-8');
+          if (entryPatternRe.test(code)) return full;
+        } else if (entry.isDirectory()) {
+          const found = findEntryJS(full, depth + 1);
+          if (found) return found;
+        }
+      }
+    } catch { /* skip */ }
+    return null;
+  }
+  const jsEntry = findEntryJS(projectRoot);
+  if (jsEntry) return jsEntry;
+
+  // 3. Convention fallbacks
   const fallbacks = ['scripts/app.js', 'src/app.js', 'js/app.js', 'app.js', 'main.js'];
   for (const f of fallbacks) {
     const fp = path.join(projectRoot, f);
