@@ -173,11 +173,11 @@ $.bus.clear();                     // remove ALL listeners</code></pre>
   <h3>Global Helpers</h3>
   <table class="docs-table">
     <tr><th>Property</th><th>Type</th><th>Description</th></tr>
-    <tr><td><code>$.version</code></td><td><code>string</code></td><td>Current library version (e.g. <code>'0.4.1'</code>)</td></tr>
+    <tr><td><code>$.version</code></td><td><code>string</code></td><td>Current library version (e.g. <code>'0.4.2'</code>)</td></tr>
     <tr><td><code>$.meta</code></td><td><code>object</code></td><td>Build metadata object &mdash; populated at build time by the CLI bundler. Empty <code>{}</code> by default.</td></tr>
     <tr><td><code>$.noConflict()</code></td><td><code>function</code></td><td>Remove <code>$</code> from <code>window</code> and return the library reference. Use when another library also uses <code>$</code>.</td></tr>
   </table>
-  <pre><code class="language-javascript">console.log($.version);  // '0.4.1'
+  <pre><code class="language-javascript">console.log($.version);  // '0.4.2'
 
 console.log($.meta);     // {} (or build metadata when bundled)
 

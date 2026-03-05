@@ -133,7 +133,7 @@
         <div class="cmp-grid">
           <div class="cmp-code-card">
             <div class="cmp-code-label" style="--accent:#0769ad;">jQuery</div>
-            <pre><code class="language-js">// Custom Sizzle engine â†’ jQuery object wrapper
+            <pre><code class="language-js">// Custom Sizzle engine → jQuery object wrapper
 $('.items li').addClass('active')
               .css('color', 'red');
 // Chaining works, but every call re-wraps
@@ -141,7 +141,7 @@ $('.items li').addClass('active')
           </div>
           <div class="cmp-code-card">
             <div class="cmp-code-label" style="--accent:#e3b341;">zQuery</div>
-            <pre><code class="language-js">// Native querySelectorAll â†’ thin wrapper
+            <pre><code class="language-js">// Native querySelectorAll → thin wrapper
 $('.items li').addClass('active')
               .css('color', 'red');
 // Same chaining, but backed by the browser's
@@ -169,7 +169,7 @@ function App() {
 $('.box').html('Hello')
          .addClass('visible')
          .on('click', handler);
-// Real DOM â€” no abstraction layer</code></pre>
+// Real DOM — no abstraction layer</code></pre>
           </div>
         </div>
       </div>
@@ -273,7 +273,7 @@ export class MyWidget {
         </div>
 
         <div class="cmp-callout">
-          <strong>Simple hooks:</strong> zQuery provides four clear lifecycle hooks that map to the natural lifecycle of a DOM element â€” no decorator metadata, no dependency-injected abstract classes, and no hook-ordering rules to memorize.
+          <strong>Simple hooks:</strong> zQuery provides four clear lifecycle hooks that map to the natural lifecycle of a DOM element — no decorator metadata, no dependency-injected abstract classes, and no hook-ordering rules to memorize.
         </div>
       </div>
     `;
@@ -361,7 +361,7 @@ export class MyWidget {
           </div>
           <div class="cmp-code-card">
             <div class="cmp-code-label" style="--accent:#e3b341;">zQuery</div>
-            <pre><code class="language-html">&lt;!-- @ or z-on: â€” identical --&gt;
+            <pre><code class="language-html">&lt;!-- @ or z-on: — identical --&gt;
 &lt;button @click="save"&gt;
 &lt;button z-on:click="save"&gt;
 
@@ -428,7 +428,7 @@ export class MyWidget {
         </div>
 
         <div class="cmp-callout" style="margin-top:1rem;">
-          <strong>No imports needed:</strong> zQuery directives work out of the box in any <code>render()</code> template literal or external <code>templateUrl</code> file. Angular requires importing <code>CommonModule</code> and <code>FormsModule</code>. React has no directive concept â€” everything is JavaScript expressions in JSX that require a build step.
+          <strong>No imports needed:</strong> zQuery directives work out of the box in any <code>render()</code> template literal or external <code>templateUrl</code> file. Angular requires importing <code>CommonModule</code> and <code>FormsModule</code>. React has no directive concept — everything is JavaScript expressions in JSX that require a build step.
         </div>
       </div>
     `;
@@ -465,11 +465,11 @@ useEffect(() => {
           <div class="cmp-code-card">
             <div class="cmp-code-label" style="--accent:#e3b341;">zQuery (signals)</div>
             <pre><code class="language-js">const count = $.signal(0);
-// Auto-tracked â€” no dep arrays
+// Auto-tracked — no dep arrays
 $.effect(() => {
   document.title = \`Count: \${count.value}\`;
 });
-// Just worksâ„¢ â€” .value reads &amp; writes</code></pre>
+// Just works™ — .value reads &amp; writes</code></pre>
           </div>
         </div>
 
@@ -581,8 +581,8 @@ store.subscribe('count', val =&gt;
           The Bottom Line
         </h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0.75rem;">
-          ${this._verdictCard('jQuery', 'Great for simple DOM tasks, but no component model, no reactivity, no router. Still useful â€” zQuery just gives you all that <em>and</em> the familiar <code>$()</code> API.')}
-          ${this._verdictCard('Angular', 'Full-featured enterprise framework. Powerful but heavyweight â€” requires TypeScript, a CLI, and significant learning curve. zQuery covers 90% of the same surface in ~54 KB with zero setup.')}
+          ${this._verdictCard('jQuery', 'Great for simple DOM tasks, but no component model, no reactivity, no router. Still useful — zQuery just gives you all that <em>and</em> the familiar <code>$()</code> API.')}
+          ${this._verdictCard('Angular', 'Full-featured enterprise framework. Powerful but heavyweight — requires TypeScript, a CLI, and significant learning curve. zQuery covers 90% of the same surface in ~54 KB with zero setup.')}
           ${this._verdictCard('React', 'Excellent ecosystem and component model, but you need a router package, a state library, and an HTTP library separately. zQuery ships everything batteries-included out of the box.')}
         </div>
       </div>

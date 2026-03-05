@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.4.1
+ * @version 0.4.2
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -423,7 +423,7 @@ interface ComponentInstance {
   /** Teardown: removes listeners, scoped styles, clears DOM. */
   destroy(): void;
 
-  /** Manually queue a re-render (microtask-batched). */
+  /** Manually queue a re-render (microtask-batched). Safe to call from anywhere — state mutations during render are coalesced (no infinite loop risk). */
   _scheduleUpdate(): void;
 
   /** Any user-defined methods from the component definition. */
@@ -566,6 +566,7 @@ export function style(urls: string | string[], opts?: StyleOptions): StyleHandle
 //
 //   z-cloak                    Hidden until rendered (auto-removed after mount).
 //                              Global CSS: [z-cloak] { display: none !important }.
+//                              Also injects: *, *::before, *::after { -webkit-tap-highlight-color: transparent }.
 //
 //   z-pre                      Skip all directive processing for this element
 //                              and its descendants.

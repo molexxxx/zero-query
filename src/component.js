@@ -31,10 +31,10 @@ const _resourceCache = new Map(); // url → Promise<string>
 // Unique ID counter
 let _uid = 0;
 
-// Inject z-cloak base style (once, globally)
+// Inject z-cloak base style and mobile tap-highlight reset (once, globally)
 if (typeof document !== 'undefined' && !document.querySelector('[data-zq-cloak]')) {
   const _s = document.createElement('style');
-  _s.textContent = '[z-cloak]{display:none!important}';
+  _s.textContent = '[z-cloak]{display:none!important}*,*::before,*::after{-webkit-tap-highlight-color:transparent}';
   _s.setAttribute('data-zq-cloak', '');
   document.head.appendChild(_s);
 }
@@ -227,8 +227,11 @@ class Component {
     if (this._updateQueued) return;
     this._updateQueued = true;
     queueMicrotask(() => {
-      this._updateQueued = false;
-      if (!this._destroyed) this._render();
+      try {
+        if (!this._destroyed) this._render();
+      } finally {
+        this._updateQueued = false;
+      }
     });
   }
 
@@ -422,16 +425,35 @@ class Component {
       this._styleEl = styleEl;
     }
 
-    // -- Focus preservation for z-model ----------------------------
+    // -- Focus preservation ----------------------------------------
     // Before replacing innerHTML, save focus state so we can restore
-    // cursor position after the DOM is rebuilt.
+    // cursor position after the DOM is rebuilt.  Works for any focused
+    // input/textarea/select inside the component, not only z-model.
     let _focusInfo = null;
     const _active = document.activeElement;
     if (_active && this._el.contains(_active)) {
       const modelKey = _active.getAttribute?.('z-model');
+      const refKey = _active.getAttribute?.('z-ref');
+      // Build a selector that can locate the same element after re-render
+      let selector = null;
       if (modelKey) {
+        selector = `[z-model="${modelKey}"]`;
+      } else if (refKey) {
+        selector = `[z-ref="${refKey}"]`;
+      } else {
+        // Fallback: match by tag + type + name + placeholder combination
+        const tag = _active.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+          let s = tag;
+          if (_active.type) s += `[type="${_active.type}"]`;
+          if (_active.name) s += `[name="${_active.name}"]`;
+          if (_active.placeholder) s += `[placeholder="${CSS.escape(_active.placeholder)}"]`;
+          selector = s;
+        }
+      }
+      if (selector) {
         _focusInfo = {
-          key: modelKey,
+          selector,
           start: _active.selectionStart,
           end: _active.selectionEnd,
           dir: _active.selectionDirection,
@@ -450,9 +472,9 @@ class Component {
     this._bindRefs();
     this._bindModels();
 
-    // Restore focus to z-model element after re-render
+    // Restore focus after re-render
     if (_focusInfo) {
-      const el = this._el.querySelector(`[z-model="${_focusInfo.key}"]`);
+      const el = this._el.querySelector(_focusInfo.selector);
       if (el) {
         el.focus();
         try {

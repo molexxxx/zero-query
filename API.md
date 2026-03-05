@@ -647,7 +647,7 @@ Available inside component methods as `this`, or from `$.mount()` / `$.getInstan
 | `this.setState(partial)` | `(object) => void` | Merge partial state (triggers re-render). |
 | `this.emit(name, detail)` | `(string, any) => void` | Dispatch a bubbling CustomEvent from the component root. |
 | `this.destroy()` | `() => void` | Teardown: removes listeners, scoped styles, clears DOM. |
-| `this._scheduleUpdate()` | `() => void` | Manually queue a re-render (microtask batched). Useful for store subscriptions. |
+| `this._scheduleUpdate()` | `() => void` | Manually queue a re-render (microtask batched). Safe to call from anywhere — state mutations during render are coalesced, so there is no risk of infinite re-render loops. Useful for store subscriptions. |
 
 ### External Templates & Styles
 
@@ -972,6 +972,8 @@ Sets `el.innerHTML`. Use only with trusted content — caller is responsible for
 
 Elements with `z-cloak` are hidden via a global style rule (`[z-cloak]{display:none!important}`) injected at load time. The attribute is removed after the component renders, preventing a flash of unrendered template content.
 
+The same auto-injected `<style>` tag also applies `-webkit-tap-highlight-color: transparent` to `*, *::before, *::after`, suppressing the default blue tap-highlight on mobile browsers for all zQuery apps.
+
 ```html
 <div z-cloak>{{content that would flash}}</div>
 ```
@@ -1033,7 +1035,9 @@ If no parentheses are used (e.g. `@click="handler"`), the native event is automa
 
 #### `z-model` — Two-Way Binding
 
-Creates a reactive two-way sync between a form element and a state property. When the user types or selects, the state updates and the rest of the template re-renders. Focus and cursor position are automatically preserved.
+Creates a reactive two-way sync between a form element and a state property. When the user types or selects, the state updates and the rest of the template re-renders.
+
+> **Focus preservation:** During re-render, the component automatically preserves focus and cursor position on **any focused input, textarea, or select** inside the component — not just `z-model` elements. The element is relocated after the DOM rebuild using the first available identifier: `z-model` attribute → `z-ref` attribute → a tag/type/name/placeholder combination. This means typing feels seamless even in plain `@input`-bound search fields or other non-`z-model` inputs.
 
 | Element / Type | Behavior |
 | --- | --- |
@@ -1813,7 +1817,7 @@ $.bus.on('cart:updated', (data) => {
 | Property/Method | Description |
 | --- | --- |
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
-| `$.version` | Library version string (e.g. `'0.4.1'`). |
+| `$.version` | Library version string (e.g. `'0.4.2'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |

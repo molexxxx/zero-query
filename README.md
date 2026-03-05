@@ -22,7 +22,7 @@
 | Module | Highlights |
 | --- | --- |
 | **Core `$()`** | jQuery-like chainable selectors, traversal, DOM manipulation, events, animation |
-| **Components** | Reactive state, template literals, `@event` delegation (8 modifiers), `z-model` two-way binding, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`), scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks |
+| **Components** | Reactive state, template literals, `@event` delegation (8 modifiers), `z-model` two-way binding, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`), scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles (`z-cloak` hiding, mobile tap-highlight suppression) |
 | **Router** | History & hash mode, route params (`:id`), guards, lazy loading, `z-link` navigation |
 | **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions |
 | **HTTP** | Fetch wrapper with auto-JSON, interceptors, timeout/abort, base URL |

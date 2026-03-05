@@ -383,7 +383,7 @@
 &lt;/div&gt;</code></pre>
 
   <div class="docs-tip">
-    <strong>Tip:</strong> zQuery automatically injects a <code>[z-cloak] { display: none !important }</code> style rule. You don&rsquo;t need to add it yourself.
+    <strong>Tip:</strong> zQuery automatically injects a global <code>&lt;style&gt;</code> that includes <code>[z-cloak] { display: none !important }</code> and <code>-webkit-tap-highlight-color: transparent</code> on <code>*, *::before, *::after</code> for mobile tap-highlight suppression. You don&rsquo;t need to add either rule yourself.
   </div>
 
   <h3>Skip Processing &mdash; <code>z-pre</code></h3>

@@ -179,7 +179,7 @@ const defs = $.components();  // { 'app-counter': {...}, 'home-page': {...} }
 });</code></pre>
 
   <div class="docs-tip">
-    <strong>How it works:</strong> <code>z-model</code> writes to the reactive state proxy on every input event, which triggers a re-render. The component automatically preserves focus and cursor position on the active <code>z-model</code> element during re-render, so typing feels seamless. Other parts of the template that reference the same state key update instantly.
+    <strong>How it works:</strong> <code>z-model</code> writes to the reactive state proxy on every input event, which triggers a re-render. The component automatically preserves focus and cursor position on <strong>any focused input, textarea, or select</strong> inside the component during re-render &mdash; not only <code>z-model</code> elements. The element is relocated after the DOM rebuild using the first available identifier: <code>z-model</code> attribute &rarr; <code>z-ref</code> attribute &rarr; tag/type/name/placeholder combination. This means typing feels seamless even in plain <code>@input</code>-bound search fields.
   </div>
 
   <h4>Radio Buttons</h4>
@@ -248,7 +248,7 @@ render() {
 &lt;input z-model="price" z-lazy z-number z-trim&gt;</code></pre>
 
   <div class="docs-callout">
-    <strong>Under the hood:</strong> <code>z-model</code> writes to the reactive state proxy, triggering a re-render. Focus and cursor position on the active input are automatically saved before the re-render and restored afterward — so typing feels natural even though the entire DOM is being rebuilt. Modifiers are parsed from boolean attributes (<code>z-lazy</code>, <code>z-trim</code>, <code>z-number</code>) on the same element.
+    <strong>Under the hood:</strong> <code>z-model</code> writes to the reactive state proxy, triggering a re-render. Focus and cursor position on <strong>any focused input, textarea, or select</strong> inside the component are automatically saved before the re-render and restored afterward &mdash; so typing feels natural even though the entire DOM is being rebuilt. The element is relocated via <code>z-model</code> attr &rarr; <code>z-ref</code> attr &rarr; tag/type/name/placeholder fallback. Modifiers are parsed from boolean attributes (<code>z-lazy</code>, <code>z-trim</code>, <code>z-number</code>) on the same element.
   </div>
 
   <h4>Complete Two-Way Binding Example</h4>
@@ -307,7 +307,7 @@ render() {
     <tr><td><code>inst.setState(partial)</code></td><td><code>function</code></td><td>Batch-update multiple state keys: <code>Object.assign(this.state, partial)</code></td></tr>
     <tr><td><code>inst.emit(name, detail)</code></td><td><code>function</code></td><td>Dispatch a <code>CustomEvent</code> (bubbles, cancelable) from the host element</td></tr>
     <tr><td><code>inst.destroy()</code></td><td><code>function</code></td><td>Full teardown: removes listeners, styles, DOM, and calls <code>destroyed()</code> hook</td></tr>
-    <tr><td><code>inst._scheduleUpdate()</code></td><td><code>function</code></td><td>Manually queue a re-render via microtask. Useful when reacting to external changes (store subscriptions, timers).</td></tr>
+    <tr><td><code>inst._scheduleUpdate()</code></td><td><code>function</code></td><td>Manually queue a re-render via microtask. Safe to call from anywhere &mdash; state mutations during render are coalesced, preventing infinite loops. Useful when reacting to external changes (store subscriptions, timers).</td></tr>
   </table>
   <pre><code class="language-javascript">const inst = $.mount('#app', 'my-widget');
 inst.state.count = 5;              // triggers re-render

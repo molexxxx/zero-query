@@ -35,6 +35,8 @@ $.component('todos-page', {
     if (!text) return;
     $.getStore('main').dispatch('addTodo', text);
     this.state.newTodo = '';
+    this.state.search = '';
+    this.state.filter = 'all';
     $.bus.emit('toast', { message: 'Todo added!', type: 'success' });
   },
 
