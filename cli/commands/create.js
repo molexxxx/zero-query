@@ -60,7 +60,7 @@ function createProject(args) {
   console.log(`
   Done! Next steps:
 
-    ${target !== process.cwd() ? `cd ${args[1]}\n    ` : ''}npx zquery dev
+    npx zquery dev${target !== process.cwd() ? ` ${args[1]}` : ''}
 `);
 }
 
