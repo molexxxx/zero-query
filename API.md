@@ -1817,7 +1817,7 @@ $.bus.on('cart:updated', (data) => {
 | Property/Method | Description |
 | --- | --- |
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
-| `$.version` | Library version string (e.g. `'0.4.8'`). |
+| `$.version` | Library version string (e.g. `'0.4.9'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |

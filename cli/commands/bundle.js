@@ -574,7 +574,7 @@ function bundleApp() {
   // Rewrite HTML
   if (htmlFile) {
     const bundledFileSet = new Set(files);
-    rewriteHtml(projectRoot, htmlFile, bundleFile, true, bundledFileSet, serverDir, localDir);
+    rewriteHtml(projectRoot, htmlFile, minFile, true, bundledFileSet, serverDir, localDir);
   }
 
   const elapsed = Date.now() - start;

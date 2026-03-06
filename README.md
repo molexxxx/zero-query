@@ -57,7 +57,7 @@ The `create` command generates a ready-to-run project with a sidebar layout, rou
 
 The dev server includes a **full-screen error overlay** that surfaces errors directly in the browser — similar to Vite or Angular:
 
-- **Syntax errors** — JS files are validated on every save *before* the reload is triggered. If a syntax error is found the page stays intact and a dark overlay appears with the error message, file path, line:column, and a code frame pointing to the exact location. Line numbers are always accurate to your source file.
+- **Syntax errors** — JS files are validated on every save *before* the reload is triggered. If a syntax error is found the page stays intact and a dark overlay appears with the error message, file path, line:column, and a code frame pointing to the exact location.
 - **Runtime errors** — uncaught exceptions and unhandled promise rejections are captured and displayed in the same overlay with a cleaned-up stack trace.
 - The overlay **auto-clears** when you fix the error and save. Press `Esc` or click `×` to dismiss manually.
 
