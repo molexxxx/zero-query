@@ -1,5 +1,5 @@
   <h2>CLI Bundler</h2>
-  <p>zQuery includes a zero-dependency CLI that compiles your entire app &mdash; ES modules, the library, external templates, and assets &mdash; into a <strong>single bundled file</strong> you can open directly from disk. Useful for offline distribution, <code>file://</code> deployments, or reducing HTTP requests.</p>
+  <p>zQuery includes a zero-dependency CLI that compiles your entire app &mdash; ES modules, the library, external templates, and assets &mdash; into a <strong>single production-ready bundle</strong>. It outputs two builds in one step: a <code>server/</code> build for deploying to any web server, and a <code>local/</code> build that works straight from disk. No config, no flags &mdash; just point it at your app.</p>
 
   <h3>How It Works</h3>
   <p>The bundler auto-detects your entry point, embeds the zQuery library, resolves all ES module imports, inlines external templates, rewrites your <code>index.html</code>, and copies assets into a <code>dist/</code> folder. <strong>No flags needed</strong> &mdash; just point it at your app.</p>
