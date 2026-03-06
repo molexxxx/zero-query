@@ -162,7 +162,7 @@ my-app/
 
 ## CLI Bundler
 
-The CLI can compile your entire app — ES modules, the library, external templates, and assets — into a **single bundled file**.
+The CLI compiles your entire app — ES modules, the library, external templates, and assets — into a **single production-ready bundle**. It outputs two builds in one step: a `server/` build for deploying to any web server, and a `local/` build that works straight from disk. No config, no flags — just point it at your app.
 
 ```bash
 # Auto-detect entry from any .html with a module script
