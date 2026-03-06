@@ -9,7 +9,7 @@ import './components/docs/docs.js';
 import './components/about.js';
 import './components/compare.js';
 import './components/not-found.js';
-import { store } from './store.js';
+import './store.js';
 import { routes } from './routes.js';
 
 const router = $.router({
@@ -19,15 +19,14 @@ const router = $.router({
 });
 
 router.onChange((to) => {
-  store.dispatch('incrementVisits');
-  document.querySelectorAll('nav a[z-link]').forEach(link => {
+  $.all('nav a[z-link]').each((i, link) => {
     const href = link.getAttribute('z-link');
     link.classList.toggle('active', href === to.path || (href !== '/' && to.path.startsWith(href + '/')));
   });
   // Close mobile nav on route change
-  const nav = document.querySelector('nav');
+  const nav = $('nav');
   if (nav) nav.classList.remove('nav-open');
-  const outlet = document.getElementById('app');
+  const outlet = $.id('app');
   if (outlet) {
     outlet.classList.remove('fade-in');
     void outlet.offsetWidth;
@@ -35,10 +34,15 @@ router.onChange((to) => {
   }
 });
 
+// Delegated mobile-nav toggle (replaces inline onclick in HTML)
+$.on('click', '.mobile-nav-toggle', function () {
+  this.closest('nav').classList.toggle('nav-open');
+});
+
 $.ready(() => {
   console.log(`zQuery v${$.version} — library loaded`);
   const initial = router.path || '/';
-  document.querySelectorAll('nav a[z-link]').forEach(link => {
+  $.all('nav a[z-link]').each((i, link) => {
     const href = link.getAttribute('z-link');
     link.classList.toggle('active', href === initial || (href !== '/' && initial.startsWith(href + '/')));
   });

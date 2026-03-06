@@ -1,7 +1,15 @@
 ﻿$.component('compare-page', {
-  state: {
+  state: () => ({
     activeTab: 'overview',
-  },
+    tabs: [
+      { id: 'overview',    label: 'Overview' },
+      { id: 'selectors',   label: 'Selectors & DOM' },
+      { id: 'components',  label: 'Components' },
+      { id: 'directives',  label: 'Directives' },
+      { id: 'reactivity',  label: 'Reactivity' },
+      { id: 'native',      label: 'Native & Size' },
+    ],
+  }),
 
   // -----------------------------------------------------------------------
   // render
@@ -9,25 +17,14 @@
   render() {
     const t = this.state.activeTab;
 
-    const tabs = [
-      { id: 'overview',    label: 'Overview' },
-      { id: 'selectors',   label: 'Selectors & DOM' },
-      { id: 'components',  label: 'Components' },
-      { id: 'directives',  label: 'Directives' },
-      { id: 'reactivity',  label: 'Reactivity' },
-      { id: 'native',      label: 'Native & Size' },
-    ];
-
-    const tabBar = tabs.map(tb =>
-      `<button class="${tb.id === t ? 'cmp-tab active' : 'cmp-tab'}" @click="switchTab" data-tab="${tb.id}">${tb.label}</button>`
-    ).join('');
-
     return `
       <div>
         ${this._hero()}
 
         <div class="card" style="padding:0;overflow:hidden;">
-          <div class="cmp-tab-bar">${tabBar}</div>
+          <div class="cmp-tab-bar">
+            <button z-for="tb in tabs" class="cmp-tab" z-class="{active: activeTab === '{{tb.id}}'}" @click="switchTab" data-tab="{{tb.id}}">{{tb.label}}</button>
+          </div>
           <div class="cmp-tab-body">${this._panel(t)}</div>
         </div>
 

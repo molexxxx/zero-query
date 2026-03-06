@@ -1,8 +1,7 @@
 $.component('home-page', {
-  state: { greeting: 'Welcome to zQuery!' },
-
-  render() {
-    const features = [
+  state: () => ({
+    greeting: 'Welcome to zQuery!',
+    features: [
       { icon: 'M13.5 3a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 12.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm-7.5 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM12 19.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM4.5 12a7.5 7.5 0 1115 0 7.5 7.5 0 01-15 0z',
         title: '$() Selectors', desc: 'jQuery-like API with full chaining' },
       { icon: 'M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zm0 9.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6z',
@@ -19,15 +18,17 @@ $.component('home-page', {
         title: 'Two-Way Binding', desc: 'z-model directive' },
       { icon: 'M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z',
         title: 'Utilities', desc: 'Debounce, throttle, storage & more' },
-    ];
+    ],
+  }),
 
-    function card(f) {
-      return '<div style="display:flex;gap:0.75rem;align-items:flex-start;padding:0.75rem;background:#0d1117;border:1px solid #21262d;border-radius:8px;">'
-        + '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#58a6ff" style="width:20px;height:20px;flex-shrink:0;margin-top:2px;"><path stroke-linecap="round" stroke-linejoin="round" d="' + f.icon + '"/></svg>'
-        + '<div><div style="color:#f0f6fc;font-weight:600;font-size:0.9rem;">' + f.title + '</div>'
-        + '<div style="color:#8b949e;font-size:0.8rem;margin-top:2px;">' + f.desc + '</div></div></div>';
-    }
+  styles: `
+    .feature-card { display:flex; gap:0.75rem; align-items:flex-start; padding:0.75rem; background:#0d1117; border:1px solid #21262d; border-radius:8px; }
+    .feature-icon { width:20px; height:20px; flex-shrink:0; margin-top:2px; }
+    .feature-title { color:#f0f6fc; font-weight:600; font-size:0.9rem; }
+    .feature-desc { color:#8b949e; font-size:0.8rem; margin-top:2px; }
+  `,
 
+  render() {
     return `
       <div>
         <div class="card" style="text-align:center;padding:2.5rem 1.5rem;">
@@ -47,7 +48,12 @@ $.component('home-page', {
         <div class="card" style="padding:1.5rem;">
           <h2 style="margin-bottom:1rem;">Features</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0.75rem;">
-            ${features.map(card).join('')}
+            ${this.state.features.map(f => `
+              <div class="feature-card">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#58a6ff" class="feature-icon"><path stroke-linecap="round" stroke-linejoin="round" d="${f.icon}"/></svg>
+                <div><div class="feature-title">${f.title}</div><div class="feature-desc">${f.desc}</div></div>
+              </div>
+            `).join('')}
           </div>
         </div>
 

@@ -1,5 +1,3 @@
-import { store } from '../store.js';
-
 $.component('about-page', {
   state: {},
 

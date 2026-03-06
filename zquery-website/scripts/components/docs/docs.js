@@ -121,7 +121,7 @@ $.component('docs-page', {
     const hash = this._pendingHash;
     if (!hash) return;
     if (!this._pendingHashAttempts) this._pendingHashAttempts = 0;
-    const el = document.getElementById(hash);
+    const el = $.id(hash);
     if (el) {
       this._pendingHash = null;
       this._pendingHashAttempts = 0;
@@ -181,7 +181,7 @@ $.component('docs-page', {
     // --- Free mode: simple fixed-offset scan ---
     const content = this.refs.content;
     if (!content) return;
-    const headings = content.querySelectorAll('h3[id]');
+    const headings = $.all('h3[id]', content);
     if (!headings.length) return;
 
     const scanLine = 100;          // fixed px from viewport top
@@ -194,11 +194,11 @@ $.component('docs-page', {
   },
 
   _applySpyActive(activeId) {
-    const nav = this._el?.querySelector('.docs-sub-nav');
+    if (!this._el) return;
+    const nav = $('.docs-sub-nav', this._el);
     if (!nav) return;
-    nav.querySelectorAll('.docs-sub-nav-item').forEach(a => {
-      const id = a.dataset.id || '';
-      a.classList.toggle('active', id === activeId);
+    $.all('.docs-sub-nav-item', nav).each((i, a) => {
+      a.classList.toggle('active', (a.dataset.id || '') === activeId);
     });
   },
 
@@ -206,21 +206,17 @@ $.component('docs-page', {
     const root = this.refs.content;
     if (!root) return;
     // Wrap bare .docs-table elements in a scroll container
-    root.querySelectorAll('.docs-table').forEach(table => {
+    $.all('.docs-table', root).each((i, table) => {
       if (table.parentElement && table.parentElement.classList.contains('docs-table-wrap')) return;
-      const wrap = document.createElement('div');
-      wrap.className = 'docs-table-wrap';
+      const wrap = $.create('div', { class: 'docs-table-wrap' });
       table.parentNode.insertBefore(wrap, table);
       wrap.appendChild(table);
     });
     // Prism syntax highlighting
     if (typeof Prism === 'undefined') return;
-    root.querySelectorAll('pre code[class*="language-"]').forEach(el => {
-      if (!el.classList.contains('prism-highlighted')) {
-        Prism.highlightElement(el);
-        el.classList.add('prism-highlighted');
-      }
-    });
+    $.all('pre code[class*="language-"]', root).not('.prism-highlighted').each(function () {
+      Prism.highlightElement(this);
+    }).addClass('prism-highlighted');
   },
 
   _stripTags(html) {
@@ -275,7 +271,7 @@ $.component('docs-page', {
     if (!id) return;
     // Immediately highlight the clicked sub-item
     this._pinSpy(id);
-    const el = document.getElementById(id);
+    const el = $.id(id);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       // Update URL so the anchor link is shareable / survives refresh.
