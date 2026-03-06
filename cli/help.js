@@ -24,8 +24,11 @@ function showHelp() {
   SMART DEFAULTS
 
     The bundler works with zero flags for typical projects:
-      \u2022 Entry is auto-detected: scans .html for <script type="module">,
-        then .js files for entry signatures, then convention fallbacks
+      \u2022 Entry is auto-detected with strict precedence:
+        1. index.html first, then other .html files
+        2. Within HTML: module script pointing to app.js, else first module script
+        3. JS scan: $.router( first (entry point), then $.mount( / $.store(
+        4. Convention fallbacks (scripts/app.js, app.js, etc.)
       \u2022 zquery.min.js is always embedded (auto-built from source if not found)
       \u2022 index.html is rewritten for both server and local (file://) use
       \u2022 Output goes to dist/server/ and dist/local/ next to the detected index.html

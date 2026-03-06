@@ -188,7 +188,11 @@ dist/
 
 ### What the Bundler Does
 
-1. Scans `.html` files (root + one level deep) for `<script type="module" src="...">` — if no HTML match, searches `.js` files for entry signatures (`$.router(`, `$.mount(`, etc.), then convention fallbacks (`scripts/app.js`, `app.js`, …)
+1. **Entry detection** — a strict precedence order ensures the correct file is chosen:
+   1. **HTML files** — `index.html` is checked first, then other `.html` files (root + one level deep).
+   2. **Module scripts within HTML** — within each HTML file, a `<script type="module">` whose `src` resolves to `app.js` wins; otherwise the first module script tag is used.
+   3. **JS file scan** — if no HTML match, JS files (up to 2 levels deep) are scanned in two passes: first for `$.router(` (the canonical app entry point), then for `$.mount(`, `$.store(`, or `mountAll(`.
+   4. **Convention fallbacks** — `scripts/app.js`, `src/app.js`, `js/app.js`, `app.js`, `main.js`.
 2. Resolves all `import` statements and topologically sorts dependencies
 3. Strips `import`/`export` syntax, wraps in an IIFE
 4. Embeds zQuery library and inlines `templateUrl` / `styleUrl` / `pages` files

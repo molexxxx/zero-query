@@ -56,7 +56,15 @@ start dist/local/index.html
 
   <h3>Under the Hood</h3>
   <ol>
-    <li><strong>Entry detection</strong> &mdash; Three-tier strategy: <strong>(1)</strong> scans <code>.html</code> files in the target root and one level deep for <code>&lt;script type="module" src="..."&gt;</code>; <strong>(2)</strong> if no HTML match, searches <code>.js</code> files (up to 2 levels) for entry-point signatures like <code>$.router(</code>, <code>$.mount(</code>, <code>$.store(</code>, or <code>mountAll(</code>; <strong>(3)</strong> convention fallbacks: <code>scripts/app.js</code>, <code>src/app.js</code>, <code>js/app.js</code>, <code>app.js</code>, <code>main.js</code>. Custom file and folder names are fully supported.</li>
+    <li><strong>Entry detection</strong> &mdash; Strict precedence strategy:
+      <ol type="a">
+        <li><strong>HTML files</strong> &mdash; <code>index.html</code> is evaluated first, then other <code>.html</code> files (root + one level deep).</li>
+        <li><strong>Module scripts within HTML</strong> &mdash; within each HTML file, a <code>&lt;script type="module"&gt;</code> whose <code>src</code> resolves to <code>app.js</code> is preferred; otherwise the first module script tag is used.</li>
+        <li><strong>JS file scan</strong> &mdash; if no HTML match, <code>.js</code> files (up to 2 levels deep) are scanned in two passes: first for <code>$.router(</code> (the canonical app entry point), then for <code>$.mount(</code>, <code>$.store(</code>, or <code>mountAll(</code>.</li>
+        <li><strong>Convention fallbacks</strong> &mdash; <code>scripts/app.js</code>, <code>src/app.js</code>, <code>js/app.js</code>, <code>app.js</code>, <code>main.js</code>.</li>
+      </ol>
+      Custom file and folder names are fully supported.
+    </li>
     <li><strong>Import graph</strong> &mdash; Recursively resolves all <code>import</code> statements and topologically sorts them (leaves first).</li>
     <li><strong>Module stripping</strong> &mdash; Removes <code>import</code>/<code>export</code> keywords, keeps declarations. Output is plain browser JS wrapped in an IIFE.</li>
     <li><strong>Library embedding</strong> &mdash; Finds <code>zquery.min.js</code> in your project or the npm package. Auto-builds from source if not found anywhere.</li>
