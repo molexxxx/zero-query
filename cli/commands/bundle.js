@@ -90,6 +90,27 @@ function replaceImportMeta(code, filePath, projectRoot) {
 }
 
 /**
+ * Rewrite templateUrl / styleUrl relative paths to project-relative paths.
+ * In a bundled IIFE, caller-base detection returns undefined (all stack
+ * frames point to the single bundle file), so relative URLs like
+ * 'contacts.html' never resolve to their original directory.  By rewriting
+ * them to the same project-relative keys used in window.__zqInline, the
+ * runtime inline-resource lookup succeeds without a network fetch.
+ */
+function rewriteResourceUrls(code, filePath, projectRoot) {
+  const fileDir = path.dirname(filePath);
+  return code.replace(
+    /((?:templateUrl|styleUrl)\s*:\s*)(['"])([^'"]+)\2/g,
+    (match, prefix, quote, url) => {
+      if (url.startsWith('/') || url.includes('://')) return match;
+      const abs = path.resolve(fileDir, url);
+      const rel = path.relative(projectRoot, abs).replace(/\\/g, '/');
+      return `${prefix}${quote}${rel}${quote}`;
+    }
+  );
+}
+
+/**
  * Scan bundled source files for external resource references
  * (pages config, templateUrl, styleUrl) and return a map of
  * { relativePath: fileContent } for inlining.
@@ -455,6 +476,7 @@ function bundleApp() {
     let code = fs.readFileSync(file, 'utf-8');
     code = stripModuleSyntax(code);
     code = replaceImportMeta(code, file, projectRoot);
+    code = rewriteResourceUrls(code, file, projectRoot);
     const rel = path.relative(projectRoot, file);
     return `// --- ${rel} ${'—'.repeat(Math.max(1, 60 - rel.length))}\n${code.trim()}`;
   });

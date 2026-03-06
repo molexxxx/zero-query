@@ -9,7 +9,7 @@ nav .nav-links { display: flex; gap: 0.25rem; align-items: center; }
 nav .nav-links a { color: #8b949e; text-decoration: none; cursor: pointer; transition: color 0.15s, background 0.15s; font-size: 0.95rem; font-weight: 500; padding: 0.5rem 1rem; border-radius: 6px; }
 nav .nav-links a:hover { color: #f0f6fc; background: #21262d; }
 nav .nav-links a.active { color: #f0f6fc; background: #1f6feb22; }
-#app { max-width: 960px; margin: 2rem auto; padding: 0 1.5rem; }
+#app { max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem; }
 
 /* Components */
 .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; }

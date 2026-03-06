@@ -580,7 +580,7 @@ store.subscribe('count', val =&gt;
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#e3b341" style="width:22px;height:22px;vertical-align:-4px;margin-right:0.35rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           The Bottom Line
         </h2>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0.75rem;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:0.75rem;">
           ${this._verdictCard('jQuery', 'Great for simple DOM tasks, but no component model, no reactivity, no router. Still useful — zQuery just gives you all that <em>and</em> the familiar <code>$()</code> API.')}
           ${this._verdictCard('Angular', 'Full-featured enterprise framework. Powerful but heavyweight — requires TypeScript, a CLI, and significant learning curve. zQuery covers 90% of the same surface in ~54 KB with zero setup.')}
           ${this._verdictCard('React', 'Excellent ecosystem and component model, but you need a router package, a state library, and an HTTP library separately. zQuery ships everything batteries-included out of the box.')}
@@ -659,8 +659,8 @@ store.subscribe('count', val =&gt;
     .cmp-table thead .cmp-zq-col { background:#e3b34118; }
 
     /* Code comparison grid */
-    .cmp-grid   { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:0.75rem; margin-bottom:1rem; }
-    .cmp-grid-3 { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
+    .cmp-grid   { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:0.75rem; margin-bottom:1rem; }
+    .cmp-grid-3 { grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
     .cmp-code-card { background:#0d1117; border:1px solid #21262d; border-radius:8px; overflow:hidden; }
     .cmp-code-card pre { margin:0; padding:0.75rem 1rem !important; font-size:0.8rem; background:transparent !important; }
     .cmp-code-label { padding:0.4rem 0.75rem; font-size:0.75rem; font-weight:600; background: color-mix(in srgb, var(--accent) 12%, #0d1117); color:var(--accent); border-bottom:1px solid #21262d; }
@@ -686,7 +686,7 @@ store.subscribe('count', val =&gt;
     .cmp-bar-size  { width:55px; font-size:0.82rem; color:#c9d1d9; font-variant-numeric:tabular-nums; }
 
     /* Native grid */
-    .cmp-native-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:0.75rem; margin-bottom:1rem; }
+    .cmp-native-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:0.75rem; margin-bottom:1rem; }
     .cmp-native-card { background:#0d1117; border:1px solid #21262d; border-radius:8px; overflow:hidden; }
     .cmp-native-card ul { list-style:none; padding:0.6rem 0.75rem; margin:0; font-size:0.82rem; }
     .cmp-native-card li { padding:0.3rem 0; color:#c9d1d9; display:flex; gap:0.5rem; align-items:baseline; }

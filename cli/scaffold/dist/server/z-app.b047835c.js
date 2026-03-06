@@ -1,4 +1,13 @@
 /**
+ * App bundle — built by zQuery CLI
+ * Entry: cli\scaffold\scripts\app.js
+ * 2026-03-06T02:56:52.945Z
+ */
+(function() {
+  'use strict';
+
+// --- zquery.min.js (library) ——————————————————————————————————
+/**
  * zQuery (zeroQuery) v0.4.7
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
@@ -202,3 +211,940 @@ if (typeof window !== 'undefined') { window.$ = $; window.zQuery = $;
 }
 $;
 })(typeof window !== 'undefined' ? window : globalThis);
+
+// --- Build-time metadata ————————————————————————————
+if(typeof $!=="undefined"){$.meta=Object.assign($.meta||{},{libSize:55390});}
+
+// --- Inlined resources (file:// support) ————————————————————
+window.__zqInline = {
+  'cli/scaffold/scripts/components/contacts/contacts.css': '/* contacts.css — scoped styles for contacts-page component\n *\n * Loaded via styleUrl — these styles are automatically scoped\n * to the contacts-page component by zQuery.\n */\n\n/* -- Toolbar -- */\n.contacts-toolbar-row {\n  display: flex;\n  gap: 0.75rem;\n  align-items: center;\n  justify-content: space-between;\n}\n\n/* -- Add Form -- */\n.contacts-form {\n  display: grid;\n  grid-template-columns: 1fr 1fr;\n  gap: 0.75rem;\n  margin-top: 1rem;\n  padding-top: 1rem;\n  border-top: 1px solid var(--border);\n}\n\n.form-field {\n  display: flex;\n  flex-direction: column;\n  gap: 0.25rem;\n}\n\n.form-field-full {\n  grid-column: 1 / -1;\n}\n\n.form-field .input {\n  width: 100%;\n}\n\n.field-error {\n  color: var(--danger);\n  font-size: 0.78rem;\n  min-height: 0;\n}\n\n.contacts-form .btn {\n  grid-column: 1 / -1;\n  justify-self: start;\n}\n\n/* -- Count -- */\n.contacts-count {\n  font-size: 0.85rem;\n  color: var(--text-muted);\n}\n\n/* -- List -- */\n.contacts-list {\n  list-style: none;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n\n.contacts-item {\n  display: flex;\n  align-items: center;\n  gap: 0.75rem;\n  padding: 0.7rem 0.85rem;\n  border-radius: var(--radius);\n  cursor: pointer;\n  transition: all 0.15s ease;\n  border: 1px solid transparent;\n}\n\n.contacts-item:hover {\n  background: var(--bg-hover);\n}\n\n.contacts-item.selected {\n  background: var(--accent-soft);\n  border-color: var(--accent);\n}\n\n.contacts-item.is-favorite {\n  border-left: 3px solid var(--accent);\n}\n\n/* -- Status dot -- */\n.status-dot {\n  width: 10px;\n  height: 10px;\n  border-radius: 50%;\n  flex-shrink: 0;\n  background: var(--text-muted);\n}\n\n.status-online  { background: var(--success); }\n.status-away    { background: var(--info); }\n.status-offline { background: var(--text-muted); }\n\n/* -- Contact info -- */\n.contacts-info {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  min-width: 0;\n}\n\n.contacts-info strong {\n  font-size: 0.9rem;\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n\n.contacts-info small {\n  font-size: 0.8rem;\n  color: var(--text-muted);\n  white-space: nowrap;\n  overflow: hidden;\n  text-overflow: ellipsis;\n}\n\n/* -- Role badge -- */\n.role-badge {\n  font-size: 0.75rem;\n  font-weight: 600;\n  padding: 0.2rem 0.55rem;\n  border-radius: 99px;\n  text-transform: uppercase;\n  letter-spacing: 0.03em;\n  white-space: nowrap;\n}\n\n.role-developer {\n  background: rgba(96, 165, 250, 0.15);\n  color: #60a5fa;\n}\n\n.role-designer {\n  background: rgba(168, 85, 247, 0.15);\n  color: #a855f7;\n}\n\n.role-manager {\n  background: rgba(52, 211, 153, 0.15);\n  color: #34d399;\n}\n\n.role-qa {\n  background: rgba(251, 191, 36, 0.15);\n  color: #fbbf24;\n}\n\n/* -- Favorite button -- */\n.fav-btn {\n  background: none;\n  border: none;\n  font-size: 1.2rem;\n  cursor: pointer;\n  color: var(--text-muted);\n  padding: 0.2rem;\n  transition: all 0.15s ease;\n  line-height: 1;\n}\n\n.fav-btn:hover {\n  transform: scale(1.2);\n}\n\n.fav-btn.is-fav {\n  color: var(--accent);\n}\n\n/* -- Detail panel -- */\n.contact-detail {\n  border-left: 3px solid var(--accent);\n  animation: slide-in 0.2s ease;\n}\n\n.detail-header {\n  display: flex;\n  justify-content: space-between;\n  align-items: flex-start;\n  gap: 1rem;\n  flex-wrap: wrap;\n}\n\n.detail-header h3 {\n  font-size: 1.1rem;\n  margin-bottom: 0.15rem;\n}\n\n.detail-header .muted {\n  font-size: 0.85rem;\n  color: var(--text-muted);\n}\n\n.detail-actions {\n  display: flex;\n  gap: 0.5rem;\n  align-items: center;\n  flex-wrap: wrap;\n}\n\n/* -- Confirm group -- */\n.confirm-group {\n  display: inline-flex;\n  align-items: center;\n  gap: 0.35rem;\n}\n\n.confirm-text {\n  font-size: 0.82rem;\n  color: var(--danger);\n  font-weight: 500;\n}\n\n@keyframes slide-in {\n  from { opacity: 0; transform: translateY(-6px); }\n  to   { opacity: 1; transform: translateY(0); }\n}\n}\n\n/* -- Animation -- */\n@keyframes slide-in {\n  from { opacity: 0; transform: translateY(-6px); }\n  to   { opacity: 1; transform: translateY(0); }\n}\n\n/* -- Responsive -- */\n@media (max-width: 768px) {\n  .contacts-toolbar-row {\n    flex-direction: column;\n  }\n\n  .contacts-form {\n    grid-template-columns: 1fr;\n  }\n\n  .contacts-item {\n    flex-wrap: wrap;\n  }\n\n  .role-badge {\n    order: 10;\n    margin-left: calc(10px + 0.75rem);\n  }\n\n  .detail-header {\n    flex-direction: column;\n  }\n}\n',
+  'cli/scaffold/scripts/components/contacts/contacts.html': '<!--\n  contacts.html — external template for contacts-page component\n\n  This template is fetched via templateUrl and uses {{expression}} syntax\n  for data binding. All zQuery directives work here: z-if, z-else,\n  z-for, z-show, z-bind, z-class, z-style, z-text, z-model, z-ref,\n  z-cloak, @click, @submit.prevent, etc.\n\n  Expressions have access to `state` and `props` automatically.\n  Inside z-for loops, use {{item.prop}} for per-item values.\n-->\n<div class="page-header" z-cloak>\n  <h1>Contacts</h1>\n  <p class="subtitle">\n    External template &amp; styles via <code>templateUrl</code> / <code>styleUrl</code>.\n    Directives: <code>z-if</code>, <code>z-for</code>, <code>z-show</code>,\n    <code>z-bind</code>, <code>z-class</code>, <code>z-model</code>, and more.\n  </p>\n</div>\n\n<!-- Toolbar: add button -->\n<div class="card contacts-toolbar">\n  <div class="contacts-toolbar-row">\n    <span class="contacts-count" z-if="contacts.length > 0">\n      <strong z-text="contacts.length"></strong> contacts\n      · <strong z-text="favoriteCount"></strong> ★ favorited\n      <span z-show="totalAdded > 0"> · <span z-text="totalAdded"></span> added this session</span>\n    </span>\n    <span class="contacts-count" z-else>No contacts yet</span>\n    <button class="btn btn-primary" @click="toggleForm">\n      <span z-if="showForm">✕ Cancel</span>\n      <span z-else>+ Add Contact</span>\n    </button>\n  </div>\n\n  <!-- Add contact form — toggled via z-show -->\n  <form class="contacts-form" z-show="showForm" @submit.prevent="addContact">\n    <div class="form-field form-field-full">\n      <input\n        type="text"\n        z-model="newName"\n        z-trim\n        placeholder="Full name"\n        class="input"\n        @blur="validateName"\n      />\n      <small class="field-error" z-show="nameError" z-text="nameError"></small>\n    </div>\n    <div class="form-field">\n      <input\n        type="email"\n        z-model="newEmail"\n        z-trim\n        placeholder="Email address"\n        class="input"\n        @blur="validateEmail"\n      />\n      <small class="field-error" z-show="emailError" z-text="emailError"></small>\n    </div>\n    <select z-model="newRole" class="input">\n      <option value="Developer">Developer</option>\n      <option value="Designer">Designer</option>\n      <option value="Manager">Manager</option>\n      <option value="QA">QA</option>\n    </select>\n    <button type="submit" class="btn btn-primary">Save Contact</button>\n  </form>\n</div>\n\n<!-- Contact count -->\n<div class="card" z-if="contacts.length > 0">\n  <!-- Contacts list — z-for renders each item -->\n  <ul class="contacts-list">\n    <li\n      z-for="contact in contacts"\n      class="contacts-item {{contact.id === selectedId ? \'selected\' : \'\'}} {{contact.favorite ? \'is-favorite\' : \'\'}}"\n      @click="selectContact({{contact.id}})"\n    >\n      <!-- Status indicator — class set per status -->\n      <span\n        class="status-dot status-{{contact.status}}"\n        title="{{contact.status}}"\n      ></span>\n\n      <!-- Contact info -->\n      <div class="contacts-info">\n        <strong>{{contact.name}}</strong>\n        <small>{{contact.email}}</small>\n      </div>\n\n      <!-- Role badge -->\n      <span class="role-badge role-{{contact.role.toLowerCase()}}">{{contact.role}}</span>\n\n      <!-- Favorite toggle — .stop modifier prevents row click -->\n      <button\n        class="fav-btn {{contact.favorite ? \'is-fav\' : \'\'}}"\n        @click.stop="toggleFavorite({{contact.id}})"\n      >{{contact.favorite ? \'★\' : \'☆\'}}</button>\n    </li>\n  </ul>\n</div>\n\n<!-- Empty state -->\n<div class="card" z-else>\n  <div class="empty-state">\n    <p>No contacts yet — add one above!</p>\n  </div>\n</div>\n\n<!-- Selected contact detail panel — z-if conditional rendering -->\n<div class="card contact-detail" z-if="selectedId !== null">\n  <div class="detail-header">\n    <div>\n      <h3 z-text="contacts.find(c => c.id === selectedId)?.name || \'\'"></h3>\n      <p class="muted" z-text="contacts.find(c => c.id === selectedId)?.email || \'\'"></p>\n    </div>\n    <div class="detail-actions">\n      <button\n        class="btn btn-outline btn-sm"\n        @click="cycleStatus({{selectedId}})"\n      >\n        Status: <span z-text="contacts.find(c => c.id === selectedId)?.status || \'\'"></span>\n      </button>\n\n      <!-- Confirm delete pattern using z-if / z-else -->\n      <button\n        class="btn btn-danger btn-sm"\n        z-if="confirmDeleteId !== selectedId"\n        @click.stop="confirmDelete({{selectedId}})"\n      >Delete</button>\n\n      <span z-else class="confirm-group">\n        <span class="confirm-text">Sure?</span>\n        <button class="btn btn-danger btn-sm" @click.stop="deleteContact({{selectedId}})">Yes</button>\n        <button class="btn btn-ghost btn-sm" @click.stop="cancelDelete">No</button>\n      </span>\n    </div>\n  </div>\n</div>\n'
+};
+
+// --- cli\scaffold\scripts\routes.js ——————————————————————————————
+// scripts/routes.js — route definitions
+//
+// Each route maps a URL path to a component tag name.
+// Supports: static paths, :params, wildcards, and lazy loading via `load`.
+
+const routes = [
+  { path: '/',         component: 'home-page'     },
+  { path: '/counter',  component: 'counter-page'  },
+  { path: '/todos',    component: 'todos-page'    },
+  { path: '/contacts', component: 'contacts-page' },
+  { path: '/api',      component: 'api-demo'      },
+  { path: '/about',    component: 'about-page'    },
+];
+
+// --- cli\scaffold\scripts\store.js ———————————————————————————————
+// scripts/store.js — global state management
+//
+// $.store() creates a centralized store with state, actions, and getters.
+// Components can dispatch actions and subscribe to changes.
+// The store is accessible anywhere via $.getStore('main').
+
+const store = $.store('main', {
+  state: {
+    todos: [],
+    visits: 0,
+
+    // Contacts
+    contacts: [
+      { id: 1, name: 'Alice Johnson',  email: 'alice@example.com',  role: 'Designer',  status: 'online',  favorite: true  },
+      { id: 2, name: 'Bob Martinez',   email: 'bob@example.com',    role: 'Developer', status: 'offline', favorite: false },
+      { id: 3, name: 'Carol White',    email: 'carol@example.com',  role: 'Manager',   status: 'online',  favorite: true  },
+      { id: 4, name: 'Dave Kim',       email: 'dave@example.com',   role: 'Designer',  status: 'away',    favorite: false },
+      { id: 5, name: 'Eve Torres',     email: 'eve@example.com',    role: 'Developer', status: 'online',  favorite: false },
+    ],
+    contactsAdded: 0,
+  },
+
+  actions: {
+    // Increment the global visit counter
+    incrementVisits(state) {
+      state.visits++;
+    },
+
+    // Add a new todo item using $.uuid() for unique IDs
+    addTodo(state, text) {
+      state.todos.push({
+        id: $.uuid(),
+        text: text.trim(),
+        done: false,
+        createdAt: Date.now(),
+      });
+    },
+
+    // Toggle a todo's completion status
+    toggleTodo(state, id) {
+      const todo = state.todos.find(t => t.id === id);
+      if (todo) todo.done = !todo.done;
+    },
+
+    // Remove a todo by ID
+    removeTodo(state, id) {
+      state.todos = state.todos.filter(t => t.id !== id);
+    },
+
+    // Clear all completed todos
+    clearCompleted(state) {
+      state.todos = state.todos.filter(t => !t.done);
+    },
+
+    // -- Contact actions --
+
+    addContact(state, { name, email, role }) {
+      state.contacts.push({
+        id:       Date.now(),
+        name,
+        email,
+        role,
+        status:   'offline',
+        favorite: false,
+      });
+      state.contactsAdded++;
+    },
+
+    deleteContact(state, id) {
+      state.contacts = state.contacts.filter(c => c.id !== id);
+    },
+
+    toggleFavorite(state, id) {
+      const c = state.contacts.find(c => c.id === id);
+      if (c) c.favorite = !c.favorite;
+    },
+
+    cycleContactStatus(state, id) {
+      const c = state.contacts.find(c => c.id === id);
+      if (!c) return;
+      const order = ['online', 'away', 'offline'];
+      c.status = order[(order.indexOf(c.status) + 1) % 3];
+    },
+  },
+
+  getters: {
+    todoCount:    (state) => state.todos.length,
+    doneCount:    (state) => state.todos.filter(t => t.done).length,
+    pendingCount: (state) => state.todos.filter(t => !t.done).length,
+
+    contactCount:    (state) => state.contacts.length,
+    favoriteCount:   (state) => state.contacts.filter(c => c.favorite).length,
+  },
+
+  debug: true,  // logs dispatches to console in development
+});
+
+// --- cli\scaffold\scripts\components\home.js —————————————————————
+// scripts/components/home.js — dashboard / landing page
+//
+// Demonstrates: $.component, state, render, mounted lifecycle,
+//               signal + computed + effect (reactive primitives),
+//               $.store integration, $.bus, template rendering
+
+$.component('home-page', {
+  state: () => ({
+    greeting: '',
+    signalDemo: 0,
+  }),
+
+  mounted() {
+    // $.signal() — fine-grained reactive primitive
+    const count = $.signal(0);
+
+    // $.computed() — derived reactive value that auto-updates
+    const doubled = $.computed(() => count.value * 2);
+
+    // $.effect() — runs whenever its dependencies change
+    $.effect(() => {
+      this.state.signalDemo = doubled.value;
+    });
+
+    // Store the signal setter so the button can use it
+    this._signalCount = count;
+
+    // Greet based on time of day
+    const hour = new Date().getHours();
+    this.state.greeting = hour < 12 ? 'Good morning'
+                        : hour < 18 ? 'Good afternoon'
+                        : 'Good evening';
+
+    // Track page visit via the global store
+    const store = $.getStore('main');
+    store.dispatch('incrementVisits');
+  },
+
+  incrementSignal() {
+    if (this._signalCount) {
+      this._signalCount.value++;
+    }
+  },
+
+  render() {
+    const store = $.getStore('main');
+    return `
+      <div class="page-header">
+        <h1>${this.state.greeting} 👋</h1>
+        <p class="subtitle">Welcome to your new <strong>zQuery</strong> app. Explore the pages to see different features in action.</p>
+      </div>
+
+      <div class="card-grid">
+        <div class="card card-accent">
+          <h3>⚡ Reactive Signals</h3>
+          <p>Fine-grained reactivity with <code>signal()</code>, <code>computed()</code>, and <code>effect()</code>.</p>
+          <div class="signal-demo">
+            <span class="signal-value">Doubled: ${this.state.signalDemo}</span>
+            <button class="btn btn-sm" @click="incrementSignal">Increment Signal</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🔢 Counter</h3>
+          <p>Component state, two-way binding with <code>z-model</code>, and event handling.</p>
+          <a z-link="/counter" class="btn btn-outline">Try It →</a>
+        </div>
+
+        <div class="card">
+          <h3>✅ Todos</h3>
+          <p>Global store with actions & getters. <strong>${store.getters.todoCount}</strong> items, <strong>${store.getters.doneCount}</strong> done.</p>
+          <a z-link="/todos" class="btn btn-outline">Try It →</a>
+        </div>
+
+        <div class="card">
+          <h3>📇 Contacts</h3>
+          <p>External templates &amp; styles via <code>templateUrl</code> / <code>styleUrl</code>. <strong>${store.getters.contactCount}</strong> contacts, <strong>${store.getters.favoriteCount}</strong> ★ favorited.</p>
+          <a z-link="/contacts" class="btn btn-outline">Try It →</a>
+        </div>
+
+        <div class="card">
+          <h3>🌐 API Demo</h3>
+          <p>Fetch data with <code>$.get()</code>, loading states, and <code>$.escapeHtml()</code>.</p>
+          <a z-link="/api" class="btn btn-outline">Try It →</a>
+        </div>
+      </div>
+
+      <div class="card card-muted">
+        <h3>📊 App Stats</h3>
+        <div class="stats-grid">
+          <div class="stat-group">
+            <span class="stat-group-title">🏠 General</span>
+            <div class="stat-group-values">
+              <div class="stat">
+                <span class="stat-value">${store.state.visits}</span>
+                <span class="stat-label">Page Views</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-group">
+            <span class="stat-group-title">✅ Todos</span>
+            <div class="stat-group-values">
+              <div class="stat">
+                <span class="stat-value">${store.getters.todoCount}</span>
+                <span class="stat-label">Total</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value">${store.getters.pendingCount}</span>
+                <span class="stat-label">Pending</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value">${store.getters.doneCount}</span>
+                <span class="stat-label">Done</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="stat-group">
+            <span class="stat-group-title">📇 Contacts</span>
+            <div class="stat-group-values">
+              <div class="stat">
+                <span class="stat-value">${store.getters.contactCount}</span>
+                <span class="stat-label">Total</span>
+              </div>
+              <div class="stat">
+                <span class="stat-value">${store.getters.favoriteCount}</span>
+                <span class="stat-label">★ Favorited</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <small class="muted">Stats powered by <code>$.store()</code> getters — visit count tracked globally.</small>
+      </div>
+    `;
+  }
+});
+
+// --- cli\scaffold\scripts\components\counter.js ——————————————————
+// scripts/components/counter.js — interactive counter
+//
+// Demonstrates: component state, instance methods, @click event binding,
+//               z-model two-way binding with z-number modifier, z-class,
+//               z-if, z-for, $.bus toast notifications
+
+$.component('counter-page', {
+  state: () => ({
+    count: 0,
+    step: 1,
+    history: [],
+  }),
+
+  increment() {
+    this.state.count += this.state.step;
+    this.state.history.push({ action: '+', value: this.state.step, result: this.state.count });
+    if (this.state.history.length > 8) this.state.history.shift();
+  },
+
+  decrement() {
+    this.state.count -= this.state.step;
+    this.state.history.push({ action: '−', value: this.state.step, result: this.state.count });
+    if (this.state.history.length > 8) this.state.history.shift();
+  },
+
+  reset() {
+    this.state.count = 0;
+    this.state.history = [];
+    $.bus.emit('toast', { message: 'Counter reset!', type: 'info' });
+  },
+
+  render() {
+    return `
+      <div class="page-header">
+        <h1>Counter</h1>
+        <p class="subtitle">Component state, <code>@click</code> handlers, <code>z-model</code>, <code>z-class</code>, and <code>z-for</code>.</p>
+      </div>
+
+      <div class="card counter-card">
+        <div class="counter-display">
+          <span class="counter-value" z-class="{'negative': count < 0}">${this.state.count}</span>
+        </div>
+
+        <div class="counter-controls">
+          <button class="btn btn-danger" @click="decrement">− Subtract</button>
+          <button class="btn btn-primary" @click="increment">+ Add</button>
+        </div>
+
+        <div class="counter-step">
+          <label>Step size:
+            <input type="number" z-model="step" z-number min="1" max="100" class="input input-sm" />
+          </label>
+          <button class="btn btn-ghost btn-sm" @click="reset">Reset</button>
+        </div>
+      </div>
+
+      <div class="card card-muted" z-if="history.length > 0">
+        <h3>History</h3>
+        <div class="history-list">
+          <span z-for="e in history" class="history-item">{{e.action}}{{e.value}} → <strong>{{e.result}}</strong></span>
+        </div>
+      </div>
+    `;
+  }
+});
+
+// --- cli\scaffold\scripts\components\todos.js ————————————————————
+// scripts/components/todos.js — todo list with global store
+//
+// Demonstrates: $.getStore, store.dispatch, store.subscribe,
+//               store getters, z-model, z-ref, z-class, z-for,
+//               z-if, z-show, @click with args, @submit.prevent,
+//               mounted/destroyed lifecycle, $.bus toast, $.debounce
+
+$.component('todos-page', {
+  state: () => ({
+    newTodo: '',
+    filter: 'all',      // 'all' | 'active' | 'done'
+    search: '',
+    filtered: [],        // computed in render() for z-for access
+    total: 0,
+    done: 0,
+    pending: 0,
+  }),
+
+  mounted() {
+    const store = $.getStore('main');
+    this._unsub = store.subscribe(() => this.setState({}));
+
+    // $.debounce — debounced search filter (300ms)
+    this._debouncedSearch = $.debounce((val) => {
+      this.state.search = val;
+    }, 300);
+  },
+
+  destroyed() {
+    if (this._unsub) this._unsub();
+  },
+
+  addTodo() {
+    const text = this.state.newTodo.trim();
+    if (!text) return;
+    $.getStore('main').dispatch('addTodo', text);
+    this.state.newTodo = '';
+    this.state.search = '';
+    this.state.filter = 'all';
+    $.bus.emit('toast', { message: 'Todo added!', type: 'success' });
+  },
+
+  toggleTodo(id) {
+    $.getStore('main').dispatch('toggleTodo', id);
+  },
+
+  removeTodo(id) {
+    $.getStore('main').dispatch('removeTodo', id);
+    $.bus.emit('toast', { message: 'Todo removed', type: 'error' });
+  },
+
+  clearCompleted() {
+    $.getStore('main').dispatch('clearCompleted');
+    $.bus.emit('toast', { message: 'Completed todos cleared', type: 'info' });
+  },
+
+  setFilter(f) {
+    this.state.filter = f;
+  },
+
+  onSearch(e) {
+    this._debouncedSearch(e.target.value);
+  },
+
+  render() {
+    const store = $.getStore('main');
+    const todos = store.state.todos;
+    const { filter, search } = this.state;
+
+    // Compute filtered list and store stats into state for directive access
+    let list = todos;
+    if (filter === 'active') list = todos.filter(t => !t.done);
+    if (filter === 'done')   list = todos.filter(t => t.done);
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter(t => t.text.toLowerCase().includes(q));
+    }
+    this.state.filtered = list;
+    this.state.total    = store.getters.todoCount;
+    this.state.done     = store.getters.doneCount;
+    this.state.pending  = store.getters.pendingCount;
+
+    return `
+      <div class="page-header">
+        <h1>Todos</h1>
+        <p class="subtitle">Global store with <code>$.store()</code>, <code>z-for</code>, <code>z-class</code>, <code>z-if</code>, and <code>z-show</code>.</p>
+      </div>
+
+      <div class="card">
+        <form class="todo-form" @submit.prevent="addTodo">
+          <input
+            type="text"
+            z-model="newTodo" z-trim
+            placeholder="What needs to be done?"
+            class="input"
+            z-ref="todoInput"
+          />
+          <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="todo-toolbar">
+          <div class="todo-filters">
+            <button class="btn btn-sm" z-class="{'btn-primary': filter === 'all', 'btn-ghost': filter !== 'all'}" @click="setFilter('all')">All (${this.state.total})</button>
+            <button class="btn btn-sm" z-class="{'btn-primary': filter === 'active', 'btn-ghost': filter !== 'active'}" @click="setFilter('active')">Active (${this.state.pending})</button>
+            <button class="btn btn-sm" z-class="{'btn-primary': filter === 'done', 'btn-ghost': filter !== 'done'}" @click="setFilter('done')">Done (${this.state.done})</button>
+          </div>
+          <input type="text" placeholder="Search…" class="input input-sm" @input="onSearch" value="${$.escapeHtml(this.state.search)}" />
+        </div>
+
+        <div z-if="filtered.length === 0" class="empty-state">
+          <p>${this.state.total === 0 ? 'No todos yet — add one above!' : 'No matching todos.'}</p>
+        </div>
+
+        <ul z-else class="todo-list">
+          <li z-for="t in filtered" class="todo-item {{t.done ? 'done' : ''}}">
+            <button class="todo-check" @click="toggleTodo('{{t.id}}')"></button>
+            <span class="todo-text">{{$.escapeHtml(t.text)}}</span>
+            <button class="todo-remove" @click="removeTodo('{{t.id}}')">✕</button>
+          </li>
+        </ul>
+
+        <div class="todo-footer" z-show="done > 0">
+          <button class="btn btn-ghost btn-sm" @click="clearCompleted">Clear completed (${this.state.done})</button>
+        </div>
+      </div>
+    `;
+  }
+});
+
+// --- cli\scaffold\scripts\components\api-demo.js —————————————————
+// scripts/components/api-demo.js — HTTP client demonstration
+//
+// Demonstrates: $.get() for fetching JSON, z-if/z-else conditional
+//               rendering, z-show visibility, z-for list rendering,
+//               z-text content binding, @click event handling,
+//               loading/error states, $.escapeHtml(), async patterns
+
+$.component('api-demo', {
+  state: () => ({
+    users: [],
+    selectedUser: null,
+    posts: [],
+    loading: false,
+    error: '',
+  }),
+
+  mounted() {
+    this.fetchUsers();
+  },
+
+  async fetchUsers() {
+    this.state.loading = true;
+    this.state.error = '';
+    try {
+      // $.get() — zero-config JSON fetching
+      const res = await $.get('https://jsonplaceholder.typicode.com/users');
+      this.state.users = res.data.slice(0, 6);
+    } catch (err) {
+      this.state.error = 'Failed to load users. Check your connection.';
+    }
+    this.state.loading = false;
+  },
+
+  async selectUser(id) {
+    this.state.selectedUser = this.state.users.find(u => u.id === Number(id));
+    this.state.loading = true;
+    try {
+      const res = await $.get(`https://jsonplaceholder.typicode.com/posts?userId=${id}`);
+      this.state.posts = res.data.slice(0, 4);
+    } catch (err) {
+      this.state.error = 'Failed to load posts.';
+    }
+    this.state.loading = false;
+    $.bus.emit('toast', { message: `Loaded posts for ${this.state.selectedUser.name}`, type: 'success' });
+  },
+
+  clearSelection() {
+    this.state.selectedUser = null;
+    this.state.posts = [];
+  },
+
+  render() {
+    const { selectedUser } = this.state;
+
+    return `
+      <div class="page-header">
+        <h1>API Demo</h1>
+        <p class="subtitle">Fetching data with <code>$.get()</code>. Directives: <code>z-if</code>, <code>z-show</code>, <code>z-for</code>, <code>z-text</code>.</p>
+      </div>
+
+      <div class="card card-error" z-show="error"><p>⚠ <span z-text="error"></span></p></div>
+      <div class="loading-bar" z-show="loading"></div>
+
+      <div z-if="!selectedUser">
+        <div class="card">
+          <h3>Users</h3>
+          <p class="muted">Click a user to fetch their posts.</p>
+          <div class="user-grid" z-if="users.length > 0">
+            <button z-for="u in users" class="user-card" @click="selectUser({{u.id}})">
+              <strong>{{u.name}}</strong>
+              <small>@{{u.username}}</small>
+              <small class="muted">{{u.company.name}}</small>
+            </button>
+          </div>
+          <p z-else z-show="!loading">No users loaded.</p>
+        </div>
+      </div>
+
+      <div z-else>
+        <div class="card">
+          <div class="user-detail-header">
+            <div>
+              <h3>${selectedUser ? $.escapeHtml(selectedUser.name) : ''}</h3>
+              <p class="muted">${selectedUser ? `@${$.escapeHtml(selectedUser.username)} · ${$.escapeHtml(selectedUser.email)}` : ''}</p>
+            </div>
+            <button class="btn btn-ghost btn-sm" @click="clearSelection">← Back</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Recent Posts</h3>
+          <div class="posts-list" z-if="posts.length > 0">
+            <article z-for="p in posts" class="post-item">
+              <h4>{{p.title}}</h4>
+              <p>{{p.body.substring(0, 120)}}…</p>
+            </article>
+          </div>
+          <p z-else class="muted" z-show="!loading">No posts found.</p>
+        </div>
+      </div>
+    `;
+  }
+});
+
+// --- cli\scaffold\scripts\components\about.js ————————————————————
+// scripts/components/about.js — about page with theme switcher
+//
+// Demonstrates: $.storage (localStorage wrapper), $.bus for notifications,
+//               $.version, component methods, data-theme attribute toggling
+
+$.component('about-page', {
+  state: () => ({
+    theme: 'dark',
+  }),
+
+  mounted() {
+    // Read persisted theme via $.storage
+    this.state.theme = $.storage.get('theme') || 'dark';
+  },
+
+  toggleTheme() {
+    const next = this.state.theme === 'dark' ? 'light' : 'dark';
+    this.state.theme = next;
+    // Apply theme via data attribute
+    document.documentElement.setAttribute('data-theme', next);
+    // Persist via $.storage (wraps localStorage)
+    $.storage.set('theme', next);
+    $.bus.emit('toast', { message: `Switched to ${next} theme`, type: 'info' });
+  },
+
+  render() {
+    return `
+      <div class="page-header">
+        <h1>About</h1>
+        <p class="subtitle">Built with zQuery v${$.version} — a zero-dependency frontend library.</p>
+      </div>
+
+      <div class="card">
+        <h3>🎨 Theme</h3>
+        <p>Toggle between dark and light mode. Persisted to <code>localStorage</code> via <code>$.storage</code>.</p>
+        <div class="theme-toggle">
+          <span>Current: <strong>${this.state.theme}</strong></span>
+          <button class="btn btn-outline" @click="toggleTheme">${this.state.theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🧰 Features Used in This App</h3>
+        <div class="feature-grid">
+          <div class="feature-item">
+            <strong>$.component()</strong>
+            <span>Reactive components with state, lifecycle hooks, and template rendering</span>
+          </div>
+          <div class="feature-item">
+            <strong>$.router()</strong>
+            <span>SPA routing with history mode, z-link navigation, and fallback pages</span>
+          </div>
+          <div class="feature-item">
+            <strong>$.store()</strong>
+            <span>Centralized state management with actions, getters, and subscriptions</span>
+          </div>
+          <div class="feature-item">
+            <strong>$.get()</strong>
+            <span>HTTP client for fetching JSON APIs with async/await</span>
+          </div>
+          <div class="feature-item">
+            <strong>$.signal() / $.computed()</strong>
+            <span>Fine-grained reactive primitives for derived state</span>
+          </div>
+          <div class="feature-item">
+            <strong>$.bus</strong>
+            <span>Event bus for cross-component communication (toast notifications)</span>
+          </div>
+          <div class="feature-item">
+            <strong>$.storage</strong>
+            <span>localStorage wrapper for persisting user preferences</span>
+          </div>
+          <div class="feature-item">
+            <strong>$.debounce()</strong>
+            <span>Debounced search input in the todos filter</span>
+          </div>
+          <div class="feature-item">
+            <strong>$.escapeHtml()</strong>
+            <span>Safe rendering of user-generated and API content</span>
+          </div>
+          <div class="feature-item">
+            <strong>$.uuid()</strong>
+            <span>Unique ID generation for new todo items</span>
+          </div>
+          <div class="feature-item">
+            <strong>z-model / z-ref</strong>
+            <span>Two-way data binding and DOM element references</span>
+          </div>
+          <div class="feature-item">
+            <strong>templateUrl / styleUrl</strong>
+            <span>External HTML templates and CSS with auto-scoping (contacts page)</span>
+          </div>
+          <div class="feature-item">
+            <strong>z-if / z-for / z-show</strong>
+            <span>Structural directives for conditional &amp; list rendering</span>
+          </div>
+          <div class="feature-item">
+            <strong>z-bind / z-class / z-style</strong>
+            <span>Dynamic attributes, classes, and inline styles</span>
+          </div>
+          <div class="feature-item">
+            <strong>$.on()</strong>
+            <span>Global delegated event listeners for the hamburger menu</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-muted">
+        <h3>📚 Next Steps</h3>
+        <ul class="next-steps">
+          <li>Read the <a href="https://z-query.com/docs" target="_blank" rel="noopener">full documentation</a></li>
+          <li>Explore the <a href="https://github.com/tonywied17/zero-query" target="_blank" rel="noopener">source on GitHub</a></li>
+          <li>Run <code>npx zquery bundle</code> to build for production</li>
+          <li>Run <code>npx zquery dev</code> for live-reload development</li>
+        </ul>
+      </div>
+    `;
+  }
+});
+
+// --- cli\scaffold\scripts\components\contacts\contacts.js ————————
+// scripts/components/contacts/contacts.js — contact book
+//
+// Demonstrates: external templateUrl + styleUrl, z-if/z-else, z-for,
+//               z-show, z-bind/:attr, z-class, z-style, z-text, z-html,
+//               z-model, z-ref, z-cloak, @click, @submit.prevent,
+//               @input.debounce, event modifiers, and template {{expressions}}
+//
+// This component uses external files for its template and styles,
+// resolved automatically relative to this JS file's location.
+// Contacts are persisted in the global $.store('main') so they
+// survive navigation between routes.
+
+$.component('contacts-page', {
+  templateUrl: 'cli/scaffold/scripts/components/contacts/contacts.html',
+  styleUrl:    'cli/scaffold/scripts/components/contacts/contacts.css',
+
+  state: () => ({
+    contacts: [],
+    showForm: false,
+    newName: '',
+    newEmail: '',
+    newRole: 'Developer',
+    nameError: '',
+    emailError: '',
+    selectedId: null,
+    confirmDeleteId: null,
+    totalAdded: 0,
+    favoriteCount: 0,
+  }),
+
+  mounted() {
+    const store = $.getStore('main');
+    this._syncFromStore(store);
+    this._unsub = store.subscribe(() => this._syncFromStore(store));
+  },
+
+  destroyed() {
+    if (this._unsub) this._unsub();
+  },
+
+  _syncFromStore(store) {
+    this.state.contacts      = store.state.contacts;
+    this.state.totalAdded    = store.state.contactsAdded;
+    this.state.favoriteCount = store.getters.favoriteCount;
+  },
+
+  // -- Actions --
+
+  toggleForm() {
+    this.state.showForm = !this.state.showForm;
+    if (!this.state.showForm) this._clearForm();
+  },
+
+  _validateName(name) {
+    if (!name) return 'Name is required.';
+    if (name.length < 2) return 'Name must be at least 2 characters.';
+    return '';
+  },
+
+  _validateEmail(email) {
+    if (!email) return 'Email is required.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Enter a valid email address.';
+    const store = $.getStore('main');
+    if (store.state.contacts.some(c => c.email.toLowerCase() === email.toLowerCase())) {
+      return 'A contact with this email already exists.';
+    }
+    return '';
+  },
+
+  validateName() {
+    this.state.nameError = this._validateName(this.state.newName.trim());
+  },
+
+  validateEmail() {
+    this.state.emailError = this._validateEmail(this.state.newEmail.trim());
+  },
+
+  addContact() {
+    const name  = this.state.newName.trim();
+    const email = this.state.newEmail.trim();
+
+    const nameError  = this._validateName(name);
+    const emailError = this._validateEmail(email);
+    this.state.nameError  = nameError;
+    this.state.emailError = emailError;
+    if (nameError || emailError) return;
+
+    $.getStore('main').dispatch('addContact', {
+      name,
+      email,
+      role: this.state.newRole,
+    });
+
+    this._clearForm();
+    this.state.showForm = false;
+    $.bus.emit('toast', { message: `${name} added!`, type: 'success' });
+  },
+
+  toggleFavorite(id) {
+    $.getStore('main').dispatch('toggleFavorite', Number(id));
+  },
+
+  selectContact(id) {
+    this.state.selectedId = this.state.selectedId === Number(id) ? null : Number(id);
+    this.state.confirmDeleteId = null;
+  },
+
+  confirmDelete(id) {
+    this.state.confirmDeleteId = Number(id);
+  },
+
+  cancelDelete() {
+    this.state.confirmDeleteId = null;
+  },
+
+  deleteContact(id) {
+    const numId = Number(id);
+    const store = $.getStore('main');
+    const c = store.state.contacts.find(c => c.id === numId);
+    store.dispatch('deleteContact', numId);
+    this.state.selectedId = null;
+    this.state.confirmDeleteId = null;
+    $.bus.emit('toast', { message: `${c ? c.name : 'Contact'} removed`, type: 'error' });
+  },
+
+  cycleStatus(id) {
+    $.getStore('main').dispatch('cycleContactStatus', Number(id));
+  },
+
+  _clearForm() {
+    this.state.newName   = '';
+    this.state.newEmail  = '';
+    this.state.newRole   = 'Developer';
+    this.state.nameError = '';
+    this.state.emailError = '';
+  },
+});
+
+// --- cli\scaffold\scripts\components\not-found.js ————————————————
+// scripts/components/not-found.js — 404 fallback page
+//
+// Demonstrates: $.getRouter() to read the current path
+
+$.component('not-found', {
+  render() {
+    const router = $.getRouter();
+    return `
+      <div class="page-header center">
+        <h1>404</h1>
+        <p class="subtitle">The page <code>${$.escapeHtml(router.current?.path || '')}</code> was not found.</p>
+        <a z-link="/" class="btn btn-primary">← Go Home</a>
+      </div>
+    `;
+  }
+});
+
+// --- cli\scaffold\scripts\app.js —————————————————————————————————
+// scripts/app.js — application entry point
+//
+// This file bootstraps the zQuery app: imports all components,
+// sets up routing, wires the responsive nav, and demonstrates
+// several core APIs: $.router, $.ready, $.bus, $.on, and $.storage.
+// ---------------------------------------------------------------------------
+// Router — SPA navigation with history mode
+// ---------------------------------------------------------------------------
+const router = $.router({
+  el: '#app',
+  routes,
+  fallback: 'not-found',
+  mode: 'history'
+});
+
+// Highlight the active nav link on every route change
+router.onChange((to) => {
+  $.all('.nav-link').removeClass('active');
+  $.all(`.nav-link[z-link="${to.path}"]`).addClass('active');
+
+  // Close mobile menu on navigate
+  closeMobileMenu();
+});
+
+// ---------------------------------------------------------------------------
+// Responsive sidebar toggle
+// ---------------------------------------------------------------------------
+const sidebar = $.id('sidebar');
+const overlay = $.id('overlay');
+const toggle  = $.id('menu-toggle');
+
+function openMobileMenu() {
+  sidebar.classList.add('open');
+  overlay.classList.add('visible');
+  toggle.classList.add('active');
+}
+
+function closeMobileMenu() {
+  sidebar.classList.remove('open');
+  overlay.classList.remove('visible');
+  toggle.classList.remove('active');
+}
+
+// $.on — global delegated event listeners
+$.on('click', '#menu-toggle', () => {
+  sidebar.classList.contains('open') ? closeMobileMenu() : openMobileMenu();
+});
+$.on('click', '#overlay', closeMobileMenu);
+
+// Close sidebar on Escape key — using $.on direct (no selector needed)
+$.on('keydown', (e) => {
+  if (e.key === 'Escape') closeMobileMenu();
+});
+
+// ---------------------------------------------------------------------------
+// Toast notification system via $.bus (event bus)
+// ---------------------------------------------------------------------------
+// Any component can emit: $.bus.emit('toast', { message, type })
+// Types: 'success', 'error', 'info'
+$.bus.on('toast', ({ message, type = 'info' }) => {
+  const container = $.id('toasts');
+  const toast = $.create('div');
+  toast.className = `toast toast-${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  // Auto-remove after 3 seconds
+  setTimeout(() => {
+    toast.classList.add('toast-exit');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+});
+
+// ---------------------------------------------------------------------------
+// On DOM ready — final setup
+// ---------------------------------------------------------------------------
+$.ready(() => {
+  // Display version in the sidebar footer
+  const versionEl = $.id('nav-version');
+  if (versionEl) versionEl.textContent = 'v' + $.version;
+
+  // Restore last theme from localStorage ($.storage)
+  const savedTheme = $.storage.get('theme');
+  if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+
+  // Set active link on initial load
+  const current = window.location.pathname;
+  $.all(`.nav-link[z-link="${current}"]`).addClass('active');
+
+  console.log('⚡ {{NAME}} — powered by zQuery v' + $.version);
+});
+
+})();
