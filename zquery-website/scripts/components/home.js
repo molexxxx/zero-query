@@ -74,7 +74,7 @@ $.component('home-page', {
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="#58a6ff" style="width:22px;height:22px;vertical-align:-4px;margin-right:0.35rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5"/></svg>
               Editor Support
             </h2>
-            <p style="line-height:1.7;flex:1;">Autocomplete, hover docs, directive support, and 55+ snippets with the official
+            <p style="line-height:1.7;flex:1;">Autocomplete, hover docs, directive support, and 140+ snippets with the official
               <a href="https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code" target="_blank" rel="noopener" style="color:#58a6ff;">zQuery for VS Code</a> extension.</p>
             <div style="margin-top:1rem;">
               <a href="https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code" target="_blank" rel="noopener" style="display:inline-block;padding:0.5rem 1.25rem;background:#007acc;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;font-size:0.9rem;">Install Extension</a>

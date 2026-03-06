@@ -264,7 +264,7 @@ For full method signatures, options, and examples, see **[API.md](API.md)**.
 
 ## Editor Support
 
-The official **[zQuery for VS Code](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code)** extension provides autocomplete, hover docs, HTML directive support, and 55+ code snippets for every API method and directive. Install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code) or search **"zQuery for VS Code"** in Extensions.
+The official **[zQuery for VS Code](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code)** extension provides autocomplete, hover docs, HTML directive support, and 140+ code snippets for every API method and directive. Install it from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code) or search **"zQuery for VS Code"** in Extensions.
 
 ---
 
