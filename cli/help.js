@@ -15,6 +15,11 @@ function showHelp() {
       --no-intercept           Disable auto-resolution of zquery.min.js
                                (serve the on-disk vendor copy instead)
 
+                               Includes error overlay: syntax errors are
+                               caught on save and shown as a full-screen
+                               overlay in the browser. Runtime errors and
+                               unhandled rejections are also captured.
+
     bundle [dir]              Bundle app ES modules into a single file
       --out, -o <path>         Output directory (default: dist/ next to index.html)
       --html <file>            Use a specific HTML file (default: auto-detected)
@@ -52,6 +57,13 @@ function showHelp() {
 
     zquery dev                 start a dev server with live-reload (port 3100)
     zquery dev --port 8080     custom port
+
+    The dev server includes a full-screen error overlay:
+      • JS files are syntax-checked on save — errors block reload
+        and show an overlay with exact file, line:column, and code frame
+      • Runtime errors and unhandled rejections are also captured
+      • The overlay auto-clears when the file is fixed and saved
+      • Press Esc or click × to dismiss manually
 
   EXAMPLES
 

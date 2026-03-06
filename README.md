@@ -53,6 +53,14 @@ npx zquery dev my-app
 
 The `create` command generates a ready-to-run project with a sidebar layout, router, multiple components (including a folder component with external template and styles), and responsive styles. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
 
+#### Error Overlay
+
+The dev server includes a **full-screen error overlay** that surfaces errors directly in the browser — similar to Vite or Angular:
+
+- **Syntax errors** — JS files are validated on every save *before* the reload is triggered. If a syntax error is found the page stays intact and a dark overlay appears with the error message, file path, line:column, and a code frame pointing to the exact location. Line numbers are always accurate to your source file.
+- **Runtime errors** — uncaught exceptions and unhandled promise rejections are captured and displayed in the same overlay with a cleaned-up stack trace.
+- The overlay **auto-clears** when you fix the error and save. Press `Esc` or click `×` to dismiss manually.
+
 ### Alternative: Manual Setup (No npm)
 
 If you prefer **zero tooling**, download `dist/zQuery.min.js` from the [GitHub releases](https://github.com/tonywied17/zero-query/releases/tag/RELEASE) and drop it into `scripts/vendor/`. Then open `index.html` directly in a browser — no Node.js required.
@@ -253,7 +261,7 @@ location / {
 | CLI Command | Description |
 | --- | --- |
 | `zquery create [dir]` | Scaffold a new project (index.html, components, store, styles) |
-| `zquery dev [root]` | Dev server with live-reload (port 3100) |
+| `zquery dev [root]` | Dev server with live-reload &amp; error overlay (port 3100) |
 | `zquery bundle [dir]` | Bundle app into a single IIFE file |
 | `zquery build` | Build the zQuery library (`dist/zQuery.min.js`) |
 | `zquery --help` | Show CLI usage |

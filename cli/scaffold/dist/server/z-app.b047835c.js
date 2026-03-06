@@ -8,7 +8,7 @@
 
 // --- zquery.min.js (library) ——————————————————————————————————
 /**
- * zQuery (zeroQuery) v0.4.7
+ * zQuery (zeroQuery) v0.4.8
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -22,7 +22,7 @@ class Signal { constructor(value) { this._value = value; this._subscribers = new
 Signal._activeEffect = null;
 function signal(initial) { return new Signal(initial);
 }
-function computed(fn) { const s = new Signal(undefined); effect(() => { s._value = fn(); s._notify(); }); return s;0.4.7
+function computed(fn) { const s = new Signal(undefined); effect(() => { s._value = fn(); s._notify(); }); return s;0.4.8
 }
 function effect(fn) { const execute = () => { Signal._activeEffect = execute; try { fn(); } finally { Signal._activeEffect = null; } }; execute(); return () => { };
 }

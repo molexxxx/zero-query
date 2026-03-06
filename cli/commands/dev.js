@@ -4,25 +4,275 @@
  * Starts a zero-http server that serves the project root, injects an
  * SSE live-reload snippet, auto-resolves zquery.min.js, and watches
  * for file changes (CSS hot-swap, everything else full reload).
+ *
+ * Features:
+ *   - Pre-validates JS files on save and reports syntax errors
+ *   - Broadcasts errors to the browser via SSE with code frames
+ *   - Full-screen error overlay in the browser (runtime + syntax)
  */
 
 'use strict';
 
 const fs   = require('fs');
 const path = require('path');
+const vm   = require('vm');
 
 const { args, flag, option } = require('../args');
 
 // ---------------------------------------------------------------------------
-// SSE live-reload client script injected into served HTML
+// Syntax validation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a code frame string for an error at a given line/column.
+ * Shows ~4 lines of context around the error with a caret pointer.
+ */
+function generateCodeFrame(source, line, column) {
+  const lines  = source.split('\n');
+  const start  = Math.max(0, line - 4);
+  const end    = Math.min(lines.length, line + 3);
+  const pad    = String(end).length;
+  const frame  = [];
+
+  for (let i = start; i < end; i++) {
+    const lineNum = String(i + 1).padStart(pad);
+    const marker  = i === line - 1 ? '>' : ' ';
+    frame.push(`${marker} ${lineNum} | ${lines[i]}`);
+    if (i === line - 1 && column > 0) {
+      frame.push(`  ${' '.repeat(pad)} | ${' '.repeat(column - 1)}^`);
+    }
+  }
+  return frame.join('\n');
+}
+
+/**
+ * Validate a JavaScript file for syntax errors using Node's VM module.
+ * Returns null if valid, or an error descriptor object.
+ */
+function validateJS(filePath, relPath) {
+  let source;
+  try { source = fs.readFileSync(filePath, 'utf-8'); } catch { return null; }
+
+  // Strip import/export so the VM can parse it as a script.
+  // Process line-by-line to guarantee line numbers stay accurate.
+  const normalized = source.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const stripped = normalized.split('\n').map(line => {
+    if (/^\s*import\s+.*from\s+['"]/.test(line))  return ' '.repeat(line.length);
+    if (/^\s*import\s+['"]/.test(line))            return ' '.repeat(line.length);
+    if (/^\s*export\s*\{/.test(line))              return ' '.repeat(line.length);
+    line = line.replace(/^(\s*)export\s+default\s+/, '$1');
+    line = line.replace(/^(\s*)export\s+(const|let|var|function|class|async\s+function)\s/, '$1$2 ');
+    // import.meta is module-only syntax; replace with a harmless expression
+    line = line.replace(/import\.meta\.url/g, "'__meta__'");
+    line = line.replace(/import\.meta/g, '({})');
+    return line;
+  }).join('\n');
+
+  try {
+    new vm.Script(stripped, { filename: relPath });
+    return null;
+  } catch (err) {
+    const line  = err.stack ? parseInt((err.stack.match(/:(\d+)/) || [])[1]) || 0 : 0;
+    const col   = err.stack ? parseInt((err.stack.match(/:(\d+):(\d+)/) || [])[2]) || 0 : 0;
+    const frame = line > 0 ? generateCodeFrame(source, line, col) : '';
+    return {
+      type:    err.constructor.name || 'SyntaxError',
+      message: err.message,
+      file:    relPath,
+      line,
+      column:  col,
+      frame,
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// SSE live-reload + error overlay client script injected into served HTML
 // ---------------------------------------------------------------------------
 
 const LIVE_RELOAD_SNIPPET = `<script>
 (function(){
+  // -----------------------------------------------------------------------
+  // Error Overlay
+  // -----------------------------------------------------------------------
+  var overlayEl = null;
+
+  var OVERLAY_STYLE =
+    'position:fixed;top:0;left:0;width:100%;height:100%;' +
+    'background:rgba(0,0,0,0.92);color:#fff;z-index:2147483647;' +
+    'font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;' +
+    'font-size:13px;overflow-y:auto;padding:0;margin:0;box-sizing:border-box;';
+
+  var HEADER_STYLE =
+    'padding:20px 24px 12px;border-bottom:1px solid rgba(255,255,255,0.1);' +
+    'display:flex;align-items:flex-start;justify-content:space-between;';
+
+  var TYPE_STYLE =
+    'display:inline-block;padding:3px 8px;border-radius:4px;font-size:11px;' +
+    'font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;';
+
+  function createOverlay(data) {
+    removeOverlay();
+    var wrap = document.createElement('div');
+    wrap.id = '__zq_error_overlay';
+    wrap.setAttribute('style', OVERLAY_STYLE);
+    // keyboard focus for esc
+    wrap.setAttribute('tabindex', '-1');
+
+    var isSyntax = data.type && /syntax|parse/i.test(data.type);
+    var badgeColor = isSyntax ? '#e74c3c' : '#e67e22';
+
+    var html = '';
+    // Header row
+    html += '<div style="' + HEADER_STYLE + '">';
+    html += '<div>';
+    html += '<span style="' + TYPE_STYLE + 'background:' + badgeColor + ';">' + esc(data.type || 'Error') + '</span>';
+    html += '<div style="font-size:18px;font-weight:600;line-height:1.4;color:#ff6b6b;margin-top:4px;">';
+    html += esc(data.message || 'Unknown error');
+    html += '</div>';
+    html += '</div>';
+    // Close button
+    html += '<button id="__zq_close" style="' +
+      'background:none;border:1px solid rgba(255,255,255,0.2);color:#999;' +
+      'font-size:20px;cursor:pointer;border-radius:6px;width:32px;height:32px;' +
+      'display:flex;align-items:center;justify-content:center;flex-shrink:0;' +
+      'margin-left:16px;transition:all 0.15s;"' +
+      ' onmouseover="this.style.color=\\'#fff\\';this.style.borderColor=\\'rgba(255,255,255,0.5)\\'"' +
+      ' onmouseout="this.style.color=\\'#999\\';this.style.borderColor=\\'rgba(255,255,255,0.2)\\'"' +
+      '>&times;</button>';
+    html += '</div>';
+
+    // File location
+    if (data.file) {
+      html += '<div style="padding:10px 24px;color:#8be9fd;font-size:13px;">';
+      html += '<span style="color:#888;">File: </span>' + esc(data.file);
+      if (data.line) html += '<span style="color:#888;">:</span>' + data.line;
+      if (data.column) html += '<span style="color:#888;">:</span>' + data.column;
+      html += '</div>';
+    }
+
+    // Code frame
+    if (data.frame) {
+      html += '<pre style="' +
+        'margin:0;padding:16px 24px;background:rgba(255,255,255,0.04);' +
+        'border-top:1px solid rgba(255,255,255,0.06);' +
+        'border-bottom:1px solid rgba(255,255,255,0.06);' +
+        'overflow-x:auto;line-height:1.6;font-size:13px;' +
+        '">';
+      var frameLines = data.frame.split('\\n');
+      for (var i = 0; i < frameLines.length; i++) {
+        var fl = frameLines[i];
+        if (fl.charAt(0) === '>') {
+          html += '<span style="color:#ff6b6b;font-weight:600;">' + esc(fl) + '</span>\\n';
+        } else if (fl.indexOf('^') !== -1 && fl.trim().replace(/[\\s|^]/g, '') === '') {
+          html += '<span style="color:#e74c3c;font-weight:700;">' + esc(fl) + '</span>\\n';
+        } else {
+          html += '<span style="color:#999;">' + esc(fl) + '</span>\\n';
+        }
+      }
+      html += '</pre>';
+    }
+
+    // Stack trace
+    if (data.stack) {
+      html += '<div style="padding:16px 24px;">';
+      html += '<div style="color:#888;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Stack Trace</div>';
+      html += '<pre style="margin:0;color:#bbb;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;">';
+      html += esc(data.stack);
+      html += '</pre></div>';
+    }
+
+    // Tip
+    html += '<div style="padding:16px 24px;color:#555;font-size:11px;border-top:1px solid rgba(255,255,255,0.06);">';
+    html += 'Fix the error and save — the overlay will clear automatically. Press <kbd style="' +
+      'background:rgba(255,255,255,0.1);padding:1px 6px;border-radius:3px;font-size:11px;' +
+      '">Esc</kbd> to dismiss.';
+    html += '</div>';
+
+    wrap.innerHTML = html;
+    document.body.appendChild(wrap);
+    overlayEl = wrap;
+
+    // Close button handler
+    var closeBtn = document.getElementById('__zq_close');
+    if (closeBtn) closeBtn.addEventListener('click', removeOverlay);
+    wrap.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') removeOverlay();
+    });
+    wrap.focus();
+  }
+
+  function removeOverlay() {
+    if (overlayEl && overlayEl.parentNode) {
+      overlayEl.parentNode.removeChild(overlayEl);
+    }
+    overlayEl = null;
+  }
+
+  function esc(s) {
+    var d = document.createElement('div');
+    d.appendChild(document.createTextNode(s));
+    return d.innerHTML;
+  }
+
+  // -----------------------------------------------------------------------
+  // Runtime error handlers
+  // -----------------------------------------------------------------------
+  window.addEventListener('error', function(e) {
+    if (!e.filename) return;
+    var data = {
+      type: (e.error && e.error.constructor && e.error.constructor.name) || 'Error',
+      message: e.message || String(e.error),
+      file: e.filename.replace(location.origin, ''),
+      line: e.lineno || 0,
+      column: e.colno || 0,
+      stack: e.error && e.error.stack ? cleanStack(e.error.stack) : ''
+    };
+    createOverlay(data);
+    logToConsole(data);
+  });
+
+  window.addEventListener('unhandledrejection', function(e) {
+    var err = e.reason;
+    var data = {
+      type: 'Unhandled Promise Rejection',
+      message: err && err.message ? err.message : String(err),
+      stack: err && err.stack ? cleanStack(err.stack) : ''
+    };
+    createOverlay(data);
+    logToConsole(data);
+  });
+
+  function cleanStack(stack) {
+    return stack.split('\\n')
+      .filter(function(l) {
+        return l.indexOf('__zq_') === -1 && l.indexOf('EventSource') === -1;
+      })
+      .map(function(l) {
+        return l.replace(location.origin, '');
+      })
+      .join('\\n');
+  }
+
+  function logToConsole(data) {
+    var msg = '\\n%c zQuery DevError %c ' + data.type + ': ' + data.message;
+    if (data.file) msg += '\\n  at ' + data.file + (data.line ? ':' + data.line : '') + (data.column ? ':' + data.column : '');
+    console.error(msg, 'background:#e74c3c;color:#fff;padding:2px 6px;border-radius:3px;font-weight:700;', 'color:inherit;');
+    if (data.frame) console.error(data.frame);
+  }
+
+  // -----------------------------------------------------------------------
+  // SSE connection (live-reload + error events)
+  // -----------------------------------------------------------------------
   var es, timer;
   function connect(){
     es = new EventSource('/__zq_reload');
-    es.addEventListener('reload', function(){ location.reload(); });
+
+    es.addEventListener('reload', function(){
+      removeOverlay();
+      location.reload();
+    });
+
     es.addEventListener('css', function(e){
       var sheets = document.querySelectorAll('link[rel="stylesheet"]');
       sheets.forEach(function(l){
@@ -32,6 +282,19 @@ const LIVE_RELOAD_SNIPPET = `<script>
         l.setAttribute('href', href.replace(/[?&]_zqr=\\\\d+/, '') + sep + '_zqr=' + Date.now());
       });
     });
+
+    es.addEventListener('error:syntax', function(e){
+      try {
+        var data = JSON.parse(e.data);
+        createOverlay(data);
+        logToConsole(data);
+      } catch(_){}
+    });
+
+    es.addEventListener('error:clear', function(){
+      removeOverlay();
+    });
+
     es.onerror = function(){
       es.close();
       clearTimeout(timer);
@@ -179,6 +442,9 @@ function devServer() {
   const watchDirs = collectWatchDirs(root);
   const watchers  = [];
 
+  // Track current error state to know when to clear
+  let currentError = null;
+
   for (const dir of watchDirs) {
     try {
       const watcher = fs.watch(dir, (eventType, filename) => {
@@ -195,10 +461,29 @@ function devServer() {
           if (ext === '.css') {
             console.log(`  ${now}  \x1b[35m css \x1b[0m ${rel}`);
             broadcast('css', rel);
-          } else {
-            console.log(`  ${now}  \x1b[36m reload \x1b[0m ${rel}`);
-            broadcast('reload', rel);
+            return;
           }
+
+          // Validate JS files for syntax errors before triggering reload
+          if (ext === '.js') {
+            const err = validateJS(fullPath, rel);
+            if (err) {
+              currentError = rel;
+              console.log(`  ${now}  \x1b[31m error \x1b[0m ${rel}`);
+              console.log(`         \x1b[31m${err.type}: ${err.message}\x1b[0m`);
+              if (err.line) console.log(`         \x1b[2mat line ${err.line}${err.column ? ':' + err.column : ''}\x1b[0m`);
+              broadcast('error:syntax', JSON.stringify(err));
+              return;
+            }
+            // File was fixed — clear previous error if it was in this file
+            if (currentError === rel) {
+              currentError = null;
+              broadcast('error:clear', '');
+            }
+          }
+
+          console.log(`  ${now}  \x1b[36m reload \x1b[0m ${rel}`);
+          broadcast('reload', rel);
         }, 100);
       });
       watchers.push(watcher);
@@ -211,6 +496,7 @@ function devServer() {
     console.log(`  Local:       \x1b[36mhttp://localhost:${PORT}/\x1b[0m`);
     console.log(`  Root:        ${path.relative(process.cwd(), root) || '.'}`);
     console.log(`  Live Reload: \x1b[32menabled\x1b[0m (SSE)`);
+    console.log(`  Overlay:     \x1b[32menabled\x1b[0m (syntax + runtime errors)`);
     if (noIntercept) console.log(`  Intercept:   \x1b[33mdisabled\x1b[0m (--no-intercept)`);
     console.log(`  Watching:    all files in ${watchDirs.length} director${watchDirs.length === 1 ? 'y' : 'ies'}`);
     console.log(`  \x1b[2m${'-'.repeat(40)}\x1b[0m`);

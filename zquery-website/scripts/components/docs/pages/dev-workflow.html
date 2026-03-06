@@ -38,6 +38,49 @@ npx zquery dev path/to/my-app</code></pre>
   </table>
   <p>The watcher monitors <strong>all</strong> file types in your project tree (excluding <code>node_modules</code>, <code>.git</code>, <code>dist</code>, and <code>.cache</code>). Changes are also logged to your terminal so you can see exactly which files triggered a reload.</p>
 
+  <h3>Error Overlay</h3>
+  <p>The dev server includes a <strong>full-screen error overlay</strong> inspired by tools like Vite and Angular that surfaces errors directly in the browser &mdash; no need to switch to the terminal or dig through the browser console. Errors are caught at two levels:</p>
+
+  <h4>Syntax Errors (pre-validated on save)</h4>
+  <p>Every time you save a <code>.js</code> file, the server <strong>validates it for syntax errors before broadcasting a reload</strong>. The file is parsed line-by-line with import/export and <code>import.meta</code> expressions neutralized so the syntax check runs in a plain script context while preserving accurate line numbers.</p>
+  <p>If a syntax error is found:</p>
+  <ul>
+    <li>The page does <strong>not</strong> reload &mdash; your current state is preserved.</li>
+    <li>A dark overlay appears immediately over the page with:
+      <ul>
+        <li>A color-coded badge (<span style="color:#e74c3c;">red</span> for syntax errors, <span style="color:#e67e22;">orange</span> for runtime).</li>
+        <li>The error message, file path, and exact line:column number.</li>
+        <li>A <strong>code frame</strong> showing the surrounding source lines with a <code>&gt;</code> marker on the error line and a <code>^</code> caret pointing at the exact column.</li>
+      </ul>
+    </li>
+    <li>The terminal also logs the error in red with file and line info for quick reference.</li>
+  </ul>
+  <p>When you fix the error and save again, the overlay <strong>clears automatically</strong> and the page reloads normally. The server tracks which file has an active error so the clear event is only sent when that specific file passes validation.</p>
+
+  <div class="docs-callout">
+    <strong>Accurate line numbers.</strong> The server strips ES module syntax (import/export) line-by-line and replaces <code>import.meta</code> expressions with harmless placeholders, so reported line and column numbers always match your original source file &mdash; not some transformed intermediate.
+  </div>
+
+  <h4>Runtime Errors</h4>
+  <p>Uncaught runtime exceptions and unhandled promise rejections are also captured and displayed in the same overlay. Because the dev server serves your ES modules as-is (no bundling), file references in stack traces point directly to your source files:</p>
+  <ul>
+    <li>The error type (e.g. <code>TypeError</code>, <code>ReferenceError</code>) and message.</li>
+    <li>The originating file, line, and column &mdash; pointing to your actual source, not a bundle.</li>
+    <li>A cleaned-up stack trace with the server origin stripped for readability. Internal overlay frames and SSE connection noise are filtered out automatically.</li>
+  </ul>
+
+  <h4>SSE Error Events</h4>
+  <p>The error overlay communicates via two additional SSE event types on the existing <code>/__zq_reload</code> channel:</p>
+  <table class="docs-table">
+    <tr><th>Event</th><th>Payload</th><th>Description</th></tr>
+    <tr><td><code>error:syntax</code></td><td>JSON <code>{ type, message, file, line, column, frame }</code></td><td>Sent when a JS file fails syntax validation on save. Triggers the overlay.</td></tr>
+    <tr><td><code>error:clear</code></td><td><em>empty</em></td><td>Sent when the previously broken file passes validation. Clears the overlay.</td></tr>
+  </table>
+
+  <div class="docs-tip">
+    <strong>Dismiss.</strong> Press <kbd>Esc</kbd> or click the <strong>&times;</strong> button to close the overlay at any time. It will also clear automatically on the next successful reload.
+  </div>
+
   <h3>How Live-Reload Works (SSE)</h3>
   <p>The dev server uses <strong>Server-Sent Events (SSE)</strong> &mdash; a lightweight, one-way push channel from the server to the browser. Here&rsquo;s the flow:</p>
   <ol>
