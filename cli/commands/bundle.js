@@ -392,7 +392,7 @@ function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFi
  * are available in the built output without maintaining a fragile whitelist.
  */
 function copyStaticAssets(appRoot, serverDir, localDir, bundledFiles) {
-  const SKIP_DIRS = new Set(['dist', 'node_modules', '.git', '.vscode']);
+  const SKIP_DIRS = new Set(['dist', 'node_modules', '.git', '.vscode', 'scripts']);
 
   let copiedCount = 0;
 
