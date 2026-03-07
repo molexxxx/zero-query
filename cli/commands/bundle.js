@@ -104,6 +104,8 @@ function rewriteResourceUrls(code, filePath, projectRoot) {
     (match, prefix, quote, url) => {
       if (url.startsWith('/') || url.includes('://')) return match;
       const abs = path.resolve(fileDir, url);
+      // Only rewrite if the file actually exists — avoids mangling code examples
+      if (!fs.existsSync(abs)) return match;
       const rel = path.relative(projectRoot, abs).replace(/\\/g, '/');
       return `${prefix}${quote}${rel}${quote}`;
     }
@@ -380,6 +382,55 @@ function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFi
 }
 
 // ---------------------------------------------------------------------------
+// Static asset copying
+// ---------------------------------------------------------------------------
+
+/**
+ * Copy the entire app directory into both dist/server and dist/local,
+ * skipping only build outputs and tooling dirs.  This ensures all static
+ * assets (icons/, images/, fonts/, styles/, scripts/, manifests, etc.)
+ * are available in the built output without maintaining a fragile whitelist.
+ */
+function copyStaticAssets(appRoot, serverDir, localDir, bundledFiles) {
+  const SKIP_DIRS = new Set(['dist', 'node_modules', '.git', '.vscode']);
+
+  let copiedCount = 0;
+
+  function copyEntry(srcPath, relPath) {
+    const stat = fs.statSync(srcPath);
+    if (stat.isDirectory()) {
+      if (SKIP_DIRS.has(path.basename(srcPath))) return;
+      for (const child of fs.readdirSync(srcPath)) {
+        copyEntry(path.join(srcPath, child), path.join(relPath, child));
+      }
+    } else {
+      if (bundledFiles && bundledFiles.has(path.resolve(srcPath))) return;
+      for (const distDir of [serverDir, localDir]) {
+        const dest = path.join(distDir, relPath);
+        if (fs.existsSync(dest)) continue; // already copied by rewriteHtml
+        const dir = path.dirname(dest);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.copyFileSync(srcPath, dest);
+      }
+      copiedCount++;
+    }
+  }
+
+  for (const entry of fs.readdirSync(appRoot, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (SKIP_DIRS.has(entry.name)) continue;
+      copyEntry(path.join(appRoot, entry.name), entry.name);
+    } else {
+      copyEntry(path.join(appRoot, entry.name), entry.name);
+    }
+  }
+
+  if (copiedCount > 0) {
+    console.log(`  \u2713 Copied ${copiedCount} additional static asset(s) into both dist dirs`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main bundleApp function
 // ---------------------------------------------------------------------------
 
@@ -571,11 +622,15 @@ function bundleApp() {
   console.log(`\n  ✓ ${bundleBase} (${sizeKB(fs.readFileSync(bundleFile))} KB)`);
   console.log(`  ✓ ${minBase} (${sizeKB(fs.readFileSync(minFile))} KB)`);
 
-  // Rewrite HTML
+  // Rewrite HTML (use full bundle — minified version mangles template literal whitespace)
+  const bundledFileSet = new Set(files);
   if (htmlFile) {
-    const bundledFileSet = new Set(files);
-    rewriteHtml(projectRoot, htmlFile, minFile, true, bundledFileSet, serverDir, localDir);
+    rewriteHtml(projectRoot, htmlFile, bundleFile, true, bundledFileSet, serverDir, localDir);
   }
+
+  // Copy static asset directories (icons/, images/, fonts/, etc.)
+  const appRoot = htmlAbs ? path.dirname(htmlAbs) : (targetDir || projectRoot);
+  copyStaticAssets(appRoot, serverDir, localDir, bundledFileSet);
 
   const elapsed = Date.now() - start;
   console.log(`  Done in ${elapsed}ms\n`);

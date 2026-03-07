@@ -40,6 +40,25 @@
   max-height: calc(100vh - 2rem);
   overflow-y: auto;
   text-align: left;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+
+.docs-sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.docs-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.docs-sidebar::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+
+.docs-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
 }
 
 .docs-search {
@@ -212,6 +231,25 @@
   margin-bottom: 1rem;
   font-size: 0.82rem;
   line-height: 1.5;
+  scrollbar-width: thin;
+  scrollbar-color: #30363d transparent;
+}
+
+.docs-section pre::-webkit-scrollbar {
+  height: 4px;
+}
+
+.docs-section pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.docs-section pre::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 4px;
+}
+
+.docs-section pre::-webkit-scrollbar-thumb:hover {
+  background: #484f58;
 }
 
 .docs-section code {
