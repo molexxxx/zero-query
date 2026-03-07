@@ -245,6 +245,40 @@ $.component('docs-page', {
     $.all('pre code[class*="language-"]', root).not('.prism-highlighted').each(function () {
       Prism.highlightElement(this);
     }).addClass('prism-highlighted');
+
+    // Code block file headers
+    const langMap = { javascript: 'JS', html: 'HTML', css: 'CSS', json: 'JSON', bash: 'Bash' };
+    const jsFile = /^\/\/\s+([\w./-]+\.\w+)$/;
+    const htmlFile = /^<!--\s+([\w./-]+\.\w+)\s+-->$/;
+
+    $.all('pre code.prism-highlighted', root).each(function () {
+      const pre = this.parentElement;
+      if (pre._codeHeader) return;
+
+      const text = this.textContent;
+      const first = text.split('\n')[0].trim();
+      const m = first.match(jsFile) || first.match(htmlFile);
+      if (!m) return;
+
+      // Remove the filename line (and trailing newline) from the code
+      const firstLine = this.innerHTML.split('\n')[0];
+      this.innerHTML = this.innerHTML.slice(firstLine.length).replace(/^\n/, '');
+
+      // Determine language label from class
+      const cls = [...this.classList].find(c => c.startsWith('language-'));
+      const lang = cls ? (langMap[cls.slice(9)] || cls.slice(9)) : '';
+
+      // Build and insert header
+      const header = document.createElement('div');
+      header.className = 'code-header';
+      header.innerHTML = '<span class="code-header-name">' + m[1].replace(/</g, '&lt;') + '</span>'
+        + (lang ? '<span class="code-header-lang">' + lang + '</span>' : '');
+
+      // Insert before the pre (or the code-toolbar wrapper if Prism toolbar wrapped it)
+      const target = pre.closest('.code-toolbar') || pre;
+      target.parentNode.insertBefore(header, target);
+      pre._codeHeader = true;
+    });
   },
 
   _stripTags(html) {

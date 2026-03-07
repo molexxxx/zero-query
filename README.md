@@ -170,6 +170,9 @@ npx zquery bundle
 
 # Or point to an app directory from anywhere
 npx zquery bundle my-app/
+
+# Or pass a direct entry file (skips auto-detection)
+npx zquery bundle my-app/scripts/main.js
 ```
 
 Output goes to `dist/` next to your `index.html`:
@@ -191,8 +194,10 @@ dist/
 
 | Flag | Short | Description |
 | --- | --- | --- |
+| `--entry <file>` | `-e` | Explicit JS entry file (skip auto-detection) |
 | `--out <path>` | `-o` | Custom output directory |
-| `--html <file>` | — | Use a specific HTML file |
+| `--index <file>` | `-i` | Index HTML file (default: auto-detected) |
+| `--minimal` | `-m` | Only output HTML + bundled JS (skip static assets) |
 
 ### What the Bundler Does
 
@@ -261,8 +266,8 @@ location / {
 | CLI Command | Description |
 | --- | --- |
 | `zquery create [dir]` | Scaffold a new project (index.html, components, store, styles) |
-| `zquery dev [root]` | Dev server with live-reload &amp; error overlay (port 3100) |
-| `zquery bundle [dir]` | Bundle app into a single IIFE file |
+| `zquery dev [root]` | Dev server with live-reload &amp; error overlay (port 3100). `--index` for custom HTML. |
+| `zquery bundle [dir\|file]` | Bundle app into a single IIFE file. Accepts dir or direct entry file. |
 | `zquery build` | Build the zQuery library (`dist/zQuery.min.js`) |
 | `zquery --help` | Show CLI usage |
 

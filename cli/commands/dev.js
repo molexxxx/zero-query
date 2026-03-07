@@ -321,10 +321,13 @@ function devServer() {
 
   const { createApp, static: serveStatic } = zeroHttp;
 
+  // Custom HTML entry file (default: index.html)
+  const htmlEntry = option('index', 'i', 'index.html');
+
   // Determine the project root to serve
   let root = null;
   for (let i = 1; i < args.length; i++) {
-    if (!args[i].startsWith('-') && args[i - 1] !== '-p' && args[i - 1] !== '--port') {
+    if (!args[i].startsWith('-') && args[i - 1] !== '-p' && args[i - 1] !== '--port' && args[i - 1] !== '--index') {
       root = path.resolve(process.cwd(), args[i]);
       break;
     }
@@ -336,7 +339,7 @@ function devServer() {
       path.join(process.cwd(), 'src'),
     ];
     for (const c of candidates) {
-      if (fs.existsSync(path.join(c, 'index.html'))) { root = c; break; }
+      if (fs.existsSync(path.join(c, htmlEntry))) { root = c; break; }
     }
     if (!root) root = process.cwd();
   }
@@ -389,9 +392,9 @@ function devServer() {
       res.status(404).send('Not Found');
       return;
     }
-    const indexPath = path.join(root, 'index.html');
+    const indexPath = path.join(root, htmlEntry);
     if (!fs.existsSync(indexPath)) {
-      res.status(404).send('index.html not found');
+      res.status(404).send(`${htmlEntry} not found`);
       return;
     }
     let html = fs.readFileSync(indexPath, 'utf-8');
@@ -495,6 +498,7 @@ function devServer() {
     console.log(`  \x1b[2m${'-'.repeat(40)}\x1b[0m`);
     console.log(`  Local:       \x1b[36mhttp://localhost:${PORT}/\x1b[0m`);
     console.log(`  Root:        ${path.relative(process.cwd(), root) || '.'}`);
+    if (htmlEntry !== 'index.html') console.log(`  HTML:        \x1b[36m${htmlEntry}\x1b[0m`);
     console.log(`  Live Reload: \x1b[32menabled\x1b[0m (SSE)`);
     console.log(`  Overlay:     \x1b[32menabled\x1b[0m (syntax + runtime errors)`);
     if (noIntercept) console.log(`  Intercept:   \x1b[33mdisabled\x1b[0m (--no-intercept)`);

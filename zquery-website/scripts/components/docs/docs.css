@@ -235,6 +235,41 @@
   scrollbar-color: #30363d transparent;
 }
 
+/* Code block file header */
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  padding: 0.4rem 0.85rem;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 0.78rem;
+  color: #8b949e;
+  margin-bottom: 0;
+}
+
+.code-header-name {
+  color: #c9d1d9;
+  font-weight: 500;
+}
+
+.code-header-lang {
+  color: #6e7681;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.code-header + .code-toolbar > pre,
+.code-header + pre {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-top: 0;
+}
+
 .docs-section pre::-webkit-scrollbar {
   height: 4px;
 }

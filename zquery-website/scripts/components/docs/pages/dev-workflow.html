@@ -11,12 +11,15 @@ npm install zero-query -g</code></pre>
   <p>This gives you access to the <code>zquery</code> CLI (via <code>npx zquery</code> or just <code>zquery</code> if installed globally), which powers both the dev server and the <a z-link="/docs/cli-bundler">CLI Bundler</a>.</p>
 
   <h3>Starting the Dev Server</h3>
-  <p>From your project directory (the folder containing <code>index.html</code>), run:</p>
+  <p>From your project directory (the folder containing your HTML entry file), run:</p>
   <pre><code class="language-bash"># Start the dev server (default port 3100)
 npx zquery dev
 
 # Custom port
-npx zquery dev --port 8080</code></pre>
+npx zquery dev --port 8080
+
+# Use a custom index page (if your app doesn't use index.html)
+npx zquery dev --index home.html</code></pre>
   <p>The server will print its URL and begin watching for file changes. Open the URL in your browser and start editing &mdash; the page updates automatically when you save.</p>
 
   <div class="docs-callout">
@@ -31,7 +34,7 @@ npx zquery dev path/to/my-app
 # Works with relative or absolute paths
 npx zquery dev ../client-app
 npx zquery dev C:/projects/my-app</code></pre>
-  <p>The server auto-detects <code>index.html</code> in whichever directory you point it at. This is the recommended pattern for scaffolded projects &mdash; stay in the repo root (where <code>node_modules</code> lives) and point the dev server at the app folder:</p>
+  <p>The server auto-detects your HTML entry file in whichever directory you point it at (defaults to <code>index.html</code>, or use <code>--index</code> to specify a different file). This is the recommended pattern for scaffolded projects &mdash; stay in the repo root (where <code>node_modules</code> lives) and point the dev server at the app folder:</p>
   <pre><code class="language-bash"># Scaffold, then serve from the repo root
 npx zquery create my-app
 npx zquery dev my-app</code></pre>
@@ -103,10 +106,10 @@ npx zquery dev my-app</code></pre>
   </div>
 
   <h3>SPA Fallback Routing</h3>
-  <p>The dev server includes built-in SPA support. Any request that doesn&rsquo;t match an existing file is served <code>index.html</code>, so deep-link routes like <code>/docs/router</code> or <code>/about</code> work correctly during development without additional configuration.</p>
+  <p>The dev server includes built-in SPA support. Any request that doesn&rsquo;t match an existing file is served your HTML entry file (default: <code>index.html</code>, or whatever you set with <code>--index</code>), so deep-link routes like <code>/docs/router</code> or <code>/about</code> work correctly during development without additional configuration.</p>
 
   <h4>How It Works</h4>
-  <p>When a request comes in, the server checks for a matching file on disk. If no file exists (e.g. <code>/about</code> is a client-side route, not a real file), the server responds with <code>index.html</code> instead of a 404. The zQuery router then reads the URL and renders the correct component.</p>
+  <p>When a request comes in, the server checks for a matching file on disk. If no file exists (e.g. <code>/about</code> is a client-side route, not a real file), the server responds with your HTML entry file instead of a 404. The zQuery router then reads the URL and renders the correct component.</p>
 
   <h4>What&rsquo;s Excluded</h4>
   <p>Static assets are always served directly &mdash; the fallback only applies to requests that don&rsquo;t resolve to an existing file. Requests for <code>.js</code>, <code>.css</code>, images, and other static files are served normally.</p>

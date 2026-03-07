@@ -419,7 +419,7 @@ function Widget() {
         </div>
 
         <h3 style="margin-top:1.5rem;">External Templates</h3>
-        <p>zQuery components can use external HTML files instead of inline <code>render()</code> &mdash; keeping markup, logic, and styles cleanly separated. Here&rsquo;s a real example from the scaffold:</p>
+        <p>zQuery components can use external HTML files instead of inline <code>render()</code> &mdash; keeping markup, logic, and styles cleanly separated. Here&rsquo;s a contacts example showcasing everything you can do in an HTML template:</p>
 
         <div class="cmp-grid">
           <div class="cmp-code-card">
@@ -433,42 +433,95 @@ function Widget() {
     showForm: false,
     newName: '',
     newEmail: '',
-    selectedId: null,
   }),
 
   mounted() {
+    // Hydrate from store
     const store = $.getStore('main');
-    this._syncFromStore(store);
+    this.state.contacts =
+      store.state.contacts || [];
   },
 
-  addContact()       { /* validate + push */ },
-  toggleFavorite(id) { /* toggle flag     */ },
-  deleteContact(id)  { /* remove + store  */ },
+  toggleForm() {
+    this.state.showForm =
+      !this.state.showForm;
+  },
+
+  addContact() {
+    const { newName, newEmail } = this.state;
+    if (!newName || !newEmail) return;
+    this.state.contacts.push({
+      id: Date.now(),
+      name: newName,
+      email: newEmail,
+      favorite: false,
+    });
+    this.state.newName = '';
+    this.state.newEmail = '';
+    this.state.showForm = false;
+  },
+
+  toggleFavorite(e) {
+    const id = +e.target.dataset.id;
+    const c = this.state.contacts
+      .find(c => c.id === id);
+    if (c) c.favorite = !c.favorite;
+  },
+
+  deleteContact(e) {
+    const id = +e.target.dataset.id;
+    this.state.contacts =
+      this.state.contacts
+        .filter(c => c.id !== id);
+  },
 });</code></pre>
           </div>
           <div class="cmp-code-card">
             <div class="cmp-code-label" style="--accent:#e3b341;">contacts.html</div>
-            <pre><code class="language-html">&lt;h1 z-cloak&gt;Contacts&lt;/h1&gt;
+            <pre><code class="language-html">&lt;!-- z-cloak hides until rendered --&gt;
+&lt;h1 z-cloak&gt;Contacts ({{contacts.length}})&lt;/h1&gt;
 
-&lt;span z-if="contacts.length"&gt;
-  &lt;strong z-text="contacts.length"&gt;&lt;/strong&gt; contacts
-&lt;/span&gt;
-&lt;span z-else&gt;No contacts yet&lt;/span&gt;
+&lt;!-- z-if / z-else conditional blocks --&gt;
+&lt;p z-if="contacts.length"&gt;
+  Showing &lt;strong z-text="contacts.length"&gt;
+  &lt;/strong&gt; contacts
+&lt;/p&gt;
+&lt;p z-else&gt;No contacts yet.&lt;/p&gt;
 
+&lt;!-- z-for list rendering + {{}} --&gt;
+&lt;ul z-show="contacts.length"&gt;
+  &lt;li z-for="(c, i) in contacts"
+      z-class="{fav: c.favorite}"&gt;
+    {{i + 1}}. {{c.name}} &amp;mdash;
+    &lt;span z-text="c.email"&gt;&lt;/span&gt;
+    &lt;button @click="toggleFavorite"
+            data-id="{{c.id}}"&gt;★&lt;/button&gt;
+    &lt;button @click="deleteContact"
+            data-id="{{c.id}}"&gt;✕&lt;/button&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;!-- @click event binding --&gt;
 &lt;button @click="toggleForm"&gt;
-  &lt;span z-if="showForm"&gt;✕ Cancel&lt;/span&gt;
+  &lt;span z-if="showForm"&gt;Cancel&lt;/span&gt;
   &lt;span z-else&gt;+ Add&lt;/span&gt;
 &lt;/button&gt;
 
+&lt;!-- z-show, z-model, z-trim, @submit --&gt;
 &lt;form z-show="showForm"
       @submit.prevent="addContact"&gt;
   &lt;input z-model="newName" z-trim
          placeholder="Name"&gt;
   &lt;input z-model="newEmail" z-trim
          placeholder="Email"&gt;
-  &lt;button type="submit"&gt;Save&lt;/button&gt;
+  &lt;button type="submit"
+    z-ref="saveBtn"&gt;Save&lt;/button&gt;
 &lt;/form&gt;</code></pre>
           </div>
+        </div>
+
+        <div class="cmp-callout" style="margin-top:1rem;">
+          <strong>One template, many features:</strong> <code>{{expr}}</code> for inline interpolation, <code>z-text</code> / <code>z-html</code> for element content, <code>z-if</code> / <code>z-else</code> for conditionals, <code>z-for</code> for lists, <code>z-show</code> for toggling visibility, <code>z-model</code> + <code>z-trim</code> for two-way binding, <code>z-class</code> for dynamic classes, <code>z-ref</code> for DOM refs, <code>z-cloak</code> to prevent flash, and <code>@event</code> for event handling &mdash; all in plain HTML, no build step.
         </div>
 
         <p style="margin-top:1rem;margin-bottom:0.5rem;font-weight:600;color:#e6edf3;">templateUrl accepts multiple shapes:</p>
@@ -1282,8 +1335,8 @@ $.uuid()</code></pre>
     .cmp-grid-3 { grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr)); }
     .cmp-code-card { background:#0d1117; border:1px solid #21262d; border-radius:8px; overflow:hidden; min-width:0; max-width:100%; }
     .cmp-code-card { display:flex; flex-direction:column; }
-    .cmp-code-card pre { margin:0; padding:0.75rem 1rem !important; font-size:0.8rem; background:transparent !important; overflow-x:auto; overflow-y:hidden; min-width:0; max-width:100%; }
-    .cmp-code-card pre::-webkit-scrollbar { height:6px; }
+    .cmp-code-card pre { margin:0; padding:0.75rem 1rem !important; font-size:0.8rem; background:transparent !important; overflow-x:auto; overflow-y:auto; min-width:0; max-width:100%; max-height:420px; }
+    .cmp-code-card pre::-webkit-scrollbar { height:6px; width:6px; }
     .cmp-code-card pre::-webkit-scrollbar-track { background:#161b22; }
     .cmp-code-card pre::-webkit-scrollbar-thumb { background:#30363d; border-radius:4px; }
     .cmp-code-card pre::-webkit-scrollbar-thumb:hover { background:#484f58; }

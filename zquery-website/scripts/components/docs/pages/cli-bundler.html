@@ -15,7 +15,10 @@ npm install zero-query -g
 npx zquery bundle
 
 # Or point to an app directory from anywhere
-npx zquery bundle my-app/</code></pre>
+npx zquery bundle my-app/
+
+# Or pass a direct entry file (skips auto-detection)
+npx zquery bundle my-app/scripts/main.js</code></pre>
 
   <p>Output goes to <code>dist/</code> next to your <code>index.html</code>, with two sub-folders:</p>
   <div class="file-tree"><ul><li class="tree-dir open">
@@ -62,21 +65,40 @@ start dist/local/index.html
   <h3>Optional Flags</h3>
   <table class="docs-table">
     <tr><th>Flag</th><th>Short</th><th>Description</th></tr>
-    <tr><td><code>--out &lt;path&gt;</code></td><td><code>-o</code></td><td>Custom output directory (default: <code>dist/</code> next to <code>index.html</code>)</td></tr>
-    <tr><td><code>--html &lt;file&gt;</code></td><td>&mdash;</td><td>Use a specific HTML file instead of the auto-detected one</td></tr>
+    <tr><td><code>--entry &lt;file&gt;</code></td><td><code>-e</code></td><td>Explicit entry file (skips auto-detection). Accepts a file path relative to the project root.</td></tr>
+    <tr><td><code>--out &lt;path&gt;</code></td><td><code>-o</code></td><td>Custom output directory (default: <code>dist/</code> next to the detected HTML file)</td></tr>
+    <tr><td><code>--index &lt;file&gt;</code></td><td><code>-i</code></td><td>Index HTML file &mdash; use a specific HTML file instead of the auto-detected one</td></tr>
+    <tr><td><code>--minimal</code></td><td><code>-m</code></td><td>Only output the HTML file and bundled JS &mdash; skip copying static assets (icons, styles, fonts, etc.)</td></tr>
   </table>
 
-  <p>Both flags are optional &mdash; the bundler works out of the box with zero configuration. They exist for edge cases like mono-repos or non-standard layouts.</p>
+  <p>All flags are optional &mdash; the bundler works out of the box with zero configuration. They exist for edge cases like mono-repos, non-standard layouts, or lean deployments.</p>
+
+  <h4>Entry Point Resolution</h4>
+  <p>The bundler accepts three ways to specify the entry point, in order of priority:</p>
+  <ol>
+    <li><strong>Direct file path</strong> &mdash; pass a <code>.js</code> file as the positional argument (e.g. <code>zquery bundle my-app/scripts/main.js</code>). The bundler uses it directly with no scanning.</li>
+    <li><strong><code>--entry</code> flag</strong> &mdash; explicitly set the entry file (e.g. <code>zquery bundle my-app/ --entry scripts/main.js</code>). Useful when you want to pass a directory for HTML/asset detection but override which JS file is the entry.</li>
+    <li><strong>Auto-detection</strong> &mdash; pass a directory (or nothing) and the bundler scans using the precedence strategy described below.</li>
+  </ol>
 
   <h4>Examples</h4>
   <pre><code class="language-bash"># Output to a custom folder
 npx zquery bundle my-app/ --out build/
 
-# Use a specific HTML entry when you have multiple .html files
-npx zquery bundle my-app/ --html admin.html
+# Use a specific index page when you have multiple .html files
+npx zquery bundle my-app/ --index admin.html
 
-# Combine both
-npx zquery bundle my-app/ -o release/ --html dashboard.html</code></pre>
+# Pass a direct entry file (skip auto-detection)
+npx zquery bundle my-app/scripts/main.js
+
+# Or use --entry with a directory
+npx zquery bundle my-app/ --entry scripts/main.js
+
+# Minimal build (HTML + bundled JS only, no static asset copying)
+npx zquery bundle my-app/ --minimal
+
+# Combine flags
+npx zquery bundle my-app/ -o release/ --index dashboard.html --minimal</code></pre>
 
   <div class="docs-tip">
     <strong>Tip:</strong> The <code>--out</code> path is resolved relative to the app directory, not your current working directory. For example, <code>--out build/</code> creates <code>my-app/build/server/</code> and <code>my-app/build/local/</code>.
@@ -97,8 +119,8 @@ npx zquery bundle my-app/ -o release/ --html dashboard.html</code></pre>
     <li><strong>Module stripping</strong> &mdash; Removes <code>import</code>/<code>export</code> keywords, keeps declarations. Output is plain browser JS wrapped in an IIFE.</li>
     <li><strong>Library embedding</strong> &mdash; Finds <code>zquery.min.js</code> in your project or the npm package. Auto-builds from source if not found anywhere.</li>
     <li><strong>Template inlining</strong> &mdash; Detects <code>templateUrl</code>, <code>styleUrl</code>, and <code>pages</code> configs and inlines the referenced HTML/CSS files so <code>file://</code> works without CORS issues.</li>
-    <li><strong>HTML rewriting</strong> &mdash; Replaces <code>&lt;script type="module"&gt;</code> with the bundle, removes the standalone library tag, and produces two output directories: <code>dist/server/</code> (with <code>&lt;base href="/"&gt;</code> for web servers) and <code>dist/local/</code> (relative paths for <code>file://</code>). Assets referenced in HTML tags are copied into both.</li>
-    <li><strong>Static asset copying</strong> &mdash; After HTML processing, the bundler walks all top-level directories in your app and copies them to both <code>dist/</code> outputs. Directories like <code>icons/</code>, <code>images/</code>, <code>fonts/</code>, and <code>styles/</code> are included automatically. The only skipped directories are <code>dist/</code>, <code>node_modules/</code>, <code>.git/</code>, <code>.vscode/</code>, and <code>scripts/</code> (since your JS source is already bundled). Files inside <code>scripts/</code> that are directly referenced in HTML (e.g. <code>scripts/vendor/</code>) are still copied individually by the HTML rewriter.</li>
+    <li><strong>HTML rewriting</strong> &mdash; Replaces <code>&lt;script type="module"&gt;</code> with the bundle, removes the standalone library tag, and produces two output directories: <code>dist/server/</code> (with <code>&lt;base href="/"&gt;</code> for web servers) and <code>dist/local/</code> (relative paths for <code>file://</code>). Assets referenced in HTML tags are copied into both. The output filename matches your HTML file &mdash; if your entry is <code>home.html</code>, the output is <code>dist/server/home.html</code>.</li>
+    <li><strong>Static asset copying</strong> &mdash; After HTML processing, the bundler walks all top-level directories in your app and copies them to both <code>dist/</code> outputs. Directories like <code>icons/</code>, <code>images/</code>, <code>fonts/</code>, and <code>styles/</code> are included automatically. The only skipped directories are <code>dist/</code>, <code>node_modules/</code>, <code>.git/</code>, <code>.vscode/</code>, and <code>scripts/</code> (since your JS source is already bundled). Files inside <code>scripts/</code> that are directly referenced in HTML (e.g. <code>scripts/vendor/</code>) are still copied individually by the HTML rewriter. Use <code>--minimal</code> to skip this step entirely.</li>
     <li><strong>Minification</strong> &mdash; Produces content-hashed filenames (<code>z-app.&lt;hash&gt;.js</code> / <code>.min.js</code>) for cache-busting. Previous builds are cleaned automatically.</li>
   </ol>
 
@@ -144,5 +166,26 @@ npx zquery bundle my-app/ -o release/ --html dashboard.html</code></pre>
   </ul>
 
   <div class="docs-callout">
-    <strong>Debugging bundle issues:</strong> If the bundler can&rsquo;t find your entry point, run it with the <code>--html</code> flag pointing to your HTML file. Check that your <code>&lt;script type="module" src="..."&gt;</code> path is correct and uses a relative URL.
+    <strong>Debugging bundle issues:</strong> If the bundler can&rsquo;t find your entry point, pass the JS file directly (<code>zquery bundle my-app/scripts/main.js</code>) or use <code>--entry</code>. For HTML issues, use <code>--index</code> to point to your index page. Check that your <code>&lt;script type="module" src="..."&gt;</code> path is correct and uses a relative URL.
+  </div>
+
+  <h3>Custom Index Page</h3>
+  <p>Not every project uses <code>index.html</code>. Your app might use <code>home.html</code>, a generated filename like <code>index-a1b2c3.html</code>, or any other naming convention. The CLI supports custom index pages across all operations:</p>
+
+  <table class="docs-table">
+    <tr><th>Command</th><th>Flag</th><th>Example</th></tr>
+    <tr><td><code>bundle</code></td><td><code>--index &lt;file&gt;</code></td><td><code>zquery bundle my-app/ --index home.html</code></td></tr>
+    <tr><td><code>dev</code></td><td><code>--index &lt;file&gt;</code></td><td><code>zquery dev my-app/ --index home.html</code></td></tr>
+  </table>
+
+  <p>When <code>--index</code> is provided:</p>
+  <ul>
+    <li><strong>Bundler</strong> &mdash; uses that file for script tag rewriting, asset collection, and output naming. The dist output will be <code>dist/server/home.html</code> instead of <code>dist/server/index.html</code>.</li>
+    <li><strong>Dev server</strong> &mdash; serves that file as the SPA fallback for all routes instead of <code>index.html</code>. The live-reload snippet is injected into whatever HTML file you specify.</li>
+  </ul>
+
+  <p>When <code>--index</code> is <strong>not</strong> provided, the bundler auto-detects your HTML file. It prefers <code>index.html</code> but will fall back to any <code>.html</code> file that references your entry point via a <code>&lt;script type="module"&gt;</code> tag. The dev server defaults to <code>index.html</code>.</p>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> The router doesn&rsquo;t care about the HTML filename &mdash; it&rsquo;s purely client-side. Whether your file is <code>index.html</code>, <code>home.html</code>, or <code>app.html</code>, routing works identically. The only thing that matters is that the server (or dev server) returns your HTML for all routes.
   </div>

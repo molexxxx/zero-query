@@ -21,7 +21,7 @@
     "dev": "node cli/index.js dev zquery-website",
     "dev-lib": "node cli/index.js build --watch",
     "bundle": "node cli/index.js bundle",
-    "bundle:app": "node cli/index.js bundle zquery-website"
+    "bundle:app": "node cli/index.js bundle zquery-website --minimal"
   },
   "keywords": [
     "dom",

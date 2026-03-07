@@ -62,7 +62,8 @@ npx zquery dev my-app</code></pre>
   </table>
 
   <h3>SPA Index HTML Template</h3>
-  <pre><code class="language-html">&lt;!DOCTYPE html&gt;
+  <pre><code class="language-html">&lt;!-- index.html --&gt;
+&lt;!DOCTYPE html&gt;
 &lt;html lang="en"&gt;
 &lt;head&gt;
   &lt;meta charset="UTF-8"&gt;
@@ -148,6 +149,11 @@ npx zquery dev my-app</code></pre>
 
   <div class="docs-callout">
     <strong><code>server/</code> vs <code>local/</code>:</strong> The only difference is the HTML. <code>server/index.html</code> includes <code>&lt;base href="/"&gt;</code> so deep-route refreshes (e.g. <code>/docs/router</code>) resolve assets from the site root &mdash; required for server-deployed SPAs with history-mode routing. <code>local/index.html</code> omits the <code>&lt;base&gt;</code> tag so all paths resolve relative to the HTML file &mdash; correct for <code>file://</code> with zero console errors. On <code>file://</code>, the router auto-switches to hash mode.
+  </div>
+
+  <div class="docs-tip">
+    <strong>Minimal builds:</strong> Pass <code>--minimal</code> (or <code>-m</code>) to skip copying static assets like stylesheets, icons, and vendor files. The output will contain only the HTML entry and the bundled script &mdash; useful for libraries, embedded widgets, or any build where you manage assets separately.
+    <pre><code class="language-bash">npx zquery bundle my-app --minimal</code></pre>
   </div>
 
   <div class="docs-tip">

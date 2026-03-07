@@ -12,6 +12,7 @@ function showHelp() {
 
     dev [root]                 Start a dev server with live-reload
       --port, -p <number>     Port number (default: 3100)
+      --index, -i <file>        Index HTML file (default: index.html)
       --no-intercept           Disable auto-resolution of zquery.min.js
                                (serve the on-disk vendor copy instead)
 
@@ -20,9 +21,11 @@ function showHelp() {
                                overlay in the browser. Runtime errors and
                                unhandled rejections are also captured.
 
-    bundle [dir]              Bundle app ES modules into a single file
-      --out, -o <path>         Output directory (default: dist/ next to index.html)
-      --html <file>            Use a specific HTML file (default: auto-detected)
+    bundle [dir|file]          Bundle app ES modules into a single file
+      --entry, -e <file>       Explicit entry file (skip auto-detection)
+      --out, -o <path>         Output directory (default: dist/ next to HTML file)
+      --index, -i <file>        Index HTML file (default: auto-detected)
+      --minimal, -m            Only output HTML + bundled JS (skip static assets)
 
     build                      Build the zQuery library \u2192 dist/      --watch, -w              Watch src/ and rebuild on changes                               (must be run from the project root where src/ lives)
 
@@ -34,9 +37,10 @@ function showHelp() {
         2. Within HTML: module script pointing to app.js, else first module script
         3. JS scan: $.router( first (entry point), then $.mount( / $.store(
         4. Convention fallbacks (scripts/app.js, app.js, etc.)
-      \u2022 zquery.min.js is always embedded (auto-built from source if not found)
-      \u2022 index.html is rewritten for both server and local (file://) use
-      \u2022 Output goes to dist/server/ and dist/local/ next to the detected index.html
+      • Passing a directory auto-detects the entry; passing a file uses it directly
+      • zquery.min.js is always embedded (auto-built from source if not found)
+      • HTML file is auto-detected (any .html, not just index.html)
+      • Output goes to dist/server/ and dist/local/ next to the detected HTML file
 
   OUTPUT
 
@@ -79,8 +83,20 @@ function showHelp() {
     # Bundle an app from the project root
     zquery bundle my-app/
 
+    # Pass a direct entry file (skip auto-detection)
+    zquery bundle my-app/scripts/main.js
+
+    # Or use --entry with a directory
+    zquery bundle my-app/ --entry scripts/main.js
+
     # Custom output directory
     zquery bundle my-app/ -o build/
+
+    # Minimal build (only HTML + bundled JS, no static assets)
+    zquery bundle my-app/ --minimal
+
+    # Dev server with a custom index page
+    zquery dev my-app/ --index home.html
 
   The bundler walks the ES module import graph starting from the entry
   file, topologically sorts dependencies, strips import/export syntax,

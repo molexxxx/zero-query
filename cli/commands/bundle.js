@@ -13,7 +13,7 @@ const fs     = require('fs');
 const path   = require('path');
 const crypto = require('crypto');
 
-const { args, option }        = require('../args');
+const { args, flag, option }   = require('../args');
 const { minify, sizeKB }      = require('../utils');
 const buildLibrary             = require('./build');
 
@@ -436,36 +436,51 @@ function copyStaticAssets(appRoot, serverDir, localDir, bundledFiles) {
 
 function bundleApp() {
   const projectRoot = process.cwd();
+  const minimal = flag('minimal', 'm');
 
-  // Entry point — accepts a directory (auto-detects entry inside it) or a file
+  // Entry point — --entry / -e overrides positional arg and auto-detection
   let entry = null;
   let targetDir = null;
-  for (let i = 1; i < args.length; i++) {
-    if (!args[i].startsWith('-') && args[i - 1] !== '-o' && args[i - 1] !== '--out' && args[i - 1] !== '--html') {
-      const resolved = path.resolve(projectRoot, args[i]);
-      if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
-        targetDir = resolved;
-        entry = detectEntry(resolved);
-      } else {
-        entry = resolved;
+  const explicitEntry = option('entry', 'e', null);
+  if (explicitEntry) {
+    const resolved = path.resolve(projectRoot, explicitEntry);
+    if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+      targetDir = resolved;
+      entry = detectEntry(resolved);
+    } else {
+      entry = resolved;
+    }
+  } else {
+    for (let i = 1; i < args.length; i++) {
+      if (!args[i].startsWith('-') && args[i - 1] !== '-o' && args[i - 1] !== '--out' && args[i - 1] !== '--index' && args[i - 1] !== '--entry' && args[i - 1] !== '-e') {
+        const resolved = path.resolve(projectRoot, args[i]);
+        if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+          targetDir = resolved;
+          entry = detectEntry(resolved);
+        } else {
+          entry = resolved;
+        }
+        break;
       }
-      break;
     }
   }
   if (!entry) entry = detectEntry(projectRoot);
 
   if (!entry || !fs.existsSync(entry)) {
     console.error(`\n  \u2717 Could not find entry file.`);
-    console.error(`    Provide an app directory: zquery bundle my-app/\n`);
+    console.error(`    Provide an app directory: zquery bundle my-app/`);
+    console.error(`    Or specify a direct entry: zquery bundle --entry scripts/main.js\n`);
     process.exit(1);
   }
 
   const outPath = option('out', 'o', null);
 
-  // Auto-detect index.html
-  let htmlFile = option('html', null, null);
+  // Auto-detect HTML file
+  let htmlFile = option('index', 'i', null);
   let htmlAbs  = htmlFile ? path.resolve(projectRoot, htmlFile) : null;
   if (!htmlFile) {
+    // Strategy: first look for index.html walking up from entry, then
+    // scan for any .html that references the entry via a module script tag.
     const htmlCandidates = [];
     let entryDir = path.dirname(entry);
     while (entryDir.length >= projectRoot.length) {
@@ -481,6 +496,47 @@ function bundleApp() {
         htmlAbs  = candidate;
         htmlFile = path.relative(projectRoot, candidate);
         break;
+      }
+    }
+
+    // If no index.html found, scan for any .html file that references
+    // the entry point (supports home.html, app.html, etc.)
+    if (!htmlAbs) {
+      const searchRoot = targetDir || projectRoot;
+      const htmlScan = [];
+      for (const e of fs.readdirSync(searchRoot, { withFileTypes: true })) {
+        if (e.isFile() && e.name.endsWith('.html')) {
+          htmlScan.push(path.join(searchRoot, e.name));
+        } else if (e.isDirectory() && !e.name.startsWith('.') && e.name !== 'node_modules' && e.name !== 'dist') {
+          try {
+            for (const child of fs.readdirSync(path.join(searchRoot, e.name), { withFileTypes: true })) {
+              if (child.isFile() && child.name.endsWith('.html')) {
+                htmlScan.push(path.join(searchRoot, e.name, child.name));
+              }
+            }
+          } catch { /* skip */ }
+        }
+      }
+      // Prefer the HTML file that references our entry via a module script
+      const moduleScriptRe = /<script[^>]+type\s*=\s*["']module["'][^>]+src\s*=\s*["']([^"']+)["']/g;
+      for (const hp of htmlScan) {
+        const content = fs.readFileSync(hp, 'utf-8');
+        let m;
+        moduleScriptRe.lastIndex = 0;
+        while ((m = moduleScriptRe.exec(content)) !== null) {
+          const resolved = path.resolve(path.dirname(hp), m[1]);
+          if (resolved === path.resolve(entry)) {
+            htmlAbs  = hp;
+            htmlFile = path.relative(projectRoot, hp);
+            break;
+          }
+        }
+        if (htmlAbs) break;
+      }
+      // Last resort: use the first .html found
+      if (!htmlAbs && htmlScan.length > 0) {
+        htmlAbs  = htmlScan[0];
+        htmlFile = path.relative(projectRoot, htmlScan[0]);
       }
     }
   }
@@ -510,7 +566,8 @@ function bundleApp() {
   console.log(`  Entry:   ${entryRel}`);
   console.log(`  Output:  ${path.relative(projectRoot, baseDistDir)}/server/ & local/`);
   console.log(`  Library: embedded`);
-  console.log(`  HTML:    ${htmlFile || 'not found (no index.html detected)'}`);
+  console.log(`  HTML:    ${htmlFile || 'not found (no HTML detected)'}`);
+  if (minimal) console.log(`  Mode:    minimal (HTML + bundle only)`);
   console.log('');
 
   // ------ doBuild (inlined) ------
@@ -629,8 +686,10 @@ function bundleApp() {
   }
 
   // Copy static asset directories (icons/, images/, fonts/, etc.)
-  const appRoot = htmlAbs ? path.dirname(htmlAbs) : (targetDir || projectRoot);
-  copyStaticAssets(appRoot, serverDir, localDir, bundledFileSet);
+  if (!minimal) {
+    const appRoot = htmlAbs ? path.dirname(htmlAbs) : (targetDir || projectRoot);
+    copyStaticAssets(appRoot, serverDir, localDir, bundledFileSet);
+  }
 
   const elapsed = Date.now() - start;
   console.log(`  Done in ${elapsed}ms\n`);
