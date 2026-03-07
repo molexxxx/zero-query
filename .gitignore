@@ -81,7 +81,7 @@ out
 # Nuxt.js build / generate output
 .nuxt
 # dist
-zquery-website/dist
+zquery-website/
 
 # Gatsby files
 .cache/
