@@ -71,13 +71,32 @@
   </div>
 
   <h3><code>z-if</code> vs <code>z-show</code></h3>
+  <p>Both directives hide content conditionally, but they use fundamentally different mechanisms. Choosing the right one affects performance and behaviour:</p>
   <table class="docs-table">
     <tr><th></th><th><code>z-if</code></th><th><code>z-show</code></th></tr>
     <tr><td><strong>DOM behaviour</strong></td><td>Element is <strong>removed</strong> when falsy</td><td>Element stays in DOM, <code>display: none</code> applied</td></tr>
     <tr><td><strong>Performance</strong></td><td>Better for rarely-toggled content</td><td>Better for frequently-toggled content (avoids DOM add/remove)</td></tr>
     <tr><td><strong>Supports else chain</strong></td><td>Yes (<code>z-else-if</code>, <code>z-else</code>)</td><td>No</td></tr>
+    <tr><td><strong>Initial render cost</strong></td><td>Nothing rendered if falsy on first paint</td><td>Element is always rendered, just hidden</td></tr>
     <tr><td><strong>Use when</strong></td><td>Content may never be shown, or has expensive children</td><td>Content toggles often (tabs, dropdowns, tooltips)</td></tr>
   </table>
+
+  <h4>Side-by-Side Example</h4>
+  <pre><code class="language-html">&lt;!-- z-if: element removed entirely when logged out --&gt;
+&lt;div z-if="isLoggedIn"&gt;
+  &lt;p&gt;Welcome, {{user.name}}&lt;/p&gt;
+  &lt;button @click="logout()"&gt;Sign out&lt;/button&gt;
+&lt;/div&gt;
+
+&lt;!-- z-show: element stays in DOM, just hidden via CSS --&gt;
+&lt;div z-show="menuOpen" class="dropdown"&gt;
+  &lt;a z-link="/settings"&gt;Settings&lt;/a&gt;
+  &lt;a z-link="/profile"&gt;Profile&lt;/a&gt;
+&lt;/div&gt;</code></pre>
+
+  <div class="docs-tip">
+    <strong>Rule of thumb:</strong> Use <code>z-if</code> for content that appears <strong>once</strong> (login gates, permission checks, feature flags). Use <code>z-show</code> for UI that toggles <strong>frequently</strong> (menus, accordions, modal overlays) where the DOM cost of re-creating elements would be wasteful.
+  </div>
 
   <h3>List Rendering &mdash; <code>z-for</code></h3>
   <p>Repeat an element once for each item in an array (or object, or number range). Inner content uses <code>{{expression}}</code> syntax to reference the current item and index.</p>

@@ -88,6 +88,19 @@ for (const row of $.all('table.report tbody tr')) {
   console.log(row.cells[0].textContent);
 }</code></pre>
 
+  <h4>Scoped Queries</h4>
+  <p>Pass a second argument to scope the selection inside a specific parent element:</p>
+  <pre><code class="language-javascript">const sidebar = $.id('sidebar');
+
+// Only selects links inside #sidebar, not the entire document
+$.all('a.nav-link', sidebar).addClass('sidebar-link');</code></pre>
+
+  <h4>Wrapping Existing Elements</h4>
+  <p>You can also pass a raw element array (or NodeList) to <code>$.all()</code> to get a collection with all the helper methods:</p>
+  <pre><code class="language-javascript">// Wrap a NodeList from native querySelectorAll
+const native = document.querySelectorAll('.card');
+$.all(native).addClass('loaded').css('opacity', '1');</code></pre>
+
   <h3>Element Creation — <code>$.create()</code></h3>
   <p>Create a DOM element programmatically with attributes, styles, event listeners, and children in a single call:</p>
   <pre><code class="language-javascript">const btn = $.create('button', {
@@ -256,6 +269,14 @@ await $.all('.row.removing').animate({ opacity: '0', transform: 'translateX(-20p
 $.all('.row.removing').remove();</code></pre>
 
   <h3>Form Helpers</h3>
+  <p>The collection includes two serialization methods for working with <code>&lt;form&gt;</code> elements. Both read all named form controls (inputs, selects, textareas, checkboxes, radio buttons) and produce a submission-ready payload:</p>
+
+  <table class="docs-table">
+    <tr><th>Method</th><th>Returns</th><th>Description</th></tr>
+    <tr><td><code>.serialize()</code></td><td><code>string</code></td><td>URL-encoded string identical to a traditional form submission</td></tr>
+    <tr><td><code>.serializeObject()</code></td><td><code>object</code></td><td>Plain JS object &mdash; duplicate field names become arrays automatically</td></tr>
+  </table>
+
   <pre><code class="language-javascript">// Grab the form as a collection for serialize helpers
 const form = $.all('#checkout-form');
 
@@ -265,6 +286,18 @@ form.serialize();        // "name=Tony&amp;email=tony%40x.com"
 // Plain object (handles duplicate field names as arrays)
 form.serializeObject();  // { name: 'Tony', email: 'tony@x.com' }
 // If multiple checkboxes: { colors: ['red', 'blue'] }</code></pre>
+
+  <h4>Practical Example — AJAX Form Submit</h4>
+  <pre><code class="language-javascript">// Submit a form via fetch without a full page reload
+const form = $.all('#contact-form');
+const data = form.serializeObject();
+
+await $.http.post('/api/contact', data);
+form.find('input, textarea').val('');    // clear fields after submit</code></pre>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> <code>.serialize()</code> is useful when you need to append form data to a URL as query parameters. <code>.serializeObject()</code> is typically more convenient for JSON APIs since you can pass it directly to <code>$.http</code> methods.
+  </div>
 
   <h3>Extend with Plugins — <code>$.fn</code></h3>
   <p><code>$.fn</code> is an alias for <code>ZQueryCollection.prototype</code>. Add custom methods to it just like jQuery plugins:</p>

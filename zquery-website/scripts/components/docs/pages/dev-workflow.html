@@ -26,8 +26,19 @@ npx zquery dev --port 8080</code></pre>
   <h3>Targeting a Sub-Directory</h3>
   <p>If your project lives inside a monorepo or nested folder, pass the path as an argument:</p>
   <pre><code class="language-bash"># Serve a specific project folder
-npx zquery dev path/to/my-app</code></pre>
-  <p>The server auto-detects <code>index.html</code> in whichever directory you point it at.</p>
+npx zquery dev path/to/my-app
+
+# Works with relative or absolute paths
+npx zquery dev ../client-app
+npx zquery dev C:/projects/my-app</code></pre>
+  <p>The server auto-detects <code>index.html</code> in whichever directory you point it at. This is the recommended pattern for scaffolded projects &mdash; stay in the repo root (where <code>node_modules</code> lives) and point the dev server at the app folder:</p>
+  <pre><code class="language-bash"># Scaffold, then serve from the repo root
+npx zquery create my-app
+npx zquery dev my-app</code></pre>
+
+  <div class="docs-tip">
+    <strong>Why stay at the root?</strong> Keeping your working directory at the repo root means your IDE can resolve <code>index.d.ts</code> from the <code>zero-query</code> package for full IntelliSense and type support. If you <code>cd</code> into the app folder, the IDE may lose access to the type definitions.
+  </div>
 
   <h3>Live Reload</h3>
   <p>The dev server watches your entire project tree for changes. When you save a file the browser refreshes automatically:</p>
@@ -68,21 +79,54 @@ npx zquery dev path/to/my-app</code></pre>
   <h3>How Live-Reload Works (SSE)</h3>
   <p>The dev server uses <strong>Server-Sent Events (SSE)</strong> &mdash; a lightweight, one-way push channel from the server to the browser. Here&rsquo;s the flow:</p>
   <ol>
-    <li>When the server responds with <code>index.html</code>, it injects a small <code>&lt;script&gt;</code> block before <code>&lt;/body&gt;</code> that opens an <code>EventSource</code> connection back to the server.</li>
-    <li>A file-system watcher (<code>fs.watch</code>) monitors your project for changes, ignoring <code>node_modules</code>, <code>.git</code>, <code>dist</code>, and other build artifacts.</li>
+    <li>When the server responds with <code>index.html</code>, it injects a small <code>&lt;script&gt;</code> block before <code>&lt;/body&gt;</code> that opens an <code>EventSource</code> connection back to the server at <code>/__zq_reload</code>.</li>
+    <li>A file-system watcher (<code>fs.watch</code>, recursive) monitors your project for changes, ignoring <code>node_modules</code>, <code>.git</code>, <code>dist</code>, and other build artifacts.</li>
     <li>When a file changes, the server pushes a named event (<code>reload</code> or <code>css</code>) over the SSE connection.</li>
     <li>The injected client script receives the event and either reloads the page or hot-swaps stylesheets.</li>
   </ol>
 
+  <h4>SSE Event Types</h4>
+  <table class="docs-table">
+    <tr><th>Event</th><th>Trigger</th><th>Browser Action</th></tr>
+    <tr><td><code>reload</code></td><td>Any non-CSS file saved (<code>.js</code>, <code>.html</code>, etc.)</td><td>Full page reload via <code>location.reload()</code></td></tr>
+    <tr><td><code>css</code></td><td><code>.css</code> file saved</td><td>Stylesheet hot-swap &mdash; existing <code>&lt;link&gt;</code> tags are re-fetched in-place, preserving component state</td></tr>
+    <tr><td><code>error:syntax</code></td><td>JS file fails syntax validation</td><td>Error overlay displayed, reload suppressed</td></tr>
+    <tr><td><code>error:clear</code></td><td>Previously broken file passes validation</td><td>Overlay dismissed, normal reload resumes</td></tr>
+  </table>
+
   <div class="docs-tip">
-    <strong>Source files are never modified.</strong> The SSE client is injected only in the HTTP response &mdash; your original HTML stays untouched on disk.
+    <strong>Source files are never modified.</strong> The SSE client is injected only in the HTTP response &mdash; your original HTML stays untouched on disk. If you view source in the browser you&rsquo;ll see the injected script, but your file on disk is unchanged.
+  </div>
+
+  <div class="docs-callout">
+    <strong>Why SSE over WebSocket?</strong> SSE is natively supported in all modern browsers, requires no handshake upgrade, reconnects automatically on disconnect, and needs zero client-side dependencies. For a one-way "server tells browser to reload" channel it&rsquo;s the simplest and most reliable choice.
   </div>
 
   <h3>SPA Fallback Routing</h3>
   <p>The dev server includes built-in SPA support. Any request that doesn&rsquo;t match an existing file is served <code>index.html</code>, so deep-link routes like <code>/docs/router</code> or <code>/about</code> work correctly during development without additional configuration.</p>
 
+  <h4>How It Works</h4>
+  <p>When a request comes in, the server checks for a matching file on disk. If no file exists (e.g. <code>/about</code> is a client-side route, not a real file), the server responds with <code>index.html</code> instead of a 404. The zQuery router then reads the URL and renders the correct component.</p>
+
+  <h4>What&rsquo;s Excluded</h4>
+  <p>Static assets are always served directly &mdash; the fallback only applies to requests that don&rsquo;t resolve to an existing file. Requests for <code>.js</code>, <code>.css</code>, images, and other static files are served normally.</p>
+
+  <h4>Production Equivalents</h4>
+  <p>In production you&rsquo;ll need to configure the same fallback on your web server:</p>
+  <table class="docs-table">
+    <tr><th>Server</th><th>Configuration</th></tr>
+    <tr><td>Apache</td><td><code>FallbackResource /index.html</code> in <code>.htaccess</code></td></tr>
+    <tr><td>Nginx</td><td><code>try_files $uri $uri/ /index.html</code></td></tr>
+    <tr><td>Netlify</td><td><code>/* /index.html 200</code> in <code>_redirects</code></td></tr>
+    <tr><td>Vercel</td><td><code>"rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]</code></td></tr>
+  </table>
+
   <div class="docs-tip">
-    <strong>Note:</strong> SPA routing itself is a <strong>client-side</strong> feature of the zQuery router &mdash; it works everywhere, including production servers and <code>file://</code> (via hash mode). The dev server simply provides the server-side fallback so you don&rsquo;t need to configure Apache/Nginx rewrite rules during development. See the <a z-link="/docs/router">Router</a> docs and <a href="https://github.com/tonywied17/zero-query#production-deployment" target="_blank" rel="noopener">Production Deployment</a> in the README for server config examples.
+    <strong>Note:</strong> SPA routing itself is a <strong>client-side</strong> feature of the zQuery router &mdash; it works everywhere, including production servers and <code>file://</code> (via hash mode). The dev server simply provides the server-side fallback so you don&rsquo;t need to configure Apache/Nginx rewrite rules during development. See the <a z-link="/docs/router">Router</a> docs for more details.
+  </div>
+
+  <div class="docs-callout">
+    <strong>Bundled apps on <code>file://</code>:</strong> When opening the <code>dist/local/</code> build directly from disk, the router auto-switches to hash mode (<code>#/about</code>) so no server fallback is needed at all. See the <a z-link="/docs/cli-bundler">CLI Bundler</a> page for details.
   </div>
 
   <h3>Recommended Workflow</h3>

@@ -66,6 +66,22 @@ start dist/local/index.html
     <tr><td><code>--html &lt;file&gt;</code></td><td>&mdash;</td><td>Use a specific HTML file instead of the auto-detected one</td></tr>
   </table>
 
+  <p>Both flags are optional &mdash; the bundler works out of the box with zero configuration. They exist for edge cases like mono-repos or non-standard layouts.</p>
+
+  <h4>Examples</h4>
+  <pre><code class="language-bash"># Output to a custom folder
+npx zquery bundle my-app/ --out build/
+
+# Use a specific HTML entry when you have multiple .html files
+npx zquery bundle my-app/ --html admin.html
+
+# Combine both
+npx zquery bundle my-app/ -o release/ --html dashboard.html</code></pre>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> The <code>--out</code> path is resolved relative to the app directory, not your current working directory. For example, <code>--out build/</code> creates <code>my-app/build/server/</code> and <code>my-app/build/local/</code>.
+  </div>
+
   <h3>Under the Hood</h3>
   <ol>
     <li><strong>Entry detection</strong> &mdash; Strict precedence strategy:
@@ -88,20 +104,44 @@ start dist/local/index.html
   <h3>Hash Routing on <code>file://</code></h3>
   <p>When the bundled app is opened via <code>file://</code>, the router automatically switches to <strong>hash-based routing</strong> (<code>#/about</code> instead of <code>/about</code>). No configuration needed &mdash; <code>z-link</code> attributes and programmatic navigation work identically.</p>
 
-  <p>For example, the same app behaves differently depending on how it's served:</p>
+  <h4>Why Hash Mode?</h4>
+  <p>Browsers block the History API on <code>file://</code> origins &mdash; calling <code>pushState</code> throws a security error. Hash-based routing sidesteps this entirely because the fragment (<code>#/path</code>) never leaves the browser: no server request is made, so there's nothing to block. The bundled router detects <code>file://</code> at boot and switches automatically.</p>
+
+  <h4>Server vs Local Comparison</h4>
+  <p>The same app behaves differently depending on how it&rsquo;s served:</p>
   <table class="docs-table">
     <tr><th>Mode</th><th>URL</th><th>How It Works</th></tr>
     <tr><td>Server (<code>dist/server/</code>)</td><td><code>https://mysite.com/docs/router</code></td><td>History API &mdash; clean paths, requires server-side fallback to <code>index.html</code></td></tr>
     <tr><td>Local (<code>dist/local/</code>)</td><td><code>file:///C:/app/index.html#/docs/router</code></td><td>Hash mode &mdash; everything after <code>#</code> is the route; no server needed</td></tr>
   </table>
-  <p>The switch is transparent to your code. Links created with <code>z-link</code>, calls to <code>$.router().navigate()</code>, route guards, and params all work the same way in both modes. The router detects the <code>file://</code> protocol at boot and handles the rest.</p>
 
-  <h3>Tips</h3>
+  <p>The switch is transparent to your code. Links created with <code>z-link</code>, calls to <code>$.router().navigate()</code>, route guards, and params all work the same way in both modes.</p>
+
+  <h4>What Stays the Same</h4>
   <ul>
-    <li><strong>Use relative imports</strong> &mdash; <code>import './components/home.js'</code> (not bare specifiers like <code>import 'home'</code>)</li>
-    <li><strong>One component per file</strong> &mdash; the import walker resolves each file once</li>
-    <li><strong><code>import.meta.url</code></strong> &mdash; automatically replaced at bundle time</li>
-    <li><strong>External templates</strong> &mdash; <code>templateUrl</code>, <code>styleUrl</code>, and <code>pages</code> configs are inlined automatically; no code changes needed</li>
-    <li><strong>Vendor scripts</strong> &mdash; third-party files referenced via <code>&lt;script&gt;</code> tags in your HTML (e.g. Prism, analytics) are left untouched and copied to both output directories as-is</li>
-    <li><strong>Re-bundle anytime</strong> &mdash; previous <code>dist/</code> contents are cleaned automatically on each build, so you can re-run <code>zquery bundle</code> without manually deleting old files</li>
+    <li><code>z-link</code> attributes &mdash; the router rewrites them for the active mode</li>
+    <li><code>$.router().navigate('/path')</code> &mdash; programmatic navigation works identically</li>
+    <li>Route guards (<code>beforeEnter</code>, <code>beforeLeave</code>) &mdash; fire in the same order</li>
+    <li>Route params (<code>:id</code>) and query strings &mdash; parsed and available on <code>$.router().params</code></li>
+    <li>Wildcard / fallback routes &mdash; matched using the same logic</li>
   </ul>
+
+  <div class="docs-tip">
+    <strong>Tip:</strong> To test the local build quickly, run <code>start dist/local/index.html</code> (Windows) or <code>open dist/local/index.html</code> (macOS). Double-clicking the file in your file explorer also works.
+  </div>
+
+  <h3>Tips &amp; Best Practices</h3>
+  <ul>
+    <li><strong>Use relative imports</strong> &mdash; <code>import './components/home.js'</code> (not bare specifiers like <code>import 'home'</code>). The bundler resolves the import graph by following these paths, so bare specifiers will fail.</li>
+    <li><strong>One component per file</strong> &mdash; the import walker resolves each file once; splitting code this way keeps the bundle order deterministic and makes it easy to add or remove features.</li>
+    <li><strong><code>import.meta.url</code></strong> &mdash; automatically replaced at bundle time so that <code>base</code>, <code>templateUrl</code>, and <code>styleUrl</code> paths continue to resolve correctly in the IIFE output.</li>
+    <li><strong>External templates</strong> &mdash; <code>templateUrl</code>, <code>styleUrl</code>, and <code>pages</code> configs are inlined automatically; no code changes needed. The bundler reads and embeds the HTML/CSS content directly into the bundle string.</li>
+    <li><strong>Vendor scripts</strong> &mdash; third-party files referenced via <code>&lt;script&gt;</code> tags in your HTML (e.g. Prism, analytics) are left untouched and copied to both output directories as-is. They are <em>not</em> merged into the app bundle.</li>
+    <li><strong>Re-bundle anytime</strong> &mdash; previous <code>dist/</code> contents are cleaned automatically on each build, so you can re-run <code>zquery bundle</code> without manually deleting old files.</li>
+    <li><strong>Cache busting</strong> &mdash; the output filename includes a content hash (<code>z-app.a1b2c3d4.js</code>). When your code changes, the hash changes, so CDN and browser caches are invalidated automatically.</li>
+    <li><strong>No config file</strong> &mdash; there is no <code>zquery.config.js</code> or <code>.bundlerrc</code>. The CLI infers everything from your HTML and import graph. This keeps your project root clean and eliminates config drift.</li>
+  </ul>
+
+  <div class="docs-callout">
+    <strong>Debugging bundle issues:</strong> If the bundler can&rsquo;t find your entry point, run it with the <code>--html</code> flag pointing to your HTML file. Check that your <code>&lt;script type="module" src="..."&gt;</code> path is correct and uses a relative URL.
+  </div>
