@@ -468,7 +468,10 @@ query.id       = (id) => document.getElementById(id);
 query.class    = (name) => document.querySelector(`.${name}`);
 query.classes  = (name) => Array.from(document.getElementsByClassName(name));
 query.tag      = (name) => Array.from(document.getElementsByTagName(name));
-query.name     = (name) => Array.from(document.getElementsByName(name));
+Object.defineProperty(query, 'name', {
+  value: (name) => Array.from(document.getElementsByName(name)),
+  writable: true, configurable: true
+});
 query.attr     = (attr, value) => Array.from(
   document.querySelectorAll(value !== undefined ? `[${attr}="${value}"]` : `[${attr}]`)
 );

@@ -54,7 +54,9 @@ $.id       = query.id;
 $.class    = query.class;
 $.classes  = query.classes;
 $.tag      = query.tag;
-$.name     = query.name;
+Object.defineProperty($, 'name', {
+  value: query.name, writable: true, configurable: true
+});
 $.attr     = query.attr;
 $.data     = query.data;
 $.children = query.children;
