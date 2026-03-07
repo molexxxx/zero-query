@@ -212,6 +212,15 @@ $.component('docs-page', {
       table.parentNode.insertBefore(wrap, table);
       wrap.appendChild(table);
     });
+    // File-tree folder toggles
+    $.all('.file-tree .tree-dir > .tree-entry', root).each(function () {
+      if (this._treeBound) return;
+      this._treeBound = true;
+      this.addEventListener('click', function (e) {
+        if (e.target.closest('a')) return;           // let links navigate
+        this.closest('.tree-dir').classList.toggle('open');
+      });
+    });
     // Prism syntax highlighting
     if (typeof Prism === 'undefined') return;
     $.all('pre code[class*="language-"]', root).not('.prism-highlighted').each(function () {

@@ -18,17 +18,29 @@ npx zquery bundle
 npx zquery bundle my-app/</code></pre>
 
   <p>Output goes to <code>dist/</code> next to your <code>index.html</code>, with two sub-folders:</p>
-  <pre><code class="language-text">dist/
-  server/                    &larr; deploy to your web server
-    index.html               &larr; has &lt;base href="/"&gt; for SPA deep routes
-    z-app.a1b2c3d4.js        &larr; readable bundle (library + app + templates)
-    z-app.a1b2c3d4.min.js    &larr; minified bundle
-    styles/                  &larr; copied CSS assets
-    scripts/vendor/          &larr; copied vendor assets
-  local/                     &larr; open from disk (file://)
-    index.html               &larr; relative paths, no &lt;base&gt; tag
-    z-app.a1b2c3d4.js        &larr; same bundle
-    ...                      &larr; same assets</code></pre>
+  <div class="file-tree"><ul><li class="tree-dir open">
+    <div class="tree-entry"><span class="tree-arrow">&#9654;</span><span class="tree-name">dist</span></div>
+    <ul>
+      <li class="tree-dir open">
+        <div class="tree-entry"><span class="tree-arrow">&#9654;</span><span class="tree-name">server</span><span class="tree-desc">deploy to your web server</span></div>
+        <ul>
+          <li><div class="tree-entry"><span class="tree-spacer"></span><span class="tree-name">index.html</span><span class="tree-desc">has &lt;base href="/"&gt; for SPA deep routes</span></div></li>
+          <li><div class="tree-entry"><span class="tree-spacer"></span><span class="tree-name">z-app.a1b2c3d4.js</span><span class="tree-desc">readable bundle (library + app + templates)</span></div></li>
+          <li><div class="tree-entry"><span class="tree-spacer"></span><span class="tree-name">z-app.a1b2c3d4.min.js</span><span class="tree-desc">minified bundle</span></div></li>
+          <li><div class="tree-entry"><span class="tree-spacer"></span><span class="tree-name">styles/</span><span class="tree-desc">copied CSS assets</span></div></li>
+          <li><div class="tree-entry"><span class="tree-spacer"></span><span class="tree-name">scripts/vendor/</span><span class="tree-desc">copied vendor assets</span></div></li>
+        </ul>
+      </li>
+      <li class="tree-dir open">
+        <div class="tree-entry"><span class="tree-arrow">&#9654;</span><span class="tree-name">local</span><span class="tree-desc">open from disk (file://)</span></div>
+        <ul>
+          <li><div class="tree-entry"><span class="tree-spacer"></span><span class="tree-name">index.html</span><span class="tree-desc">relative paths, no &lt;base&gt; tag</span></div></li>
+          <li><div class="tree-entry"><span class="tree-spacer"></span><span class="tree-name">z-app.a1b2c3d4.js</span><span class="tree-desc">same bundle</span></div></li>
+          <li><div class="tree-entry"><span class="tree-spacer"></span><span class="tree-name">&hellip;</span><span class="tree-desc">same assets</span></div></li>
+        </ul>
+      </li>
+    </ul>
+  </li></ul></div>
 
   <div class="docs-callout">
     <strong>Two builds, zero hacks:</strong> The <code>server/</code> build includes <code>&lt;base href="/"&gt;</code> so deep-route refreshes (e.g. <code>/docs/router</code>) resolve assets from the root &mdash; required for server-deployed SPAs. The <code>local/</code> build omits it so paths resolve relative to the HTML file &mdash; perfect for opening via <code>file://</code> with zero console errors.
