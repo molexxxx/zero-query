@@ -65,7 +65,6 @@ start dist/local/index.html
   <h3>Optional Flags</h3>
   <table class="docs-table">
     <tr><th>Flag</th><th>Short</th><th>Description</th></tr>
-    <tr><td><code>--entry &lt;file&gt;</code></td><td><code>-e</code></td><td>Explicit entry file (skips auto-detection). Accepts a file path relative to the project root.</td></tr>
     <tr><td><code>--out &lt;path&gt;</code></td><td><code>-o</code></td><td>Custom output directory (default: <code>dist/</code> next to the detected HTML file)</td></tr>
     <tr><td><code>--index &lt;file&gt;</code></td><td><code>-i</code></td><td>Index HTML file &mdash; use a specific HTML file instead of the auto-detected one</td></tr>
     <tr><td><code>--minimal</code></td><td><code>-m</code></td><td>Only output the HTML file and bundled JS &mdash; skip copying static assets (icons, styles, fonts, etc.)</td></tr>
@@ -77,8 +76,8 @@ start dist/local/index.html
   <p>The bundler accepts three ways to specify the entry point, in order of priority:</p>
   <ol>
     <li><strong>Direct file path</strong> &mdash; pass a <code>.js</code> file as the positional argument (e.g. <code>zquery bundle my-app/scripts/main.js</code>). The bundler uses it directly with no scanning.</li>
-    <li><strong><code>--entry</code> flag</strong> &mdash; explicitly set the entry file (e.g. <code>zquery bundle my-app/ --entry scripts/main.js</code>). Useful when you want to pass a directory for HTML/asset detection but override which JS file is the entry.</li>
-    <li><strong>Auto-detection</strong> &mdash; pass a directory (or nothing) and the bundler scans using the precedence strategy described below.</li>
+    <li><strong>Directory path</strong> &mdash; pass a directory (e.g. <code>zquery bundle my-app/</code>) and the bundler scans it using the precedence strategy described below.</li>
+    <li><strong>Auto-detection</strong> &mdash; run with no positional argument and the bundler scans the current working directory.</li>
   </ol>
 
   <h4>Examples</h4>
@@ -90,9 +89,6 @@ npx zquery bundle my-app/ --index admin.html
 
 # Pass a direct entry file (skip auto-detection)
 npx zquery bundle my-app/scripts/main.js
-
-# Or use --entry with a directory
-npx zquery bundle my-app/ --entry scripts/main.js
 
 # Minimal build (HTML + bundled JS only, no static asset copying)
 npx zquery bundle my-app/ --minimal
@@ -166,7 +162,7 @@ npx zquery bundle my-app/ -o release/ --index dashboard.html --minimal</code></p
   </ul>
 
   <div class="docs-callout">
-    <strong>Debugging bundle issues:</strong> If the bundler can&rsquo;t find your entry point, pass the JS file directly (<code>zquery bundle my-app/scripts/main.js</code>) or use <code>--entry</code>. For HTML issues, use <code>--index</code> to point to your index page. Check that your <code>&lt;script type="module" src="..."&gt;</code> path is correct and uses a relative URL.
+    <strong>Debugging bundle issues:</strong> If the bundler can&rsquo;t find your entry point, pass the JS file directly (e.g. <code>zquery bundle my-app/scripts/main.js</code>). For HTML issues, use <code>--index</code> to point to your index page. Check that your <code>&lt;script type="module" src="..."&gt;</code> path is correct and uses a relative URL.
   </div>
 
   <h3>Custom Index Page</h3>

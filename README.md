@@ -194,7 +194,6 @@ dist/
 
 | Flag | Short | Description |
 | --- | --- | --- |
-| `--entry <file>` | `-e` | Explicit JS entry file (skip auto-detection) |
 | `--out <path>` | `-o` | Custom output directory |
 | `--index <file>` | `-i` | Index HTML file (default: auto-detected) |
 | `--minimal` | `-m` | Only output HTML + bundled JS (skip static assets) |

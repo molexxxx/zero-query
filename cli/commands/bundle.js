@@ -438,30 +438,19 @@ function bundleApp() {
   const projectRoot = process.cwd();
   const minimal = flag('minimal', 'm');
 
-  // Entry point — --entry / -e overrides positional arg and auto-detection
+  // Entry point — positional arg (directory or file) or auto-detection
   let entry = null;
   let targetDir = null;
-  const explicitEntry = option('entry', 'e', null);
-  if (explicitEntry) {
-    const resolved = path.resolve(projectRoot, explicitEntry);
-    if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
-      targetDir = resolved;
-      entry = detectEntry(resolved);
-    } else {
-      entry = resolved;
-    }
-  } else {
-    for (let i = 1; i < args.length; i++) {
-      if (!args[i].startsWith('-') && args[i - 1] !== '-o' && args[i - 1] !== '--out' && args[i - 1] !== '--index' && args[i - 1] !== '--entry' && args[i - 1] !== '-e') {
-        const resolved = path.resolve(projectRoot, args[i]);
-        if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
-          targetDir = resolved;
-          entry = detectEntry(resolved);
-        } else {
-          entry = resolved;
-        }
-        break;
+  for (let i = 1; i < args.length; i++) {
+    if (!args[i].startsWith('-') && args[i - 1] !== '-o' && args[i - 1] !== '--out' && args[i - 1] !== '--index') {
+      const resolved = path.resolve(projectRoot, args[i]);
+      if (fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()) {
+        targetDir = resolved;
+        entry = detectEntry(resolved);
+      } else {
+        entry = resolved;
       }
+      break;
     }
   }
   if (!entry) entry = detectEntry(projectRoot);
@@ -469,7 +458,7 @@ function bundleApp() {
   if (!entry || !fs.existsSync(entry)) {
     console.error(`\n  \u2717 Could not find entry file.`);
     console.error(`    Provide an app directory: zquery bundle my-app/`);
-    console.error(`    Or specify a direct entry: zquery bundle --entry scripts/main.js\n`);
+    console.error(`    Or pass a direct entry file: zquery bundle my-app/scripts/main.js\n`);
     process.exit(1);
   }
 

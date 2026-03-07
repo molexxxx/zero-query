@@ -22,7 +22,6 @@ function showHelp() {
                                unhandled rejections are also captured.
 
     bundle [dir|file]          Bundle app ES modules into a single file
-      --entry, -e <file>       Explicit entry file (skip auto-detection)
       --out, -o <path>         Output directory (default: dist/ next to HTML file)
       --index, -i <file>        Index HTML file (default: auto-detected)
       --minimal, -m            Only output HTML + bundled JS (skip static assets)
@@ -85,9 +84,6 @@ function showHelp() {
 
     # Pass a direct entry file (skip auto-detection)
     zquery bundle my-app/scripts/main.js
-
-    # Or use --entry with a directory
-    zquery bundle my-app/ --entry scripts/main.js
 
     # Custom output directory
     zquery bundle my-app/ -o build/
