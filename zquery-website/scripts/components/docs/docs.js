@@ -178,13 +178,32 @@ $.component('docs-page', {
       }
     }
 
-    // --- Free mode: simple fixed-offset scan ---
+    // --- Free mode: dynamic scan line ---
     const content = this.refs.content;
     if (!content) return;
     const headings = $.all('h3[id]', content);
     if (!headings.length) return;
 
-    const scanLine = 100;          // fixed px from viewport top
+    const viewH     = window.innerHeight;
+    const docH      = document.documentElement.scrollHeight;
+    const maxScroll = docH - viewH;
+    const remaining = maxScroll - window.scrollY;   // px of scroll room left
+
+    // Base line is tighter (80 px) for finer activation.
+    // As the user gets within 300 px of the page bottom the line ramps
+    // smoothly toward 85 % of the viewport so bottom headings activate.
+    const baseLine = 80;
+    const rampZone = 300;
+    let scanLine;
+    if (remaining <= 0) {
+      scanLine = viewH * 0.85;
+    } else if (remaining < rampZone) {
+      const t = 1 - remaining / rampZone;
+      scanLine = baseLine + t * (viewH * 0.85 - baseLine);
+    } else {
+      scanLine = baseLine;
+    }
+
     let activeId = null;
     for (const h of headings) {
       if (h.getBoundingClientRect().top <= scanLine) activeId = h.id;
