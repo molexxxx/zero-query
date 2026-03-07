@@ -468,6 +468,13 @@ query.id       = (id) => document.getElementById(id);
 query.class    = (name) => document.querySelector(`.${name}`);
 query.classes  = (name) => Array.from(document.getElementsByClassName(name));
 query.tag      = (name) => Array.from(document.getElementsByTagName(name));
+query.name     = (name) => Array.from(document.getElementsByName(name));
+query.attr     = (attr, value) => Array.from(
+  document.querySelectorAll(value !== undefined ? `[${attr}="${value}"]` : `[${attr}]`)
+);
+query.data     = (key, value) => Array.from(
+  document.querySelectorAll(value !== undefined ? `[data-${key}="${value}"]` : `[data-${key}]`)
+);
 query.children = (parentId) => {
   const p = document.getElementById(parentId);
   return p ? Array.from(p.children) : [];

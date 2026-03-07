@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.5.1
+ * @version 0.5.2
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -1086,6 +1086,12 @@ interface ZQueryStatic {
   classes(name: string): Element[];
   /** `document.getElementsByTagName(name)` as array. */
   tag(name: string): Element[];
+  /** `document.getElementsByName(name)` as array. */
+  name(name: string): Element[];
+  /** `document.querySelectorAll('[attr]')` or `[attr="value"]` as array. */
+  attr(attr: string, value?: string): Element[];
+  /** `document.querySelectorAll('[data-key]')` or `[data-key="value"]` as array. */
+  data(key: string, value?: string): Element[];
   /** Children of `#parentId` as array. */
   children(parentId: string): Element[];
 
@@ -1117,6 +1123,7 @@ interface ZQueryStatic {
 
   // -- Reactive ------------------------------------------------------------
   reactive: typeof reactive;
+  Signal: typeof Signal;
   signal: typeof signal;
   computed: typeof computed;
   effect: typeof effect;

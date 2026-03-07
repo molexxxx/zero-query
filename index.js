@@ -10,7 +10,7 @@
  */
 
 import { query, queryAll, ZQueryCollection } from './src/core.js';
-import { reactive, signal, computed, effect } from './src/reactive.js';
+import { reactive, Signal, signal, computed, effect } from './src/reactive.js';
 import { component, mount, mountAll, getInstance, destroy, getRegistry, style } from './src/component.js';
 import { createRouter, getRouter } from './src/router.js';
 import { createStore, getStore } from './src/store.js';
@@ -49,11 +49,14 @@ function $(selector, context) {
 }
 
 
-// --- Quick refs ------------------------------------------------------------
+// --- Quick refs (DOM selectors) --------------------------------------------
 $.id       = query.id;
 $.class    = query.class;
 $.classes  = query.classes;
 $.tag      = query.tag;
+$.name     = query.name;
+$.attr     = query.attr;
+$.data     = query.data;
 $.children = query.children;
 
 // --- Collection selector ---------------------------------------------------
@@ -82,6 +85,7 @@ $.fn       = query.fn;
 
 // --- Reactive primitives ---------------------------------------------------
 $.reactive = reactive;
+$.Signal   = Signal;
 $.signal   = signal;
 $.computed = computed;
 $.effect   = effect;
@@ -161,7 +165,7 @@ export {
   $ as zQuery,
   ZQueryCollection,
   queryAll,
-  reactive, signal, computed, effect,
+  reactive, Signal, signal, computed, effect,
   component, mount, mountAll, getInstance, destroy, getRegistry, style,
   createRouter, getRouter,
   createStore, getStore,

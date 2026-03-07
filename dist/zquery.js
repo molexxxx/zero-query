@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.5.1
+ * zQuery (zeroQuery) v0.5.2
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -605,6 +605,13 @@ query.id       = (id) => document.getElementById(id);
 query.class    = (name) => document.querySelector(`.${name}`);
 query.classes  = (name) => Array.from(document.getElementsByClassName(name));
 query.tag      = (name) => Array.from(document.getElementsByTagName(name));
+query.name     = (name) => Array.from(document.getElementsByName(name));
+query.attr     = (attr, value) => Array.from(
+  document.querySelectorAll(value !== undefined ? `[${attr}="${value}"]` : `[${attr}]`)
+);
+query.data     = (key, value) => Array.from(
+  document.querySelectorAll(value !== undefined ? `[data-${key}="${value}"]` : `[data-${key}]`)
+);
 query.children = (parentId) => {
   const p = document.getElementById(parentId);
   return p ? Array.from(p.children) : [];
@@ -2862,11 +2869,14 @@ function $(selector, context) {
 }
 
 
-// --- Quick refs ------------------------------------------------------------
+// --- Quick refs (DOM selectors) --------------------------------------------
 $.id       = query.id;
 $.class    = query.class;
 $.classes  = query.classes;
 $.tag      = query.tag;
+$.name     = query.name;
+$.attr     = query.attr;
+$.data     = query.data;
 $.children = query.children;
 
 // --- Collection selector ---------------------------------------------------
@@ -2895,6 +2905,7 @@ $.fn       = query.fn;
 
 // --- Reactive primitives ---------------------------------------------------
 $.reactive = reactive;
+$.Signal   = Signal;
 $.signal   = signal;
 $.computed = computed;
 $.effect   = effect;
@@ -2946,7 +2957,7 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.5.1';
+$.version = '0.5.2';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {
