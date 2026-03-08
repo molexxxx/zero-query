@@ -47,6 +47,18 @@ $.component('about-page', {
             <span>Reactive components with state, lifecycle hooks, and template rendering</span>
           </div>
           <div class="feature-item">
+            <strong>computed / watch</strong>
+            <span>Derived state properties and reactive watchers on the counter page</span>
+          </div>
+          <div class="feature-item">
+            <strong>DOM Diffing</strong>
+            <span>Efficient <code>morph()</code> engine patches only changed DOM nodes on re-render</span>
+          </div>
+          <div class="feature-item">
+            <strong>z-key</strong>
+            <span>Keyed list reconciliation in z-for loops (todos, counter history, contacts)</span>
+          </div>
+          <div class="feature-item">
             <strong>$.router()</strong>
             <span>SPA routing with history mode, z-link navigation, and fallback pages</span>
           </div>
@@ -79,8 +91,8 @@ $.component('about-page', {
             <span>Safe rendering of user-generated and API content</span>
           </div>
           <div class="feature-item">
-            <strong>$.uuid()</strong>
-            <span>Unique ID generation for new todo items</span>
+            <strong>CSP-safe expressions</strong>
+            <span>Template expressions evaluated without <code>eval()</code> or <code>new Function()</code></span>
           </div>
           <div class="feature-item">
             <strong>z-model / z-ref</strong>

@@ -13,7 +13,7 @@
   <h1>Contacts</h1>
   <p class="subtitle">
     External template &amp; styles via <code>templateUrl</code> / <code>styleUrl</code>.
-    Directives: <code>z-if</code>, <code>z-for</code>, <code>z-show</code>,
+    Directives: <code>z-if</code>, <code>z-for</code> + <code>z-key</code>, <code>z-show</code>,
     <code>z-bind</code>, <code>z-class</code>, <code>z-model</code>, and more.
   </p>
 </div>
@@ -73,6 +73,7 @@
   <ul class="contacts-list">
     <li
       z-for="contact in contacts"
+      z-key="{{contact.id}}"
       class="contacts-item {{contact.id === selectedId ? 'selected' : ''}} {{contact.favorite ? 'is-favorite' : ''}}"
       @click="selectContact({{contact.id}})"
     >

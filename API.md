@@ -28,9 +28,13 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [$.component()](#componentname-definition)
   - [Component Definition Options](#component-definition-options)
   - [Component Instance API](#component-instance-api)
+  - [Computed Properties](#computed-properties)
+  - [Watch Callbacks](#watch-callbacks)
+  - [Slots — Content Projection](#slots--content-projection)
   - [External Templates & Styles](#external-templates--styles)
   - [Pages Config](#pages-config)
   - [Directives](#directives)
+  - [z-key — Keyed Reconciliation](#z-key--keyed-reconciliation)
   - [$.mount()](#mounttarget-name-props)
   - [$.mountAll()](#mountallroot)
   - [$.getInstance()](#getinstancetarget)
@@ -66,6 +70,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Storage Wrappers](#storage-wrappers)
   - [Event Bus](#event-bus)
 - [Global API](#global-api)
+- [Server-Side Rendering (SSR)](#server-side-rendering-ssr)
 - [ES Module Exports](#es-module-exports-for-npmbundler-usage)
 
 ---
@@ -567,6 +572,8 @@ $.component('app-counter', {
 | `mounted` | `() => void` | No | Called once after first render and DOM insertion. |
 | `updated` | `() => void` | No | Called after every subsequent re-render. |
 | `destroyed` | `() => void` | No | Called when the component is destroyed. Clean up subscriptions here. |
+| `computed` | `object` | No | Object of getter functions. Each key becomes a derived value on `this.computed.name`. Receives raw state as argument. |
+| `watch` | `object` | No | Object of callbacks keyed by state path. Called with `(newVal, oldVal)` when the watched key changes. Supports nested keys. |
 | `props` | — | No | Reserved key; props are set externally. |
 | *(any other key)* | `function` | No | Becomes an instance method, available as `this.methodName()` and in `@event` bindings. |
 
@@ -648,6 +655,134 @@ Available inside component methods as `this`, or from `$.mount()` / `$.getInstan
 | `this.emit(name, detail)` | `(string, any) => void` | Dispatch a bubbling CustomEvent from the component root. |
 | `this.destroy()` | `() => void` | Teardown: removes listeners, scoped styles, clears DOM. |
 | `this._scheduleUpdate()` | `() => void` | Manually queue a re-render (microtask batched). Safe to call from anywhere — state mutations during render are coalesced, so there is no risk of infinite re-render loops. Useful for store subscriptions. |
+
+### Computed Properties
+
+Computed properties are derived values recalculated from state whenever accessed. Define them as getter functions in the `computed` option — each receives the raw state object and returns a value.
+
+```js
+$.component('order-summary', {
+  state: () => ({
+    items: [
+      { name: 'Widget', price: 9.99, qty: 2 },
+      { name: 'Gadget', price: 24.99, qty: 1 },
+    ],
+    taxRate: 0.08,
+  }),
+
+  computed: {
+    subtotal(state)  { return state.items.reduce((sum, i) => sum + i.price * i.qty, 0); },
+    tax(state)       { return this.computed.subtotal * state.taxRate; },
+    total(state)     { return this.computed.subtotal + this.computed.tax; },
+    itemCount(state) { return state.items.reduce((sum, i) => sum + i.qty, 0); },
+    isEmpty(state)   { return state.items.length === 0; },
+  },
+
+  render() {
+    return `
+      <p>Items: ${this.computed.itemCount}</p>
+      <p>Total: $${this.computed.total.toFixed(2)}</p>
+    `;
+  }
+});
+```
+
+| Detail | Description |
+| --- | --- |
+| Access | `this.computed.name` — available in `render()`, methods, and lifecycle hooks. |
+| Mechanism | Each computed property is a getter via `Object.defineProperty`. Re-invoked on every access. |
+| Argument | The function receives `this.state.__raw` (unwrapped state) as its first argument. |
+| Cross-reference | Computed properties can reference other computed values (e.g. `this.computed.subtotal`). |
+
+### Watch Callbacks
+
+Watch callbacks fire when a specific state key changes. Use them for side effects — localStorage, analytics, toasts, external DOM updates, data fetching.
+
+```js
+$.component('settings-panel', {
+  state: () => ({
+    theme: 'dark',
+    fontSize: 16,
+    user: { name: 'Tony', email: 'tony@example.com' },
+  }),
+
+  watch: {
+    theme(val, old) {
+      document.documentElement.setAttribute('data-theme', val);
+    },
+    fontSize(val) {
+      document.documentElement.style.fontSize = val + 'px';
+    },
+    'user.name'(val) {
+      console.log('Name updated to:', val);
+    },
+  },
+
+  render() { /* ... */ }
+});
+```
+
+| Detail | Description |
+| --- | --- |
+| Signature | `key(newVal, oldVal)` — called with the new and previous values. |
+| Nested keys | `'user.name'` watches the `name` property inside `user`. |
+| Parent keys | A watcher on `'user'` also fires when `'user.name'` changes. |
+| Timing | Fires synchronously in the reactive setter, before the batched DOM update. |
+
+### Slots — Content Projection
+
+Slots let a parent inject content into a child component's template. The child uses `<slot>` placeholders; the parent provides content inside the child's tag.
+
+#### Default Slot
+
+```js
+$.component('card-box', {
+  render() {
+    return `<div class="card"><slot>Fallback content</slot></div>`;
+  }
+});
+```
+
+```html
+<!-- Parent provides content -->
+<card-box>
+  <h3>Hello!</h3>
+  <p>This fills the default slot.</p>
+</card-box>
+
+<!-- Empty tag shows fallback -->
+<card-box></card-box>
+```
+
+#### Named Slots
+
+```js
+$.component('page-layout', {
+  render() {
+    return `
+      <header><slot name="header">Default Header</slot></header>
+      <main><slot>Default Body</slot></main>
+      <footer><slot name="footer">Default Footer</slot></footer>
+    `;
+  }
+});
+```
+
+```html
+<page-layout>
+  <div slot="header"><h1>My App</h1></div>
+  <p>Body content (default slot).</p>
+  <div slot="footer">&copy; 2025</div>
+</page-layout>
+```
+
+| Detail | Description |
+| --- | --- |
+| Capture | Inner HTML is captured from the host element before the first render. |
+| Named | Children with `slot="name"` go to the matching `<slot name="name">`. |
+| Default | Everything else goes to the unnamed `<slot>` (the default slot). |
+| Fallback | Content between `<slot>...</slot>` is used when no projected content is provided. |
+| Timing | Slots are captured once at mount time — ideal for static content projection. |
 
 ### External Templates & Styles
 
@@ -857,7 +992,7 @@ $.component('install-wizard', {
 
 Directives are special attributes used inside component `render()` HTML templates. They're processed automatically on each render, giving you declarative control over the DOM without manual queries.
 
-**Processing order:** `z-for` → `z-pre` → `z-if`/`z-else-if`/`z-else` → `z-show` → `z-bind`/`:attr` → `z-class` → `z-style` → `z-html` → `z-text` → `z-cloak` → `@event`/`z-on` → `z-ref` → `z-model`
+**Processing order:** `z-for` → `z-pre` → `z-if`/`z-else-if`/`z-else` → `z-show` → `z-bind`/`:attr` → `z-class` → `z-style` → `z-html` → `z-text` → `z-cloak` → `@event`/`z-on` → `z-ref` → `z-model` → `z-key` (morph engine)
 
 #### `z-for` — List Rendering
 
@@ -1037,7 +1172,7 @@ If no parentheses are used (e.g. `@click="handler"`), the native event is automa
 
 Creates a reactive two-way sync between a form element and a state property. When the user types or selects, the state updates and the rest of the template re-renders.
 
-> **Focus preservation:** During re-render, the component automatically preserves focus and cursor position on **any focused input, textarea, or select** inside the component — not just `z-model` elements. The element is relocated after the DOM rebuild using the first available identifier: `z-model` attribute → `z-ref` attribute → a tag/type/name/placeholder combination. This means typing feels seamless even in plain `@input`-bound search fields or other non-`z-model` inputs.
+> **Focus preservation:** During re-render, the DOM morphing engine patches only the nodes that changed, so focused elements typically survive untouched. As a fallback, focus and cursor position on **any focused input, textarea, or select** are saved before the morph and restored afterward — not just `z-model` elements. The element is relocated using the first available identifier: `z-model` attribute → `z-ref` attribute → a tag/type/name/placeholder combination. This means typing feels seamless even in plain `@input`-bound search fields or other non-`z-model` inputs.
 
 | Element / Type | Behavior |
 | --- | --- |
@@ -1115,6 +1250,60 @@ $.component('binding-demo', {
 ```
 
 After render, access via `this.refs.searchInput` or `this.refs.chart`.
+
+### z-key — Keyed Reconciliation
+
+Add `z-key` to elements inside a `z-for` loop to enable keyed DOM reconciliation. When the list changes, the morph engine matches old and new DOM nodes by key rather than by position, preserving focus, input values, and animations.
+
+```html
+<ul>
+  <li z-for="user in users" z-key="{{user.id}}">
+    {{user.name}} — {{user.role}}
+  </li>
+</ul>
+```
+
+| Detail | Description |
+| --- | --- |
+| Placement | On the same element as `z-for`, or any child that needs identity tracking. |
+| Value | Must be a unique, stable identifier per item (e.g. database ID, UUID). |
+| Without key | Positional matching — old[0]↔new[0]. Moved nodes are patched in place. |
+| With key | Identity matching — existing DOM nodes are moved, not recreated. |
+| Avoid index | `z-key="{{i}}"` defeats the purpose since indices shift on insert/remove. |
+
+> **Under the hood:** The `morph()` engine builds key maps for old and new children, then reconciles by moving, patching, or removing nodes as needed. Combined with Proxy-based reactivity (only the changed component re-renders), this delivers minimal DOM updates.
+
+### `morph(rootEl, newHTML)`
+
+Patch an existing DOM element's children to match new HTML without destroying unchanged nodes. Used internally by the component system on every re-render (after the first). Can also be called directly.
+
+```js
+// Programmatic usage outside components
+$.morph($.id('list'), '<li>Updated</li><li>Items</li>');
+```
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `rootEl` | `Element` | The live DOM container to patch |
+| `newHTML` | `string` | The desired HTML string |
+
+### `safeEval(expr, scope)`
+
+CSP-safe expression evaluator. Parses and evaluates a JavaScript-like expression string without using `eval()` or `new Function()`. Used internally by all directives to evaluate expressions.
+
+```js
+$.safeEval('items.length > 0 && user.name', { items: [1, 2], user: { name: 'Tony' } });
+// → 'Tony'
+
+$.safeEval('price * qty + tax', { price: 9.99, qty: 2, tax: 1.50 });
+// → 21.48
+```
+
+| Detail | Description |
+| --- | --- |
+| Supported | Property access, arithmetic, comparisons, logical ops, ternary, optional chaining (`?.`), nullish coalescing (`??`), template literals, array/object literals, method calls, `typeof`. |
+| Blocked | `constructor`, `__proto__`, `prototype` access is blocked. |
+| Safe methods | Whitelisted Array/String/Number/Object methods only (e.g. `.map()`, `.filter()`, `.trim()`, `.toFixed()`). |
 
 ### `mount(target, name, props?)`
 
@@ -1817,11 +2006,64 @@ $.bus.on('cart:updated', (data) => {
 | Property/Method | Description |
 | --- | --- |
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
-| `$.version` | Library version string (e.g. `'0.5.2'`). |
+| `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. See [z-key](#z-key--keyed-reconciliation). |
+| `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
+| `$.version` | Library version string (e.g. `'0.5.6'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |
 | `window.zQuery` | Global alias (auto-set in browser). |
+
+---
+
+## Server-Side Rendering (SSR)
+
+zQuery includes a lightweight SSR module for rendering components to HTML strings in Node.js. Import from `src/ssr.js`.
+
+### `createSSRApp()`
+
+Create an SSR application instance.
+
+```js
+import { createSSRApp, renderToString } from '@tonywied17/zero-query';
+
+const app = createSSRApp();
+
+app.component('hello-world', {
+  state: () => ({ name: 'World' }),
+  render() {
+    return `<h1>Hello, ${this.state.name}!</h1>`;
+  }
+});
+```
+
+### `renderToString(app, name, props?)`
+
+Render a registered component to an HTML string.
+
+```js
+const html = await renderToString(app, 'hello-world', { name: 'Tony' });
+// '<hello-world data-zq-ssr><h1>Hello, Tony!</h1></hello-world>'
+```
+
+### `app.renderPage(name, options?)`
+
+Render a full HTML page with the component embedded.
+
+```js
+const page = await app.renderPage('hello-world', {
+  title: 'My App',
+  lang: 'en',
+  styles: ['styles/global.css'],
+  scripts: ['scripts/app.js'],
+});
+```
+
+| Detail | Description |
+| --- | --- |
+| Hydration | Components rendered with SSR include a `data-zq-ssr` attribute for client-side hydration identification. |
+| State | Initial state and props are serialized into the output for client-side pickup. |
+| Scope | SSR uses its own component registry — call `app.component()` to register components for server rendering. |
 
 ---
 
@@ -1834,8 +2076,10 @@ import {
   $, zQuery, ZQueryCollection, queryAll,
   reactive, signal, computed, effect,
   component, mount, mountAll, getInstance, destroy, getRegistry, style,
+  morph, safeEval,
   createRouter, getRouter,
   createStore, getStore,
+  createSSRApp, renderToString,
   http,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, html, trust, uuid, camelCase, kebabCase,

@@ -62,19 +62,19 @@ $.component('home-page', {
 
         <div class="card">
           <h3>🔢 Counter</h3>
-          <p>Component state, two-way binding with <code>z-model</code>, and event handling.</p>
+          <p><code>computed</code> properties, <code>watch</code> callbacks, and <code>z-for</code> with <code>z-key</code> diffing.</p>
           <a z-link="/counter" class="btn btn-outline">Try It →</a>
         </div>
 
         <div class="card">
           <h3>✅ Todos</h3>
-          <p>Global store with actions & getters. <strong>${store.getters.todoCount}</strong> items, <strong>${store.getters.doneCount}</strong> done.</p>
+          <p>Global store, <code>z-key</code> keyed lists, DOM diffing. <strong>${store.getters.todoCount}</strong> items, <strong>${store.getters.doneCount}</strong> done.</p>
           <a z-link="/todos" class="btn btn-outline">Try It →</a>
         </div>
 
         <div class="card">
           <h3>📇 Contacts</h3>
-          <p>External templates &amp; styles via <code>templateUrl</code> / <code>styleUrl</code>. <strong>${store.getters.contactCount}</strong> contacts, <strong>${store.getters.favoriteCount}</strong> ★ favorited.</p>
+          <p>External templates, scoped styles, and <code>z-key</code> keyed lists. <strong>${store.getters.contactCount}</strong> contacts, <strong>${store.getters.favoriteCount}</strong> ★ favorited.</p>
           <a z-link="/contacts" class="btn btn-outline">Try It →</a>
         </div>
 

@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.5.2
+ * zQuery (zeroQuery) v0.5.6
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -667,6 +667,1035 @@ query.off = (event, handler) => {
 // Extend collection prototype (like $.fn in jQuery)
 query.fn = ZQueryCollection.prototype;
 
+// --- src/expression.js ———————————————————————————————————————————
+/**
+ * zQuery Expression Parser — CSP-safe expression evaluator
+ *
+ * Replaces `new Function()` / `eval()` with a hand-written parser that
+ * evaluates expressions safely without violating Content Security Policy.
+ *
+ * Supports:
+ *   - Property access:       user.name, items[0], items[i]
+ *   - Method calls:          items.length, str.toUpperCase()
+ *   - Arithmetic:            a + b, count * 2, i % 2
+ *   - Comparison:            a === b, count > 0, x != null
+ *   - Logical:               a && b, a || b, !a
+ *   - Ternary:               a ? b : c
+ *   - Typeof:                typeof x
+ *   - Unary:                 -a, +a, !a
+ *   - Literals:              42, 'hello', "world", true, false, null, undefined
+ *   - Template literals:     `Hello ${name}`
+ *   - Array literals:        [1, 2, 3]
+ *   - Object literals:       { foo: 'bar', baz: 1 }
+ *   - Grouping:              (a + b) * c
+ *   - Nullish coalescing:    a ?? b
+ *   - Optional chaining:     a?.b, a?.[b], a?.()
+ */
+
+// Token types
+const T = {
+  NUM: 1, STR: 2, IDENT: 3, OP: 4, PUNC: 5, TMPL: 6, EOF: 7
+};
+
+// Operator precedence (higher = binds tighter)
+const PREC = {
+  '??': 2,
+  '||': 3,
+  '&&': 4,
+  '==': 8, '!=': 8, '===': 8, '!==': 8,
+  '<': 9, '>': 9, '<=': 9, '>=': 9, 'instanceof': 9, 'in': 9,
+  '+': 11, '-': 11,
+  '*': 12, '/': 12, '%': 12,
+};
+
+const KEYWORDS = new Set([
+  'true', 'false', 'null', 'undefined', 'typeof', 'instanceof', 'in',
+  'new', 'void'
+]);
+
+// ---------------------------------------------------------------------------
+// Tokenizer
+// ---------------------------------------------------------------------------
+function tokenize(expr) {
+  const tokens = [];
+  let i = 0;
+  const len = expr.length;
+
+  while (i < len) {
+    const ch = expr[i];
+
+    // Whitespace
+    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') { i++; continue; }
+
+    // Numbers
+    if ((ch >= '0' && ch <= '9') || (ch === '.' && i + 1 < len && expr[i + 1] >= '0' && expr[i + 1] <= '9')) {
+      let num = '';
+      if (ch === '0' && i + 1 < len && (expr[i + 1] === 'x' || expr[i + 1] === 'X')) {
+        num = '0x'; i += 2;
+        while (i < len && /[0-9a-fA-F]/.test(expr[i])) num += expr[i++];
+      } else {
+        while (i < len && ((expr[i] >= '0' && expr[i] <= '9') || expr[i] === '.')) num += expr[i++];
+        if (i < len && (expr[i] === 'e' || expr[i] === 'E')) {
+          num += expr[i++];
+          if (i < len && (expr[i] === '+' || expr[i] === '-')) num += expr[i++];
+          while (i < len && expr[i] >= '0' && expr[i] <= '9') num += expr[i++];
+        }
+      }
+      tokens.push({ t: T.NUM, v: Number(num) });
+      continue;
+    }
+
+    // Strings
+    if (ch === "'" || ch === '"') {
+      const quote = ch;
+      let str = '';
+      i++;
+      while (i < len && expr[i] !== quote) {
+        if (expr[i] === '\\' && i + 1 < len) {
+          const esc = expr[++i];
+          if (esc === 'n') str += '\n';
+          else if (esc === 't') str += '\t';
+          else if (esc === 'r') str += '\r';
+          else if (esc === '\\') str += '\\';
+          else if (esc === quote) str += quote;
+          else str += esc;
+        } else {
+          str += expr[i];
+        }
+        i++;
+      }
+      i++; // closing quote
+      tokens.push({ t: T.STR, v: str });
+      continue;
+    }
+
+    // Template literals
+    if (ch === '`') {
+      const parts = []; // alternating: string, expr, string, expr, ...
+      let str = '';
+      i++;
+      while (i < len && expr[i] !== '`') {
+        if (expr[i] === '$' && i + 1 < len && expr[i + 1] === '{') {
+          parts.push(str);
+          str = '';
+          i += 2;
+          let depth = 1;
+          let inner = '';
+          while (i < len && depth > 0) {
+            if (expr[i] === '{') depth++;
+            else if (expr[i] === '}') { depth--; if (depth === 0) break; }
+            inner += expr[i++];
+          }
+          i++; // closing }
+          parts.push({ expr: inner });
+        } else {
+          if (expr[i] === '\\' && i + 1 < len) { str += expr[++i]; }
+          else str += expr[i];
+          i++;
+        }
+      }
+      i++; // closing backtick
+      parts.push(str);
+      tokens.push({ t: T.TMPL, v: parts });
+      continue;
+    }
+
+    // Identifiers & keywords
+    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch === '_' || ch === '$') {
+      let ident = '';
+      while (i < len && /[\w$]/.test(expr[i])) ident += expr[i++];
+      tokens.push({ t: T.IDENT, v: ident });
+      continue;
+    }
+
+    // Multi-char operators
+    const two = expr.slice(i, i + 3);
+    if (two === '===' || two === '!==' || two === '?.') {
+      if (two === '?.') {
+        tokens.push({ t: T.OP, v: '?.' });
+        i += 2;
+      } else {
+        tokens.push({ t: T.OP, v: two });
+        i += 3;
+      }
+      continue;
+    }
+    const pair = expr.slice(i, i + 2);
+    if (pair === '==' || pair === '!=' || pair === '<=' || pair === '>=' ||
+        pair === '&&' || pair === '||' || pair === '??' || pair === '?.') {
+      tokens.push({ t: T.OP, v: pair });
+      i += 2;
+      continue;
+    }
+
+    // Single char operators and punctuation
+    if ('+-*/%'.includes(ch)) {
+      tokens.push({ t: T.OP, v: ch });
+      i++; continue;
+    }
+    if ('<>=!'.includes(ch)) {
+      tokens.push({ t: T.OP, v: ch });
+      i++; continue;
+    }
+    if ('()[]{},.?:'.includes(ch)) {
+      tokens.push({ t: T.PUNC, v: ch });
+      i++; continue;
+    }
+
+    // Unknown — skip
+    i++;
+  }
+
+  tokens.push({ t: T.EOF, v: null });
+  return tokens;
+}
+
+// ---------------------------------------------------------------------------
+// Parser — Pratt (precedence climbing)
+// ---------------------------------------------------------------------------
+class Parser {
+  constructor(tokens, scope) {
+    this.tokens = tokens;
+    this.pos = 0;
+    this.scope = scope;
+  }
+
+  peek() { return this.tokens[this.pos]; }
+  next() { return this.tokens[this.pos++]; }
+
+  expect(type, val) {
+    const t = this.next();
+    if (t.t !== type || (val !== undefined && t.v !== val)) {
+      throw new Error(`Expected ${val || type} but got ${t.v}`);
+    }
+    return t;
+  }
+
+  match(type, val) {
+    const t = this.peek();
+    if (t.t === type && (val === undefined || t.v === val)) {
+      return this.next();
+    }
+    return null;
+  }
+
+  // Main entry
+  parse() {
+    const result = this.parseExpression(0);
+    return result;
+  }
+
+  // Precedence climbing
+  parseExpression(minPrec) {
+    let left = this.parseUnary();
+
+    while (true) {
+      const tok = this.peek();
+
+      // Ternary
+      if (tok.t === T.PUNC && tok.v === '?') {
+        // Distinguish ternary ? from optional chaining ?.
+        if (this.tokens[this.pos + 1]?.v !== '.') {
+          this.next(); // consume ?
+          const truthy = this.parseExpression(0);
+          this.expect(T.PUNC, ':');
+          const falsy = this.parseExpression(0);
+          left = { type: 'ternary', cond: left, truthy, falsy };
+          continue;
+        }
+      }
+
+      // Binary operators
+      if (tok.t === T.OP && tok.v in PREC) {
+        const prec = PREC[tok.v];
+        if (prec <= minPrec) break;
+        this.next();
+        const right = this.parseExpression(prec);
+        left = { type: 'binary', op: tok.v, left, right };
+        continue;
+      }
+
+      // instanceof and in as binary operators
+      if (tok.t === T.IDENT && (tok.v === 'instanceof' || tok.v === 'in') && PREC[tok.v] > minPrec) {
+        const prec = PREC[tok.v];
+        this.next();
+        const right = this.parseExpression(prec);
+        left = { type: 'binary', op: tok.v, left, right };
+        continue;
+      }
+
+      break;
+    }
+
+    return left;
+  }
+
+  parseUnary() {
+    const tok = this.peek();
+
+    // typeof
+    if (tok.t === T.IDENT && tok.v === 'typeof') {
+      this.next();
+      const arg = this.parseUnary();
+      return { type: 'typeof', arg };
+    }
+
+    // void
+    if (tok.t === T.IDENT && tok.v === 'void') {
+      this.next();
+      this.parseUnary(); // evaluate but discard
+      return { type: 'literal', value: undefined };
+    }
+
+    // !expr
+    if (tok.t === T.OP && tok.v === '!') {
+      this.next();
+      const arg = this.parseUnary();
+      return { type: 'not', arg };
+    }
+
+    // -expr, +expr
+    if (tok.t === T.OP && (tok.v === '-' || tok.v === '+')) {
+      this.next();
+      const arg = this.parseUnary();
+      return { type: 'unary', op: tok.v, arg };
+    }
+
+    return this.parsePostfix();
+  }
+
+  parsePostfix() {
+    let left = this.parsePrimary();
+
+    while (true) {
+      const tok = this.peek();
+
+      // Property access: a.b
+      if (tok.t === T.PUNC && tok.v === '.') {
+        this.next();
+        const prop = this.next();
+        left = { type: 'member', obj: left, prop: prop.v, computed: false };
+        // Check for method call: a.b()
+        if (this.peek().t === T.PUNC && this.peek().v === '(') {
+          left = this._parseCall(left);
+        }
+        continue;
+      }
+
+      // Optional chaining: a?.b, a?.[b], a?.()
+      if (tok.t === T.OP && tok.v === '?.') {
+        this.next();
+        const next = this.peek();
+        if (next.t === T.PUNC && next.v === '[') {
+          // a?.[expr]
+          this.next();
+          const prop = this.parseExpression(0);
+          this.expect(T.PUNC, ']');
+          left = { type: 'optional_member', obj: left, prop, computed: true };
+        } else if (next.t === T.PUNC && next.v === '(') {
+          // a?.()
+          left = { type: 'optional_call', callee: left, args: this._parseArgs() };
+        } else {
+          // a?.b
+          const prop = this.next();
+          left = { type: 'optional_member', obj: left, prop: prop.v, computed: false };
+          if (this.peek().t === T.PUNC && this.peek().v === '(') {
+            left = this._parseCall(left);
+          }
+        }
+        continue;
+      }
+
+      // Computed access: a[b]
+      if (tok.t === T.PUNC && tok.v === '[') {
+        this.next();
+        const prop = this.parseExpression(0);
+        this.expect(T.PUNC, ']');
+        left = { type: 'member', obj: left, prop, computed: true };
+        // Check for method call: a[b]()
+        if (this.peek().t === T.PUNC && this.peek().v === '(') {
+          left = this._parseCall(left);
+        }
+        continue;
+      }
+
+      // Function call: fn()
+      if (tok.t === T.PUNC && tok.v === '(') {
+        left = this._parseCall(left);
+        continue;
+      }
+
+      break;
+    }
+
+    return left;
+  }
+
+  _parseCall(callee) {
+    const args = this._parseArgs();
+    return { type: 'call', callee, args };
+  }
+
+  _parseArgs() {
+    this.expect(T.PUNC, '(');
+    const args = [];
+    while (!(this.peek().t === T.PUNC && this.peek().v === ')') && this.peek().t !== T.EOF) {
+      args.push(this.parseExpression(0));
+      if (this.peek().t === T.PUNC && this.peek().v === ',') this.next();
+    }
+    this.expect(T.PUNC, ')');
+    return args;
+  }
+
+  parsePrimary() {
+    const tok = this.peek();
+
+    // Number literal
+    if (tok.t === T.NUM) {
+      this.next();
+      return { type: 'literal', value: tok.v };
+    }
+
+    // String literal
+    if (tok.t === T.STR) {
+      this.next();
+      return { type: 'literal', value: tok.v };
+    }
+
+    // Template literal
+    if (tok.t === T.TMPL) {
+      this.next();
+      return { type: 'template', parts: tok.v };
+    }
+
+    // Grouping (parenthesized expression)
+    if (tok.t === T.PUNC && tok.v === '(') {
+      this.next();
+      const expr = this.parseExpression(0);
+      this.expect(T.PUNC, ')');
+      return expr;
+    }
+
+    // Array literal
+    if (tok.t === T.PUNC && tok.v === '[') {
+      this.next();
+      const elements = [];
+      while (!(this.peek().t === T.PUNC && this.peek().v === ']') && this.peek().t !== T.EOF) {
+        elements.push(this.parseExpression(0));
+        if (this.peek().t === T.PUNC && this.peek().v === ',') this.next();
+      }
+      this.expect(T.PUNC, ']');
+      return { type: 'array', elements };
+    }
+
+    // Object literal
+    if (tok.t === T.PUNC && tok.v === '{') {
+      this.next();
+      const properties = [];
+      while (!(this.peek().t === T.PUNC && this.peek().v === '}') && this.peek().t !== T.EOF) {
+        const keyTok = this.next();
+        let key;
+        if (keyTok.t === T.IDENT || keyTok.t === T.STR) key = keyTok.v;
+        else if (keyTok.t === T.NUM) key = String(keyTok.v);
+        else throw new Error('Invalid object key: ' + keyTok.v);
+
+        // Shorthand property: { foo } means { foo: foo }
+        if (this.peek().t === T.PUNC && (this.peek().v === ',' || this.peek().v === '}')) {
+          properties.push({ key, value: { type: 'ident', name: key } });
+        } else {
+          this.expect(T.PUNC, ':');
+          properties.push({ key, value: this.parseExpression(0) });
+        }
+        if (this.peek().t === T.PUNC && this.peek().v === ',') this.next();
+      }
+      this.expect(T.PUNC, '}');
+      return { type: 'object', properties };
+    }
+
+    // Identifiers & keywords
+    if (tok.t === T.IDENT) {
+      this.next();
+
+      // Keywords
+      if (tok.v === 'true') return { type: 'literal', value: true };
+      if (tok.v === 'false') return { type: 'literal', value: false };
+      if (tok.v === 'null') return { type: 'literal', value: null };
+      if (tok.v === 'undefined') return { type: 'literal', value: undefined };
+
+      // new keyword
+      if (tok.v === 'new') {
+        const classExpr = this.parsePostfix();
+        let args = [];
+        if (this.peek().t === T.PUNC && this.peek().v === '(') {
+          args = this._parseArgs();
+        }
+        return { type: 'new', callee: classExpr, args };
+      }
+
+      return { type: 'ident', name: tok.v };
+    }
+
+    // Fallback — return undefined for unparseable
+    this.next();
+    return { type: 'literal', value: undefined };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Evaluator — walks the AST, resolves against scope
+// ---------------------------------------------------------------------------
+
+/** Safe property access whitelist for built-in prototypes */
+const SAFE_ARRAY_METHODS = new Set([
+  'length', 'map', 'filter', 'find', 'findIndex', 'some', 'every',
+  'reduce', 'reduceRight', 'forEach', 'includes', 'indexOf', 'lastIndexOf',
+  'join', 'slice', 'concat', 'flat', 'flatMap', 'reverse', 'sort',
+  'fill', 'keys', 'values', 'entries', 'at', 'toString',
+]);
+
+const SAFE_STRING_METHODS = new Set([
+  'length', 'charAt', 'charCodeAt', 'includes', 'indexOf', 'lastIndexOf',
+  'slice', 'substring', 'trim', 'trimStart', 'trimEnd', 'toLowerCase',
+  'toUpperCase', 'split', 'replace', 'replaceAll', 'match', 'search',
+  'startsWith', 'endsWith', 'padStart', 'padEnd', 'repeat', 'at',
+  'toString', 'valueOf',
+]);
+
+const SAFE_NUMBER_METHODS = new Set([
+  'toFixed', 'toPrecision', 'toString', 'valueOf',
+]);
+
+const SAFE_OBJECT_METHODS = new Set([
+  'hasOwnProperty', 'toString', 'valueOf',
+]);
+
+const SAFE_MATH_PROPS = new Set([
+  'PI', 'E', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'SQRT2', 'SQRT1_2',
+  'abs', 'ceil', 'floor', 'round', 'trunc', 'max', 'min', 'pow',
+  'sqrt', 'sign', 'random', 'log', 'log2', 'log10',
+]);
+
+const SAFE_JSON_PROPS = new Set(['parse', 'stringify']);
+
+/**
+ * Check if property access is safe
+ */
+function _isSafeAccess(obj, prop) {
+  // Never allow access to dangerous properties
+  const BLOCKED = new Set([
+    'constructor', '__proto__', 'prototype', '__defineGetter__',
+    '__defineSetter__', '__lookupGetter__', '__lookupSetter__',
+  ]);
+  if (typeof prop === 'string' && BLOCKED.has(prop)) return false;
+
+  // Always allow plain object property access and array index access
+  if (obj !== null && obj !== undefined && typeof obj === 'object') return true;
+  if (typeof obj === 'string') return SAFE_STRING_METHODS.has(prop);
+  if (typeof obj === 'number') return SAFE_NUMBER_METHODS.has(prop);
+  return false;
+}
+
+function evaluate(node, scope) {
+  if (!node) return undefined;
+
+  switch (node.type) {
+    case 'literal':
+      return node.value;
+
+    case 'ident': {
+      const name = node.name;
+      // Check scope layers in order
+      for (const layer of scope) {
+        if (layer && typeof layer === 'object' && name in layer) {
+          return layer[name];
+        }
+      }
+      // Built-in globals (safe ones only)
+      if (name === 'Math') return Math;
+      if (name === 'JSON') return JSON;
+      if (name === 'Date') return Date;
+      if (name === 'Array') return Array;
+      if (name === 'Object') return Object;
+      if (name === 'String') return String;
+      if (name === 'Number') return Number;
+      if (name === 'Boolean') return Boolean;
+      if (name === 'parseInt') return parseInt;
+      if (name === 'parseFloat') return parseFloat;
+      if (name === 'isNaN') return isNaN;
+      if (name === 'isFinite') return isFinite;
+      if (name === 'Infinity') return Infinity;
+      if (name === 'NaN') return NaN;
+      if (name === 'encodeURIComponent') return encodeURIComponent;
+      if (name === 'decodeURIComponent') return decodeURIComponent;
+      if (name === 'console') return console;
+      return undefined;
+    }
+
+    case 'template': {
+      // Template literal with interpolation
+      let result = '';
+      for (const part of node.parts) {
+        if (typeof part === 'string') {
+          result += part;
+        } else if (part && part.expr) {
+          result += String(safeEval(part.expr, scope) ?? '');
+        }
+      }
+      return result;
+    }
+
+    case 'member': {
+      const obj = evaluate(node.obj, scope);
+      if (obj == null) return undefined;
+      const prop = node.computed ? evaluate(node.prop, scope) : node.prop;
+      if (!_isSafeAccess(obj, prop)) return undefined;
+      return obj[prop];
+    }
+
+    case 'optional_member': {
+      const obj = evaluate(node.obj, scope);
+      if (obj == null) return undefined;
+      const prop = node.computed ? evaluate(node.prop, scope) : node.prop;
+      if (!_isSafeAccess(obj, prop)) return undefined;
+      return obj[prop];
+    }
+
+    case 'call': {
+      const result = _resolveCall(node, scope, false);
+      return result;
+    }
+
+    case 'optional_call': {
+      const callee = evaluate(node.callee, scope);
+      if (callee == null) return undefined;
+      if (typeof callee !== 'function') return undefined;
+      const args = node.args.map(a => evaluate(a, scope));
+      return callee(...args);
+    }
+
+    case 'new': {
+      const Ctor = evaluate(node.callee, scope);
+      if (typeof Ctor !== 'function') return undefined;
+      // Only allow safe constructors
+      if (Ctor === Date || Ctor === Array || Ctor === Map || Ctor === Set ||
+          Ctor === RegExp || Ctor === Error || Ctor === URL || Ctor === URLSearchParams) {
+        const args = node.args.map(a => evaluate(a, scope));
+        return new Ctor(...args);
+      }
+      return undefined;
+    }
+
+    case 'binary':
+      return _evalBinary(node, scope);
+
+    case 'unary': {
+      const val = evaluate(node.arg, scope);
+      return node.op === '-' ? -val : +val;
+    }
+
+    case 'not':
+      return !evaluate(node.arg, scope);
+
+    case 'typeof': {
+      try {
+        return typeof evaluate(node.arg, scope);
+      } catch {
+        return 'undefined';
+      }
+    }
+
+    case 'ternary': {
+      const cond = evaluate(node.cond, scope);
+      return cond ? evaluate(node.truthy, scope) : evaluate(node.falsy, scope);
+    }
+
+    case 'array':
+      return node.elements.map(e => evaluate(e, scope));
+
+    case 'object': {
+      const obj = {};
+      for (const { key, value } of node.properties) {
+        obj[key] = evaluate(value, scope);
+      }
+      return obj;
+    }
+
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Resolve and execute a function call safely.
+ */
+function _resolveCall(node, scope) {
+  const callee = node.callee;
+  const args = node.args.map(a => evaluate(a, scope));
+
+  // Method call: obj.method() — bind `this` to obj
+  if (callee.type === 'member' || callee.type === 'optional_member') {
+    const obj = evaluate(callee.obj, scope);
+    if (obj == null) return undefined;
+    const prop = callee.computed ? evaluate(callee.prop, scope) : callee.prop;
+    if (!_isSafeAccess(obj, prop)) return undefined;
+    const fn = obj[prop];
+    if (typeof fn !== 'function') return undefined;
+    return fn.apply(obj, args);
+  }
+
+  // Direct call: fn(args)
+  const fn = evaluate(callee, scope);
+  if (typeof fn !== 'function') return undefined;
+  return fn(...args);
+}
+
+/**
+ * Evaluate binary expression.
+ */
+function _evalBinary(node, scope) {
+  // Short-circuit for logical ops
+  if (node.op === '&&') {
+    const left = evaluate(node.left, scope);
+    return left ? evaluate(node.right, scope) : left;
+  }
+  if (node.op === '||') {
+    const left = evaluate(node.left, scope);
+    return left ? left : evaluate(node.right, scope);
+  }
+  if (node.op === '??') {
+    const left = evaluate(node.left, scope);
+    return left != null ? left : evaluate(node.right, scope);
+  }
+
+  const left = evaluate(node.left, scope);
+  const right = evaluate(node.right, scope);
+
+  switch (node.op) {
+    case '+': return left + right;
+    case '-': return left - right;
+    case '*': return left * right;
+    case '/': return left / right;
+    case '%': return left % right;
+    case '==': return left == right;
+    case '!=': return left != right;
+    case '===': return left === right;
+    case '!==': return left !== right;
+    case '<': return left < right;
+    case '>': return left > right;
+    case '<=': return left <= right;
+    case '>=': return left >= right;
+    case 'instanceof': return left instanceof right;
+    case 'in': return left in right;
+    default: return undefined;
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Safely evaluate a JS expression string against scope layers.
+ *
+ * @param {string} expr — expression string
+ * @param {object[]} scope — array of scope objects, checked in order
+ *   Typical: [loopVars, state, { props, refs, $ }]
+ * @returns {*} — evaluation result, or undefined on error
+ */
+function safeEval(expr, scope) {
+  try {
+    const tokens = tokenize(expr.trim());
+    const parser = new Parser(tokens, scope);
+    const ast = parser.parse();
+    return evaluate(ast, scope);
+  } catch {
+    return undefined;
+  }
+}
+
+// --- src/diff.js —————————————————————————————————————————————————
+/**
+ * zQuery Diff — Lightweight DOM morphing engine
+ *
+ * Patches an existing DOM tree to match new HTML without destroying nodes
+ * that haven't changed. Preserves focus, scroll positions, third-party
+ * widget state, video playback, and other live DOM state.
+ *
+ * Approach: walk old and new trees in parallel, reconcile node by node.
+ * Keyed elements (via `z-key`) get matched across position changes.
+ */
+
+// ---------------------------------------------------------------------------
+// morph(existingRoot, newHTML) — patch existing DOM to match newHTML
+// ---------------------------------------------------------------------------
+
+/**
+ * Morph an existing DOM element's children to match new HTML.
+ * Only touches nodes that actually differ.
+ *
+ * @param {Element} rootEl — The live DOM container to patch
+ * @param {string} newHTML — The desired HTML string
+ */
+function morph(rootEl, newHTML) {
+  const template = document.createElement('template');
+  template.innerHTML = newHTML;
+  const newRoot = template.content;
+
+  // Convert to element for consistent handling — wrap in a div if needed
+  const tempDiv = document.createElement('div');
+  while (newRoot.firstChild) tempDiv.appendChild(newRoot.firstChild);
+
+  _morphChildren(rootEl, tempDiv);
+}
+
+/**
+ * Reconcile children of `oldParent` to match `newParent`.
+ *
+ * @param {Element} oldParent — live DOM parent
+ * @param {Element} newParent — desired state parent
+ */
+function _morphChildren(oldParent, newParent) {
+  const oldChildren = [...oldParent.childNodes];
+  const newChildren = [...newParent.childNodes];
+
+  // Build key maps for keyed element matching
+  const oldKeyMap = new Map();
+  const newKeyMap = new Map();
+
+  for (let i = 0; i < oldChildren.length; i++) {
+    const key = _getKey(oldChildren[i]);
+    if (key != null) oldKeyMap.set(key, i);
+  }
+  for (let i = 0; i < newChildren.length; i++) {
+    const key = _getKey(newChildren[i]);
+    if (key != null) newKeyMap.set(key, i);
+  }
+
+  const hasKeys = oldKeyMap.size > 0 || newKeyMap.size > 0;
+
+  if (hasKeys) {
+    _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, newKeyMap);
+  } else {
+    _morphChildrenUnkeyed(oldParent, oldChildren, newChildren);
+  }
+}
+
+/**
+ * Unkeyed reconciliation — positional matching.
+ */
+function _morphChildrenUnkeyed(oldParent, oldChildren, newChildren) {
+  const maxLen = Math.max(oldChildren.length, newChildren.length);
+
+  for (let i = 0; i < maxLen; i++) {
+    const oldNode = oldChildren[i];
+    const newNode = newChildren[i];
+
+    if (!oldNode && newNode) {
+      // New node — append
+      oldParent.appendChild(newNode.cloneNode(true));
+    } else if (oldNode && !newNode) {
+      // Extra old node — remove
+      oldParent.removeChild(oldNode);
+    } else if (oldNode && newNode) {
+      _morphNode(oldParent, oldNode, newNode);
+    }
+  }
+}
+
+/**
+ * Keyed reconciliation — match by z-key, reorder minimal moves.
+ */
+function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, newKeyMap) {
+  // Track which old nodes are consumed
+  const consumed = new Set();
+
+  // Step 1: Build ordered list of matched old nodes for new children
+  const newLen = newChildren.length;
+  const matched = new Array(newLen); // matched[newIdx] = oldNode | null
+
+  for (let i = 0; i < newLen; i++) {
+    const key = _getKey(newChildren[i]);
+    if (key != null && oldKeyMap.has(key)) {
+      const oldIdx = oldKeyMap.get(key);
+      matched[i] = oldChildren[oldIdx];
+      consumed.add(oldIdx);
+    } else {
+      matched[i] = null;
+    }
+  }
+
+  // Step 2: Remove old nodes that are not in the new tree
+  for (let i = oldChildren.length - 1; i >= 0; i--) {
+    if (!consumed.has(i)) {
+      const key = _getKey(oldChildren[i]);
+      if (key != null && !newKeyMap.has(key)) {
+        oldParent.removeChild(oldChildren[i]);
+      } else if (key == null) {
+        // Unkeyed old node — will be handled positionally below
+      }
+    }
+  }
+
+  // Step 3: Insert/reorder/morph
+  let cursor = oldParent.firstChild;
+  const unkeyedOld = oldChildren.filter((n, i) => !consumed.has(i) && _getKey(n) == null);
+  let unkeyedIdx = 0;
+
+  for (let i = 0; i < newLen; i++) {
+    const newNode = newChildren[i];
+    const newKey = _getKey(newNode);
+    let oldNode = matched[i];
+
+    if (!oldNode && newKey == null) {
+      // Try to match an unkeyed old node positionally
+      oldNode = unkeyedOld[unkeyedIdx++] || null;
+    }
+
+    if (oldNode) {
+      // Move into position if needed
+      if (oldNode !== cursor) {
+        oldParent.insertBefore(oldNode, cursor);
+      }
+      // Morph in place
+      _morphNode(oldParent, oldNode, newNode);
+      cursor = oldNode.nextSibling;
+    } else {
+      // Insert new node
+      const clone = newNode.cloneNode(true);
+      if (cursor) {
+        oldParent.insertBefore(clone, cursor);
+      } else {
+        oldParent.appendChild(clone);
+      }
+      // cursor stays the same — new node is before it
+    }
+  }
+
+  // Remove any remaining unkeyed old nodes at the end
+  while (unkeyedIdx < unkeyedOld.length) {
+    const leftover = unkeyedOld[unkeyedIdx++];
+    if (leftover.parentNode === oldParent) {
+      oldParent.removeChild(leftover);
+    }
+  }
+
+  // Remove any remaining keyed old nodes that weren't consumed
+  for (let i = 0; i < oldChildren.length; i++) {
+    if (!consumed.has(i)) {
+      const node = oldChildren[i];
+      if (node.parentNode === oldParent && _getKey(node) != null && !newKeyMap.has(_getKey(node))) {
+        oldParent.removeChild(node);
+      }
+    }
+  }
+}
+
+/**
+ * Morph a single node in place.
+ */
+function _morphNode(parent, oldNode, newNode) {
+  // Text / comment nodes — just update content
+  if (oldNode.nodeType === 3 || oldNode.nodeType === 8) {
+    if (newNode.nodeType === oldNode.nodeType) {
+      if (oldNode.nodeValue !== newNode.nodeValue) {
+        oldNode.nodeValue = newNode.nodeValue;
+      }
+      return;
+    }
+    // Different node types — replace
+    parent.replaceChild(newNode.cloneNode(true), oldNode);
+    return;
+  }
+
+  // Different node types or tag names — replace entirely
+  if (oldNode.nodeType !== newNode.nodeType ||
+      oldNode.nodeName !== newNode.nodeName) {
+    parent.replaceChild(newNode.cloneNode(true), oldNode);
+    return;
+  }
+
+  // Both are elements — diff attributes then recurse children
+  if (oldNode.nodeType === 1) {
+    _morphAttributes(oldNode, newNode);
+
+    // Special elements: don't recurse into their children
+    // (textarea value, input value, select, etc.)
+    const tag = oldNode.nodeName;
+    if (tag === 'INPUT') {
+      _syncInputValue(oldNode, newNode);
+      return;
+    }
+    if (tag === 'TEXTAREA') {
+      if (oldNode.value !== newNode.textContent) {
+        oldNode.value = newNode.textContent || '';
+      }
+      return;
+    }
+    if (tag === 'SELECT') {
+      // Recurse children (options) then sync value
+      _morphChildren(oldNode, newNode);
+      if (oldNode.value !== newNode.value) {
+        oldNode.value = newNode.value;
+      }
+      return;
+    }
+
+    // Generic element — recurse children
+    _morphChildren(oldNode, newNode);
+  }
+}
+
+/**
+ * Sync attributes from newEl onto oldEl.
+ */
+function _morphAttributes(oldEl, newEl) {
+  // Add/update attributes
+  const newAttrs = newEl.attributes;
+  for (let i = 0; i < newAttrs.length; i++) {
+    const attr = newAttrs[i];
+    if (oldEl.getAttribute(attr.name) !== attr.value) {
+      oldEl.setAttribute(attr.name, attr.value);
+    }
+  }
+
+  // Remove stale attributes
+  const oldAttrs = oldEl.attributes;
+  for (let i = oldAttrs.length - 1; i >= 0; i--) {
+    const attr = oldAttrs[i];
+    if (!newEl.hasAttribute(attr.name)) {
+      oldEl.removeAttribute(attr.name);
+    }
+  }
+}
+
+/**
+ * Sync input element value, checked, disabled states.
+ */
+function _syncInputValue(oldEl, newEl) {
+  const type = (oldEl.type || '').toLowerCase();
+
+  if (type === 'checkbox' || type === 'radio') {
+    if (oldEl.checked !== newEl.checked) oldEl.checked = newEl.checked;
+  } else {
+    if (oldEl.value !== (newEl.getAttribute('value') || '')) {
+      oldEl.value = newEl.getAttribute('value') || '';
+    }
+  }
+
+  // Sync disabled
+  if (oldEl.disabled !== newEl.disabled) oldEl.disabled = newEl.disabled;
+}
+
+/**
+ * Get the reconciliation key from a node (z-key attribute).
+ * @returns {string|null}
+ */
+function _getKey(node) {
+  if (node.nodeType !== 1) return null;
+  return node.getAttribute('z-key') || null;
+}
+
 // --- src/component.js ————————————————————————————————————————————
 /**
  * zQuery Component — Lightweight reactive component system
@@ -688,6 +1717,8 @@ query.fn = ZQueryCollection.prototype;
  *   - Relative path resolution — templateUrl, styleUrl, and pages.dir
  *     resolve relative to the component file automatically
  */
+
+
 
 
 // ---------------------------------------------------------------------------
@@ -864,9 +1895,26 @@ class Component {
     this._destroyed = false;
     this._updateQueued = false;
     this._listeners = [];
+    this._watchCleanups = [];
 
     // Refs map
     this.refs = {};
+
+    // Capture slot content before first render replaces it
+    this._slotContent = {};
+    const defaultSlotNodes = [];
+    [...el.childNodes].forEach(node => {
+      if (node.nodeType === 1 && node.hasAttribute('slot')) {
+        const slotName = node.getAttribute('slot');
+        if (!this._slotContent[slotName]) this._slotContent[slotName] = '';
+        this._slotContent[slotName] += node.outerHTML;
+      } else if (node.nodeType === 1 || (node.nodeType === 3 && node.textContent.trim())) {
+        defaultSlotNodes.push(node.nodeType === 1 ? node.outerHTML : node.textContent);
+      }
+    });
+    if (defaultSlotNodes.length) {
+      this._slotContent['default'] = defaultSlotNodes.join('');
+    }
 
     // Props (read-only from parent)
     this.props = Object.freeze({ ...props });
@@ -876,9 +1924,24 @@ class Component {
       ? definition.state()
       : { ...(definition.state || {}) };
 
-    this.state = reactive(initialState, () => {
-      if (!this._destroyed) this._scheduleUpdate();
+    this.state = reactive(initialState, (key, value, old) => {
+      if (!this._destroyed) {
+        // Run watchers for the changed key
+        this._runWatchers(key, value, old);
+        this._scheduleUpdate();
+      }
     });
+
+    // Computed properties — lazy getters derived from state
+    this.computed = {};
+    if (definition.computed) {
+      for (const [name, fn] of Object.entries(definition.computed)) {
+        Object.defineProperty(this.computed, name, {
+          get: () => fn.call(this, this.state.__raw || this.state),
+          enumerable: true
+        });
+      }
+    }
 
     // Bind all user methods to this instance
     for (const [key, val] of Object.entries(definition)) {
@@ -889,6 +1952,32 @@ class Component {
 
     // Init lifecycle
     if (definition.init) definition.init.call(this);
+
+    // Set up watchers after init so initial state is ready
+    if (definition.watch) {
+      this._prevWatchValues = {};
+      for (const key of Object.keys(definition.watch)) {
+        this._prevWatchValues[key] = _getPath(this.state.__raw || this.state, key);
+      }
+    }
+  }
+
+  // Run registered watchers for a changed key
+  _runWatchers(changedKey, value, old) {
+    const watchers = this._def.watch;
+    if (!watchers) return;
+    for (const [key, handler] of Object.entries(watchers)) {
+      // Match exact key or parent key (e.g. watcher on 'user' fires when 'user.name' changes)
+      if (changedKey === key || key.startsWith(changedKey + '.') || changedKey.startsWith(key + '.') || changedKey === key) {
+        const currentVal = _getPath(this.state.__raw || this.state, key);
+        const prevVal = this._prevWatchValues?.[key];
+        if (currentVal !== prevVal) {
+          const fn = typeof handler === 'function' ? handler : handler.handler;
+          if (typeof fn === 'function') fn.call(this, currentVal, prevVal);
+          if (this._prevWatchValues) this._prevWatchValues[key] = currentVal;
+        }
+      }
+    }
   }
 
   // Schedule a batched DOM update (microtask)
@@ -1063,15 +2152,27 @@ class Component {
       // Then do global {{expression}} interpolation on the remaining content
       html = html.replace(/\{\{(.+?)\}\}/g, (_, expr) => {
         try {
-          return new Function('state', 'props', '$', `with(state){return ${expr.trim()}}`)(
+          const result = safeEval(expr.trim(), [
             this.state.__raw || this.state,
-            this.props,
-            typeof window !== 'undefined' ? window.$ : undefined
-          );
+            { props: this.props, computed: this.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
+          ]);
+          return result != null ? result : '';
         } catch { return ''; }
       });
     } else {
       html = '';
+    }
+
+    // -- Slot distribution ----------------------------------------
+    // Replace <slot> elements with captured slot content from parent.
+    // <slot> → default slot content
+    // <slot name="header"> → named slot content
+    // Fallback content between <slot>...</slot> used when no content provided.
+    if (html.includes('<slot')) {
+      html = html.replace(/<slot(?:\s+name="([^"]*)")?\s*(?:\/>|>([\s\S]*?)<\/slot>)/g, (_, name, fallback) => {
+        const slotName = name || 'default';
+        return this._slotContent[slotName] || fallback || '';
+      });
     }
 
     // Combine inline styles + external styles
@@ -1095,22 +2196,19 @@ class Component {
     }
 
     // -- Focus preservation ----------------------------------------
-    // Before replacing innerHTML, save focus state so we can restore
-    // cursor position after the DOM is rebuilt.  Works for any focused
-    // input/textarea/select inside the component, not only z-model.
+    // DOM morphing preserves unchanged nodes naturally, but we still
+    // track focus for cases where the focused element's subtree changes.
     let _focusInfo = null;
     const _active = document.activeElement;
     if (_active && this._el.contains(_active)) {
       const modelKey = _active.getAttribute?.('z-model');
       const refKey = _active.getAttribute?.('z-ref');
-      // Build a selector that can locate the same element after re-render
       let selector = null;
       if (modelKey) {
         selector = `[z-model="${modelKey}"]`;
       } else if (refKey) {
         selector = `[z-ref="${refKey}"]`;
       } else {
-        // Fallback: match by tag + type + name + placeholder combination
         const tag = _active.tagName.toLowerCase();
         if (tag === 'input' || tag === 'textarea' || tag === 'select') {
           let s = tag;
@@ -1130,8 +2228,13 @@ class Component {
       }
     }
 
-    // Update DOM
-    this._el.innerHTML = html;
+    // Update DOM via morphing (diffing) — preserves unchanged nodes
+    // First render uses innerHTML for speed; subsequent renders morph.
+    if (!this._mounted) {
+      this._el.innerHTML = html;
+    } else {
+      morph(this._el, html);
+    }
 
     // Process structural & attribute directives
     this._processDirectives();
@@ -1141,10 +2244,10 @@ class Component {
     this._bindRefs();
     this._bindModels();
 
-    // Restore focus after re-render
+    // Restore focus if the morph replaced the focused element
     if (_focusInfo) {
       const el = this._el.querySelector(_focusInfo.selector);
-      if (el) {
+      if (el && el !== document.activeElement) {
         el.focus();
         try {
           if (_focusInfo.start !== null && _focusInfo.start !== undefined) {
@@ -1370,18 +2473,13 @@ class Component {
   }
 
   // ---------------------------------------------------------------------------
-  // Expression evaluator — runs expr in component context (state, props, refs)
+  // Expression evaluator — CSP-safe parser (no eval / new Function)
   // ---------------------------------------------------------------------------
   _evalExpr(expr) {
-    try {
-      return new Function('state', 'props', 'refs', '$',
-        `with(state){return (${expr})}`)(
-        this.state.__raw || this.state,
-        this.props,
-        this.refs,
-        typeof window !== 'undefined' ? window.$ : undefined
-      );
-    } catch { return undefined; }
+    return safeEval(expr, [
+      this.state.__raw || this.state,
+      { props: this.props, refs: this.refs, computed: this.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
+    ]);
   }
 
   // ---------------------------------------------------------------------------
@@ -1443,13 +2541,15 @@ class Component {
         const evalReplace = (str, item, index) =>
           str.replace(/\{\{(.+?)\}\}/g, (_, inner) => {
             try {
-              return new Function(itemVar, indexVar, 'state', 'props', '$',
-                `with(state){return (${inner.trim()})}`)(
-                item, index,
+              const loopScope = {};
+              loopScope[itemVar] = item;
+              loopScope[indexVar] = index;
+              const result = safeEval(inner.trim(), [
+                loopScope,
                 this.state.__raw || this.state,
-                this.props,
-                typeof window !== 'undefined' ? window.$ : undefined
-              );
+                { props: this.props, computed: this.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
+              ]);
+              return result != null ? result : '';
             } catch { return ''; }
           });
 
@@ -1627,7 +2727,8 @@ class Component {
 // Reserved definition keys (not user methods)
 const _reservedKeys = new Set([
   'state', 'render', 'styles', 'init', 'mounted', 'updated', 'destroyed', 'props',
-  'templateUrl', 'styleUrl', 'templates', 'pages', 'activePage', 'base'
+  'templateUrl', 'styleUrl', 'templates', 'pages', 'activePage', 'base',
+  'computed', 'watch'
 ]);
 
 
@@ -1693,12 +2794,40 @@ function mountAll(root = document.body) {
 
       // Extract props from attributes
       const props = {};
-      [...tag.attributes].forEach(attr => {
-        if (!attr.name.startsWith('@') && !attr.name.startsWith('z-')) {
-          // Try JSON parse for objects/arrays
-          try { props[attr.name] = JSON.parse(attr.value); }
-          catch { props[attr.name] = attr.value; }
+
+      // Find parent component instance for evaluating dynamic prop expressions
+      let parentInstance = null;
+      let ancestor = tag.parentElement;
+      while (ancestor) {
+        if (_instances.has(ancestor)) {
+          parentInstance = _instances.get(ancestor);
+          break;
         }
+        ancestor = ancestor.parentElement;
+      }
+
+      [...tag.attributes].forEach(attr => {
+        if (attr.name.startsWith('@') || attr.name.startsWith('z-')) return;
+
+        // Dynamic prop: :propName="expression" — evaluate in parent context
+        if (attr.name.startsWith(':')) {
+          const propName = attr.name.slice(1);
+          if (parentInstance) {
+            props[propName] = safeEval(attr.value, [
+              parentInstance.state.__raw || parentInstance.state,
+              { props: parentInstance.props, refs: parentInstance.refs, computed: parentInstance.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
+            ]);
+          } else {
+            // No parent — try JSON parse
+            try { props[propName] = JSON.parse(attr.value); }
+            catch { props[propName] = attr.value; }
+          }
+          return;
+        }
+
+        // Static prop
+        try { props[attr.name] = JSON.parse(attr.value); }
+        catch { props[attr.name] = attr.value; }
       });
 
       const instance = new Component(tag, def, props);
@@ -2846,6 +3975,8 @@ const bus = new EventBus();
 
 
 
+
+
 // ---------------------------------------------------------------------------
 // $ — The main function & namespace
 // ---------------------------------------------------------------------------
@@ -2923,6 +4054,8 @@ $.getInstance = getInstance;
 $.destroy     = destroy;
 $.components  = getRegistry;
 $.style       = style;
+$.morph       = morph;
+$.safeEval    = safeEval;
 
 // --- Router ----------------------------------------------------------------
 $.router    = createRouter;
@@ -2962,7 +4095,7 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.5.2';
+$.version = '0.5.6';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

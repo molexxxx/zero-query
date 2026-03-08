@@ -20,6 +20,8 @@
  */
 
 import { reactive } from './reactive.js';
+import { morph } from './diff.js';
+import { safeEval } from './expression.js';
 
 // ---------------------------------------------------------------------------
 // Component registry & external resource cache
@@ -195,9 +197,26 @@ class Component {
     this._destroyed = false;
     this._updateQueued = false;
     this._listeners = [];
+    this._watchCleanups = [];
 
     // Refs map
     this.refs = {};
+
+    // Capture slot content before first render replaces it
+    this._slotContent = {};
+    const defaultSlotNodes = [];
+    [...el.childNodes].forEach(node => {
+      if (node.nodeType === 1 && node.hasAttribute('slot')) {
+        const slotName = node.getAttribute('slot');
+        if (!this._slotContent[slotName]) this._slotContent[slotName] = '';
+        this._slotContent[slotName] += node.outerHTML;
+      } else if (node.nodeType === 1 || (node.nodeType === 3 && node.textContent.trim())) {
+        defaultSlotNodes.push(node.nodeType === 1 ? node.outerHTML : node.textContent);
+      }
+    });
+    if (defaultSlotNodes.length) {
+      this._slotContent['default'] = defaultSlotNodes.join('');
+    }
 
     // Props (read-only from parent)
     this.props = Object.freeze({ ...props });
@@ -207,9 +226,24 @@ class Component {
       ? definition.state()
       : { ...(definition.state || {}) };
 
-    this.state = reactive(initialState, () => {
-      if (!this._destroyed) this._scheduleUpdate();
+    this.state = reactive(initialState, (key, value, old) => {
+      if (!this._destroyed) {
+        // Run watchers for the changed key
+        this._runWatchers(key, value, old);
+        this._scheduleUpdate();
+      }
     });
+
+    // Computed properties — lazy getters derived from state
+    this.computed = {};
+    if (definition.computed) {
+      for (const [name, fn] of Object.entries(definition.computed)) {
+        Object.defineProperty(this.computed, name, {
+          get: () => fn.call(this, this.state.__raw || this.state),
+          enumerable: true
+        });
+      }
+    }
 
     // Bind all user methods to this instance
     for (const [key, val] of Object.entries(definition)) {
@@ -220,6 +254,32 @@ class Component {
 
     // Init lifecycle
     if (definition.init) definition.init.call(this);
+
+    // Set up watchers after init so initial state is ready
+    if (definition.watch) {
+      this._prevWatchValues = {};
+      for (const key of Object.keys(definition.watch)) {
+        this._prevWatchValues[key] = _getPath(this.state.__raw || this.state, key);
+      }
+    }
+  }
+
+  // Run registered watchers for a changed key
+  _runWatchers(changedKey, value, old) {
+    const watchers = this._def.watch;
+    if (!watchers) return;
+    for (const [key, handler] of Object.entries(watchers)) {
+      // Match exact key or parent key (e.g. watcher on 'user' fires when 'user.name' changes)
+      if (changedKey === key || key.startsWith(changedKey + '.') || changedKey.startsWith(key + '.') || changedKey === key) {
+        const currentVal = _getPath(this.state.__raw || this.state, key);
+        const prevVal = this._prevWatchValues?.[key];
+        if (currentVal !== prevVal) {
+          const fn = typeof handler === 'function' ? handler : handler.handler;
+          if (typeof fn === 'function') fn.call(this, currentVal, prevVal);
+          if (this._prevWatchValues) this._prevWatchValues[key] = currentVal;
+        }
+      }
+    }
   }
 
   // Schedule a batched DOM update (microtask)
@@ -394,15 +454,27 @@ class Component {
       // Then do global {{expression}} interpolation on the remaining content
       html = html.replace(/\{\{(.+?)\}\}/g, (_, expr) => {
         try {
-          return new Function('state', 'props', '$', `with(state){return ${expr.trim()}}`)(
+          const result = safeEval(expr.trim(), [
             this.state.__raw || this.state,
-            this.props,
-            typeof window !== 'undefined' ? window.$ : undefined
-          );
+            { props: this.props, computed: this.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
+          ]);
+          return result != null ? result : '';
         } catch { return ''; }
       });
     } else {
       html = '';
+    }
+
+    // -- Slot distribution ----------------------------------------
+    // Replace <slot> elements with captured slot content from parent.
+    // <slot> → default slot content
+    // <slot name="header"> → named slot content
+    // Fallback content between <slot>...</slot> used when no content provided.
+    if (html.includes('<slot')) {
+      html = html.replace(/<slot(?:\s+name="([^"]*)")?\s*(?:\/>|>([\s\S]*?)<\/slot>)/g, (_, name, fallback) => {
+        const slotName = name || 'default';
+        return this._slotContent[slotName] || fallback || '';
+      });
     }
 
     // Combine inline styles + external styles
@@ -426,22 +498,19 @@ class Component {
     }
 
     // -- Focus preservation ----------------------------------------
-    // Before replacing innerHTML, save focus state so we can restore
-    // cursor position after the DOM is rebuilt.  Works for any focused
-    // input/textarea/select inside the component, not only z-model.
+    // DOM morphing preserves unchanged nodes naturally, but we still
+    // track focus for cases where the focused element's subtree changes.
     let _focusInfo = null;
     const _active = document.activeElement;
     if (_active && this._el.contains(_active)) {
       const modelKey = _active.getAttribute?.('z-model');
       const refKey = _active.getAttribute?.('z-ref');
-      // Build a selector that can locate the same element after re-render
       let selector = null;
       if (modelKey) {
         selector = `[z-model="${modelKey}"]`;
       } else if (refKey) {
         selector = `[z-ref="${refKey}"]`;
       } else {
-        // Fallback: match by tag + type + name + placeholder combination
         const tag = _active.tagName.toLowerCase();
         if (tag === 'input' || tag === 'textarea' || tag === 'select') {
           let s = tag;
@@ -461,8 +530,13 @@ class Component {
       }
     }
 
-    // Update DOM
-    this._el.innerHTML = html;
+    // Update DOM via morphing (diffing) — preserves unchanged nodes
+    // First render uses innerHTML for speed; subsequent renders morph.
+    if (!this._mounted) {
+      this._el.innerHTML = html;
+    } else {
+      morph(this._el, html);
+    }
 
     // Process structural & attribute directives
     this._processDirectives();
@@ -472,10 +546,10 @@ class Component {
     this._bindRefs();
     this._bindModels();
 
-    // Restore focus after re-render
+    // Restore focus if the morph replaced the focused element
     if (_focusInfo) {
       const el = this._el.querySelector(_focusInfo.selector);
-      if (el) {
+      if (el && el !== document.activeElement) {
         el.focus();
         try {
           if (_focusInfo.start !== null && _focusInfo.start !== undefined) {
@@ -701,18 +775,13 @@ class Component {
   }
 
   // ---------------------------------------------------------------------------
-  // Expression evaluator — runs expr in component context (state, props, refs)
+  // Expression evaluator — CSP-safe parser (no eval / new Function)
   // ---------------------------------------------------------------------------
   _evalExpr(expr) {
-    try {
-      return new Function('state', 'props', 'refs', '$',
-        `with(state){return (${expr})}`)(
-        this.state.__raw || this.state,
-        this.props,
-        this.refs,
-        typeof window !== 'undefined' ? window.$ : undefined
-      );
-    } catch { return undefined; }
+    return safeEval(expr, [
+      this.state.__raw || this.state,
+      { props: this.props, refs: this.refs, computed: this.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
+    ]);
   }
 
   // ---------------------------------------------------------------------------
@@ -774,13 +843,15 @@ class Component {
         const evalReplace = (str, item, index) =>
           str.replace(/\{\{(.+?)\}\}/g, (_, inner) => {
             try {
-              return new Function(itemVar, indexVar, 'state', 'props', '$',
-                `with(state){return (${inner.trim()})}`)(
-                item, index,
+              const loopScope = {};
+              loopScope[itemVar] = item;
+              loopScope[indexVar] = index;
+              const result = safeEval(inner.trim(), [
+                loopScope,
                 this.state.__raw || this.state,
-                this.props,
-                typeof window !== 'undefined' ? window.$ : undefined
-              );
+                { props: this.props, computed: this.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
+              ]);
+              return result != null ? result : '';
             } catch { return ''; }
           });
 
@@ -958,7 +1029,8 @@ class Component {
 // Reserved definition keys (not user methods)
 const _reservedKeys = new Set([
   'state', 'render', 'styles', 'init', 'mounted', 'updated', 'destroyed', 'props',
-  'templateUrl', 'styleUrl', 'templates', 'pages', 'activePage', 'base'
+  'templateUrl', 'styleUrl', 'templates', 'pages', 'activePage', 'base',
+  'computed', 'watch'
 ]);
 
 
@@ -1024,12 +1096,40 @@ export function mountAll(root = document.body) {
 
       // Extract props from attributes
       const props = {};
-      [...tag.attributes].forEach(attr => {
-        if (!attr.name.startsWith('@') && !attr.name.startsWith('z-')) {
-          // Try JSON parse for objects/arrays
-          try { props[attr.name] = JSON.parse(attr.value); }
-          catch { props[attr.name] = attr.value; }
+
+      // Find parent component instance for evaluating dynamic prop expressions
+      let parentInstance = null;
+      let ancestor = tag.parentElement;
+      while (ancestor) {
+        if (_instances.has(ancestor)) {
+          parentInstance = _instances.get(ancestor);
+          break;
         }
+        ancestor = ancestor.parentElement;
+      }
+
+      [...tag.attributes].forEach(attr => {
+        if (attr.name.startsWith('@') || attr.name.startsWith('z-')) return;
+
+        // Dynamic prop: :propName="expression" — evaluate in parent context
+        if (attr.name.startsWith(':')) {
+          const propName = attr.name.slice(1);
+          if (parentInstance) {
+            props[propName] = safeEval(attr.value, [
+              parentInstance.state.__raw || parentInstance.state,
+              { props: parentInstance.props, refs: parentInstance.refs, computed: parentInstance.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
+            ]);
+          } else {
+            // No parent — try JSON parse
+            try { props[propName] = JSON.parse(attr.value); }
+            catch { props[propName] = attr.value; }
+          }
+          return;
+        }
+
+        // Static prop
+        try { props[attr.name] = JSON.parse(attr.value); }
+        catch { props[attr.name] = attr.value; }
       });
 
       const instance = new Component(tag, def, props);

@@ -1,9 +1,10 @@
 // scripts/components/todos.js — todo list with global store
 //
 // Demonstrates: $.getStore, store.dispatch, store.subscribe,
-//               store getters, z-model, z-ref, z-class, z-for,
-//               z-if, z-show, @click with args, @submit.prevent,
-//               mounted/destroyed lifecycle, $.bus toast, $.debounce
+//               store getters, computed properties, z-model, z-ref,
+//               z-class, z-for with z-key, z-if, z-show, @click
+//               with args, @submit.prevent, mounted/destroyed
+//               lifecycle, $.bus toast, $.debounce
 
 $.component('todos-page', {
   state: () => ({
@@ -83,7 +84,7 @@ $.component('todos-page', {
     return `
       <div class="page-header">
         <h1>Todos</h1>
-        <p class="subtitle">Global store with <code>$.store()</code>, <code>z-for</code>, <code>z-class</code>, <code>z-if</code>, and <code>z-show</code>.</p>
+        <p class="subtitle">Global store with <code>$.store()</code>, <code>z-for</code> + <code>z-key</code>, <code>z-class</code>, <code>z-if</code>, and <code>z-show</code>.</p>
       </div>
 
       <div class="card">
@@ -114,7 +115,7 @@ $.component('todos-page', {
         </div>
 
         <ul z-else class="todo-list">
-          <li z-for="t in filtered" class="todo-item {{t.done ? 'done' : ''}}">
+          <li z-for="t in filtered" z-key="{{t.id}}" class="todo-item {{t.done ? 'done' : ''}}">
             <button class="todo-check" @click="toggleTodo('{{t.id}}')"></button>
             <span class="todo-text">{{$.escapeHtml(t.text)}}</span>
             <button class="todo-remove" @click="removeTodo('{{t.id}}')">✕</button>

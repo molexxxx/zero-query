@@ -15,14 +15,14 @@
 
 </p>
 
-> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~54 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
+> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~77 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
 
 ## Features
 
 | Module | Highlights |
 | --- | --- |
 | **Core `$()`** | jQuery-like chainable selectors, traversal, DOM manipulation, events, animation |
-| **Components** | Reactive state, template literals, `@event` delegation (8 modifiers), `z-model` two-way binding, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`), scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles (`z-cloak` hiding, mobile tap-highlight suppression) |
+| **Components** | Reactive state, template literals, `@event` delegation (8 modifiers), `z-model` two-way binding, computed properties, watch callbacks, slot-based content projection, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`), DOM morphing engine (no innerHTML rebuild), CSP-safe expression evaluation, scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles |
 | **Router** | History & hash mode, route params (`:id`), guards, lazy loading, `z-link` navigation |
 | **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions |
 | **HTTP** | Fetch wrapper with auto-JSON, interceptors, timeout/abort, base URL |
@@ -69,7 +69,7 @@ If you prefer **zero tooling**, download `dist/zQuery.min.js` from the [GitHub r
 git clone https://github.com/tonywied17/zero-query.git
 cd zero-query
 npx zquery build
-# → dist/zQuery.min.js  (~54 KB)
+# → dist/zQuery.min.js  (~77 KB)
 ```
 
 ### Include in HTML
@@ -247,6 +247,8 @@ location / {
 | `$.ready` `$.on` `$.off` | DOM ready, global event delegation & direct listeners |
 | `$.fn` | Collection prototype (extend it) |
 | `$.component` `$.mount` `$.mountAll` `$.getInstance` `$.destroy` `$.components` | Component system |
+| `$.morph` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes |
+| `$.safeEval` | CSP-safe expression evaluator (replaces `eval` / `new Function`) |
 | `$.style` | Dynamically load global stylesheet file(s) at runtime |
 | `$.router` `$.getRouter` | SPA router |
 | `$.store` `$.getStore` | State management |

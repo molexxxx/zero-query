@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.5.2
+ * @version 0.5.6
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -384,6 +384,20 @@ interface ComponentDefinition {
   /** Called when the component is destroyed. Clean up subscriptions here. */
   destroyed?(this: ComponentInstance): void;
 
+  /**
+   * Computed properties — lazy getters derived from state.
+   * Each function receives the raw state as its argument.
+   * Access via `this.computed.name` in methods and templates.
+   */
+  computed?: Record<string, (state: Record<string, any>) => any>;
+
+  /**
+   * Watch state keys for changes.
+   * Keys support dot-path notation (e.g. `'user.name'`).
+   * Handler receives `(newValue, oldValue)`.
+   */
+  watch?: Record<string, ((this: ComponentInstance, newVal: any, oldVal: any) => void) | { handler: (this: ComponentInstance, newVal: any, oldVal: any) => void }>;
+
   /** Additional keys become instance methods (bound to the instance). */
   [method: string]: any;
 }
@@ -413,6 +427,12 @@ interface ComponentInstance {
 
   /** Active page id derived from route param (when using `pages` config). */
   activePage: string;
+
+  /**
+   * Computed properties — lazy getters derived from state.
+   * Defined via `computed` in the component definition.
+   */
+  readonly computed: Record<string, any>;
 
   /** Merge partial state (triggers re-render). */
   setState(partial: Record<string, any>): void;
@@ -492,6 +512,85 @@ export function style(urls: string | string[], opts?: StyleOptions): StyleHandle
 
 
 // ---------------------------------------------------------------------------
+// DOM Diffing (Morphing)
+// ---------------------------------------------------------------------------
+
+/**
+ * Morph an existing DOM element's children to match new HTML.
+ * Only touches nodes that actually differ — preserves focus, scroll
+ * positions, video playback, and other live DOM state.
+ *
+ * Use `z-key="uniqueId"` attributes on list items for keyed reconciliation.
+ *
+ * @param rootEl The live DOM container to patch.
+ * @param newHTML The desired HTML string.
+ */
+export function morph(rootEl: Element, newHTML: string): void;
+
+
+// ---------------------------------------------------------------------------
+// Safe Expression Evaluator
+// ---------------------------------------------------------------------------
+
+/**
+ * CSP-safe expression evaluator. Parses and evaluates JS expressions
+ * without `eval()` or `new Function()`. Used internally by directives.
+ *
+ * @param expr Expression string.
+ * @param scope Array of scope objects checked in order for identifier resolution.
+ * @returns Evaluation result, or `undefined` on error.
+ */
+export function safeEval(expr: string, scope: object[]): any;
+
+
+// ---------------------------------------------------------------------------
+// SSR (Server-Side Rendering)
+// ---------------------------------------------------------------------------
+
+/** SSR application instance for server-side component rendering. */
+interface SSRApp {
+  /** Register a component for SSR. */
+  component(name: string, definition: ComponentDefinition): SSRApp;
+
+  /**
+   * Render a component to an HTML string.
+   * @param componentName Registered component name.
+   * @param props Props to pass to the component.
+   * @param options Rendering options.
+   */
+  renderToString(
+    componentName: string,
+    props?: Record<string, any>,
+    options?: { hydrate?: boolean },
+  ): Promise<string>;
+
+  /**
+   * Render a full HTML page with a component mounted in a shell.
+   */
+  renderPage(options: {
+    component?: string;
+    props?: Record<string, any>;
+    title?: string;
+    styles?: string[];
+    scripts?: string[];
+    lang?: string;
+    meta?: string;
+    bodyAttrs?: string;
+  }): Promise<string>;
+}
+
+/** Create an SSR application instance. */
+export function createSSRApp(): SSRApp;
+
+/**
+ * Quick one-shot render of a component definition to an HTML string.
+ * @param definition Component definition object.
+ * @param props Props to pass.
+ */
+export function renderToString(definition: ComponentDefinition, props?: Record<string, any>): string;
+
+
+// ---------------------------------------------------------------------------
 // Directive System
 // ---------------------------------------------------------------------------
 //
@@ -511,6 +610,11 @@ export function style(urls: string | string[], opts?: StyleOptions): StyleHandle
 //     (item, index) in items     Destructured index support.
 //     n in 5                     Number range → [1, 2, 3, 4, 5].
 //     (val, key) in object       Object iteration → {key, value} entries.
+//
+//   z-key="uniqueId"           Keyed reconciliation for list items.
+//                              Preserves DOM nodes across reorders. Use inside
+//                              z-for to give each item a stable identity.
+//                              Example: <li z-for="item in items" z-key="{{item.id}}">
 //
 //   z-show="expression"        Toggle `display: none` (element stays in DOM).
 //
@@ -570,6 +674,20 @@ export function style(urls: string | string[], opts?: StyleOptions): StyleHandle
 //
 //   z-pre                      Skip all directive processing for this element
 //                              and its descendants.
+//
+// ─── Slot System ────────────────────────────────────────────────────────
+//
+//   <slot>                     Default slot — replaced with child content
+//                              passed by the parent component.
+//   <slot name="header">       Named slot — replaced with child content that
+//                              has a matching slot="header" attribute.
+//   <slot>fallback</slot>      Fallback content shown when no slot content provided.
+//
+//   Parent usage:
+//     <my-component>
+//       <h1 slot="header">Title</h1>   (→ named slot "header")
+//       <p>Body text</p>               (→ default slot)
+//     </my-component>
 //
 // ─── Processing Order ───────────────────────────────────────────────────
 //
@@ -1137,6 +1255,8 @@ interface ZQueryStatic {
   /** Returns all registered component definitions. */
   components: typeof getRegistry;
   style: typeof style;
+  morph: typeof morph;
+  safeEval: typeof safeEval;
 
   // -- Router --------------------------------------------------------------
   router: typeof createRouter;
