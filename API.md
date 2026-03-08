@@ -69,6 +69,13 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [URL Utilities](#url-utilities)
   - [Storage Wrappers](#storage-wrappers)
   - [Event Bus](#event-bus)
+- [Error Handling](#error-handling)
+  - [Error Codes — $.ErrorCode](#error-codes--errorcode)
+  - [ZQueryError](#zqueryerror)
+  - [$.onError(handler)](#onerrorhandler)
+  - [reportError()](#reporterrorcode-message-context-cause)
+  - [guardCallback()](#guardcallbackfn-code-context)
+  - [validate()](#validatevalue-name-expectedtype)
 - [Global API](#global-api)
 - [Server-Side Rendering (SSR)](#server-side-rendering-ssr)
 - [ES Module Exports](#es-module-exports-for-npmbundler-usage)
@@ -2001,6 +2008,109 @@ $.bus.on('cart:updated', (data) => {
 
 ---
 
+## Error Handling
+
+zQuery includes a structured error-handling system so that runtime errors across every subsystem (reactive, component, router, store, HTTP, expression parser) are reported consistently. All internal errors are wrapped in a `ZQueryError` with a machine-readable code, a human-readable message, optional context, and the original cause.
+
+### Error Codes — `$.ErrorCode`
+
+A frozen object mapping friendly names to string codes. Use these to identify errors programmatically.
+
+| Constant | Code | Subsystem |
+| --- | --- | --- |
+| `REACTIVE_CALLBACK` | `ZQ_REACTIVE_CALLBACK` | Reactive proxy/onChange |
+| `SIGNAL_CALLBACK` | `ZQ_SIGNAL_CALLBACK` | Signal subscriber |
+| `EFFECT_EXEC` | `ZQ_EFFECT_EXEC` | Effect execution |
+| `EXPR_PARSE` | `ZQ_EXPR_PARSE` | Expression parser |
+| `EXPR_EVAL` | `ZQ_EXPR_EVAL` | Expression evaluation |
+| `EXPR_UNSAFE_ACCESS` | `ZQ_EXPR_UNSAFE_ACCESS` | Expression sandbox |
+| `COMP_INVALID_NAME` | `ZQ_COMP_INVALID_NAME` | Component registration |
+| `COMP_NOT_FOUND` | `ZQ_COMP_NOT_FOUND` | Component lookup |
+| `COMP_MOUNT_TARGET` | `ZQ_COMP_MOUNT_TARGET` | Component mount target |
+| `COMP_RENDER` | `ZQ_COMP_RENDER` | Component render |
+| `COMP_LIFECYCLE` | `ZQ_COMP_LIFECYCLE` | Component lifecycle hook |
+| `COMP_RESOURCE` | `ZQ_COMP_RESOURCE` | Component resource loading |
+| `COMP_DIRECTIVE` | `ZQ_COMP_DIRECTIVE` | Directive processing |
+| `ROUTER_LOAD` | `ZQ_ROUTER_LOAD` | Route page loading |
+| `ROUTER_GUARD` | `ZQ_ROUTER_GUARD` | Navigation guard |
+| `ROUTER_RESOLVE` | `ZQ_ROUTER_RESOLVE` | Route resolution |
+| `STORE_ACTION` | `ZQ_STORE_ACTION` | Store action |
+| `STORE_MIDDLEWARE` | `ZQ_STORE_MIDDLEWARE` | Store middleware |
+| `STORE_SUBSCRIBE` | `ZQ_STORE_SUBSCRIBE` | Store subscriber |
+| `HTTP_REQUEST` | `ZQ_HTTP_REQUEST` | HTTP request |
+| `HTTP_TIMEOUT` | `ZQ_HTTP_TIMEOUT` | HTTP timeout |
+| `HTTP_INTERCEPTOR` | `ZQ_HTTP_INTERCEPTOR` | HTTP interceptor |
+| `HTTP_PARSE` | `ZQ_HTTP_PARSE` | HTTP response parsing |
+| `INVALID_ARGUMENT` | `ZQ_INVALID_ARGUMENT` | General validation |
+
+### `ZQueryError`
+
+Custom `Error` subclass used by all internal error reports.
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | Always `'ZQueryError'`. |
+| `code` | `string` | One of the `$.ErrorCode` values. |
+| `message` | `string` | Human-readable description. |
+| `context` | `object` | Extra data — component name, expression string, etc. |
+| `cause` | `Error?` | Original error (if wrapping another). |
+
+```js
+try {
+  $.mount('#app', 'missing-component');
+} catch (err) {
+  if (err instanceof $.ZQueryError) {
+    console.log(err.code);    // 'ZQ_COMP_NOT_FOUND'
+    console.log(err.context); // { name: 'missing-component' }
+  }
+}
+```
+
+### `$.onError(handler)`
+
+Register a global error handler that fires when any module catches an error internally. Useful for centralized logging, crash reporting, or dev-overlay integration. Pass `null` to remove.
+
+```js
+$.onError((err) => {
+  console.warn(`[${err.code}]`, err.message, err.context);
+  myErrorTracker.captureException(err);
+});
+```
+
+### `reportError(code, message, context?, cause?)`
+
+Report an error through the global handler **and** `console.error` without throwing. Used internally for recoverable errors in callbacks, lifecycle hooks, etc.
+
+```js
+import { reportError, ErrorCode } from '@tonywied17/zero-query';
+
+reportError(ErrorCode.COMP_RENDER, 'Failed to render widget', { name: 'my-widget' }, originalError);
+```
+
+### `guardCallback(fn, code, context?)`
+
+Wrap a function so thrown errors are caught, routed through `reportError`, and don't crash the current call stack. Returns a safe wrapper function.
+
+```js
+import { guardCallback, ErrorCode } from '@tonywied17/zero-query';
+
+const safeTick = guardCallback(myTickFn, ErrorCode.EFFECT_EXEC, { label: 'animation' });
+safeTick(); // errors are caught & reported, never thrown
+```
+
+### `validate(value, name, expectedType?)`
+
+Assert a value is non-null and optionally the expected type. Throws `ZQueryError` with `INVALID_ARGUMENT` on failure — intended for fast-fail at API boundaries.
+
+```js
+import { validate } from '@tonywied17/zero-query';
+
+validate(name, 'name', 'string');   // throws if name isn't a string
+validate(el, 'target');             // throws if el is null/undefined
+```
+
+---
+
 ## Global API
 
 | Property/Method | Description |
@@ -2081,6 +2191,7 @@ import {
   createStore, getStore,
   createSSRApp, renderToString,
   http,
+  ZQueryError, ErrorCode, onError, reportError,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, html, trust, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
