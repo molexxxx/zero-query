@@ -41,15 +41,6 @@
       <feGaussianBlur stdDeviation="2"/>
     </filter>
 
-    <!-- Light sweep gradient (transparent → white → transparent) -->
-    <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="white" stop-opacity="0"/>
-      <stop offset="40%" stop-color="white" stop-opacity="0"/>
-      <stop offset="50%" stop-color="white" stop-opacity="0.18"/>
-      <stop offset="60%" stop-color="white" stop-opacity="0"/>
-      <stop offset="100%" stop-color="white" stop-opacity="0"/>
-    </linearGradient>
-
     <!-- Radial ambient glow -->
     <radialGradient id="ambientGlow" cx="50%" cy="50%" r="40%">
       <stop offset="0%" stop-color="#1f6feb" stop-opacity="0">
@@ -57,15 +48,6 @@
       </stop>
       <stop offset="100%" stop-color="#1f6feb" stop-opacity="0"/>
     </radialGradient>
-
-    <!-- Z shape clip for the light sweep -->
-    <clipPath id="zClip">
-      <path d="M 128,120 H 384 V 172
-               L 300,256 L 316,256 L 232,340
-               H 384 V 392 H 128 V 340
-               L 212,256 L 228,256 L 312,172
-               H 128 Z"/>
-    </clipPath>
 
     <!-- Clip to rounded rect -->
     <clipPath id="clip">
@@ -79,6 +61,57 @@
 
     <!-- Ambient radial pulse behind everything -->
     <rect width="512" height="512" fill="url(#ambientGlow)"/>
+
+    <!-- ==================== COMET ==================== -->
+    <!-- 4 comets on different angles, each fires every 24s, staggered 6s apart -->
+
+    <!-- Comet 1: top-left → bottom-right -->
+    <g>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="-100,-40; 580,180" dur="1.8s" begin="0s; 24s; 48s; 72s; 96s" fill="freeze" calcMode="spline" keySplines="0.1 0 0.3 1"/>
+        <circle cx="0" cy="0" r="3" fill="#c9d1d9" opacity="0.9"/>
+        <circle cx="0" cy="0" r="6" fill="#79c0ff" opacity="0.25"/>
+        <line x1="0" y1="0" x2="-45" y2="-15" stroke="#79c0ff" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+        <line x1="-45" y1="-15" x2="-100" y2="-30" stroke="#58a6ff" stroke-width="1" stroke-linecap="round" opacity="0.25"/>
+      </g>
+      <animate attributeName="opacity" values="1;1;0" dur="1.8s" begin="0s; 24s; 48s; 72s; 96s" fill="freeze" keyTimes="0;0.85;1"/>
+    </g>
+
+    <!-- Comet 2: right → left (upper area) -->
+    <g>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="600,60; -100,120" dur="1.8s" begin="6s; 30s; 54s; 78s; 102s" fill="freeze" calcMode="spline" keySplines="0.1 0 0.3 1"/>
+        <circle cx="0" cy="0" r="2.5" fill="#c9d1d9" opacity="0.85"/>
+        <circle cx="0" cy="0" r="5" fill="#79c0ff" opacity="0.2"/>
+        <line x1="0" y1="0" x2="50" y2="-5" stroke="#79c0ff" stroke-width="1.8" stroke-linecap="round" opacity="0.6"/>
+        <line x1="50" y1="-5" x2="110" y2="-10" stroke="#58a6ff" stroke-width="0.9" stroke-linecap="round" opacity="0.25"/>
+      </g>
+      <animate attributeName="opacity" values="1;1;0" dur="1.8s" begin="6s; 30s; 54s; 78s; 102s" fill="freeze" keyTimes="0;0.85;1"/>
+    </g>
+
+    <!-- Comet 3: bottom-left → upper-right -->
+    <g>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="-80,500; 560,30" dur="2s" begin="12s; 36s; 60s; 84s; 108s" fill="freeze" calcMode="spline" keySplines="0.1 0 0.3 1"/>
+        <circle cx="0" cy="0" r="2.5" fill="#c9d1d9" opacity="0.85"/>
+        <circle cx="0" cy="0" r="5.5" fill="#79c0ff" opacity="0.2"/>
+        <line x1="0" y1="0" x2="-40" y2="30" stroke="#79c0ff" stroke-width="1.8" stroke-linecap="round" opacity="0.55"/>
+        <line x1="-40" y1="30" x2="-90" y2="65" stroke="#58a6ff" stroke-width="0.9" stroke-linecap="round" opacity="0.2"/>
+      </g>
+      <animate attributeName="opacity" values="1;1;0" dur="2s" begin="12s; 36s; 60s; 84s; 108s" fill="freeze" keyTimes="0;0.85;1"/>
+    </g>
+
+    <!-- Comet 4: top-right → bottom-left (steep) -->
+    <g>
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="550,-60; -60,520" dur="2s" begin="18s; 42s; 66s; 90s; 114s" fill="freeze" calcMode="spline" keySplines="0.1 0 0.3 1"/>
+        <circle cx="0" cy="0" r="2.8" fill="#c9d1d9" opacity="0.9"/>
+        <circle cx="0" cy="0" r="5" fill="#79c0ff" opacity="0.22"/>
+        <line x1="0" y1="0" x2="40" y2="-38" stroke="#79c0ff" stroke-width="1.8" stroke-linecap="round" opacity="0.55"/>
+        <line x1="40" y1="-38" x2="85" y2="-80" stroke="#58a6ff" stroke-width="0.9" stroke-linecap="round" opacity="0.2"/>
+      </g>
+      <animate attributeName="opacity" values="1;1;0" dur="2s" begin="18s; 42s; 66s; 90s; 114s" fill="freeze" keyTimes="0;0.85;1"/>
+    </g>
 
     <!-- ==================== PARTICLES ==================== -->
     <!-- Soft luminous particles that slowly rise/drift — no harsh shapes -->
@@ -157,13 +190,6 @@
                  H 128 Z"
               fill="url(#zGrad)"/>
       </g>
-    </g>
-
-    <!-- Light sweep across the Z surface (also drifts with Z) -->
-    <g clip-path="url(#zClip)">
-      <rect x="-300" y="100" width="300" height="310" fill="url(#sweep)">
-        <animateTransform attributeName="transform" type="translate" values="0,0;820,0;820,0" dur="6s" keyTimes="0;0.6;1" repeatCount="indefinite" calcMode="spline" keySplines="0.25 0.1 0.25 1;0 0 1 1"/>
-      </rect>
     </g>
   </g>
 
