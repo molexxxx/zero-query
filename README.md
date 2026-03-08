@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/images/logo.svg" alt="zQuery logo" width="300" height="300">
+  <img src=".github/images/logo-animated.svg" alt="zQuery logo" width="300" height="300">
 </p>
 
 <h1 align="center">zQuery</h1>

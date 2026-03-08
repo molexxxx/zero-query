@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a1f2e"/>
+      <stop offset="100%" stop-color="#0d1117"/>
+    </linearGradient>
+    <linearGradient id="zGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#79c0ff">
+        <animate attributeName="stop-color" 
+                 values="#79c0ff;#a5d6ff;#79c0ff" 
+                 dur="3s" 
+                 repeatCount="indefinite"/>
+      </stop>
+      <stop offset="50%" stop-color="#58a6ff">
+        <animate attributeName="stop-color" 
+                 values="#58a6ff;#79c0ff;#58a6ff" 
+                 dur="3s" 
+                 repeatCount="indefinite"/>
+      </stop>
+      <stop offset="100%" stop-color="#1f6feb">
+        <animate attributeName="stop-color" 
+                 values="#1f6feb;#58a6ff;#1f6feb" 
+                 dur="3s" 
+                 repeatCount="indefinite"/>
+      </stop>
+    </linearGradient>
+    
+    <!-- Animated glow filter -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="16" result="blur">
+        <animate attributeName="stdDeviation" 
+                 values="12;20;12" 
+                 dur="2s" 
+                 repeatCount="indefinite"/>
+      </feGaussianBlur>
+      <feFlood flood-color="#1f6feb" result="color">
+        <animate attributeName="flood-opacity" 
+                 values="0.3;0.6;0.3" 
+                 dur="2s" 
+                 repeatCount="indefinite"/>
+      </feFlood>
+      <feComposite in="color" in2="blur" operator="in" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Electric shimmer filter -->
+    <filter id="shimmer" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" result="noise">
+        <animate attributeName="baseFrequency" 
+                 values="0.02;0.04;0.02" 
+                 dur="4s" 
+                 repeatCount="indefinite"/>
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+
+    <!-- Gradient for electric sparks -->
+    <linearGradient id="sparkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#a5d6ff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="88" fill="url(#bg)"/>
+  <rect x="2" y="2" width="508" height="508" rx="86" fill="none" stroke="#30363d" stroke-width="2">
+    <animate attributeName="stroke-opacity" 
+             values="0.6;1;0.6" 
+             dur="3s" 
+             repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Z lightning bolt with glow -->
+  <g filter="url(#glow)">
+    <path d="M 128,120 H 384 V 172
+             L 300,256 L 316,256 L 232,340
+             H 384 V 392 H 128 V 340
+             L 212,256 L 228,256 L 312,172
+             H 128 Z"
+          fill="url(#zGrad)">
+      <!-- Subtle scale pulse -->
+      <animateTransform attributeName="transform"
+                        type="scale"
+                        values="1;1.02;1"
+                        dur="2s"
+                        repeatCount="indefinite"
+                        additive="sum"/>
+    </path>
+  </g>
+  
+  <!-- Electric spark line 1 - horizontal top -->
+  <line x1="0" y1="146" x2="80" y2="146" stroke="url(#sparkGrad)" stroke-width="3" opacity="0">
+    <animate attributeName="opacity" 
+             values="0;0;1;0;0" 
+             keyTimes="0;0.4;0.5;0.6;1"
+             dur="4s" 
+             repeatCount="indefinite"/>
+    <animateTransform attributeName="transform"
+                      type="translate"
+                      values="100,0;450,0"
+                      dur="4s"
+                      repeatCount="indefinite"/>
+  </line>
+  
+  <!-- Electric spark line 2 - diagonal -->
+  <line x1="0" y1="0" x2="60" y2="60" stroke="url(#sparkGrad)" stroke-width="2" opacity="0">
+    <animate attributeName="opacity" 
+             values="0;0;0;1;0;0" 
+             keyTimes="0;0.5;0.6;0.7;0.8;1"
+             dur="5s" 
+             repeatCount="indefinite"/>
+    <animateTransform attributeName="transform"
+                      type="translate"
+                      values="180,180;320,320"
+                      dur="5s"
+                      repeatCount="indefinite"/>
+  </line>
+  
+  <!-- Electric spark line 3 - horizontal bottom -->
+  <line x1="0" y1="366" x2="80" y2="366" stroke="url(#sparkGrad)" stroke-width="3" opacity="0">
+    <animate attributeName="opacity" 
+             values="0;1;0;0;0" 
+             keyTimes="0;0.1;0.2;0.5;1"
+             dur="3.5s" 
+             repeatCount="indefinite"/>
+    <animateTransform attributeName="transform"
+                      type="translate"
+                      values="100,0;420,0"
+                      dur="3.5s"
+                      repeatCount="indefinite"/>
+  </line>
+
+  <!-- Small electric dots/particles -->
+  <circle cx="0" cy="0" r="3" fill="#a5d6ff" opacity="0">
+    <animate attributeName="opacity" 
+             values="0;0;1;0" 
+             keyTimes="0;0.3;0.5;1"
+             dur="2.5s" 
+             repeatCount="indefinite"/>
+    <animateTransform attributeName="transform"
+                      type="translate"
+                      values="200,200;280,280"
+                      dur="2.5s"
+                      repeatCount="indefinite"/>
+  </circle>
+  
+  <circle cx="0" cy="0" r="2" fill="#79c0ff" opacity="0">
+    <animate attributeName="opacity" 
+             values="0;1;0;0" 
+             keyTimes="0;0.2;0.4;1"
+             dur="3s" 
+             repeatCount="indefinite"/>
+    <animateTransform attributeName="transform"
+                      type="translate"
+                      values="320,180;240,260"
+                      dur="3s"
+                      repeatCount="indefinite"/>
+  </circle>
+  
+  <circle cx="0" cy="0" r="2.5" fill="#58a6ff" opacity="0">
+    <animate attributeName="opacity" 
+             values="0;0;1;0;0" 
+             keyTimes="0;0.6;0.7;0.9;1"
+             dur="4s" 
+             repeatCount="indefinite"/>
+    <animateTransform attributeName="transform"
+                      type="translate"
+                      values="250,320;330,340"
+                      dur="4s"
+                      repeatCount="indefinite"/>
+  </circle>
+</svg>
