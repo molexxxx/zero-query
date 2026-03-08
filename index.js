@@ -31,16 +31,16 @@ import { ZQueryError, ErrorCode, onError, reportError } from './src/errors.js';
 // ---------------------------------------------------------------------------
 
 /**
- * Main selector function
+ * Main selector function — always returns a ZQueryCollection (like jQuery).
  * 
- *   $('selector')         → single Element (querySelector)
- *   $('<div>hello</div>') → create element (first created node)
- *   $(element)            → return element as-is
+ *   $('selector')         → ZQueryCollection (querySelectorAll)
+ *   $('<div>hello</div>') → ZQueryCollection from created elements
+ *   $(element)            → ZQueryCollection wrapping the element
  *   $(fn)                 → DOMContentLoaded shorthand
  * 
  * @param {string|Element|NodeList|Function} selector
  * @param {string|Element} [context]
- * @returns {Element|null}
+ * @returns {ZQueryCollection}
  */
 function $(selector, context) {
   // $(fn) → DOM ready shorthand
@@ -60,8 +60,6 @@ $.tag      = query.tag;
 Object.defineProperty($, 'name', {
   value: query.name, writable: true, configurable: true
 });
-$.attr     = query.attr;
-$.data     = query.data;
 $.children = query.children;
 
 // --- Collection selector ---------------------------------------------------

@@ -8,22 +8,6 @@ Complete API documentation for every module, method, option, and type in zQuery.
 
 ## Table of Contents
 
-- [Selectors & DOM](#selectors--dom)
-  - [Selecting Elements](#selecting-elements)
-  - [Working with Single Elements](#working-with-single-elements)
-  - [Collection Selector — $.all()](#collection-selector--all)
-  - [Element Creation — $.create()](#element-creation--create)
-  - [Collection Methods — ZQueryCollection](#collection-methods--zquerycollection)
-  - [Events — DOM & Global](#events--dom--global)
-  - [Animations](#animations)
-  - [Form Helpers](#form-helpers)
-  - [Extend with Plugins — $.fn](#extend-with-plugins--fn)
-  - [Static Helpers](#static-helpers)
-- [Reactive — Proxies & Signals](#reactive--proxies--signals)
-  - [reactive()](#reactiveobject-onchange)
-  - [signal()](#signalinitial)
-  - [computed()](#computedfn)
-  - [effect()](#effectfn)
 - [Component System](#component-system)
   - [$.component()](#componentname-definition)
   - [Component Definition Options](#component-definition-options)
@@ -62,6 +46,21 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [$.http.createAbort()](#httpcreateabort)
   - [$.http.raw()](#httprawurl-opts)
   - [Response Object](#response-object)
+- [Reactive — Proxies & Signals](#reactive--proxies--signals)
+  - [reactive()](#reactiveobject-onchange)
+  - [signal()](#signalinitial)
+  - [computed()](#computedfn)
+  - [effect()](#effectfn)
+- [Selectors & DOM](#selectors--dom)
+  - [Selecting Elements](#selecting-elements)
+  - [Working with Single Elements](#working-with-single-elements)
+  - [Collection Methods — ZQueryCollection](#collection-methods--zquerycollection)
+  - [Element Creation — $.create()](#element-creation--create)
+  - [Events — DOM & Global](#events--dom--global)
+  - [Animations](#animations)
+  - [Form Helpers](#form-helpers)
+  - [Extend with Plugins — $.fn](#extend-with-plugins--fn)
+  - [Static Helpers](#static-helpers)
 - [Utilities](#utilities)
   - [Function Utilities](#function-utilities)
   - [String Utilities](#string-utilities)
@@ -84,137 +83,87 @@ Complete API documentation for every module, method, option, and type in zQuery.
 
 ## Selectors & DOM
 
-zQuery gives you a full set of selectors for every common lookup pattern — by ID, class, tag, CSS query, or parent. Most of the time you're grabbing **one element**, so the API is designed around that. `$.all()` is there when you genuinely need a collection.
+zQuery gives you a full set of selectors for every common lookup pattern — by ID, class, tag, CSS query, or parent.
+
+**`$()` — the main function** — always returns a **`ZQueryCollection`** (like jQuery). Chainable, iterable, index-accessible:
 
 | Selector | Returns | Description |
 | --- | --- | --- |
-| `$(selector)` | `Element \| null` | First match via `querySelector`. Also accepts elements, NodeLists, HTML strings, and functions (DOM-ready). |
+| `$(selector)` | `ZQueryCollection` | All matches via `querySelectorAll`. Also accepts elements, NodeLists, HTML strings, and functions (DOM-ready). |
+| `$(selector, context)` | `ZQueryCollection` | Scoped to a parent element or selector |
+| `$(element)` | `ZQueryCollection` | Wrap a single element in a collection |
+| `$(nodeList \| array)` | `ZQueryCollection` | Wrap an existing NodeList or array |
+| `$(fn)` | `void` | DOMContentLoaded shorthand |
+| `$.all(selector)` | `ZQueryCollection` | Alias for `$()` — identical behavior |
+
+**Raw-element shortcuts** — return a native DOM element (or `null`) for direct native API use:
+
+| Selector | Returns | Description |
+| --- | --- | --- |
 | `$.id(id)` | `Element \| null` | `document.getElementById` |
 | `$.class(name)` | `Element \| null` | First element with the class — `querySelector('.name')` |
-| `$.classes(name)` | `Array<Element>` | All elements with the class — `getElementsByClassName` as array |
-| `$.tag(name)` | `Array<Element>` | All elements of a tag — `getElementsByTagName` as array |
-| `$.children(parentId)` | `Array<Element>` | Direct children of `#parentId` as array |
-| `$.all(selector)` | `ZQueryCollection` | All matches via `querySelectorAll`, wrapped in a chainable collection |
+
+**Multi-element shortcuts** — return a `ZQueryCollection`:
+
+| Selector | Returns | Description |
+| --- | --- | --- |
+| `$.classes(name)` | `ZQueryCollection` | All elements with the class — `getElementsByClassName` |
+| `$.tag(name)` | `ZQueryCollection` | All elements of a tag — `getElementsByTagName` |
+| `$.name(name)` | `ZQueryCollection` | All elements with a `name` attribute — `getElementsByName` |
+| `$.children(parentId)` | `ZQueryCollection` | Direct children of `#parentId` |
 
 > `queryAll` is the ES module export name for `$.all()` — they are identical. Use `queryAll` in `import { queryAll } from '...'` contexts.
 
-> **Which one should I use?** Reach for the specific helper first — `$.id()`, `$.class()`, `$.tag()` — they're shorter, faster, and make your intent obvious. Use `$()` for complex CSS selectors or scoped queries. Use `$.all()` only when you actually need to operate on **multiple elements** at once.
+> **Which one should I use?** `$()` is the go-to — it returns a chainable collection for any CSS selector, HTML string, or element. Use `$.id()` / `$.class()` when you need a raw DOM element for the native API. Use `$.classes()` / `$.tag()` / `$.name()` / `$.children()` as convenient shortcuts for common multi-element lookups.
 
 ### Selecting Elements
 
 ```js
-// By ID — grab a specific container, form, or section
-const app      = $.id('app');
-const sidebar  = $.id('sidebar');
-const modal    = $.id('confirm-dialog');
+// $() — always returns a ZQueryCollection (chainable)
+const sidebar  = $('#sidebar');                     // 1-element collection
+const cards    = $('.card');                        // all matching elements
+const nested   = $('li', '#todo-list');             // scoped inside #todo-list
+const created  = $('<div class="alert">Saved!</div>'); // from HTML string
+$(() => console.log('DOM is ready'));               // DOM-ready callback
 
-// By class — first matching element
-const hero     = $.class('hero-banner');
-const active   = $.class('tab-active');
+// Chain collection methods right away
+$('#sidebar').addClass('collapsed').css({ width: '60px' });
+$('.card').addClass('loaded').css({ opacity: '1' });
 
-// All elements with a class — returns a plain array
-const errors   = $.classes('field-error');    // [span.field-error, span.field-error, ...]
+// Raw-element shortcuts for native DOM API
+const app      = $.id('app');         // raw Element
+const hero     = $.class('hero');     // raw Element
 
-// By tag — all elements of that type
-const images   = $.tag('img');               // every <img> on the page
-const rows     = $.tag('tr');                // every table row
-
-// Children of a specific parent
-const navItems = $.children('main-nav');     // direct children of #main-nav
-
-// CSS selector — for anything more specific
-const email    = $('input[name="email"]');   // first matching input
-const featured = $('article.featured');      // first featured article
-const nested   = $('li', '#todo-list');      // first <li> inside #todo-list
-
-// Create an element from an HTML string
-const alert    = $('<div class="alert">Saved!</div>');
-
-// DOM-ready callback
-$(() => console.log('DOM is ready'));
+// Multi-element shortcuts (also return ZQueryCollection)
+const errors   = $.classes('field-error');
+const images   = $.tag('img');
+const navItems = $.children('main-nav');
 ```
 
 ### Working with Single Elements
 
-Every selector above (except `$.all`) returns a **raw DOM element** — no wrapper, no abstraction. You use the standard DOM API directly:
+`$.id()` and `$.class()` return **raw DOM elements** — use the native API directly:
 
 ```js
-// Toggle a sidebar
-const sidebar = $.id('sidebar');
-sidebar.classList.toggle('collapsed');
-
-// Read and update a form field
-const emailInput = $('input[name="email"]');
-console.log(emailInput.value);
-emailInput.value = '';
-emailInput.focus();
-
-// Show/hide a modal
-const modal = $.id('confirm-dialog');
-modal.style.display = 'flex';         // show
-modal.style.display = 'none';         // hide
-
-// Update text content
+// Native DOM API on raw elements
+$.id('sidebar').classList.toggle('collapsed');
+$.id('confirm-dialog').style.display = 'flex';
 $.id('cart-count').textContent = '3';
-
-// Set attributes on a specific element
 $.class('avatar').setAttribute('src', user.photoUrl);
 
-// Loop over a plain array from $.classes / $.tag / $.children
-$.classes('notification').forEach(el => el.remove());
-$.tag('input').forEach(el => { el.disabled = true; });
+// Or chain via $() for the same element
+$('#sidebar').toggleClass('collapsed');
+$('#confirm-dialog').show('flex');
+$('#cart-count').text('3');
 ```
 
-> **No wrapper overhead.** Because `$()`, `$.id()`, `$.class()`, etc. return native DOM elements, you get full access to the browser API. There's no collection object to unwrap — just the element you asked for.
-
----
-
-### Collection Selector — `$.all()`
-
-When you need to apply the same operation to **many elements at once**, `$.all()` returns a `ZQueryCollection` with chainable helper methods:
-
-```js
-// Disable all submit buttons in a form while saving
-$.all('#checkout-form button[type="submit"]').prop('disabled', true).addClass('saving');
-
-// The collection is iterable — for...of and spread both work
-for (const row of $.all('table.report tbody tr')) {
-  console.log(row.cells[0].textContent);
-}
-```
-
----
-
-### Element Creation — `$.create()`
-
-Create a DOM element programmatically with attributes, styles, event listeners, and children in a single call:
-
-```js
-const btn = $.create('button', {
-  class: 'primary',
-  style: { padding: '10px', borderRadius: '6px' },
-  onclick: () => alert('Clicked!'),
-  data: { action: 'submit', id: '42' }  // sets data-action, data-id
-}, 'Click Me');
-
-document.body.appendChild(btn);
-```
-
-| Attribute Key | Behavior |
-| --- | --- |
-| `class` | Sets `className` directly |
-| `style` (object) | Assigns each property to `el.style` |
-| `on*` (e.g. `onclick`) | Adds event listener for the event name after "on" |
-| `data` (object) | Sets `dataset` properties |
-| Anything else | Calls `setAttribute(key, value)` |
-
-Additional arguments after `attrs` are appended as children (strings become text nodes, elements are appended directly).
+> **`$.id()` uses `document.getElementById`** — it's a hash lookup, faster than `querySelector('#id')`. Use `$.id()` when you need a raw element for the native API; use `$('#id')` when you want chaining.
 
 ---
 
 ### Collection Methods — `ZQueryCollection`
 
-When you call `$.all()`, the returned `ZQueryCollection` provides a rich set of chainable methods. Most setters return `this` for chaining; getters return the value from the first element.
+`$()`, `$.all()`, `$.classes()`, `$.tag()`, `$.name()`, and `$.children()` all return a `ZQueryCollection` with a rich set of chainable methods. Most setters return `this` for chaining; getters return the value from the first element.
 
 #### Traversal & Filtering
 
@@ -237,12 +186,13 @@ When you call `$.all()`, the returned `ZQueryCollection` provides a rich set of 
 | --- | --- | --- | --- |
 | `each` | `each(fn)` | `this` | `fn.call(el, index, el)` — chainable |
 | `map` | `map(fn)` | `Array` | `fn.call(el, index, el)` — returns plain array |
+| `forEach` | `forEach(fn)` | `this` | `fn(el, index, elements)` — Array-style iteration, chainable |
 | `first` | `first()` | `Element \| null` | First element in collection |
 | `last` | `last()` | `Element \| null` | Last element in collection |
 | `eq` | `eq(index)` | `ZQueryCollection` | Single-element collection at given index |
 | `toArray` | `toArray()` | `Array<Element>` | Spread to plain array |
 
-> **Numeric indexing:** You can access elements directly by index — `$.all('.card')[0]` returns the first raw DOM element, just like an array. The collection also implements `[Symbol.iterator]`, so `for...of` and spread (`...`) work natively.
+> **Numeric indexing:** You can access elements directly by index — `$('.card')[0]` returns the first raw DOM element, just like an array. The collection also implements `[Symbol.iterator]`, so `for...of` and spread (`...`) work natively.
 
 #### Classes & Attributes
 
@@ -307,6 +257,33 @@ When you call `$.all()`, the returned `ZQueryCollection` provides a rich set of 
 
 ---
 
+### Element Creation — `$.create()`
+
+Create a DOM element programmatically with attributes, styles, event listeners, and children in a single call:
+
+```js
+const btn = $.create('button', {
+  class: 'primary',
+  style: { padding: '10px', borderRadius: '6px' },
+  onclick: () => alert('Clicked!'),
+  data: { action: 'submit', id: '42' }  // sets data-action, data-id
+}, 'Click Me');
+
+document.body.appendChild(btn);
+```
+
+| Attribute Key | Behavior |
+| --- | --- |
+| `class` | Sets `className` directly |
+| `style` (object) | Assigns each property to `el.style` |
+| `on*` (e.g. `onclick`) | Adds event listener for the event name after "on" |
+| `data` (object) | Sets `dataset` properties |
+| Anything else | Calls `setAttribute(key, value)` |
+
+Additional arguments after `attrs` are appended as children (strings become text nodes, elements are appended directly).
+
+---
+
 ### Events — DOM & Global
 
 Single elements use native `addEventListener`. Collections get chainable `.on()`. Global events use `$.on()` / `$.off()`.
@@ -332,12 +309,12 @@ $.on('theme:change', handler);
 $.off('theme:change', handler);
 
 // Collection .on() — when you truly need the same handler on many elements
-$.all('nav a').on('mouseenter mouseleave', (e) => {
+$('nav a').on('mouseenter mouseleave', (e) => {
   e.target.classList.toggle('hovered');
 });
 
 // One-time event on a collection
-$.all('.onboarding-step').one('click', function() {
+$('.onboarding-step').one('click', function() {
   this.classList.add('completed');
 });
 ```
@@ -359,12 +336,11 @@ All animation methods return `Promise`s, so you can `await` them for sequencing:
 
 ```js
 // Fade in a single modal
-const modal = $.id('modal');
-await $.all([modal]).fadeIn(200);  // wrap in collection for animation helpers
+await $('#modal').fadeIn(200);
 
 // Or target by selector when animating multiple elements
-await $.all('.row.removing').animate({ opacity: '0', transform: 'translateX(-20px)' }, 300);
-$.all('.row.removing').remove();
+await $('.row.removing').animate({ opacity: '0', transform: 'translateX(-20px)' }, 300);
+$('.row.removing').remove();
 ```
 
 ---
@@ -373,7 +349,7 @@ $.all('.row.removing').remove();
 
 ```js
 // Grab the form as a collection for serialize helpers
-const form = $.all('#checkout-form');
+const form = $('#checkout-form');
 
 // URL-encoded string (like traditional form submission)
 form.serialize();        // "name=Tony&email=tony%40x.com"
@@ -396,7 +372,7 @@ $.fn.disable = function() {
 };
 
 // Use it on any collection
-$.all('#settings-form input').disable();
+$('#settings-form input').disable();
 ```
 
 > **Tip:** Always return `this` from plugin methods to preserve chainability.
@@ -2118,7 +2094,7 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
 | `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. See [z-key](#z-key--keyed-reconciliation). |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
-| `$.version` | Library version string (e.g. `'0.6.1'`). |
+| `$.version` | Library version string (e.g. `'0.6.2'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |

@@ -26,6 +26,11 @@ export class ZQueryCollection {
     return this.elements.map((el, i) => fn.call(el, i, el));
   }
 
+  forEach(fn) {
+    this.elements.forEach((el, i) => fn(el, i, this.elements));
+    return this;
+  }
+
   first() { return this.elements[0] || null; }
   last()  { return this.elements[this.length - 1] || null; }
   eq(i)   { return new ZQueryCollection(this.elements[i] ? [this.elements[i]] : []); }
@@ -384,42 +389,40 @@ function createFragment(html) {
 
 
 // ---------------------------------------------------------------------------
-// $() — main selector / creator function (returns single element for CSS selectors)
+// $() — main selector / creator (returns ZQueryCollection, like jQuery)
 // ---------------------------------------------------------------------------
 export function query(selector, context) {
   // null / undefined
-  if (!selector) return null;
+  if (!selector) return new ZQueryCollection([]);
 
-  // Already a collection — return first element
-  if (selector instanceof ZQueryCollection) return selector.first();
+  // Already a collection — return as-is
+  if (selector instanceof ZQueryCollection) return selector;
 
-  // DOM element or Window — return as-is
+  // DOM element or Window — wrap in collection
   if (selector instanceof Node || selector === window) {
-    return selector;
+    return new ZQueryCollection([selector]);
   }
 
-  // NodeList / HTMLCollection / Array — return first element
+  // NodeList / HTMLCollection / Array — wrap in collection
   if (selector instanceof NodeList || selector instanceof HTMLCollection || Array.isArray(selector)) {
-    const arr = Array.from(selector);
-    return arr[0] || null;
+    return new ZQueryCollection(Array.from(selector));
   }
 
-  // HTML string → create elements, return first
+  // HTML string → create elements, wrap in collection
   if (typeof selector === 'string' && selector.trim().startsWith('<')) {
     const fragment = createFragment(selector);
-    const els = [...fragment.childNodes].filter(n => n.nodeType === 1);
-    return els[0] || null;
+    return new ZQueryCollection([...fragment.childNodes].filter(n => n.nodeType === 1));
   }
 
-  // CSS selector string → querySelector (single element)
+  // CSS selector string → querySelectorAll (collection)
   if (typeof selector === 'string') {
     const root = context
       ? (typeof context === 'string' ? document.querySelector(context) : context)
       : document;
-    return root.querySelector(selector);
+    return new ZQueryCollection([...root.querySelectorAll(selector)]);
   }
 
-  return null;
+  return new ZQueryCollection([]);
 }
 
 
@@ -466,21 +469,15 @@ export function queryAll(selector, context) {
 // ---------------------------------------------------------------------------
 query.id       = (id) => document.getElementById(id);
 query.class    = (name) => document.querySelector(`.${name}`);
-query.classes  = (name) => Array.from(document.getElementsByClassName(name));
-query.tag      = (name) => Array.from(document.getElementsByTagName(name));
+query.classes  = (name) => new ZQueryCollection(Array.from(document.getElementsByClassName(name)));
+query.tag      = (name) => new ZQueryCollection(Array.from(document.getElementsByTagName(name)));
 Object.defineProperty(query, 'name', {
-  value: (name) => Array.from(document.getElementsByName(name)),
+  value: (name) => new ZQueryCollection(Array.from(document.getElementsByName(name))),
   writable: true, configurable: true
 });
-query.attr     = (attr, value) => Array.from(
-  document.querySelectorAll(value !== undefined ? `[${attr}="${value}"]` : `[${attr}]`)
-);
-query.data     = (key, value) => Array.from(
-  document.querySelectorAll(value !== undefined ? `[data-${key}="${value}"]` : `[data-${key}]`)
-);
 query.children = (parentId) => {
   const p = document.getElementById(parentId);
-  return p ? Array.from(p.children) : [];
+  return new ZQueryCollection(p ? Array.from(p.children) : []);
 };
 
 // Create element shorthand

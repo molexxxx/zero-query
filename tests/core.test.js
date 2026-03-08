@@ -21,34 +21,51 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('query()', () => {
-  it('returns element by CSS selector', () => {
-    const el = query('#main');
-    expect(el).toBe(document.getElementById('main'));
+  it('returns ZQueryCollection by CSS selector', () => {
+    const col = query('#main');
+    expect(col).toBeInstanceOf(ZQueryCollection);
+    expect(col.first()).toBe(document.getElementById('main'));
   });
 
-  it('returns null for non-matching selector', () => {
-    expect(query('#nonexistent')).toBeNull();
+  it('returns empty collection for non-matching selector', () => {
+    const col = query('#nonexistent');
+    expect(col).toBeInstanceOf(ZQueryCollection);
+    expect(col.length).toBe(0);
   });
 
-  it('returns null for null/undefined', () => {
-    expect(query(null)).toBeNull();
-    expect(query(undefined)).toBeNull();
+  it('returns empty collection for null/undefined', () => {
+    expect(query(null).length).toBe(0);
+    expect(query(undefined).length).toBe(0);
   });
 
-  it('returns DOM element as-is', () => {
+  it('wraps DOM element in collection', () => {
     const div = document.createElement('div');
-    expect(query(div)).toBe(div);
+    const col = query(div);
+    expect(col).toBeInstanceOf(ZQueryCollection);
+    expect(col.first()).toBe(div);
   });
 
-  it('creates element from HTML string', () => {
-    const el = query('<span>hello</span>');
-    expect(el.tagName).toBe('SPAN');
-    expect(el.textContent).toBe('hello');
+  it('creates elements from HTML string as collection', () => {
+    const col = query('<span>hello</span>');
+    expect(col).toBeInstanceOf(ZQueryCollection);
+    expect(col.first().tagName).toBe('SPAN');
+    expect(col.first().textContent).toBe('hello');
+  });
+
+  it('returns all matching elements', () => {
+    const col = query('.text');
+    expect(col.length).toBe(2);
   });
 
   it('uses context parameter', () => {
-    const el = query('.text', '#main');
-    expect(el.textContent).toBe('Hello');
+    const col = query('.text', '#main');
+    expect(col.length).toBe(2);
+    expect(col.first().textContent).toBe('Hello');
+  });
+
+  it('supports chaining on result', () => {
+    const col = query('#main').addClass('chained');
+    expect(col.first().classList.contains('chained')).toBe(true);
   });
 });
 
@@ -314,12 +331,28 @@ describe('query quick refs', () => {
     expect(query.class('text').textContent).toBe('Hello');
   });
 
-  it('$.classes() returns array of elements', () => {
-    expect(query.classes('text').length).toBe(2);
+  it('$.classes() returns ZQueryCollection', () => {
+    const col = query.classes('text');
+    expect(col).toBeInstanceOf(ZQueryCollection);
+    expect(col.length).toBe(2);
   });
 
-  it('$.children() returns children of element', () => {
-    expect(query.children('main').length).toBe(3);
+  it('$.children() returns ZQueryCollection', () => {
+    const col = query.children('main');
+    expect(col).toBeInstanceOf(ZQueryCollection);
+    expect(col.length).toBe(3);
+  });
+
+  it('$.tag() returns ZQueryCollection', () => {
+    const col = query.tag('p');
+    expect(col).toBeInstanceOf(ZQueryCollection);
+    expect(col.length).toBe(2);
+  });
+
+  it('collection forEach() works like Array.forEach()', () => {
+    const results = [];
+    query.classes('text').forEach((el, i) => results.push({ i, text: el.textContent }));
+    expect(results).toEqual([{ i: 0, text: 'Hello' }, { i: 1, text: 'World' }]);
   });
 
   it('$.create() creates element with attributes', () => {

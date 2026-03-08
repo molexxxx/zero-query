@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.6.1
+ * zQuery (zeroQuery) v0.6.2
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -342,6 +342,11 @@ class ZQueryCollection {
 
   map(fn) {
     return this.elements.map((el, i) => fn.call(el, i, el));
+  }
+
+  forEach(fn) {
+    this.elements.forEach((el, i) => fn(el, i, this.elements));
+    return this;
   }
 
   first() { return this.elements[0] || null; }
@@ -702,42 +707,40 @@ function createFragment(html) {
 
 
 // ---------------------------------------------------------------------------
-// $() — main selector / creator function (returns single element for CSS selectors)
+// $() — main selector / creator (returns ZQueryCollection, like jQuery)
 // ---------------------------------------------------------------------------
 function query(selector, context) {
   // null / undefined
-  if (!selector) return null;
+  if (!selector) return new ZQueryCollection([]);
 
-  // Already a collection — return first element
-  if (selector instanceof ZQueryCollection) return selector.first();
+  // Already a collection — return as-is
+  if (selector instanceof ZQueryCollection) return selector;
 
-  // DOM element or Window — return as-is
+  // DOM element or Window — wrap in collection
   if (selector instanceof Node || selector === window) {
-    return selector;
+    return new ZQueryCollection([selector]);
   }
 
-  // NodeList / HTMLCollection / Array — return first element
+  // NodeList / HTMLCollection / Array — wrap in collection
   if (selector instanceof NodeList || selector instanceof HTMLCollection || Array.isArray(selector)) {
-    const arr = Array.from(selector);
-    return arr[0] || null;
+    return new ZQueryCollection(Array.from(selector));
   }
 
-  // HTML string → create elements, return first
+  // HTML string → create elements, wrap in collection
   if (typeof selector === 'string' && selector.trim().startsWith('<')) {
     const fragment = createFragment(selector);
-    const els = [...fragment.childNodes].filter(n => n.nodeType === 1);
-    return els[0] || null;
+    return new ZQueryCollection([...fragment.childNodes].filter(n => n.nodeType === 1));
   }
 
-  // CSS selector string → querySelector (single element)
+  // CSS selector string → querySelectorAll (collection)
   if (typeof selector === 'string') {
     const root = context
       ? (typeof context === 'string' ? document.querySelector(context) : context)
       : document;
-    return root.querySelector(selector);
+    return new ZQueryCollection([...root.querySelectorAll(selector)]);
   }
 
-  return null;
+  return new ZQueryCollection([]);
 }
 
 
@@ -784,21 +787,15 @@ function queryAll(selector, context) {
 // ---------------------------------------------------------------------------
 query.id       = (id) => document.getElementById(id);
 query.class    = (name) => document.querySelector(`.${name}`);
-query.classes  = (name) => Array.from(document.getElementsByClassName(name));
-query.tag      = (name) => Array.from(document.getElementsByTagName(name));
+query.classes  = (name) => new ZQueryCollection(Array.from(document.getElementsByClassName(name)));
+query.tag      = (name) => new ZQueryCollection(Array.from(document.getElementsByTagName(name)));
 Object.defineProperty(query, 'name', {
-  value: (name) => Array.from(document.getElementsByName(name)),
+  value: (name) => new ZQueryCollection(Array.from(document.getElementsByName(name))),
   writable: true, configurable: true
 });
-query.attr     = (attr, value) => Array.from(
-  document.querySelectorAll(value !== undefined ? `[${attr}="${value}"]` : `[${attr}]`)
-);
-query.data     = (key, value) => Array.from(
-  document.querySelectorAll(value !== undefined ? `[data-${key}="${value}"]` : `[data-${key}]`)
-);
 query.children = (parentId) => {
   const p = document.getElementById(parentId);
-  return p ? Array.from(p.children) : [];
+  return new ZQueryCollection(p ? Array.from(p.children) : []);
 };
 
 // Create element shorthand
@@ -4271,16 +4268,16 @@ const bus = new EventBus();
 // ---------------------------------------------------------------------------
 
 /**
- * Main selector function
+ * Main selector function — always returns a ZQueryCollection (like jQuery).
  * 
- *   $('selector')         → single Element (querySelector)
- *   $('<div>hello</div>') → create element (first created node)
- *   $(element)            → return element as-is
+ *   $('selector')         → ZQueryCollection (querySelectorAll)
+ *   $('<div>hello</div>') → ZQueryCollection from created elements
+ *   $(element)            → ZQueryCollection wrapping the element
  *   $(fn)                 → DOMContentLoaded shorthand
  * 
  * @param {string|Element|NodeList|Function} selector
  * @param {string|Element} [context]
- * @returns {Element|null}
+ * @returns {ZQueryCollection}
  */
 function $(selector, context) {
   // $(fn) → DOM ready shorthand
@@ -4300,8 +4297,6 @@ $.tag      = query.tag;
 Object.defineProperty($, 'name', {
   value: query.name, writable: true, configurable: true
 });
-$.attr     = query.attr;
-$.data     = query.data;
 $.children = query.children;
 
 // --- Collection selector ---------------------------------------------------
@@ -4389,7 +4384,7 @@ $.ZQueryError = ZQueryError;
 $.ErrorCode   = ErrorCode;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.6.1';
+$.version = '0.6.2';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

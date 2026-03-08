@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.6.1
+ * @version 0.6.2
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -37,6 +37,11 @@ export class ZQueryCollection {
    * Map over elements and return a plain array.
    */
   map<T>(fn: (this: Element, index: number, element: Element) => T): T[];
+
+  /**
+   * Iterate elements with Array-style `forEach`. Returns `this` for chaining.
+   */
+  forEach(fn: (element: Element, index: number, elements: Element[]) => void): this;
 
   /** First raw element, or `null`. */
   first(): Element | null;
@@ -1272,17 +1277,17 @@ export function validate(value: any, name: string, expectedType?: string): void;
 // ---------------------------------------------------------------------------
 
 /**
- * Main selector / DOM-ready function.
+ * Main selector / DOM-ready function — always returns a `ZQueryCollection` (like jQuery).
  *
- * - `$('selector')` → single Element via `querySelector`
- * - `$('<div>…</div>')` → create element from HTML
- * - `$(element)` → return as-is
+ * - `$('selector')` → ZQueryCollection via `querySelectorAll`
+ * - `$('<div>…</div>')` → ZQueryCollection from created elements
+ * - `$(element)` → ZQueryCollection wrapping the element
  * - `$(fn)` → DOMContentLoaded shorthand
  */
 interface ZQueryStatic {
-  (selector: string, context?: string | Element): Element | null;
-  (element: Element): Element;
-  (nodeList: NodeList | HTMLCollection | Element[]): Element | null;
+  (selector: string, context?: string | Element): ZQueryCollection;
+  (element: Element): ZQueryCollection;
+  (nodeList: NodeList | HTMLCollection | Element[]): ZQueryCollection;
   (fn: () => void): void;
 
   // -- Collection selector -------------------------------------------------
@@ -1303,18 +1308,14 @@ interface ZQueryStatic {
   id(id: string): Element | null;
   /** `document.querySelector('.name')` */
   class(name: string): Element | null;
-  /** `document.getElementsByClassName(name)` as array. */
-  classes(name: string): Element[];
-  /** `document.getElementsByTagName(name)` as array. */
-  tag(name: string): Element[];
-  /** `document.getElementsByName(name)` as array. */
-  name(name: string): Element[];
-  /** `document.querySelectorAll('[attr]')` or `[attr="value"]` as array. */
-  attr(attr: string, value?: string): Element[];
-  /** `document.querySelectorAll('[data-key]')` or `[data-key="value"]` as array. */
-  data(key: string, value?: string): Element[];
-  /** Children of `#parentId` as array. */
-  children(parentId: string): Element[];
+  /** `document.getElementsByClassName(name)` as `ZQueryCollection`. */
+  classes(name: string): ZQueryCollection;
+  /** `document.getElementsByTagName(name)` as `ZQueryCollection`. */
+  tag(name: string): ZQueryCollection;
+  /** `document.getElementsByName(name)` as `ZQueryCollection`. */
+  name(name: string): ZQueryCollection;
+  /** Children of `#parentId` as `ZQueryCollection`. */
+  children(parentId: string): ZQueryCollection;
 
   // -- Static helpers ------------------------------------------------------
   /**

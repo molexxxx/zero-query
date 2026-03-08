@@ -240,9 +240,9 @@ location / {
 
 | Namespace | Methods |
 | --- | --- |
-| `$()` | Single-element selector → `Element \| null` |
-| `$.all()` | Collection selector → `ZQueryCollection` |
-| `$.id` `$.class` `$.classes` `$.tag` `$.children` | Quick DOM refs |
+| `$()` | Chainable selector → `ZQueryCollection` (CSS selectors, elements, NodeLists, HTML strings) |
+| `$.all()` | Alias for `$()` — identical behavior |
+| `$.id` `$.class` `$.classes` `$.tag` `$.name` `$.children` | Quick DOM refs |
 | `$.create` | Element factory |
 | `$.ready` `$.on` `$.off` | DOM ready, global event delegation & direct listeners |
 | `$.fn` | Collection prototype (extend it) |
