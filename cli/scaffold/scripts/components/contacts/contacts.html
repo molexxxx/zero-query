@@ -112,15 +112,15 @@
 <div class="card contact-detail" z-if="selectedId !== null">
   <div class="detail-header">
     <div>
-      <h3 z-text="contacts.find(c => c.id === selectedId)?.name || ''"></h3>
-      <p class="muted" z-text="contacts.find(c => c.id === selectedId)?.email || ''"></p>
+      <h3 z-text="selectedName"></h3>
+      <p class="muted" z-text="selectedEmail"></p>
     </div>
     <div class="detail-actions">
       <button
         class="btn btn-outline btn-sm"
         @click="cycleStatus({{selectedId}})"
       >
-        Status: <span z-text="contacts.find(c => c.id === selectedId)?.status || ''"></span>
+        Status: <span z-text="selectedStatus"></span>
       </button>
 
       <!-- Confirm delete pattern using z-if / z-else -->

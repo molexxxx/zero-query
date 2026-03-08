@@ -23,6 +23,9 @@ $.component('contacts-page', {
     nameError: '',
     emailError: '',
     selectedId: null,
+    selectedName: '',
+    selectedEmail: '',
+    selectedStatus: '',
     confirmDeleteId: null,
     totalAdded: 0,
     favoriteCount: 0,
@@ -42,6 +45,7 @@ $.component('contacts-page', {
     this.state.contacts      = store.state.contacts;
     this.state.totalAdded    = store.state.contactsAdded;
     this.state.favoriteCount = store.getters.favoriteCount;
+    this._syncSelected();
   },
 
   // -- Actions --
@@ -101,8 +105,10 @@ $.component('contacts-page', {
   },
 
   selectContact(id) {
-    this.state.selectedId = this.state.selectedId === Number(id) ? null : Number(id);
+    const numId = Number(id);
+    this.state.selectedId = this.state.selectedId === numId ? null : numId;
     this.state.confirmDeleteId = null;
+    this._syncSelected();
   },
 
   confirmDelete(id) {
@@ -125,6 +131,16 @@ $.component('contacts-page', {
 
   cycleStatus(id) {
     $.getStore('main').dispatch('cycleContactStatus', Number(id));
+    this._syncSelected();
+  },
+
+  _syncSelected() {
+    const c = this.state.selectedId != null
+      ? this.state.contacts.find(c => c.id === this.state.selectedId)
+      : null;
+    this.state.selectedName   = c ? c.name : '';
+    this.state.selectedEmail  = c ? c.email : '';
+    this.state.selectedStatus = c ? c.status : '';
   },
 
   _clearForm() {

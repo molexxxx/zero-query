@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.5.7
+ * zQuery (zeroQuery) v0.5.8
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -690,6 +690,7 @@ query.fn = ZQueryCollection.prototype;
  *   - Grouping:              (a + b) * c
  *   - Nullish coalescing:    a ?? b
  *   - Optional chaining:     a?.b, a?.[b], a?.()
+ *   - Arrow functions:       x => x.id, (a, b) => a + b
  */
 
 // Token types
@@ -822,7 +823,8 @@ function tokenize(expr) {
     }
     const pair = expr.slice(i, i + 2);
     if (pair === '==' || pair === '!=' || pair === '<=' || pair === '>=' ||
-        pair === '&&' || pair === '||' || pair === '??' || pair === '?.') {
+        pair === '&&' || pair === '||' || pair === '??' || pair === '?.' ||
+        pair === '=>') {
       tokens.push({ t: T.OP, v: pair });
       i += 2;
       continue;
@@ -1068,9 +1070,44 @@ class Parser {
       return { type: 'template', parts: tok.v };
     }
 
-    // Grouping (parenthesized expression)
+    // Arrow function with parens: () =>, (a) =>, (a, b) =>
+    // or regular grouping: (expr)
     if (tok.t === T.PUNC && tok.v === '(') {
-      this.next();
+      const savedPos = this.pos;
+      this.next(); // consume (
+      const params = [];
+      let couldBeArrow = true;
+
+      if (this.peek().t === T.PUNC && this.peek().v === ')') {
+        // () => ... — no params
+      } else {
+        while (couldBeArrow) {
+          const p = this.peek();
+          if (p.t === T.IDENT && !KEYWORDS.has(p.v)) {
+            params.push(this.next().v);
+            if (this.peek().t === T.PUNC && this.peek().v === ',') {
+              this.next();
+            } else {
+              break;
+            }
+          } else {
+            couldBeArrow = false;
+          }
+        }
+      }
+
+      if (couldBeArrow && this.peek().t === T.PUNC && this.peek().v === ')') {
+        this.next(); // consume )
+        if (this.peek().t === T.OP && this.peek().v === '=>') {
+          this.next(); // consume =>
+          const body = this.parseExpression(0);
+          return { type: 'arrow', params, body };
+        }
+      }
+
+      // Not an arrow — restore and parse as grouping
+      this.pos = savedPos;
+      this.next(); // consume (
       const expr = this.parseExpression(0);
       this.expect(T.PUNC, ')');
       return expr;
@@ -1130,6 +1167,13 @@ class Parser {
           args = this._parseArgs();
         }
         return { type: 'new', callee: classExpr, args };
+      }
+
+      // Arrow function: x => expr
+      if (this.peek().t === T.OP && this.peek().v === '=>') {
+        this.next(); // consume =>
+        const body = this.parseExpression(0);
+        return { type: 'arrow', params: [tok.v], body };
       }
 
       return { type: 'ident', name: tok.v };
@@ -1320,6 +1364,17 @@ function evaluate(node, scope) {
       return obj;
     }
 
+    case 'arrow': {
+      const paramNames = node.params;
+      const bodyNode = node.body;
+      const closedScope = scope;
+      return function(...args) {
+        const arrowScope = {};
+        paramNames.forEach((name, i) => { arrowScope[name] = args[i]; });
+        return evaluate(bodyNode, [arrowScope, ...closedScope]);
+      };
+    }
+
     default:
       return undefined;
   }
@@ -1405,7 +1460,8 @@ function _evalBinary(node, scope) {
  */
 function safeEval(expr, scope) {
   try {
-    const tokens = tokenize(expr.trim());
+    const trimmed = expr.trim();
+    const tokens = tokenize(trimmed);
     const parser = new Parser(tokens, scope);
     const ast = parser.parse();
     return evaluate(ast, scope);
@@ -4095,7 +4151,7 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.5.7';
+$.version = '0.5.8';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {
