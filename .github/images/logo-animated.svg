@@ -148,8 +148,8 @@
     <!-- ==================== Z LIGHTNING BOLT ==================== -->
     <g filter="url(#glowBreath)">
       <g>
-        <animateTransform attributeName="transform" type="translate" values="0,0; 4,-3; -2,5; 3,2; -4,-1.5; 1,-4.5; -3,3.5; 4,-1; -1.5,4; 2.5,-3; 0,0" dur="10s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1"/>
-        <animateTransform attributeName="transform" type="rotate" values="0 256 256; 1.2 256 256; -0.8 256 256; 0.6 256 256; -1.1 256 256; 0.4 256 256; 0 256 256" dur="13s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" additive="sum"/>
+        <animateTransform attributeName="transform" type="translate" values="0,0; 7,-5; -3.5,8; 5.5,3.5; -7,-2.5; 2,-7.5; -5,6; 7,-2; -2.5,7; 4.5,-5; 0,0" dur="16s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1"/>
+        <animateTransform attributeName="transform" type="rotate" values="0 256 256; 1.5 256 256; -1 256 256; 0.8 256 256; -1.4 256 256; 0.5 256 256; 0 256 256" dur="20s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" additive="sum"/>
         <path d="M 128,120 H 384 V 172
                  L 300,256 L 316,256 L 232,340
                  H 384 V 392 H 128 V 340
