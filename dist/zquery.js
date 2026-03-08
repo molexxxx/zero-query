@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.6.2
+ * zQuery (zeroQuery) v0.6.3
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -2428,7 +2428,22 @@ class Component {
     if (!this._mounted && combinedStyles) {
       const scopeAttr = `z-s${this._uid}`;
       this._el.setAttribute(scopeAttr, '');
-      const scoped = combinedStyles.replace(/([^{}]+)\{/g, (match, selector) => {
+      let inAtBlock = 0;
+      const scoped = combinedStyles.replace(/([^{}]+)\{|\}/g, (match, selector) => {
+        if (match === '}') {
+          if (inAtBlock > 0) inAtBlock--;
+          return match;
+        }
+        const trimmed = selector.trim();
+        // Don't scope @-rules (@media, @keyframes, @supports, @container, @layer, @font-face, etc.)
+        if (trimmed.startsWith('@')) {
+          inAtBlock++;
+          return match;
+        }
+        // Don't scope keyframe stops (from, to, 0%, 50%, etc.)
+        if (inAtBlock > 0 && /^[\d%\s,fromto]+$/.test(trimmed.replace(/\s/g, ''))) {
+          return match;
+        }
         return selector.split(',').map(s => `[${scopeAttr}] ${s.trim()}`).join(', ') + ' {';
       });
       const styleEl = document.createElement('style');
@@ -4384,7 +4399,7 @@ $.ZQueryError = ZQueryError;
 $.ErrorCode   = ErrorCode;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.6.2';
+$.version = '0.6.3';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

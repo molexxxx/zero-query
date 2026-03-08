@@ -491,7 +491,22 @@ class Component {
     if (!this._mounted && combinedStyles) {
       const scopeAttr = `z-s${this._uid}`;
       this._el.setAttribute(scopeAttr, '');
-      const scoped = combinedStyles.replace(/([^{}]+)\{/g, (match, selector) => {
+      let inAtBlock = 0;
+      const scoped = combinedStyles.replace(/([^{}]+)\{|\}/g, (match, selector) => {
+        if (match === '}') {
+          if (inAtBlock > 0) inAtBlock--;
+          return match;
+        }
+        const trimmed = selector.trim();
+        // Don't scope @-rules (@media, @keyframes, @supports, @container, @layer, @font-face, etc.)
+        if (trimmed.startsWith('@')) {
+          inAtBlock++;
+          return match;
+        }
+        // Don't scope keyframe stops (from, to, 0%, 50%, etc.)
+        if (inAtBlock > 0 && /^[\d%\s,fromto]+$/.test(trimmed.replace(/\s/g, ''))) {
+          return match;
+        }
         return selector.split(',').map(s => `[${scopeAttr}] ${s.trim()}`).join(', ') + ' {';
       });
       const styleEl = document.createElement('style');
