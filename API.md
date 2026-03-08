@@ -779,7 +779,7 @@ $.component('page-layout', {
 <page-layout>
   <div slot="header"><h1>My App</h1></div>
   <p>Body content (default slot).</p>
-  <div slot="footer">&copy; 2025</div>
+  <div slot="footer">&copy; 2026</div>
 </page-layout>
 ```
 
