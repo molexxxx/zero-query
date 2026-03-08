@@ -5,39 +5,29 @@
       <stop offset="100%" stop-color="#0d1117"/>
     </linearGradient>
     <linearGradient id="zGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#79c0ff">
-        <animate attributeName="stop-color" 
-                 values="#79c0ff;#a5d6ff;#79c0ff" 
-                 dur="3s" 
-                 repeatCount="indefinite"/>
-      </stop>
-      <stop offset="50%" stop-color="#58a6ff">
-        <animate attributeName="stop-color" 
-                 values="#58a6ff;#79c0ff;#58a6ff" 
-                 dur="3s" 
-                 repeatCount="indefinite"/>
-      </stop>
-      <stop offset="100%" stop-color="#1f6feb">
-        <animate attributeName="stop-color" 
-                 values="#1f6feb;#58a6ff;#1f6feb" 
-                 dur="3s" 
-                 repeatCount="indefinite"/>
-      </stop>
+      <stop offset="0%" stop-color="#79c0ff"/>
+      <stop offset="50%" stop-color="#58a6ff"/>
+      <stop offset="100%" stop-color="#1f6feb"/>
     </linearGradient>
-    
-    <!-- Animated glow filter -->
-    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="16" result="blur">
-        <animate attributeName="stdDeviation" 
-                 values="12;20;12" 
-                 dur="2s" 
-                 repeatCount="indefinite"/>
+
+    <!-- Base glow filter -->
+    <filter id="glow" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="16" result="blur"/>
+      <feFlood flood-color="#1f6feb" flood-opacity="0.4" result="color"/>
+      <feComposite in="color" in2="blur" operator="in" result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Animated breathing glow behind Z -->
+    <filter id="glowBreath" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" result="blur">
+        <animate attributeName="stdDeviation" values="18;28;18" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
       </feGaussianBlur>
-      <feFlood flood-color="#1f6feb" result="color">
-        <animate attributeName="flood-opacity" 
-                 values="0.3;0.6;0.3" 
-                 dur="2s" 
-                 repeatCount="indefinite"/>
+      <feFlood flood-color="#58a6ff" result="color">
+        <animate attributeName="flood-opacity" values="0.3;0.55;0.3" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
       </feFlood>
       <feComposite in="color" in2="blur" operator="in" result="shadow"/>
       <feMerge>
@@ -45,132 +35,138 @@
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    
-    <!-- Electric shimmer filter -->
-    <filter id="shimmer" x="-10%" y="-10%" width="120%" height="120%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" result="noise">
-        <animate attributeName="baseFrequency" 
-                 values="0.02;0.04;0.02" 
-                 dur="4s" 
-                 repeatCount="indefinite"/>
-      </feTurbulence>
-      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2" xChannelSelector="R" yChannelSelector="G"/>
+
+    <!-- Soft particle glow -->
+    <filter id="particleGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="2"/>
     </filter>
 
-    <!-- Gradient for electric sparks -->
-    <linearGradient id="sparkGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="50%" stop-color="#a5d6ff" stop-opacity="1"/>
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    <!-- Light sweep gradient (transparent → white → transparent) -->
+    <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="white" stop-opacity="0"/>
+      <stop offset="40%" stop-color="white" stop-opacity="0"/>
+      <stop offset="50%" stop-color="white" stop-opacity="0.18"/>
+      <stop offset="60%" stop-color="white" stop-opacity="0"/>
+      <stop offset="100%" stop-color="white" stop-opacity="0"/>
     </linearGradient>
+
+    <!-- Radial ambient glow -->
+    <radialGradient id="ambientGlow" cx="50%" cy="50%" r="40%">
+      <stop offset="0%" stop-color="#1f6feb" stop-opacity="0">
+        <animate attributeName="stop-opacity" values="0;0.07;0" dur="4s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1"/>
+      </stop>
+      <stop offset="100%" stop-color="#1f6feb" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Z shape clip for the light sweep -->
+    <clipPath id="zClip">
+      <path d="M 128,120 H 384 V 172
+               L 300,256 L 316,256 L 232,340
+               H 384 V 392 H 128 V 340
+               L 212,256 L 228,256 L 312,172
+               H 128 Z"/>
+    </clipPath>
+
+    <!-- Clip to rounded rect -->
+    <clipPath id="clip">
+      <rect width="512" height="512" rx="88"/>
+    </clipPath>
   </defs>
 
-  <!-- Background -->
-  <rect width="512" height="512" rx="88" fill="url(#bg)"/>
-  <rect x="2" y="2" width="508" height="508" rx="86" fill="none" stroke="#30363d" stroke-width="2">
-    <animate attributeName="stroke-opacity" 
-             values="0.6;1;0.6" 
-             dur="3s" 
-             repeatCount="indefinite"/>
-  </rect>
+  <g clip-path="url(#clip)">
+    <!-- Background -->
+    <rect width="512" height="512" fill="url(#bg)"/>
 
-  <!-- Z lightning bolt with glow -->
-  <g filter="url(#glow)">
-    <path d="M 128,120 H 384 V 172
-             L 300,256 L 316,256 L 232,340
-             H 384 V 392 H 128 V 340
-             L 212,256 L 228,256 L 312,172
-             H 128 Z"
-          fill="url(#zGrad)">
-      <!-- Subtle scale pulse -->
-      <animateTransform attributeName="transform"
-                        type="scale"
-                        values="1;1.02;1"
-                        dur="2s"
-                        repeatCount="indefinite"
-                        additive="sum"/>
-    </path>
+    <!-- Ambient radial pulse behind everything -->
+    <rect width="512" height="512" fill="url(#ambientGlow)"/>
+
+    <!-- ==================== PARTICLES ==================== -->
+    <!-- Soft luminous particles that slowly rise/drift — no harsh shapes -->
+
+    <!-- Particle cluster: bottom → up, staggered -->
+    <circle cx="80" cy="480" r="1.5" fill="#58a6ff" opacity="0" filter="url(#particleGlow)">
+      <animate attributeName="opacity" values="0;0.5;0.4;0" dur="10s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="480;60" dur="10s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="160" cy="500" r="1" fill="#79c0ff" opacity="0" filter="url(#particleGlow)">
+      <animate attributeName="opacity" values="0;0.4;0.35;0" dur="12s" begin="2s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="500;40" dur="12s" begin="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="400" cy="490" r="1.2" fill="#58a6ff" opacity="0" filter="url(#particleGlow)">
+      <animate attributeName="opacity" values="0;0.45;0.3;0" dur="11s" begin="1s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="490;50" dur="11s" begin="1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="450" cy="510" r="0.8" fill="#79c0ff" opacity="0" filter="url(#particleGlow)">
+      <animate attributeName="opacity" values="0;0.35;0.3;0" dur="14s" begin="4s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="510;30" dur="14s" begin="4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="60" cy="500" r="1" fill="#58a6ff" opacity="0" filter="url(#particleGlow)">
+      <animate attributeName="opacity" values="0;0.4;0.2;0" dur="13s" begin="6s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="500;20" dur="13s" begin="6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="310" cy="520" r="1.3" fill="#79c0ff" opacity="0" filter="url(#particleGlow)">
+      <animate attributeName="opacity" values="0;0.4;0.35;0" dur="11s" begin="3s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="520;50" dur="11s" begin="3s" repeatCount="indefinite"/>
+    </circle>
+
+    <!-- Slower, gentler particles with slight X drift -->
+    <circle cx="220" cy="510" r="0.9" fill="#58a6ff" opacity="0" filter="url(#particleGlow)">
+      <animate attributeName="opacity" values="0;0.3;0.25;0" dur="16s" begin="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="510;-10" dur="16s" begin="1.5s" repeatCount="indefinite"/>
+      <animate attributeName="cx" values="220;240" dur="16s" begin="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="350" cy="495" r="0.7" fill="#79c0ff" opacity="0" filter="url(#particleGlow)">
+      <animate attributeName="opacity" values="0;0.35;0.2;0" dur="15s" begin="5s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="495;10" dur="15s" begin="5s" repeatCount="indefinite"/>
+      <animate attributeName="cx" values="350;335" dur="15s" begin="5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="120" cy="505" r="1.1" fill="#58a6ff" opacity="0" filter="url(#particleGlow)">
+      <animate attributeName="opacity" values="0;0.4;0.3;0" dur="13s" begin="7s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="505;25" dur="13s" begin="7s" repeatCount="indefinite"/>
+      <animate attributeName="cx" values="120;135" dur="13s" begin="7s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="470" cy="500" r="0.8" fill="#79c0ff" opacity="0" filter="url(#particleGlow)">
+      <animate attributeName="opacity" values="0;0.3;0.2;0" dur="14s" begin="8s" repeatCount="indefinite"/>
+      <animate attributeName="cy" values="500;20" dur="14s" begin="8s" repeatCount="indefinite"/>
+      <animate attributeName="cx" values="470;455" dur="14s" begin="8s" repeatCount="indefinite"/>
+    </circle>
+
+    <!-- A few dim white specks for star-like depth -->
+    <circle cx="48" cy="65" r="0.6" fill="#c9d1d9" opacity="0">
+      <animate attributeName="opacity" values="0;0.4;0" dur="5s" begin="0s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="460" cy="50" r="0.5" fill="#c9d1d9" opacity="0">
+      <animate attributeName="opacity" values="0;0.35;0" dur="6s" begin="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="40" cy="445" r="0.6" fill="#c9d1d9" opacity="0">
+      <animate attributeName="opacity" values="0;0.3;0" dur="7s" begin="1s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="470" cy="440" r="0.5" fill="#c9d1d9" opacity="0">
+      <animate attributeName="opacity" values="0;0.4;0" dur="5.5s" begin="3s" repeatCount="indefinite"/>
+    </circle>
+
+    <!-- ==================== Z LIGHTNING BOLT ==================== -->
+    <g filter="url(#glowBreath)">
+      <g>
+        <animateTransform attributeName="transform" type="translate" values="0,0; 4,-3; -2,5; 3,2; -4,-1.5; 1,-4.5; -3,3.5; 4,-1; -1.5,4; 2.5,-3; 0,0" dur="10s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1"/>
+        <animateTransform attributeName="transform" type="rotate" values="0 256 256; 1.2 256 256; -0.8 256 256; 0.6 256 256; -1.1 256 256; 0.4 256 256; 0 256 256" dur="13s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1;0.4 0 0.6 1" additive="sum"/>
+        <path d="M 128,120 H 384 V 172
+                 L 300,256 L 316,256 L 232,340
+                 H 384 V 392 H 128 V 340
+                 L 212,256 L 228,256 L 312,172
+                 H 128 Z"
+              fill="url(#zGrad)"/>
+      </g>
+    </g>
+
+    <!-- Light sweep across the Z surface (also drifts with Z) -->
+    <g clip-path="url(#zClip)">
+      <rect x="-300" y="100" width="300" height="310" fill="url(#sweep)">
+        <animateTransform attributeName="transform" type="translate" values="0,0;820,0;820,0" dur="6s" keyTimes="0;0.6;1" repeatCount="indefinite" calcMode="spline" keySplines="0.25 0.1 0.25 1;0 0 1 1"/>
+      </rect>
+    </g>
   </g>
-  
-  <!-- Electric spark line 1 - horizontal top -->
-  <line x1="0" y1="146" x2="80" y2="146" stroke="url(#sparkGrad)" stroke-width="3" opacity="0">
-    <animate attributeName="opacity" 
-             values="0;0;1;0;0" 
-             keyTimes="0;0.4;0.5;0.6;1"
-             dur="4s" 
-             repeatCount="indefinite"/>
-    <animateTransform attributeName="transform"
-                      type="translate"
-                      values="100,0;450,0"
-                      dur="4s"
-                      repeatCount="indefinite"/>
-  </line>
-  
-  <!-- Electric spark line 2 - diagonal -->
-  <line x1="0" y1="0" x2="60" y2="60" stroke="url(#sparkGrad)" stroke-width="2" opacity="0">
-    <animate attributeName="opacity" 
-             values="0;0;0;1;0;0" 
-             keyTimes="0;0.5;0.6;0.7;0.8;1"
-             dur="5s" 
-             repeatCount="indefinite"/>
-    <animateTransform attributeName="transform"
-                      type="translate"
-                      values="180,180;320,320"
-                      dur="5s"
-                      repeatCount="indefinite"/>
-  </line>
-  
-  <!-- Electric spark line 3 - horizontal bottom -->
-  <line x1="0" y1="366" x2="80" y2="366" stroke="url(#sparkGrad)" stroke-width="3" opacity="0">
-    <animate attributeName="opacity" 
-             values="0;1;0;0;0" 
-             keyTimes="0;0.1;0.2;0.5;1"
-             dur="3.5s" 
-             repeatCount="indefinite"/>
-    <animateTransform attributeName="transform"
-                      type="translate"
-                      values="100,0;420,0"
-                      dur="3.5s"
-                      repeatCount="indefinite"/>
-  </line>
 
-  <!-- Small electric dots/particles -->
-  <circle cx="0" cy="0" r="3" fill="#a5d6ff" opacity="0">
-    <animate attributeName="opacity" 
-             values="0;0;1;0" 
-             keyTimes="0;0.3;0.5;1"
-             dur="2.5s" 
-             repeatCount="indefinite"/>
-    <animateTransform attributeName="transform"
-                      type="translate"
-                      values="200,200;280,280"
-                      dur="2.5s"
-                      repeatCount="indefinite"/>
-  </circle>
-  
-  <circle cx="0" cy="0" r="2" fill="#79c0ff" opacity="0">
-    <animate attributeName="opacity" 
-             values="0;1;0;0" 
-             keyTimes="0;0.2;0.4;1"
-             dur="3s" 
-             repeatCount="indefinite"/>
-    <animateTransform attributeName="transform"
-                      type="translate"
-                      values="320,180;240,260"
-                      dur="3s"
-                      repeatCount="indefinite"/>
-  </circle>
-  
-  <circle cx="0" cy="0" r="2.5" fill="#58a6ff" opacity="0">
-    <animate attributeName="opacity" 
-             values="0;0;1;0;0" 
-             keyTimes="0;0.6;0.7;0.9;1"
-             dur="4s" 
-             repeatCount="indefinite"/>
-    <animateTransform attributeName="transform"
-                      type="translate"
-                      values="250,320;330,340"
-                      dur="4s"
-                      repeatCount="indefinite"/>
-  </circle>
+  <!-- Border -->
+  <rect x="2" y="2" width="508" height="508" rx="86" fill="none" stroke="#30363d" stroke-width="2"/>
 </svg>
