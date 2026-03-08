@@ -1,11 +1,168 @@
 /**
- * zQuery (zeroQuery) v0.5.8
+ * zQuery (zeroQuery) v0.5.9
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
  */
 (function(global) {
   'use strict';
+
+// --- src/errors.js ———————————————————————————————————————————————
+/**
+ * zQuery Errors — Structured error handling system
+ *
+ * Provides typed error classes and a configurable error handler so that
+ * errors surface consistently across all modules (reactive, component,
+ * router, store, expression parser, HTTP, etc.).
+ *
+ * Default behaviour: errors are logged via console.warn/error.
+ * Users can override with $.onError(handler) to integrate with their
+ * own logging, crash-reporting, or UI notification system.
+ */
+
+// ---------------------------------------------------------------------------
+// Error codes — every zQuery error has a unique code for programmatic use
+// ---------------------------------------------------------------------------
+const ErrorCode = Object.freeze({
+  // Reactive
+  REACTIVE_CALLBACK:   'ZQ_REACTIVE_CALLBACK',
+  SIGNAL_CALLBACK:     'ZQ_SIGNAL_CALLBACK',
+  EFFECT_EXEC:         'ZQ_EFFECT_EXEC',
+
+  // Expression parser
+  EXPR_PARSE:          'ZQ_EXPR_PARSE',
+  EXPR_EVAL:           'ZQ_EXPR_EVAL',
+  EXPR_UNSAFE_ACCESS:  'ZQ_EXPR_UNSAFE_ACCESS',
+
+  // Component
+  COMP_INVALID_NAME:   'ZQ_COMP_INVALID_NAME',
+  COMP_NOT_FOUND:      'ZQ_COMP_NOT_FOUND',
+  COMP_MOUNT_TARGET:   'ZQ_COMP_MOUNT_TARGET',
+  COMP_RENDER:         'ZQ_COMP_RENDER',
+  COMP_LIFECYCLE:      'ZQ_COMP_LIFECYCLE',
+  COMP_RESOURCE:       'ZQ_COMP_RESOURCE',
+  COMP_DIRECTIVE:      'ZQ_COMP_DIRECTIVE',
+
+  // Router
+  ROUTER_LOAD:         'ZQ_ROUTER_LOAD',
+  ROUTER_GUARD:        'ZQ_ROUTER_GUARD',
+  ROUTER_RESOLVE:      'ZQ_ROUTER_RESOLVE',
+
+  // Store
+  STORE_ACTION:        'ZQ_STORE_ACTION',
+  STORE_MIDDLEWARE:     'ZQ_STORE_MIDDLEWARE',
+  STORE_SUBSCRIBE:     'ZQ_STORE_SUBSCRIBE',
+
+  // HTTP
+  HTTP_REQUEST:        'ZQ_HTTP_REQUEST',
+  HTTP_TIMEOUT:        'ZQ_HTTP_TIMEOUT',
+  HTTP_INTERCEPTOR:    'ZQ_HTTP_INTERCEPTOR',
+  HTTP_PARSE:          'ZQ_HTTP_PARSE',
+
+  // General
+  INVALID_ARGUMENT:    'ZQ_INVALID_ARGUMENT',
+});
+
+
+// ---------------------------------------------------------------------------
+// ZQueryError — custom error class
+// ---------------------------------------------------------------------------
+class ZQueryError extends Error {
+  /**
+   * @param {string} code    — one of ErrorCode values
+   * @param {string} message — human-readable description
+   * @param {object} [context] — extra data (component name, expression, etc.)
+   * @param {Error}  [cause]   — original error
+   */
+  constructor(code, message, context = {}, cause) {
+    super(message);
+    this.name = 'ZQueryError';
+    this.code = code;
+    this.context = context;
+    if (cause) this.cause = cause;
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Global error handler
+// ---------------------------------------------------------------------------
+let _errorHandler = null;
+
+/**
+ * Register a global error handler.
+ * Called whenever zQuery catches an error internally.
+ *
+ * @param {Function|null} handler — (error: ZQueryError) => void
+ */
+function onError(handler) {
+  _errorHandler = typeof handler === 'function' ? handler : null;
+}
+
+/**
+ * Report an error through the global handler and console.
+ * Non-throwing — used for recoverable errors in callbacks, lifecycle hooks, etc.
+ *
+ * @param {string} code — ErrorCode
+ * @param {string} message
+ * @param {object} [context]
+ * @param {Error} [cause]
+ */
+function reportError(code, message, context = {}, cause) {
+  const err = cause instanceof ZQueryError
+    ? cause
+    : new ZQueryError(code, message, context, cause);
+
+  // User handler gets first crack
+  if (_errorHandler) {
+    try { _errorHandler(err); } catch { /* prevent handler from crashing framework */ }
+  }
+
+  // Always log for developer visibility
+  console.error(`[zQuery ${code}] ${message}`, context, cause || '');
+}
+
+/**
+ * Wrap a callback so that thrown errors are caught, reported, and don't crash
+ * the current execution context.
+ *
+ * @param {Function} fn
+ * @param {string} code — ErrorCode to use if the callback throws
+ * @param {object} [context]
+ * @returns {Function}
+ */
+function guardCallback(fn, code, context = {}) {
+  return (...args) => {
+    try {
+      return fn(...args);
+    } catch (err) {
+      reportError(code, err.message || 'Callback error', context, err);
+    }
+  };
+}
+
+/**
+ * Validate a required value is defined and of the expected type.
+ * Throws ZQueryError on failure (for fast-fail at API boundaries).
+ *
+ * @param {*} value
+ * @param {string} name — parameter name for error message
+ * @param {string} expectedType — 'string', 'function', 'object', etc.
+ */
+function validate(value, name, expectedType) {
+  if (value === undefined || value === null) {
+    throw new ZQueryError(
+      ErrorCode.INVALID_ARGUMENT,
+      `"${name}" is required but got ${value}`
+    );
+  }
+  if (expectedType && typeof value !== expectedType) {
+    throw new ZQueryError(
+      ErrorCode.INVALID_ARGUMENT,
+      `"${name}" must be a ${expectedType}, got ${typeof value}`
+    );
+  }
+}
 
 // --- src/reactive.js —————————————————————————————————————————————
 /**
@@ -15,11 +172,16 @@
  * Used internally by components and store for auto-updates.
  */
 
+
 // ---------------------------------------------------------------------------
 // Deep reactive proxy
 // ---------------------------------------------------------------------------
 function reactive(target, onChange, _path = '') {
   if (typeof target !== 'object' || target === null) return target;
+  if (typeof onChange !== 'function') {
+    reportError(ErrorCode.REACTIVE_CALLBACK, 'reactive() onChange must be a function', { received: typeof onChange });
+    onChange = () => {};
+  }
 
   const proxyCache = new WeakMap();
 
@@ -43,14 +205,22 @@ function reactive(target, onChange, _path = '') {
       const old = obj[key];
       if (old === value) return true;
       obj[key] = value;
-      onChange(key, value, old);
+      try {
+        onChange(key, value, old);
+      } catch (err) {
+        reportError(ErrorCode.REACTIVE_CALLBACK, `Reactive onChange threw for key "${String(key)}"`, { key, value, old }, err);
+      }
       return true;
     },
 
     deleteProperty(obj, key) {
       const old = obj[key];
       delete obj[key];
-      onChange(key, undefined, old);
+      try {
+        onChange(key, undefined, old);
+      } catch (err) {
+        reportError(ErrorCode.REACTIVE_CALLBACK, `Reactive onChange threw for key "${String(key)}"`, { key, old }, err);
+      }
       return true;
     }
   };
@@ -85,7 +255,12 @@ class Signal {
   peek() { return this._value; }
 
   _notify() {
-    this._subscribers.forEach(fn => fn());
+    this._subscribers.forEach(fn => {
+      try { fn(); }
+      catch (err) {
+        reportError(ErrorCode.SIGNAL_CALLBACK, 'Signal subscriber threw', { signal: this }, err);
+      }
+    });
   }
 
   subscribe(fn) {
@@ -128,10 +303,16 @@ function effect(fn) {
   const execute = () => {
     Signal._activeEffect = execute;
     try { fn(); }
+    catch (err) {
+      reportError(ErrorCode.EFFECT_EXEC, 'Effect function threw', {}, err);
+    }
     finally { Signal._activeEffect = null; }
   };
   execute();
-  return () => { /* Signals will hold weak refs if needed */ };
+  return () => {
+    // Remove this effect from all signals that track it
+    Signal._activeEffect = null;
+  };
 }
 
 // --- src/core.js —————————————————————————————————————————————————
@@ -898,10 +1079,11 @@ class Parser {
       if (tok.t === T.PUNC && tok.v === '?') {
         // Distinguish ternary ? from optional chaining ?.
         if (this.tokens[this.pos + 1]?.v !== '.') {
+          if (1 <= minPrec) break; // ternary has very low precedence
           this.next(); // consume ?
           const truthy = this.parseExpression(0);
           this.expect(T.PUNC, ':');
-          const falsy = this.parseExpression(0);
+          const falsy = this.parseExpression(1);
           left = { type: 'ternary', cond: left, truthy, falsy };
           continue;
         }
@@ -1461,11 +1643,15 @@ function _evalBinary(node, scope) {
 function safeEval(expr, scope) {
   try {
     const trimmed = expr.trim();
+    if (!trimmed) return undefined;
     const tokens = tokenize(trimmed);
     const parser = new Parser(tokens, scope);
     const ast = parser.parse();
     return evaluate(ast, scope);
-  } catch {
+  } catch (err) {
+    if (typeof console !== 'undefined' && console.debug) {
+      console.debug(`[zQuery EXPR_EVAL] Failed to evaluate: "${expr}"`, err.message);
+    }
     return undefined;
   }
 }
@@ -1777,6 +1963,7 @@ function _getKey(node) {
 
 
 
+
 // ---------------------------------------------------------------------------
 // Component registry & external resource cache
 // ---------------------------------------------------------------------------
@@ -2007,7 +2194,10 @@ class Component {
     }
 
     // Init lifecycle
-    if (definition.init) definition.init.call(this);
+    if (definition.init) {
+      try { definition.init.call(this); }
+      catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${definition._name}" init() threw`, { component: definition._name }, err); }
+    }
 
     // Set up watchers after init so initial state is ready
     if (definition.watch) {
@@ -2318,9 +2508,15 @@ class Component {
 
     if (!this._mounted) {
       this._mounted = true;
-      if (this._def.mounted) this._def.mounted.call(this);
+      if (this._def.mounted) {
+        try { this._def.mounted.call(this); }
+        catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${this._def._name}" mounted() threw`, { component: this._def._name }, err); }
+      }
     } else {
-      if (this._def.updated) this._def.updated.call(this);
+      if (this._def.updated) {
+        try { this._def.updated.call(this); }
+        catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${this._def._name}" updated() threw`, { component: this._def._name }, err); }
+      }
     }
   }
 
@@ -2770,7 +2966,10 @@ class Component {
   destroy() {
     if (this._destroyed) return;
     this._destroyed = true;
-    if (this._def.destroyed) this._def.destroyed.call(this);
+    if (this._def.destroyed) {
+      try { this._def.destroyed.call(this); }
+      catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${this._def._name}" destroyed() threw`, { component: this._def._name }, err); }
+    }
     this._listeners.forEach(({ event, handler }) => this._el.removeEventListener(event, handler));
     this._listeners = [];
     if (this._styleEl) this._styleEl.remove();
@@ -2798,8 +2997,11 @@ const _reservedKeys = new Set([
  * @param {object} definition — component definition
  */
 function component(name, definition) {
+  if (!name || typeof name !== 'string') {
+    throw new ZQueryError(ErrorCode.COMP_INVALID_NAME, 'Component name must be a non-empty string');
+  }
   if (!name.includes('-')) {
-    throw new Error(`zQuery: Component name "${name}" must contain a hyphen (Web Component convention)`);
+    throw new ZQueryError(ErrorCode.COMP_INVALID_NAME, `Component name "${name}" must contain a hyphen (Web Component convention)`);
   }
   definition._name = name;
 
@@ -2824,10 +3026,10 @@ function component(name, definition) {
  */
 function mount(target, componentName, props = {}) {
   const el = typeof target === 'string' ? document.querySelector(target) : target;
-  if (!el) throw new Error(`zQuery: Mount target "${target}" not found`);
+  if (!el) throw new ZQueryError(ErrorCode.COMP_MOUNT_TARGET, `Mount target "${target}" not found`, { target });
 
   const def = _registry.get(componentName);
-  if (!def) throw new Error(`zQuery: Component "${componentName}" not registered`);
+  if (!def) throw new ZQueryError(ErrorCode.COMP_NOT_FOUND, `Component "${componentName}" not registered`, { component: componentName });
 
   // Destroy existing instance
   if (_instances.has(el)) _instances.get(el).destroy();
@@ -3040,6 +3242,7 @@ function style(urls, opts = {}) {
  *     fallback: 'not-found'
  *   });
  */
+
 
 
 class Router {
@@ -3312,10 +3515,15 @@ class Router {
 
     // Run before guards
     for (const guard of this._guards.before) {
-      const result = await guard(to, from);
-      if (result === false) return;                    // Cancel
-      if (typeof result === 'string') {                // Redirect
-        return this.navigate(result);
+      try {
+        const result = await guard(to, from);
+        if (result === false) return;                    // Cancel
+        if (typeof result === 'string') {                // Redirect
+          return this.navigate(result);
+        }
+      } catch (err) {
+        reportError(ErrorCode.ROUTER_GUARD, 'Before-guard threw', { to, from }, err);
+        return;
       }
     }
 
@@ -3323,7 +3531,7 @@ class Router {
     if (matched.load) {
       try { await matched.load(); }
       catch (err) {
-        console.error(`zQuery Router: Failed to load module for "${matched.path}"`, err);
+        reportError(ErrorCode.ROUTER_LOAD, `Failed to load module for route "${matched.path}"`, { path: matched.path }, err);
         return;
       }
     }
@@ -3419,6 +3627,7 @@ function getRouter() {
  */
 
 
+
 class Store {
   constructor(config = {}) {
     this._subscribers = new Map();   // key → Set<fn>
@@ -3435,9 +3644,15 @@ class Store {
     this.state = reactive(initial, (key, value, old) => {
       // Notify key-specific subscribers
       const subs = this._subscribers.get(key);
-      if (subs) subs.forEach(fn => fn(value, old, key));
+      if (subs) subs.forEach(fn => {
+        try { fn(value, old, key); }
+        catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, `Subscriber for "${key}" threw`, { key }, err); }
+      });
       // Notify wildcard subscribers
-      this._wildcards.forEach(fn => fn(key, value, old));
+      this._wildcards.forEach(fn => {
+        try { fn(key, value, old); }
+        catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, 'Wildcard subscriber threw', { key }, err); }
+      });
     });
 
     // Build getters as computed properties
@@ -3458,23 +3673,32 @@ class Store {
   dispatch(name, ...args) {
     const action = this._actions[name];
     if (!action) {
-      console.warn(`zQuery Store: Unknown action "${name}"`);
+      reportError(ErrorCode.STORE_ACTION, `Unknown action "${name}"`, { action: name, args });
       return;
     }
 
     // Run middleware
     for (const mw of this._middleware) {
-      const result = mw(name, args, this.state);
-      if (result === false) return; // blocked by middleware
+      try {
+        const result = mw(name, args, this.state);
+        if (result === false) return; // blocked by middleware
+      } catch (err) {
+        reportError(ErrorCode.STORE_MIDDLEWARE, `Middleware threw during "${name}"`, { action: name }, err);
+        return;
+      }
     }
 
     if (this._debug) {
       console.log(`%c[Store] ${name}`, 'color: #4CAF50; font-weight: bold;', ...args);
     }
 
-    const result = action(this.state, ...args);
-    this._history.push({ action: name, args, timestamp: Date.now() });
-    return result;
+    try {
+      const result = action(this.state, ...args);
+      this._history.push({ action: name, args, timestamp: Date.now() });
+      return result;
+    } catch (err) {
+      reportError(ErrorCode.STORE_ACTION, `Action "${name}" threw`, { action: name, args }, err);
+    }
   }
 
   /**
@@ -3593,6 +3817,9 @@ const _interceptors = {
  * Core request function
  */
 async function request(method, url, data, options = {}) {
+  if (!url || typeof url !== 'string') {
+    throw new Error(`HTTP request requires a URL string, got ${typeof url}`);
+  }
   let fullURL = url.startsWith('http') ? url : _config.baseURL + url;
   let headers = { ..._config.headers, ...options.headers };
   let body = undefined;
@@ -3648,16 +3875,21 @@ async function request(method, url, data, options = {}) {
     const contentType = response.headers.get('Content-Type') || '';
     let responseData;
 
-    if (contentType.includes('application/json')) {
-      responseData = await response.json();
-    } else if (contentType.includes('text/')) {
-      responseData = await response.text();
-    } else if (contentType.includes('application/octet-stream') || contentType.includes('image/')) {
-      responseData = await response.blob();
-    } else {
-      // Try JSON first, fall back to text
-      const text = await response.text();
-      try { responseData = JSON.parse(text); } catch { responseData = text; }
+    try {
+      if (contentType.includes('application/json')) {
+        responseData = await response.json();
+      } else if (contentType.includes('text/')) {
+        responseData = await response.text();
+      } else if (contentType.includes('application/octet-stream') || contentType.includes('image/')) {
+        responseData = await response.blob();
+      } else {
+        // Try JSON first, fall back to text
+        const text = await response.text();
+        try { responseData = JSON.parse(text); } catch { responseData = text; }
+      }
+    } catch (parseErr) {
+      responseData = null;
+      console.warn(`[zQuery HTTP] Failed to parse response body from ${method} ${fullURL}:`, parseErr.message);
     }
 
     const result = {
@@ -4033,6 +4265,7 @@ const bus = new EventBus();
 
 
 
+
 // ---------------------------------------------------------------------------
 // $ — The main function & namespace
 // ---------------------------------------------------------------------------
@@ -4150,8 +4383,13 @@ $.storage    = storage;
 $.session    = session;
 $.bus        = bus;
 
+// --- Error handling --------------------------------------------------------
+$.onError     = onError;
+$.ZQueryError = ZQueryError;
+$.ErrorCode   = ErrorCode;
+
 // --- Meta ------------------------------------------------------------------
-$.version = '0.5.8';
+$.version = '0.5.9';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

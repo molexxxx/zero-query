@@ -23,6 +23,7 @@ import {
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, bus,
 } from './src/utils.js';
+import { ZQueryError, ErrorCode, onError, reportError } from './src/errors.js';
 
 
 // ---------------------------------------------------------------------------
@@ -142,6 +143,11 @@ $.storage    = storage;
 $.session    = session;
 $.bus        = bus;
 
+// --- Error handling --------------------------------------------------------
+$.onError     = onError;
+$.ZQueryError = ZQueryError;
+$.ErrorCode   = ErrorCode;
+
 // --- Meta ------------------------------------------------------------------
 $.version = '__VERSION__';
 $.meta    = {};                // populated at build time by CLI bundler
@@ -178,6 +184,7 @@ export {
   createRouter, getRouter,
   createStore, getStore,
   http,
+  ZQueryError, ErrorCode, onError, reportError,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, html, trust, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,

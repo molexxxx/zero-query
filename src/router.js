@@ -18,6 +18,7 @@
  */
 
 import { mount, destroy } from './component.js';
+import { reportError, ErrorCode } from './errors.js';
 
 class Router {
   constructor(config = {}) {
@@ -289,10 +290,15 @@ class Router {
 
     // Run before guards
     for (const guard of this._guards.before) {
-      const result = await guard(to, from);
-      if (result === false) return;                    // Cancel
-      if (typeof result === 'string') {                // Redirect
-        return this.navigate(result);
+      try {
+        const result = await guard(to, from);
+        if (result === false) return;                    // Cancel
+        if (typeof result === 'string') {                // Redirect
+          return this.navigate(result);
+        }
+      } catch (err) {
+        reportError(ErrorCode.ROUTER_GUARD, 'Before-guard threw', { to, from }, err);
+        return;
       }
     }
 
@@ -300,7 +306,7 @@ class Router {
     if (matched.load) {
       try { await matched.load(); }
       catch (err) {
-        console.error(`zQuery Router: Failed to load module for "${matched.path}"`, err);
+        reportError(ErrorCode.ROUTER_LOAD, `Failed to load module for route "${matched.path}"`, { path: matched.path }, err);
         return;
       }
     }

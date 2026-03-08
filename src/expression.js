@@ -228,10 +228,11 @@ class Parser {
       if (tok.t === T.PUNC && tok.v === '?') {
         // Distinguish ternary ? from optional chaining ?.
         if (this.tokens[this.pos + 1]?.v !== '.') {
+          if (1 <= minPrec) break; // ternary has very low precedence
           this.next(); // consume ?
           const truthy = this.parseExpression(0);
           this.expect(T.PUNC, ':');
-          const falsy = this.parseExpression(0);
+          const falsy = this.parseExpression(1);
           left = { type: 'ternary', cond: left, truthy, falsy };
           continue;
         }
@@ -791,11 +792,15 @@ function _evalBinary(node, scope) {
 export function safeEval(expr, scope) {
   try {
     const trimmed = expr.trim();
+    if (!trimmed) return undefined;
     const tokens = tokenize(trimmed);
     const parser = new Parser(tokens, scope);
     const ast = parser.parse();
     return evaluate(ast, scope);
-  } catch {
+  } catch (err) {
+    if (typeof console !== 'undefined' && console.debug) {
+      console.debug(`[zQuery EXPR_EVAL] Failed to evaluate: "${expr}"`, err.message);
+    }
     return undefined;
   }
 }

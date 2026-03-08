@@ -26,6 +26,7 @@
  */
 
 import { reactive } from './reactive.js';
+import { reportError, ErrorCode, ZQueryError } from './errors.js';
 
 class Store {
   constructor(config = {}) {
@@ -43,9 +44,15 @@ class Store {
     this.state = reactive(initial, (key, value, old) => {
       // Notify key-specific subscribers
       const subs = this._subscribers.get(key);
-      if (subs) subs.forEach(fn => fn(value, old, key));
+      if (subs) subs.forEach(fn => {
+        try { fn(value, old, key); }
+        catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, `Subscriber for "${key}" threw`, { key }, err); }
+      });
       // Notify wildcard subscribers
-      this._wildcards.forEach(fn => fn(key, value, old));
+      this._wildcards.forEach(fn => {
+        try { fn(key, value, old); }
+        catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, 'Wildcard subscriber threw', { key }, err); }
+      });
     });
 
     // Build getters as computed properties
@@ -66,23 +73,32 @@ class Store {
   dispatch(name, ...args) {
     const action = this._actions[name];
     if (!action) {
-      console.warn(`zQuery Store: Unknown action "${name}"`);
+      reportError(ErrorCode.STORE_ACTION, `Unknown action "${name}"`, { action: name, args });
       return;
     }
 
     // Run middleware
     for (const mw of this._middleware) {
-      const result = mw(name, args, this.state);
-      if (result === false) return; // blocked by middleware
+      try {
+        const result = mw(name, args, this.state);
+        if (result === false) return; // blocked by middleware
+      } catch (err) {
+        reportError(ErrorCode.STORE_MIDDLEWARE, `Middleware threw during "${name}"`, { action: name }, err);
+        return;
+      }
     }
 
     if (this._debug) {
       console.log(`%c[Store] ${name}`, 'color: #4CAF50; font-weight: bold;', ...args);
     }
 
-    const result = action(this.state, ...args);
-    this._history.push({ action: name, args, timestamp: Date.now() });
-    return result;
+    try {
+      const result = action(this.state, ...args);
+      this._history.push({ action: name, args, timestamp: Date.now() });
+      return result;
+    } catch (err) {
+      reportError(ErrorCode.STORE_ACTION, `Action "${name}" threw`, { action: name, args }, err);
+    }
   }
 
   /**

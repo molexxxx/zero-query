@@ -16,6 +16,7 @@ function buildLibrary() {
   const VERSION = pkg.version;
 
   const modules = [
+    'src/errors.js',
     'src/reactive.js', 'src/core.js', 'src/expression.js', 'src/diff.js',
     'src/component.js', 'src/router.js', 'src/store.js', 'src/http.js',
     'src/utils.js',

@@ -22,6 +22,7 @@
 import { reactive } from './reactive.js';
 import { morph } from './diff.js';
 import { safeEval } from './expression.js';
+import { reportError, ErrorCode, ZQueryError } from './errors.js';
 
 // ---------------------------------------------------------------------------
 // Component registry & external resource cache
@@ -253,7 +254,10 @@ class Component {
     }
 
     // Init lifecycle
-    if (definition.init) definition.init.call(this);
+    if (definition.init) {
+      try { definition.init.call(this); }
+      catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${definition._name}" init() threw`, { component: definition._name }, err); }
+    }
 
     // Set up watchers after init so initial state is ready
     if (definition.watch) {
@@ -564,9 +568,15 @@ class Component {
 
     if (!this._mounted) {
       this._mounted = true;
-      if (this._def.mounted) this._def.mounted.call(this);
+      if (this._def.mounted) {
+        try { this._def.mounted.call(this); }
+        catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${this._def._name}" mounted() threw`, { component: this._def._name }, err); }
+      }
     } else {
-      if (this._def.updated) this._def.updated.call(this);
+      if (this._def.updated) {
+        try { this._def.updated.call(this); }
+        catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${this._def._name}" updated() threw`, { component: this._def._name }, err); }
+      }
     }
   }
 
@@ -1016,7 +1026,10 @@ class Component {
   destroy() {
     if (this._destroyed) return;
     this._destroyed = true;
-    if (this._def.destroyed) this._def.destroyed.call(this);
+    if (this._def.destroyed) {
+      try { this._def.destroyed.call(this); }
+      catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${this._def._name}" destroyed() threw`, { component: this._def._name }, err); }
+    }
     this._listeners.forEach(({ event, handler }) => this._el.removeEventListener(event, handler));
     this._listeners = [];
     if (this._styleEl) this._styleEl.remove();
@@ -1044,8 +1057,11 @@ const _reservedKeys = new Set([
  * @param {object} definition — component definition
  */
 export function component(name, definition) {
+  if (!name || typeof name !== 'string') {
+    throw new ZQueryError(ErrorCode.COMP_INVALID_NAME, 'Component name must be a non-empty string');
+  }
   if (!name.includes('-')) {
-    throw new Error(`zQuery: Component name "${name}" must contain a hyphen (Web Component convention)`);
+    throw new ZQueryError(ErrorCode.COMP_INVALID_NAME, `Component name "${name}" must contain a hyphen (Web Component convention)`);
   }
   definition._name = name;
 
@@ -1070,10 +1086,10 @@ export function component(name, definition) {
  */
 export function mount(target, componentName, props = {}) {
   const el = typeof target === 'string' ? document.querySelector(target) : target;
-  if (!el) throw new Error(`zQuery: Mount target "${target}" not found`);
+  if (!el) throw new ZQueryError(ErrorCode.COMP_MOUNT_TARGET, `Mount target "${target}" not found`, { target });
 
   const def = _registry.get(componentName);
-  if (!def) throw new Error(`zQuery: Component "${componentName}" not registered`);
+  if (!def) throw new ZQueryError(ErrorCode.COMP_NOT_FOUND, `Component "${componentName}" not registered`, { component: componentName });
 
   // Destroy existing instance
   if (_instances.has(el)) _instances.get(el).destroy();

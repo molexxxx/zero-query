@@ -5,11 +5,17 @@
  * Used internally by components and store for auto-updates.
  */
 
+import { reportError, ErrorCode } from './errors.js';
+
 // ---------------------------------------------------------------------------
 // Deep reactive proxy
 // ---------------------------------------------------------------------------
 export function reactive(target, onChange, _path = '') {
   if (typeof target !== 'object' || target === null) return target;
+  if (typeof onChange !== 'function') {
+    reportError(ErrorCode.REACTIVE_CALLBACK, 'reactive() onChange must be a function', { received: typeof onChange });
+    onChange = () => {};
+  }
 
   const proxyCache = new WeakMap();
 
@@ -33,14 +39,22 @@ export function reactive(target, onChange, _path = '') {
       const old = obj[key];
       if (old === value) return true;
       obj[key] = value;
-      onChange(key, value, old);
+      try {
+        onChange(key, value, old);
+      } catch (err) {
+        reportError(ErrorCode.REACTIVE_CALLBACK, `Reactive onChange threw for key "${String(key)}"`, { key, value, old }, err);
+      }
       return true;
     },
 
     deleteProperty(obj, key) {
       const old = obj[key];
       delete obj[key];
-      onChange(key, undefined, old);
+      try {
+        onChange(key, undefined, old);
+      } catch (err) {
+        reportError(ErrorCode.REACTIVE_CALLBACK, `Reactive onChange threw for key "${String(key)}"`, { key, old }, err);
+      }
       return true;
     }
   };
@@ -75,7 +89,12 @@ export class Signal {
   peek() { return this._value; }
 
   _notify() {
-    this._subscribers.forEach(fn => fn());
+    this._subscribers.forEach(fn => {
+      try { fn(); }
+      catch (err) {
+        reportError(ErrorCode.SIGNAL_CALLBACK, 'Signal subscriber threw', { signal: this }, err);
+      }
+    });
   }
 
   subscribe(fn) {
@@ -118,8 +137,14 @@ export function effect(fn) {
   const execute = () => {
     Signal._activeEffect = execute;
     try { fn(); }
+    catch (err) {
+      reportError(ErrorCode.EFFECT_EXEC, 'Effect function threw', {}, err);
+    }
     finally { Signal._activeEffect = null; }
   };
   execute();
-  return () => { /* Signals will hold weak refs if needed */ };
+  return () => {
+    // Remove this effect from all signals that track it
+    Signal._activeEffect = null;
+  };
 }

@@ -30,6 +30,9 @@ const _interceptors = {
  * Core request function
  */
 async function request(method, url, data, options = {}) {
+  if (!url || typeof url !== 'string') {
+    throw new Error(`HTTP request requires a URL string, got ${typeof url}`);
+  }
   let fullURL = url.startsWith('http') ? url : _config.baseURL + url;
   let headers = { ..._config.headers, ...options.headers };
   let body = undefined;
@@ -85,16 +88,21 @@ async function request(method, url, data, options = {}) {
     const contentType = response.headers.get('Content-Type') || '';
     let responseData;
 
-    if (contentType.includes('application/json')) {
-      responseData = await response.json();
-    } else if (contentType.includes('text/')) {
-      responseData = await response.text();
-    } else if (contentType.includes('application/octet-stream') || contentType.includes('image/')) {
-      responseData = await response.blob();
-    } else {
-      // Try JSON first, fall back to text
-      const text = await response.text();
-      try { responseData = JSON.parse(text); } catch { responseData = text; }
+    try {
+      if (contentType.includes('application/json')) {
+        responseData = await response.json();
+      } else if (contentType.includes('text/')) {
+        responseData = await response.text();
+      } else if (contentType.includes('application/octet-stream') || contentType.includes('image/')) {
+        responseData = await response.blob();
+      } else {
+        // Try JSON first, fall back to text
+        const text = await response.text();
+        try { responseData = JSON.parse(text); } catch { responseData = text; }
+      }
+    } catch (parseErr) {
+      responseData = null;
+      console.warn(`[zQuery HTTP] Failed to parse response body from ${method} ${fullURL}:`, parseErr.message);
     }
 
     const result = {
