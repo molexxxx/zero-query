@@ -518,8 +518,8 @@ function _isSafeAccess(obj, prop) {
   ]);
   if (typeof prop === 'string' && BLOCKED.has(prop)) return false;
 
-  // Always allow plain object property access and array index access
-  if (obj !== null && obj !== undefined && typeof obj === 'object') return true;
+  // Always allow plain object/function property access and array index access
+  if (obj !== null && obj !== undefined && (typeof obj === 'object' || typeof obj === 'function')) return true;
   if (typeof obj === 'string') return SAFE_STRING_METHODS.has(prop);
   if (typeof obj === 'number') return SAFE_NUMBER_METHODS.has(prop);
   return false;

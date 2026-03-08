@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.5.6
+ * zQuery (zeroQuery) v0.5.7
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman — MIT License
@@ -1188,8 +1188,8 @@ function _isSafeAccess(obj, prop) {
   ]);
   if (typeof prop === 'string' && BLOCKED.has(prop)) return false;
 
-  // Always allow plain object property access and array index access
-  if (obj !== null && obj !== undefined && typeof obj === 'object') return true;
+  // Always allow plain object/function property access and array index access
+  if (obj !== null && obj !== undefined && (typeof obj === 'object' || typeof obj === 'function')) return true;
   if (typeof obj === 'string') return SAFE_STRING_METHODS.has(prop);
   if (typeof obj === 'number') return SAFE_NUMBER_METHODS.has(prop);
   return false;
@@ -4095,7 +4095,7 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.5.6';
+$.version = '0.5.7';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {
