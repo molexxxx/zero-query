@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.6.7
+ * zQuery (zeroQuery) v0.6.8
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -4686,7 +4686,7 @@ $.ZQueryError = ZQueryError;
 $.ErrorCode   = ErrorCode;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.6.7';
+$.version = '0.6.8';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {
