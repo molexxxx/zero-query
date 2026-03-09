@@ -318,7 +318,7 @@ Additional arguments after `attrs` are appended as children (strings become text
 
 ### Events — DOM & Global
 
-Single elements use native `addEventListener`. Collections get chainable `.on()`. Global events use `$.on()` / `$.off()`.
+Single elements use native `addEventListener`. Collections get chainable `.on()`. Global events use `$.on()` / `$.off()`. Both `$()` and `$.on()` accept `window` and other `EventTarget`s for non-bubbling events like `scroll`.
 
 ```js
 // Single element — native DOM API
@@ -333,6 +333,16 @@ $.on('keydown', (e) => {
 // Delegated — listen on a parent, filter by child selector
 $.on('click', '.delete-btn', function(e) {
   this.closest('.todo-item').remove();
+});
+
+// Target-bound — listen on a specific EventTarget
+$.on('scroll', window, () => {
+  console.log('scrolled to', window.scrollY);
+});
+
+// Same thing using collection form
+$(window).on('scroll', () => {
+  console.log('scrolled to', window.scrollY);
 });
 
 // Remove a global listener
@@ -435,6 +445,19 @@ $.on('click', '.nav-link', function(e) {
   console.log(this.href);
 });
 ```
+
+#### `$.on(event, target, handler)`
+
+Direct event listener on a specific `EventTarget` (e.g. `window`). Use this for events that don't bubble to `document`, like `scroll` and `resize`.
+
+```js
+// Listen for scroll on window
+$.on('scroll', window, () => {
+  console.log(window.scrollY);
+});
+```
+
+> **Tip:** You can also use `$(window).on('scroll', handler)` — the collection form works identically.
 
 #### `$.on(event, handler)`
 
@@ -2130,7 +2153,7 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
 | `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. See [z-key](#z-key--keyed-reconciliation). |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
-| `$.version` | Library version string (e.g. `'0.6.8'`). |
+| `$.version` | Library version string (e.g. `'0.6.9'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |

@@ -516,9 +516,10 @@ export class ZQueryCollection {
       events.forEach(evt => {
         if (typeof selectorOrHandler === 'function') {
           el.addEventListener(evt, selectorOrHandler);
-        } else {
-          // Delegated event
+        } else if (typeof selectorOrHandler === 'string') {
+          // Delegated event — only works on elements that support closest()
           el.addEventListener(evt, (e) => {
+            if (!e.target || typeof e.target.closest !== 'function') return;
             const target = e.target.closest(selectorOrHandler);
             if (target && el.contains(target)) handler.call(target, e);
           });
@@ -790,17 +791,24 @@ query.ready = (fn) => {
   else document.addEventListener('DOMContentLoaded', fn);
 };
 
-// Global event listeners — supports direct and delegated forms
+// Global event listeners — supports direct, delegated, and target-bound forms
 //   $.on('keydown', handler)           → direct listener on document
 //   $.on('click', '.btn', handler)     → delegated via closest()
+//   $.on('scroll', window, handler)    → direct listener on target
 query.on = (event, selectorOrHandler, handler) => {
   if (typeof selectorOrHandler === 'function') {
     // 2-arg: direct document listener (keydown, resize, etc.)
     document.addEventListener(event, selectorOrHandler);
     return;
   }
-  // 3-arg: delegated
+  // EventTarget (window, element, etc.) — direct listener on target
+  if (typeof selectorOrHandler === 'object' && typeof selectorOrHandler.addEventListener === 'function') {
+    selectorOrHandler.addEventListener(event, handler);
+    return;
+  }
+  // 3-arg string: delegated
   document.addEventListener(event, (e) => {
+    if (!e.target || typeof e.target.closest !== 'function') return;
     const target = e.target.closest(selectorOrHandler);
     if (target) handler.call(target, e);
   });

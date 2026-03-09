@@ -430,6 +430,22 @@ describe('ZQueryCollection', () => {
       col.trigger('click');
       expect(count).toBe(1);
     });
+
+    it('on() works on non-Element targets like window', () => {
+      let fired = false;
+      const col = new ZQueryCollection([window]);
+      col.on('custom-win-evt', () => { fired = true; });
+      window.dispatchEvent(new Event('custom-win-evt'));
+      expect(fired).toBe(true);
+    });
+
+    it('$.on() with EventTarget binds directly to that target', () => {
+      let fired = false;
+      const target = new EventTarget();
+      query.on('test-evt', target, () => { fired = true; });
+      target.dispatchEvent(new Event('test-evt'));
+      expect(fired).toBe(true);
+    });
   });
 });
 

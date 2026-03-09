@@ -129,7 +129,15 @@ function minifyHTML(html) {
   // Collapse runs of whitespace (newlines + indentation) to a single space
   html = html.replace(/\s{2,}/g, ' ');
   // Remove space between tags: "> <" → "><"
-  html = html.replace(/>\s+</g, '><');
+  // but preserve a space when an inline element is involved (a, span, strong, em, b, i, code, small, sub, sup, abbr, label)
+  html = html.replace(/>\s+</g, (m, offset) => {
+    const before = html.slice(Math.max(0, offset - 80), offset + 1);
+    const after  = html.slice(offset + m.length - 1, offset + m.length + 40);
+    const inlineTags = /\b(a|span|strong|em|b|i|code|small|sub|sup|abbr|label)\b/i;
+    const closingInline = /<\/\s*(a|span|strong|em|b|i|code|small|sub|sup|abbr|label)\s*>$/i.test(before);
+    const openingInline = /^<(a|span|strong|em|b|i|code|small|sub|sup|abbr|label)[\s>]/i.test(after);
+    return (closingInline || openingInline) ? '> <' : '><';
+  });
   // Remove spaces inside opening tags:  <tag  attr = "val" > → <tag attr="val">
   html = html.replace(/ *\/ *>/g, '/>');
   html = html.replace(/ *= */g, '=');
@@ -281,10 +289,18 @@ function _collapseTemplateWS(tpl) {
       preserved.push(m);
       return `\x00P${preserved.length - 1}\x00`;
     });
-    // Collapse whitespace runs that touch a < or > to nothing
-    // ">  \n   <"  →  "><"   and  ">  \n  text"  →  "> text"
-    t = t.replace(/>\s{2,}/g, '>');
-    t = t.replace(/\s{2,}</g, '<');
+    // Collapse whitespace runs that touch a < or > but preserve a space
+    // when an inline element boundary is involved
+    t = t.replace(/>\s{2,}/g, (m, offset) => {
+      const before = t.slice(Math.max(0, offset - 80), offset + 1);
+      if (/<\/\s*(a|span|strong|em|b|i|code|small|sub|sup|abbr|label)\s*>$/i.test(before)) return '> ';
+      return '>';
+    });
+    t = t.replace(/\s{2,}</g, (m, offset) => {
+      const after = t.slice(offset + m.length - 1, offset + m.length + 40);
+      if (/^<(a|span|strong|em|b|i|code|small|sub|sup|abbr|label)[\s>]/i.test(after)) return ' <';
+      return '<';
+    });
     // Collapse other multi-whitespace runs to a single space
     t = t.replace(/\s{2,}/g, ' ');
     // Restore <pre> blocks

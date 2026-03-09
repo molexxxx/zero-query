@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.6.8
+ * @version 0.6.9
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -145,7 +145,7 @@ import type { morph, safeEval } from './types/misc';
  */
 interface ZQueryStatic {
   (selector: string, context?: string | Element): ZQueryCollection;
-  (element: Element): ZQueryCollection;
+  (element: Element | Window): ZQueryCollection;
   (nodeList: NodeList | HTMLCollection | Element[]): ZQueryCollection;
   (fn: () => void): void;
 
@@ -159,7 +159,7 @@ interface ZQueryStatic {
    * - `$.all(nodeList)` → wrap NodeList
    */
   all(selector: string, context?: string | Element): ZQueryCollection;
-  all(element: Element): ZQueryCollection;
+  all(element: Element | Window): ZQueryCollection;
   all(nodeList: NodeList | HTMLCollection | Element[]): ZQueryCollection;
 
   // -- Quick-ref shortcuts -------------------------------------------------
@@ -192,6 +192,9 @@ interface ZQueryStatic {
 
   /** Global event delegation on `document`. */
   on(event: string, selector: string, handler: (this: Element, e: Event) => void): void;
+
+  /** Direct event listener on a specific target (e.g. `window`). */
+  on(event: string, target: EventTarget, handler: (e: Event) => void): void;
 
   /** Direct event listener on `document` (for keydown, resize, etc.). */
   on(event: string, handler: (e: Event) => void): void;
