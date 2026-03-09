@@ -68,7 +68,7 @@
 </div>
 
 <!-- Contact count -->
-<div class="card" z-if="contacts.length > 0">
+<div class="card" z-if="contacts.length > 0" z-key="contacts-list">
   <!-- Contacts list — z-for renders each item -->
   <ul class="contacts-list">
     <li
@@ -102,14 +102,14 @@
 </div>
 
 <!-- Empty state -->
-<div class="card" z-else>
+<div class="card" z-else z-key="contacts-empty">
   <div class="empty-state">
     <p>No contacts yet — add one above!</p>
   </div>
 </div>
 
 <!-- Selected contact detail panel — z-if conditional rendering -->
-<div class="card contact-detail" z-if="selectedId !== null">
+<div class="card contact-detail" z-if="selectedId !== null" z-key="contact-detail">
   <div class="detail-header">
     <div>
       <h3 z-text="selectedName"></h3>
