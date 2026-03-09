@@ -74,11 +74,32 @@ export class ZQueryCollection {
   /** All sibling elements. */
   siblings(): ZQueryCollection;
 
-  /** Next sibling of each element. */
-  next(): ZQueryCollection;
+  /** Next sibling of each element, optionally filtered by selector. */
+  next(selector?: string): ZQueryCollection;
 
-  /** Previous sibling of each element. */
-  prev(): ZQueryCollection;
+  /** Previous sibling of each element, optionally filtered by selector. */
+  prev(selector?: string): ZQueryCollection;
+
+  /** All following siblings, optionally filtered by selector. */
+  nextAll(selector?: string): ZQueryCollection;
+
+  /** Following siblings up to (but not including) the element matching `selector`. */
+  nextUntil(selector?: string, filter?: string): ZQueryCollection;
+
+  /** All preceding siblings, optionally filtered by selector. */
+  prevAll(selector?: string): ZQueryCollection;
+
+  /** Preceding siblings up to (but not including) the element matching `selector`. */
+  prevUntil(selector?: string, filter?: string): ZQueryCollection;
+
+  /** All ancestor elements, optionally filtered by selector (deduplicated). */
+  parents(selector?: string): ZQueryCollection;
+
+  /** Ancestors up to (but not including) the element matching `selector`. */
+  parentsUntil(selector?: string, filter?: string): ZQueryCollection;
+
+  /** All child nodes including text and comment nodes. */
+  contents(): ZQueryCollection;
 
   // -- Filtering -----------------------------------------------------------
   /** Keep elements matching a CSS selector or predicate. */
@@ -91,6 +112,25 @@ export class ZQueryCollection {
 
   /** Keep elements that have a descendant matching `selector`. */
   has(selector: string): ZQueryCollection;
+
+  /** Check if any element matches the selector or predicate. */
+  is(selector: string): boolean;
+  is(fn: (this: Element, index: number, element: Element) => boolean): boolean;
+
+  /** Return a subset of the collection. */
+  slice(start: number, end?: number): ZQueryCollection;
+
+  /** Add elements to the collection, returning a new combined collection. */
+  add(selector: string, context?: Element | Document): ZQueryCollection;
+  add(element: Element): ZQueryCollection;
+  add(collection: ZQueryCollection): ZQueryCollection;
+
+  /** Retrieve a raw DOM element by index (supports negative). No args → array of all elements. */
+  get(): Element[];
+  get(index: number): Element | undefined;
+
+  /** Position of the first element among its siblings, or index of a given element/selector in the collection. */
+  index(selector?: string | Element): number;
 
   // -- Classes -------------------------------------------------------------
   /** Add one or more classes (space-separated strings accepted). */
@@ -143,6 +183,28 @@ export class ZQueryCollection {
   /** Position relative to the offset parent. */
   position(): { top: number; left: number } | null;
 
+  /** Get vertical scroll position of the first element. */
+  scrollTop(): number | undefined;
+  /** Set vertical scroll position on all elements. */
+  scrollTop(value: number): this;
+
+  /** Get horizontal scroll position of the first element. */
+  scrollLeft(): number | undefined;
+  /** Set horizontal scroll position on all elements. */
+  scrollLeft(value: number): this;
+
+  /** Width including padding (clientWidth). */
+  innerWidth(): number | undefined;
+
+  /** Height including padding (clientHeight). */
+  innerHeight(): number | undefined;
+
+  /** Width including padding + border. Pass `true` to include margin. */
+  outerWidth(includeMargin?: boolean): number | undefined;
+
+  /** Height including padding + border. Pass `true` to include margin. */
+  outerHeight(includeMargin?: boolean): number | undefined;
+
   // -- Content -------------------------------------------------------------
   /** Get `innerHTML` of the first element, or `undefined` if empty. */
   html(): string | undefined;
@@ -187,6 +249,33 @@ export class ZQueryCollection {
   /** Replace elements with new content. */
   replaceWith(content: string | Node): this;
 
+  /** Insert every element in the collection at the end of the target. */
+  appendTo(target: string | Element | ZQueryCollection): this;
+
+  /** Insert every element in the collection at the beginning of the target. */
+  prependTo(target: string | Element | ZQueryCollection): this;
+
+  /** Insert every element in the collection after the target. */
+  insertAfter(target: string | Element | ZQueryCollection): this;
+
+  /** Insert every element in the collection before the target. */
+  insertBefore(target: string | Element | ZQueryCollection): this;
+
+  /** Replace the target elements with the collection's elements. */
+  replaceAll(target: string | Element | ZQueryCollection): this;
+
+  /** Remove the parent of each element, optionally only if it matches `selector`. */
+  unwrap(selector?: string): this;
+
+  /** Wrap all elements together in a single wrapper. */
+  wrapAll(wrapper: string | Element): this;
+
+  /** Wrap the inner contents of each element with the given wrapper. */
+  wrapInner(wrapper: string | Element): this;
+
+  /** Remove all elements from the DOM (alias for `remove`). */
+  detach(): this;
+
   // -- Visibility ----------------------------------------------------------
   /** Show elements. Optional display value (default: `''`). */
   show(display?: string): this;
@@ -227,6 +316,9 @@ export class ZQueryCollection {
   /** Blur the first element. */
   blur(): this;
 
+  /** Bind mouseenter and mouseleave handlers. If only one function is provided, it's used for both. */
+  hover(enterFn: (event: Event) => void, leaveFn?: (event: Event) => void): this;
+
   // -- Animation -----------------------------------------------------------
   /**
    * CSS transition animation.
@@ -245,6 +337,18 @@ export class ZQueryCollection {
 
   /** Fade out (opacity 1→0) then hide. Default 300 ms. */
   fadeOut(duration?: number): Promise<ZQueryCollection>;
+
+  /** Toggle fade in/out. Default 300 ms. */
+  fadeToggle(duration?: number): Promise<ZQueryCollection>;
+
+  /** Fade to a specific opacity. */
+  fadeTo(duration: number, opacity: number): Promise<ZQueryCollection>;
+
+  /** Slide down (reveal). Default 300 ms. */
+  slideDown(duration?: number): this;
+
+  /** Slide up (hide). Default 300 ms. */
+  slideUp(duration?: number): this;
 
   /** Toggle height with a slide animation. Default 300 ms. */
   slideToggle(duration?: number): this;

@@ -8,9 +8,17 @@ import { query, queryAll, ZQueryCollection } from '../src/core.js';
 beforeEach(() => {
   document.body.innerHTML = `
     <div id="main">
-      <p class="text">Hello</p>
-      <p class="text">World</p>
+      <p class="text first-p">Hello</p>
+      <p class="text second-p">World</p>
       <span class="other">Span</span>
+      <p class="text third-p">Extra</p>
+    </div>
+    <div id="sidebar">
+      <ul id="nav">
+        <li class="nav-item active">Home</li>
+        <li class="nav-item">About</li>
+        <li class="nav-item">Contact</li>
+      </ul>
     </div>
   `;
 });
@@ -54,12 +62,12 @@ describe('query()', () => {
 
   it('returns all matching elements', () => {
     const col = query('.text');
-    expect(col.length).toBe(2);
+    expect(col.length).toBe(3);
   });
 
   it('uses context parameter', () => {
     const col = query('.text', '#main');
-    expect(col.length).toBe(2);
+    expect(col.length).toBe(3);
     expect(col.first().textContent).toBe('Hello');
   });
 
@@ -78,7 +86,7 @@ describe('queryAll()', () => {
   it('returns ZQueryCollection for CSS selector', () => {
     const col = queryAll('.text');
     expect(col).toBeInstanceOf(ZQueryCollection);
-    expect(col.length).toBe(2);
+    expect(col.length).toBe(3);
   });
 
   it('returns empty collection for non-matching', () => {
@@ -114,18 +122,18 @@ describe('ZQueryCollection', () => {
       const col = queryAll('.text');
       const tags = [];
       col.each((_, el) => tags.push(el.textContent));
-      expect(tags).toEqual(['Hello', 'World']);
+      expect(tags).toEqual(['Hello', 'World', 'Extra']);
     });
 
     it('map() maps elements', () => {
       const texts = queryAll('.text').map((_, el) => el.textContent);
-      expect(texts).toEqual(['Hello', 'World']);
+      expect(texts).toEqual(['Hello', 'World', 'Extra']);
     });
 
     it('first() and last()', () => {
       const col = queryAll('.text');
       expect(col.first().textContent).toBe('Hello');
-      expect(col.last().textContent).toBe('World');
+      expect(col.last().textContent).toBe('Extra');
     });
 
     it('eq() returns sub-collection', () => {
@@ -137,13 +145,13 @@ describe('ZQueryCollection', () => {
     it('toArray() returns plain array', () => {
       const arr = queryAll('.text').toArray();
       expect(Array.isArray(arr)).toBe(true);
-      expect(arr.length).toBe(2);
+      expect(arr.length).toBe(3);
     });
 
     it('is iterable', () => {
       const col = queryAll('.text');
       const items = [...col];
-      expect(items.length).toBe(2);
+      expect(items.length).toBe(3);
     });
   });
 
@@ -152,7 +160,7 @@ describe('ZQueryCollection', () => {
     it('find() searches descendants', () => {
       const main = queryAll('#main');
       const ps = main.find('.text');
-      expect(ps.length).toBe(2);
+      expect(ps.length).toBe(3);
     });
 
     it('parent() returns parents', () => {
@@ -162,19 +170,19 @@ describe('ZQueryCollection', () => {
 
     it('children() returns direct children', () => {
       const main = queryAll('#main');
-      expect(main.children().length).toBe(3); // 2 p + 1 span
+      expect(main.children().length).toBe(4); // 3 p + 1 span
     });
 
     it('filter() with string selector', () => {
       const col = queryAll('#main').children();
       const ps = col.filter('p');
-      expect(ps.length).toBe(2);
+      expect(ps.length).toBe(3);
     });
 
     it('filter() with function', () => {
       const col = queryAll('#main').children();
       const ps = col.filter(el => el.tagName === 'P');
-      expect(ps.length).toBe(2);
+      expect(ps.length).toBe(3);
     });
 
     it('not() excludes elements', () => {
@@ -182,6 +190,94 @@ describe('ZQueryCollection', () => {
       const nonP = col.not('p');
       expect(nonP.length).toBe(1);
       expect(nonP.first().tagName).toBe('SPAN');
+    });
+
+    it('next() returns next sibling', () => {
+      const col = queryAll('.first-p');
+      expect(col.next().first().classList.contains('second-p')).toBe(true);
+    });
+
+    it('next(selector) filters by selector', () => {
+      const col = queryAll('.first-p');
+      expect(col.next('.second-p').length).toBe(1);
+      expect(col.next('.third-p').length).toBe(0);
+    });
+
+    it('prev() returns previous sibling', () => {
+      const col = queryAll('.second-p');
+      expect(col.prev().first().classList.contains('first-p')).toBe(true);
+    });
+
+    it('prev(selector) filters by selector', () => {
+      const col = queryAll('.second-p');
+      expect(col.prev('.first-p').length).toBe(1);
+      expect(col.prev('.other').length).toBe(0);
+    });
+
+    it('nextAll() returns all following siblings', () => {
+      const col = queryAll('.first-p');
+      expect(col.nextAll().length).toBe(3); // second-p, other, third-p
+    });
+
+    it('nextAll(selector) filters', () => {
+      const col = queryAll('.first-p');
+      expect(col.nextAll('.text').length).toBe(2);
+    });
+
+    it('nextUntil() stops at selector', () => {
+      const col = queryAll('.first-p');
+      const result = col.nextUntil('.third-p');
+      expect(result.length).toBe(2); // second-p, other
+    });
+
+    it('prevAll() returns all preceding siblings', () => {
+      const col = queryAll('.third-p');
+      expect(col.prevAll().length).toBe(3);
+    });
+
+    it('prevAll(selector) filters', () => {
+      const col = queryAll('.third-p');
+      expect(col.prevAll('.text').length).toBe(2);
+    });
+
+    it('prevUntil() stops at selector', () => {
+      const col = queryAll('.third-p');
+      const result = col.prevUntil('.first-p');
+      expect(result.length).toBe(2); // other, second-p
+    });
+
+    it('parents() returns all ancestors', () => {
+      const col = queryAll('.first-p');
+      const parents = col.parents();
+      expect(parents.length).toBeGreaterThanOrEqual(2); // #main, body, html
+    });
+
+    it('parents(selector) filters', () => {
+      const col = queryAll('.first-p');
+      expect(col.parents('#main').length).toBe(1);
+    });
+
+    it('parentsUntil() stops at selector', () => {
+      const col = queryAll('.first-p');
+      const result = col.parentsUntil('body');
+      expect(result.length).toBe(1); // just #main
+    });
+
+    it('contents() includes text nodes', () => {
+      document.body.innerHTML = '<div id="ct">text<span>child</span></div>';
+      const col = queryAll('#ct');
+      expect(col.contents().length).toBe(2); // text node + span
+    });
+
+    it('siblings() returns all siblings excluding self', () => {
+      const col = queryAll('.other');
+      const sibs = col.siblings();
+      expect(sibs.length).toBe(3); // three .text p's
+    });
+
+    it('closest() finds ancestor', () => {
+      const col = queryAll('.nav-item').eq(0);
+      expect(col.closest('#nav').length).toBe(1);
     });
   });
 
@@ -334,25 +430,27 @@ describe('query quick refs', () => {
   it('$.classes() returns ZQueryCollection', () => {
     const col = query.classes('text');
     expect(col).toBeInstanceOf(ZQueryCollection);
-    expect(col.length).toBe(2);
+    expect(col.length).toBe(3);
   });
 
   it('$.children() returns ZQueryCollection', () => {
     const col = query.children('main');
     expect(col).toBeInstanceOf(ZQueryCollection);
-    expect(col.length).toBe(3);
+    expect(col.length).toBe(4);
   });
 
   it('$.tag() returns ZQueryCollection', () => {
     const col = query.tag('p');
     expect(col).toBeInstanceOf(ZQueryCollection);
-    expect(col.length).toBe(2);
+    expect(col.length).toBe(3);
   });
 
-  it('collection forEach() works like Array.forEach()', () => {
-    const results = [];
-    query.classes('text').forEach((el, i) => results.push({ i, text: el.textContent }));
-    expect(results).toEqual([{ i: 0, text: 'Hello' }, { i: 1, text: 'World' }]);
+  describe('collection forEach() works like Array.forEach()', () => {
+    it('iterates with el, index, array args', () => {
+      const results = [];
+      query.classes('text').forEach((el, i) => results.push({ i, text: el.textContent }));
+      expect(results).toEqual([{ i: 0, text: 'Hello' }, { i: 1, text: 'World' }, { i: 2, text: 'Extra' }]);
+    });
   });
 
   it('$.create() creates element with attributes', () => {
@@ -361,5 +459,229 @@ describe('query quick refs', () => {
     expect(el.className).toBe('new');
     expect(el.id).toBe('created');
     expect(el.textContent).toBe('text');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// New filtering / collection methods
+// ---------------------------------------------------------------------------
+
+describe('filtering & collection', () => {
+  it('is() checks if any element matches selector', () => {
+    expect(queryAll('#main').children().is('p')).toBe(true);
+    expect(queryAll('#main').children().is('table')).toBe(false);
+  });
+
+  it('is() with function', () => {
+    const result = queryAll('.text').is(function(i) { return this.textContent === 'World'; });
+    expect(result).toBe(true);
+  });
+
+  it('has() keeps elements containing matching descendant', () => {
+    const col = queryAll('#sidebar').has('.nav-item');
+    expect(col.length).toBe(1);
+  });
+
+  it('slice() returns subset', () => {
+    const col = queryAll('.text').slice(0, 2);
+    expect(col.length).toBe(2);
+    expect(col.first().textContent).toBe('Hello');
+  });
+
+  it('slice() with negative index', () => {
+    const col = queryAll('.text').slice(-1);
+    expect(col.length).toBe(1);
+    expect(col.first().textContent).toBe('Extra');
+  });
+
+  it('add() merges collections', () => {
+    const col = queryAll('.first-p').add('.other');
+    expect(col.length).toBe(2);
+  });
+
+  it('add() with element', () => {
+    const el = document.getElementById('main');
+    const col = queryAll('.first-p').add(el);
+    expect(col.length).toBe(2);
+  });
+
+  it('add() with ZQueryCollection', () => {
+    const col = queryAll('.first-p').add(queryAll('.other'));
+    expect(col.length).toBe(2);
+  });
+
+  it('get() with no args returns array', () => {
+    const arr = queryAll('.text').get();
+    expect(Array.isArray(arr)).toBe(true);
+    expect(arr.length).toBe(3);
+  });
+
+  it('get(index) returns element', () => {
+    const el = queryAll('.text').get(1);
+    expect(el.textContent).toBe('World');
+  });
+
+  it('get(negative) returns from end', () => {
+    const el = queryAll('.text').get(-1);
+    expect(el.textContent).toBe('Extra');
+  });
+
+  it('index() returns position among siblings', () => {
+    const col = queryAll('.other');
+    expect(col.index()).toBe(2); // 3rd child (0-indexed)
+  });
+
+  it('index(element) returns position in collection', () => {
+    const other = document.querySelector('.other');
+    const col = queryAll('#main').children();
+    expect(col.index(other)).toBe(2);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Inverse DOM manipulation (appendTo, prependTo, insertAfter, insertBefore, etc.)
+// ---------------------------------------------------------------------------
+
+describe('inverse DOM manipulation', () => {
+  it('appendTo() moves elements into target', () => {
+    queryAll('<div class="new-item">new</div>').appendTo('#nav');
+    const nav = document.getElementById('nav');
+    expect(nav.lastElementChild.className).toBe('new-item');
+  });
+
+  it('prependTo() inserts at start of target', () => {
+    queryAll('<li class="first-item">first</li>').prependTo('#nav');
+    const nav = document.getElementById('nav');
+    expect(nav.firstElementChild.className).toBe('first-item');
+  });
+
+  it('insertAfter() inserts after target', () => {
+    queryAll('<span class="inserted">!</span>').insertAfter('.first-p');
+    const firstP = document.querySelector('.first-p');
+    expect(firstP.nextElementSibling.className).toBe('inserted');
+  });
+
+  it('insertBefore() inserts before target', () => {
+    queryAll('<span class="inserted">!</span>').insertBefore('.second-p');
+    const secondP = document.querySelector('.second-p');
+    expect(secondP.previousElementSibling.className).toBe('inserted');
+  });
+
+  it('replaceAll() replaces target elements', () => {
+    queryAll('<em>replaced</em>').replaceAll('.other');
+    expect(document.querySelector('.other')).toBeNull();
+    expect(document.querySelector('em').textContent).toBe('replaced');
+  });
+
+  it('unwrap() removes parent wrapper', () => {
+    // wrap nav-items in a div first
+    const items = queryAll('.nav-item');
+    const count = items.length;
+    items.eq(0).wrap('<div class="wrapper"></div>');
+    expect(document.querySelector('.wrapper')).not.toBeNull();
+    queryAll('.nav-item').eq(0).unwrap('.wrapper');
+    expect(document.querySelector('.wrapper')).toBeNull();
+  });
+
+  it('wrapAll() wraps all elements in one wrapper', () => {
+    queryAll('.nav-item').wrapAll('<div class="all-wrap"></div>');
+    const wrap = document.querySelector('.all-wrap');
+    expect(wrap).not.toBeNull();
+    expect(wrap.children.length).toBe(3);
+  });
+
+  it('wrapInner() wraps inner contents', () => {
+    queryAll('.first-p').wrapInner('<strong></strong>');
+    const strong = document.querySelector('.first-p > strong');
+    expect(strong).not.toBeNull();
+    expect(strong.textContent).toBe('Hello');
+  });
+
+  it('detach() removes elements (alias for remove)', () => {
+    queryAll('.other').detach();
+    expect(document.querySelector('.other')).toBeNull();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// CSS dimension methods
+// ---------------------------------------------------------------------------
+
+describe('CSS dimension methods', () => {
+  it('scrollTop() get returns a number', () => {
+    const val = queryAll('#main').scrollTop();
+    expect(typeof val).toBe('number');
+  });
+
+  it('scrollTop(value) sets scroll position', () => {
+    const main = document.getElementById('main');
+    main.style.overflow = 'auto';
+    main.style.height = '10px';
+    main.innerHTML = '<div style="height:1000px">tall</div>';
+    queryAll('#main').scrollTop(50);
+    expect(main.scrollTop).toBe(50);
+  });
+
+  it('scrollLeft() get returns a number', () => {
+    const val = queryAll('#main').scrollLeft();
+    expect(typeof val).toBe('number');
+  });
+
+  it('innerWidth() returns clientWidth', () => {
+    const main = document.getElementById('main');
+    // jsdom sets clientWidth to 0 but the method should still return a number
+    const val = queryAll('#main').innerWidth();
+    expect(typeof val).toBe('number');
+  });
+
+  it('innerHeight() returns clientHeight', () => {
+    const val = queryAll('#main').innerHeight();
+    expect(typeof val).toBe('number');
+  });
+
+  it('outerWidth() returns offsetWidth', () => {
+    const val = queryAll('#main').outerWidth();
+    expect(typeof val).toBe('number');
+  });
+
+  it('outerHeight() returns offsetHeight', () => {
+    const val = queryAll('#main').outerHeight();
+    expect(typeof val).toBe('number');
+  });
+
+  it('outerWidth(true) includes margin', () => {
+    const main = document.getElementById('main');
+    main.style.margin = '10px';
+    const val = queryAll('#main').outerWidth(true);
+    expect(typeof val).toBe('number');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// hover() convenience
+// ---------------------------------------------------------------------------
+
+describe('hover()', () => {
+  it('binds mouseenter and mouseleave', () => {
+    let entered = false, left = false;
+    const col = queryAll('#main');
+    col.hover(() => { entered = true; }, () => { left = true; });
+    col.first().dispatchEvent(new Event('mouseenter'));
+    col.first().dispatchEvent(new Event('mouseleave'));
+    expect(entered).toBe(true);
+    expect(left).toBe(true);
+  });
+
+  it('uses same fn for both if only one provided', () => {
+    let count = 0;
+    const col = queryAll('#main');
+    col.hover(() => { count++; });
+    col.first().dispatchEvent(new Event('mouseenter'));
+    col.first().dispatchEvent(new Event('mouseleave'));
+    expect(count).toBe(2);
   });
 });

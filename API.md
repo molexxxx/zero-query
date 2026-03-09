@@ -171,14 +171,22 @@ $('#cart-count').text('3');
 | --- | --- | --- | --- |
 | `find` | `find(selector)` | `ZQueryCollection` | Find descendants matching selector |
 | `parent` | `parent()` | `ZQueryCollection` | Direct parent of each element (deduplicated) |
+| `parents` | `parents(selector?)` | `ZQueryCollection` | All ancestor elements, optionally filtered by selector |
+| `parentsUntil` | `parentsUntil(selector?, filter?)` | `ZQueryCollection` | Ancestors up to (not including) the element matching `selector` |
 | `closest` | `closest(selector)` | `ZQueryCollection` | Closest ancestor matching selector |
 | `children` | `children(selector?)` | `ZQueryCollection` | Direct children, optionally filtered by selector |
+| `contents` | `contents()` | `ZQueryCollection` | All child nodes including text and comment nodes |
 | `siblings` | `siblings()` | `ZQueryCollection` | All sibling elements (excluding self) |
-| `next` | `next()` | `ZQueryCollection` | Next sibling element |
-| `prev` | `prev()` | `ZQueryCollection` | Previous sibling element |
+| `next` | `next(selector?)` | `ZQueryCollection` | Next sibling element, optionally filtered |
+| `prev` | `prev(selector?)` | `ZQueryCollection` | Previous sibling element, optionally filtered |
+| `nextAll` | `nextAll(selector?)` | `ZQueryCollection` | All following siblings, optionally filtered |
+| `nextUntil` | `nextUntil(selector?, filter?)` | `ZQueryCollection` | Following siblings until (not including) the element matching `selector` |
+| `prevAll` | `prevAll(selector?)` | `ZQueryCollection` | All preceding siblings, optionally filtered |
+| `prevUntil` | `prevUntil(selector?, filter?)` | `ZQueryCollection` | Preceding siblings until (not including) the element matching `selector` |
 | `filter` | `filter(selector \| fn)` | `ZQueryCollection` | Filter by CSS selector or callback `fn(index, el)` |
 | `not` | `not(selector \| fn)` | `ZQueryCollection` | Inverse of `filter()` |
 | `has` | `has(selector)` | `ZQueryCollection` | Keep elements that have a descendant matching selector |
+| `is` | `is(selector \| fn)` | `boolean` | Check if any element matches the selector or predicate |
 
 #### Iteration
 
@@ -191,6 +199,10 @@ $('#cart-count').text('3');
 | `last` | `last()` | `Element \| null` | Last element in collection |
 | `eq` | `eq(index)` | `ZQueryCollection` | Single-element collection at given index |
 | `toArray` | `toArray()` | `Array<Element>` | Spread to plain array |
+| `slice` | `slice(start, end?)` | `ZQueryCollection` | Subset of the collection |
+| `add` | `add(selector \| element \| collection)` | `ZQueryCollection` | Combine elements into a new collection |
+| `get` | `get(index?)` | `Element \| Element[]` | Retrieve element by index (supports negative). No args → array of all. |
+| `index` | `index(selector?)` | `number` | Position of first element among its siblings, or index of a given element in the collection |
 
 > **Numeric indexing:** You can access elements directly by index — `$('.card')[0]` returns the first raw DOM element, just like an array. The collection also implements `[Symbol.iterator]`, so `for...of` and spread (`...`) work natively.
 
@@ -223,6 +235,15 @@ $('#cart-count').text('3');
 | `empty` | `empty()` | `this` | Clear innerHTML of all elements |
 | `clone` | `clone(deep = true)` | `ZQueryCollection` | Deep-clone all elements |
 | `replaceWith` | `replaceWith(content)` | `this` | Replace each element with new content |
+| `appendTo` | `appendTo(target)` | `this` | Insert every element at the end of the target |
+| `prependTo` | `prependTo(target)` | `this` | Insert every element at the beginning of the target |
+| `insertAfter` | `insertAfter(target)` | `this` | Insert every element after the target |
+| `insertBefore` | `insertBefore(target)` | `this` | Insert every element before the target |
+| `replaceAll` | `replaceAll(target)` | `this` | Replace target elements with the collection's elements |
+| `unwrap` | `unwrap(selector?)` | `this` | Remove the parent wrapper of each element (optionally only if parent matches `selector`) |
+| `wrapAll` | `wrapAll(wrapper)` | `this` | Wrap all elements together in a single wrapper |
+| `wrapInner` | `wrapInner(wrapper)` | `this` | Wrap the inner contents of each element |
+| `detach` | `detach()` | `this` | Remove elements from DOM (alias for `remove`) |
 
 #### CSS & Dimensions
 
@@ -233,6 +254,12 @@ $('#cart-count').text('3');
 | `height` | `height()` | `number` | First element height via `getBoundingClientRect` |
 | `offset` | `offset()` | `{ top, left, width, height } \| null` | Position relative to document (includes scroll offset) |
 | `position` | `position()` | `{ top, left } \| null` | Position relative to offset parent (`offsetTop`/`offsetLeft`) |
+| `scrollTop` | `scrollTop(value?)` | `number \| this` | Get/set vertical scroll position |
+| `scrollLeft` | `scrollLeft(value?)` | `number \| this` | Get/set horizontal scroll position |
+| `innerWidth` | `innerWidth()` | `number` | Width including padding (`clientWidth`) |
+| `innerHeight` | `innerHeight()` | `number` | Height including padding (`clientHeight`) |
+| `outerWidth` | `outerWidth(includeMargin?)` | `number` | Width including padding + border. Pass `true` to include margin. |
+| `outerHeight` | `outerHeight(includeMargin?)` | `number` | Height including padding + border. Pass `true` to include margin. |
 
 #### Visibility
 
@@ -254,6 +281,7 @@ $('#cart-count').text('3');
 | `submit` | `submit(fn?)` | `this` | Shorthand: bind submit or trigger submit |
 | `focus` | `focus()` | `this` | Focus first element |
 | `blur` | `blur()` | `this` | Blur first element |
+| `hover` | `hover(enterFn, leaveFn?)` | `this` | Bind mouseenter/mouseleave handlers. If only one fn, it's used for both. |
 
 ---
 
@@ -332,6 +360,10 @@ All animation methods return `Promise`s, so you can `await` them for sequencing:
 | `animate` | `animate(props, duration = 300, easing = 'ease')` | `Promise<ZQueryCollection>` | CSS transition to target properties. Includes a fallback timeout at `duration + 50ms`. |
 | `fadeIn` | `fadeIn(duration = 300)` | `Promise` | Fade in from `opacity: 0` to `opacity: 1` |
 | `fadeOut` | `fadeOut(duration = 300)` | `Promise` | Fade out and hide element after completion |
+| `fadeToggle` | `fadeToggle(duration = 300)` | `Promise` | Toggle fade in/out |
+| `fadeTo` | `fadeTo(duration, opacity)` | `Promise` | Fade to a specific opacity |
+| `slideDown` | `slideDown(duration = 300)` | `this` | Slide-reveal element (height 0 → natural) |
+| `slideUp` | `slideUp(duration = 300)` | `this` | Slide-hide element (height → 0, then display none) |
 | `slideToggle` | `slideToggle(duration = 300)` | `this` | Toggle height between 0 and natural height |
 
 ```js

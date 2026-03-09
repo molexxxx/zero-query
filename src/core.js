@@ -75,8 +75,96 @@ export class ZQueryCollection {
     return new ZQueryCollection(sibs);
   }
 
-  next()  { return new ZQueryCollection(this.elements.map(el => el.nextElementSibling).filter(Boolean)); }
-  prev()  { return new ZQueryCollection(this.elements.map(el => el.previousElementSibling).filter(Boolean)); }
+  next(selector)  {
+    const els = this.elements.map(el => el.nextElementSibling).filter(Boolean);
+    return new ZQueryCollection(selector ? els.filter(el => el.matches(selector)) : els);
+  }
+
+  prev(selector)  {
+    const els = this.elements.map(el => el.previousElementSibling).filter(Boolean);
+    return new ZQueryCollection(selector ? els.filter(el => el.matches(selector)) : els);
+  }
+
+  nextAll(selector) {
+    const result = [];
+    this.elements.forEach(el => {
+      let sib = el.nextElementSibling;
+      while (sib) {
+        if (!selector || sib.matches(selector)) result.push(sib);
+        sib = sib.nextElementSibling;
+      }
+    });
+    return new ZQueryCollection(result);
+  }
+
+  nextUntil(selector, filter) {
+    const result = [];
+    this.elements.forEach(el => {
+      let sib = el.nextElementSibling;
+      while (sib) {
+        if (selector && sib.matches(selector)) break;
+        if (!filter || sib.matches(filter)) result.push(sib);
+        sib = sib.nextElementSibling;
+      }
+    });
+    return new ZQueryCollection(result);
+  }
+
+  prevAll(selector) {
+    const result = [];
+    this.elements.forEach(el => {
+      let sib = el.previousElementSibling;
+      while (sib) {
+        if (!selector || sib.matches(selector)) result.push(sib);
+        sib = sib.previousElementSibling;
+      }
+    });
+    return new ZQueryCollection(result);
+  }
+
+  prevUntil(selector, filter) {
+    const result = [];
+    this.elements.forEach(el => {
+      let sib = el.previousElementSibling;
+      while (sib) {
+        if (selector && sib.matches(selector)) break;
+        if (!filter || sib.matches(filter)) result.push(sib);
+        sib = sib.previousElementSibling;
+      }
+    });
+    return new ZQueryCollection(result);
+  }
+
+  parents(selector) {
+    const result = [];
+    this.elements.forEach(el => {
+      let parent = el.parentElement;
+      while (parent) {
+        if (!selector || parent.matches(selector)) result.push(parent);
+        parent = parent.parentElement;
+      }
+    });
+    return new ZQueryCollection([...new Set(result)]);
+  }
+
+  parentsUntil(selector, filter) {
+    const result = [];
+    this.elements.forEach(el => {
+      let parent = el.parentElement;
+      while (parent) {
+        if (selector && parent.matches(selector)) break;
+        if (!filter || parent.matches(filter)) result.push(parent);
+        parent = parent.parentElement;
+      }
+    });
+    return new ZQueryCollection([...new Set(result)]);
+  }
+
+  contents() {
+    const result = [];
+    this.elements.forEach(el => result.push(...el.childNodes));
+    return new ZQueryCollection(result);
+  }
 
   filter(selector) {
     if (typeof selector === 'function') {
@@ -94,6 +182,42 @@ export class ZQueryCollection {
 
   has(selector) {
     return new ZQueryCollection(this.elements.filter(el => el.querySelector(selector)));
+  }
+
+  is(selector) {
+    if (typeof selector === 'function') {
+      return this.elements.some((el, i) => selector.call(el, i, el));
+    }
+    return this.elements.some(el => el.matches(selector));
+  }
+
+  slice(start, end) {
+    return new ZQueryCollection(this.elements.slice(start, end));
+  }
+
+  add(selector, context) {
+    const toAdd = (selector instanceof ZQueryCollection)
+      ? selector.elements
+      : (selector instanceof Node)
+        ? [selector]
+        : Array.from((context || document).querySelectorAll(selector));
+    return new ZQueryCollection([...this.elements, ...toAdd]);
+  }
+
+  get(index) {
+    if (index === undefined) return [...this.elements];
+    return index < 0 ? this.elements[this.length + index] : this.elements[index];
+  }
+
+  index(selector) {
+    if (selector === undefined) {
+      const el = this.first();
+      return el ? Array.from(el.parentElement.children).indexOf(el) : -1;
+    }
+    const target = (typeof selector === 'string')
+      ? document.querySelector(selector)
+      : selector;
+    return this.elements.indexOf(target);
   }
 
   // --- Classes -------------------------------------------------------------
@@ -161,6 +285,60 @@ export class ZQueryCollection {
   position() {
     const el = this.first();
     return el ? { top: el.offsetTop, left: el.offsetLeft } : null;
+  }
+
+  scrollTop(value) {
+    if (value === undefined) {
+      const el = this.first();
+      return el === window ? window.scrollY : el?.scrollTop;
+    }
+    return this.each((_, el) => {
+      if (el === window) window.scrollTo(window.scrollX, value);
+      else el.scrollTop = value;
+    });
+  }
+
+  scrollLeft(value) {
+    if (value === undefined) {
+      const el = this.first();
+      return el === window ? window.scrollX : el?.scrollLeft;
+    }
+    return this.each((_, el) => {
+      if (el === window) window.scrollTo(value, window.scrollY);
+      else el.scrollLeft = value;
+    });
+  }
+
+  innerWidth() {
+    const el = this.first();
+    return el?.clientWidth;
+  }
+
+  innerHeight() {
+    const el = this.first();
+    return el?.clientHeight;
+  }
+
+  outerWidth(includeMargin = false) {
+    const el = this.first();
+    if (!el) return undefined;
+    let w = el.offsetWidth;
+    if (includeMargin) {
+      const style = getComputedStyle(el);
+      w += parseFloat(style.marginLeft) + parseFloat(style.marginRight);
+    }
+    return w;
+  }
+
+  outerHeight(includeMargin = false) {
+    const el = this.first();
+    if (!el) return undefined;
+    let h = el.offsetHeight;
+    if (includeMargin) {
+      const style = getComputedStyle(el);
+      h += parseFloat(style.marginTop) + parseFloat(style.marginBottom);
+    }
+    return h;
   }
 
   // --- Content -------------------------------------------------------------
@@ -242,6 +420,73 @@ export class ZQueryCollection {
     });
   }
 
+  appendTo(target) {
+    const dest = typeof target === 'string' ? document.querySelector(target) : target instanceof ZQueryCollection ? target.first() : target;
+    if (dest) this.each((_, el) => dest.appendChild(el));
+    return this;
+  }
+
+  prependTo(target) {
+    const dest = typeof target === 'string' ? document.querySelector(target) : target instanceof ZQueryCollection ? target.first() : target;
+    if (dest) this.each((_, el) => dest.insertBefore(el, dest.firstChild));
+    return this;
+  }
+
+  insertAfter(target) {
+    const ref = typeof target === 'string' ? document.querySelector(target) : target instanceof ZQueryCollection ? target.first() : target;
+    if (ref && ref.parentNode) this.each((_, el) => ref.parentNode.insertBefore(el, ref.nextSibling));
+    return this;
+  }
+
+  insertBefore(target) {
+    const ref = typeof target === 'string' ? document.querySelector(target) : target instanceof ZQueryCollection ? target.first() : target;
+    if (ref && ref.parentNode) this.each((_, el) => ref.parentNode.insertBefore(el, ref));
+    return this;
+  }
+
+  replaceAll(target) {
+    const targets = typeof target === 'string'
+      ? Array.from(document.querySelectorAll(target))
+      : target instanceof ZQueryCollection ? target.elements : [target];
+    targets.forEach((t, i) => {
+      const nodes = i === 0 ? this.elements : this.elements.map(el => el.cloneNode(true));
+      nodes.forEach(el => t.parentNode.insertBefore(el, t));
+      t.remove();
+    });
+    return this;
+  }
+
+  unwrap(selector) {
+    this.elements.forEach(el => {
+      const parent = el.parentElement;
+      if (!parent || parent === document.body) return;
+      if (selector && !parent.matches(selector)) return;
+      parent.replaceWith(...parent.childNodes);
+    });
+    return this;
+  }
+
+  wrapAll(wrapper) {
+    const w = typeof wrapper === 'string' ? createFragment(wrapper).firstElementChild : wrapper.cloneNode(true);
+    const first = this.first();
+    if (!first) return this;
+    first.parentNode.insertBefore(w, first);
+    this.each((_, el) => w.appendChild(el));
+    return this;
+  }
+
+  wrapInner(wrapper) {
+    return this.each((_, el) => {
+      const w = typeof wrapper === 'string' ? createFragment(wrapper).firstElementChild : wrapper.cloneNode(true);
+      while (el.firstChild) w.appendChild(el.firstChild);
+      el.appendChild(w);
+    });
+  }
+
+  detach() {
+    return this.each((_, el) => el.remove());
+  }
+
   // --- Visibility ----------------------------------------------------------
 
   show(display = '') {
@@ -302,6 +547,10 @@ export class ZQueryCollection {
   submit(fn)  { return fn ? this.on('submit', fn) : this.trigger('submit'); }
   focus()     { this.first()?.focus(); return this; }
   blur()      { this.first()?.blur(); return this; }
+  hover(enterFn, leaveFn) {
+    this.on('mouseenter', enterFn);
+    return this.on('mouseleave', leaveFn || enterFn);
+  }
 
   // --- Animation -----------------------------------------------------------
 
@@ -331,6 +580,40 @@ export class ZQueryCollection {
 
   fadeOut(duration = 300) {
     return this.animate({ opacity: '0' }, duration).then(col => col.hide());
+  }
+
+  fadeToggle(duration = 300) {
+    return Promise.all(this.elements.map(el => {
+      const visible = getComputedStyle(el).opacity !== '0' && getComputedStyle(el).display !== 'none';
+      const col = new ZQueryCollection([el]);
+      return visible ? col.fadeOut(duration) : col.fadeIn(duration);
+    })).then(() => this);
+  }
+
+  fadeTo(duration, opacity) {
+    return this.animate({ opacity: String(opacity) }, duration);
+  }
+
+  slideDown(duration = 300) {
+    return this.each((_, el) => {
+      el.style.display = '';
+      el.style.overflow = 'hidden';
+      const h = el.scrollHeight + 'px';
+      el.style.maxHeight = '0';
+      el.style.transition = `max-height ${duration}ms ease`;
+      requestAnimationFrame(() => { el.style.maxHeight = h; });
+      setTimeout(() => { el.style.maxHeight = ''; el.style.overflow = ''; el.style.transition = ''; }, duration);
+    });
+  }
+
+  slideUp(duration = 300) {
+    return this.each((_, el) => {
+      el.style.overflow = 'hidden';
+      el.style.maxHeight = el.scrollHeight + 'px';
+      el.style.transition = `max-height ${duration}ms ease`;
+      requestAnimationFrame(() => { el.style.maxHeight = '0'; });
+      setTimeout(() => { el.style.display = 'none'; el.style.maxHeight = ''; el.style.overflow = ''; el.style.transition = ''; }, duration);
+    });
   }
 
   slideToggle(duration = 300) {
