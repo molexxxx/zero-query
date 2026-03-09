@@ -24,6 +24,8 @@ const buildLibrary             = require('./build');
 /** Resolve an import specifier relative to the importing file. */
 function resolveImport(specifier, fromFile) {
   if (!specifier.startsWith('.') && !specifier.startsWith('/')) return null;
+  // Skip non-JS assets (CSS, images, etc.) referenced in code examples
+  if (/\.(?:css|json|svg|png|jpg|gif|woff2?|ttf|eot)$/i.test(specifier)) return null;
   let resolved = path.resolve(path.dirname(fromFile), specifier);
   if (!path.extname(resolved) && fs.existsSync(resolved + '.js')) {
     resolved += '.js';
@@ -558,6 +560,37 @@ function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFi
     if (bundledFiles && bundledFiles.has(refAbs)) continue;
     if (includeLib && /zquery(?:\.min)?\.js$/i.test(ref)) continue;
     assets.add(ref);
+  }
+
+  // Also scan the bundled JS for src/href references to local assets
+  const bundleContent = fs.existsSync(bundleFile) ? fs.readFileSync(bundleFile, 'utf-8') : '';
+  const jsAssetRe = /\b(?:src|href)\s*=\s*["\\]*["']([^"']+\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?|ttf|eot|mp4|webm))["']/gi;
+  while ((m = jsAssetRe.exec(bundleContent)) !== null) {
+    const ref = m[1];
+    if (ref.startsWith('http') || ref.startsWith('//') || ref.startsWith('data:')) continue;
+    if (!assets.has(ref)) {
+      const refAbs = path.resolve(htmlDir, ref);
+      if (fs.existsSync(refAbs)) assets.add(ref);
+    }
+  }
+
+  // For any referenced asset directories, copy all sibling files too
+  const assetDirs = new Set();
+  for (const asset of assets) {
+    const dir = path.dirname(asset);
+    if (dir && dir !== '.') assetDirs.add(dir);
+  }
+  for (const dir of assetDirs) {
+    const absDirPath = path.resolve(htmlDir, dir);
+    if (fs.existsSync(absDirPath) && fs.statSync(absDirPath).isDirectory()) {
+      for (const child of fs.readdirSync(absDirPath)) {
+        const childRel = path.join(dir, child).replace(/\\/g, '/');
+        const childAbs = path.join(absDirPath, child);
+        if (fs.statSync(childAbs).isFile() && !assets.has(childRel)) {
+          assets.add(childRel);
+        }
+      }
+    }
   }
 
   // Copy assets into both dist dirs
