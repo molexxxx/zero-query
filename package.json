@@ -9,7 +9,7 @@
   },
   "files": [
     "src",
-    "test",
+    "tests",
     "dist",
     "cli",
     "types",
