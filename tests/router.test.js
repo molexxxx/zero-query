@@ -114,6 +114,118 @@ describe('Router — navigation', () => {
     router.replace('/about');
     expect(window.location.hash).toBe('#/about');
   });
+
+  it('navigate interpolates :param placeholders from options.params', () => {
+    router.navigate('/user/:id', { params: { id: 42 } });
+    expect(window.location.hash).toBe('#/user/42');
+  });
+
+  it('navigate interpolates multiple :param placeholders', () => {
+    router.navigate('/post/:postId/comment/:cid', { params: { postId: 5, cid: 99 } });
+    expect(window.location.hash).toBe('#/post/5/comment/99');
+  });
+
+  it('navigate leaves unmatched :params as-is', () => {
+    router.navigate('/user/:id', { params: { name: 'Alice' } });
+    expect(window.location.hash).toBe('#/user/:id');
+  });
+
+  it('navigate URI-encodes param values', () => {
+    router.navigate('/search/:query', { params: { query: 'hello world' } });
+    expect(window.location.hash).toBe('#/search/hello%20world');
+  });
+
+  it('replace interpolates :param placeholders from options.params', () => {
+    router.replace('/user/:id', { params: { id: 7 } });
+    expect(window.location.hash).toBe('#/user/7');
+  });
+
+  it('navigate without params option works as before', () => {
+    router.navigate('/about');
+    expect(window.location.hash).toBe('#/about');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// _interpolateParams
+// ---------------------------------------------------------------------------
+
+describe('Router — _interpolateParams', () => {
+  let router;
+
+  beforeEach(() => {
+    router = createRouter({ mode: 'hash', routes: [] });
+  });
+
+  it('replaces single :param', () => {
+    expect(router._interpolateParams('/user/:id', { id: 42 })).toBe('/user/42');
+  });
+
+  it('replaces multiple :params', () => {
+    expect(router._interpolateParams('/post/:pid/comment/:cid', { pid: 1, cid: 5 }))
+      .toBe('/post/1/comment/5');
+  });
+
+  it('leaves unmatched :params in place', () => {
+    expect(router._interpolateParams('/user/:id', {})).toBe('/user/:id');
+  });
+
+  it('URI-encodes param values', () => {
+    expect(router._interpolateParams('/tag/:name', { name: 'foo bar' }))
+      .toBe('/tag/foo%20bar');
+  });
+
+  it('returns path unchanged when params is null', () => {
+    expect(router._interpolateParams('/about', null)).toBe('/about');
+  });
+
+  it('converts numbers to strings', () => {
+    expect(router._interpolateParams('/user/:id', { id: 123 })).toBe('/user/123');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// z-link-params
+// ---------------------------------------------------------------------------
+
+describe('Router — z-link-params', () => {
+  let router;
+
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="app"></div>';
+    window.location.hash = '#/';
+    router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/user/:id', component: 'user-page' },
+      ],
+    });
+  });
+
+  it('interpolates params from z-link-params attribute on click', () => {
+    document.body.innerHTML += '<a z-link="/user/:id" z-link-params=\'{"id": "42"}\'>User</a>';
+    const link = document.querySelector('[z-link]');
+    link.click();
+    expect(window.location.hash).toBe('#/user/42');
+  });
+
+  it('works without z-link-params (plain z-link)', () => {
+    document.body.innerHTML += '<a z-link="/about">About</a>';
+    const link = document.querySelector('a[z-link="/about"]');
+    link.click();
+    expect(window.location.hash).toBe('#/about');
+  });
+
+  it('ignores malformed z-link-params JSON gracefully', () => {
+    document.body.innerHTML += '<a z-link="/user/fallback" z-link-params="not json">User</a>';
+    const link = document.querySelector('a[z-link="/user/fallback"]');
+    link.click();
+    expect(window.location.hash).toBe('#/user/fallback');
+  });
 });
 
 

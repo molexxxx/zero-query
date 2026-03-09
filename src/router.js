@@ -78,7 +78,16 @@ class Router {
       if (!link) return;
       if (link.getAttribute('target') === '_blank') return;
       e.preventDefault();
-      this.navigate(link.getAttribute('z-link'));
+      let href = link.getAttribute('z-link');
+      // Support z-link-params for dynamic :param interpolation
+      const paramsAttr = link.getAttribute('z-link-params');
+      if (paramsAttr) {
+        try {
+          const params = JSON.parse(paramsAttr);
+          href = this._interpolateParams(href, params);
+        } catch { /* ignore malformed JSON */ }
+      }
+      this.navigate(href);
     });
 
     // Initial resolve
@@ -122,7 +131,23 @@ class Router {
 
   // --- Navigation ----------------------------------------------------------
 
+  /**
+   * Interpolate :param placeholders in a path with the given values.
+   * @param {string} path — e.g. '/user/:id/posts/:pid'
+   * @param {Object} params — e.g. { id: 42, pid: 7 }
+   * @returns {string}
+   */
+  _interpolateParams(path, params) {
+    if (!params || typeof params !== 'object') return path;
+    return path.replace(/:([\w]+)/g, (_, key) => {
+      const val = params[key];
+      return val != null ? encodeURIComponent(String(val)) : ':' + key;
+    });
+  }
+
   navigate(path, options = {}) {
+    // Interpolate :param placeholders if options.params is provided
+    if (options.params) path = this._interpolateParams(path, options.params);
     // Separate hash fragment (e.g. /docs/getting-started#cli-bundler)
     const [cleanPath, fragment] = (path || '').split('#');
     let normalized = this._normalizePath(cleanPath);
@@ -140,6 +165,8 @@ class Router {
   }
 
   replace(path, options = {}) {
+    // Interpolate :param placeholders if options.params is provided
+    if (options.params) path = this._interpolateParams(path, options.params);
     const [cleanPath, fragment] = (path || '').split('#');
     let normalized = this._normalizePath(cleanPath);
     const hash = fragment ? '#' + fragment : '';

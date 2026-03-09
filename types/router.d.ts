@@ -56,10 +56,21 @@ export interface RouterConfig {
 
 /** The SPA router instance. */
 export interface RouterInstance {
-  /** Push a new state and resolve the route. */
-  navigate(path: string, options?: { state?: any }): RouterInstance;
-  /** Replace the current state (no new history entry). */
-  replace(path: string, options?: { state?: any }): RouterInstance;
+  /**
+   * Push a new state and resolve the route.
+   * Supports `:param` interpolation when `options.params` is provided.
+   * @example
+   * router.navigate('/user/:id', { params: { id: 42 } }); // navigates to /user/42
+   * router.navigate('/dashboard', { state: { from: 'login' } });
+   */
+  navigate(path: string, options?: { params?: Record<string, string | number>; state?: any }): RouterInstance;
+  /**
+   * Replace the current state (no new history entry).
+   * Supports `:param` interpolation when `options.params` is provided.
+   * @example
+   * router.replace('/user/:id', { params: { id: 42 } }); // replaces with /user/42
+   */
+  replace(path: string, options?: { params?: Record<string, string | number>; state?: any }): RouterInstance;
   /** `history.back()` */
   back(): RouterInstance;
   /** `history.forward()` */

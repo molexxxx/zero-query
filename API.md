@@ -654,8 +654,8 @@ Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base hre
 
 | Method | Signature | Returns | Description |
 | --- | --- | --- | --- |
-| `navigate` | `navigate(path, options?)` | `this` | Push new state and resolve route. `options.state` passed to `pushState`. |
-| `replace` | `replace(path, options?)` | `this` | Replace current state (no new history entry). |
+| `navigate` | `navigate(path, options?)` | `this` | Push new state and resolve route. See **options** below. |
+| `replace` | `replace(path, options?)` | `this` | Replace current state (no new history entry). Same **options** as `navigate`. |
 | `back` | `back()` | `this` | `history.back()` |
 | `forward` | `forward()` | `this` | `history.forward()` |
 | `go` | `go(n)` | `this` | `history.go(n)` |
@@ -666,6 +666,34 @@ Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base hre
 | `onChange` | `onChange(fn)` | `() => void` | Subscribe to route changes. Returns unsubscribe. `fn(to, from)`. |
 | `resolve` | `resolve(path)` | `string` | Resolve an app-relative path to a full URL path (including base). Useful for programmatic link generation. |
 | `destroy` | `destroy()` | — | Teardown router and mounted component. |
+
+#### `navigate()` / `replace()` Options
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `params` | `object` | Key-value pairs that replace `:param` placeholders in the path. Values are URI-encoded automatically. |
+| `state` | `any` | Arbitrary data passed to `history.pushState()` / `history.replaceState()`. Accessible later via `history.state`. |
+
+```js
+// Simple navigation
+router.navigate('/about');
+
+// Dynamic params — fills :param placeholders in the path
+const userId = 42;
+router.navigate('/user/:id', { params: { id: userId } });  // → /user/42
+
+// Multiple params
+router.navigate('/post/:postId/comment/:cid', { params: { postId: 5, cid: 99 } });
+
+// With history state
+router.navigate('/user/:id', { params: { id: userId }, state: { from: 'list' } });
+
+// replace() — same API, but replaces the current history entry (no back button)
+router.replace('/dashboard');
+router.replace('/user/:id', { params: { id: userId } });
+```
+
+> **`navigate()` vs `replace()`:** `navigate()` pushes a new history entry (user can go back). `replace()` overwrites the current entry — use it for redirects, post-login flows, or tab switches where going back doesn't make sense.
 
 ### Router Properties
 
@@ -701,8 +729,35 @@ Use the `z-link` attribute on `<a>` tags for SPA navigation. Clicks are intercep
 
 ```html
 <a z-link="/">Home</a>
-<a z-link="/user/42">Profile</a>
+<a z-link="/about">About</a>
 <a z-link="/search?q=zQuery">Search</a>
+```
+
+**Dynamic paths in `render()` — template literal interpolation:**
+
+```js
+render() {
+  const userId = this.state.userId;
+  return `<a z-link="/user/${userId}">Profile</a>`;
+}
+```
+
+**Dynamic paths in HTML templates — `:z-link` binding:**
+
+```html
+<a :z-link="'/user/' + state.userId">Profile</a>
+```
+
+**Named params — `z-link-params` attribute:**
+
+Use `z-link-params` to supply a JSON object of `:param` values. The router fills in the placeholders automatically:
+
+```html
+<a z-link="/user/:id" z-link-params='{"id": "42"}'>User 42</a>
+<!-- navigates to /user/42 -->
+
+<a z-link="/post/:pid/comment/:cid" z-link-params='{"pid": "5", "cid": "99"}'>View Comment</a>
+<!-- navigates to /post/5/comment/99 -->
 ```
 
 ### `getRouter()`
@@ -2153,7 +2208,7 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
 | `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. See [z-key](#z-key--keyed-reconciliation). |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
-| `$.version` | Library version string (e.g. `'0.7.0'`). |
+| `$.version` | Library version string (e.g. `'0.7.1'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |
