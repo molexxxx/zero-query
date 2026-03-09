@@ -27,7 +27,7 @@ const router = $.router({
 // Highlight the active nav link on every route change
 router.onChange((to) => {
   $.all('.nav-link').removeClass('active');
-  $.all(`.nav-link[z-link="${to.path}"]`).addClass('active');
+  $(`.nav-link[z-link="${to.path}"]`).addClass('active');
 
   // Close mobile menu on navigate
   closeMobileMenu();
@@ -36,26 +36,20 @@ router.onChange((to) => {
 // ---------------------------------------------------------------------------
 // Responsive sidebar toggle
 // ---------------------------------------------------------------------------
-const sidebar = $.id('sidebar');
-const overlay = $.id('overlay');
-const toggle  = $.id('menu-toggle');
+const $sidebar = $('#sidebar');
+const $overlay = $('#overlay');
+const $toggle  = $('#menu-toggle');
 
-function openMobileMenu() {
-  sidebar.classList.add('open');
-  overlay.classList.add('visible');
-  toggle.classList.add('active');
+function toggleMobileMenu(open) {
+  $sidebar.toggleClass('open', open);
+  $overlay.toggleClass('visible', open);
+  $toggle.toggleClass('active', open);
 }
 
-function closeMobileMenu() {
-  sidebar.classList.remove('open');
-  overlay.classList.remove('visible');
-  toggle.classList.remove('active');
-}
+function closeMobileMenu() { toggleMobileMenu(false); }
 
 // $.on — global delegated event listeners
-$.on('click', '#menu-toggle', () => {
-  sidebar.classList.contains('open') ? closeMobileMenu() : openMobileMenu();
-});
+$.on('click', '#menu-toggle', () => toggleMobileMenu(!$sidebar.hasClass('open')));
 $.on('click', '#overlay', closeMobileMenu);
 
 // Close sidebar on Escape key — using $.on direct (no selector needed)
@@ -69,14 +63,13 @@ $.on('keydown', (e) => {
 // Any component can emit: $.bus.emit('toast', { message, type })
 // Types: 'success', 'error', 'info'
 $.bus.on('toast', ({ message, type = 'info' }) => {
-  const container = $.id('toasts');
-  const toast = $.create('div');
-  toast.className = `toast toast-${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
+  const toast = $.create('div')
+    .addClass('toast', `toast-${type}`)
+    .text(message)
+    .appendTo('#toasts');
   // Auto-remove after 3 seconds
   setTimeout(() => {
-    toast.classList.add('toast-exit');
+    toast.addClass('toast-exit');
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 });

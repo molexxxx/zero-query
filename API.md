@@ -8,6 +8,14 @@ Complete API documentation for every module, method, option, and type in zQuery.
 
 ## Table of Contents
 
+- [Router](#router)
+  - [$.router() — createRouter](#routerconfig)
+  - [Router Config Options](#router-config-options)
+  - [Route Object](#route-object)
+  - [Router Instance Methods](#router-instance-methods)
+  - [Router Properties](#router-properties)
+  - [Navigation Context](#navigation-context)
+  - [$.getRouter()](#getrouter)
 - [Component System](#component-system)
   - [$.component()](#componentname-definition)
   - [Component Definition Options](#component-definition-options)
@@ -25,14 +33,6 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [$.destroy()](#destroytarget)
   - [$.components() / getRegistry()](#components--getregistry)
   - [$.style()](#styleurls)
-- [Router](#router)
-  - [$.router() — createRouter](#routerconfig)
-  - [Router Config Options](#router-config-options)
-  - [Route Object](#route-object)
-  - [Router Instance Methods](#router-instance-methods)
-  - [Router Properties](#router-properties)
-  - [Navigation Context](#navigation-context)
-  - [$.getRouter()](#getrouter)
 - [Store](#store)
   - [$.store() — createStore](#storeconfig)
   - [Store Config Options](#store-config-options)
@@ -163,7 +163,7 @@ $('#cart-count').text('3');
 
 ### Collection Methods — `ZQueryCollection`
 
-`$()`, `$.all()`, `$.classes()`, `$.tag()`, `$.name()`, and `$.children()` all return a `ZQueryCollection` with a rich set of chainable methods. Most setters return `this` for chaining; getters return the value from the first element.
+`$()`, `$.all()`, `$.create()`, `$.classes()`, `$.tag()`, `$.name()`, and `$.children()` all return a `ZQueryCollection` with a rich set of chainable methods. Most setters return `this` for chaining; getters return the value from the first element.
 
 #### Traversal & Filtering
 
@@ -212,7 +212,7 @@ $('#cart-count').text('3');
 | --- | --- | --- | --- |
 | `addClass` | `addClass(...names)` | `this` | Add one or more classes (space-separated names also work) |
 | `removeClass` | `removeClass(...names)` | `this` | Remove one or more classes |
-| `toggleClass` | `toggleClass(name, force?)` | `this` | Toggle class; optional `force` boolean |
+| `toggleClass` | `toggleClass(...names, force?)` | `this` | Toggle one or more classes; optional trailing `force` boolean (space-separated names also work) |
 | `hasClass` | `hasClass(name)` | `boolean` | Returns true if **first element** has the class |
 | `attr` | `attr(name, value?)` | `string \| this` | Get (1 arg) or set (2 args) attribute |
 | `removeAttr` | `removeAttr(name)` | `this` | Remove attribute from all elements |
@@ -287,7 +287,7 @@ $('#cart-count').text('3');
 
 ### Element Creation — `$.create()`
 
-Create a DOM element programmatically with attributes, styles, event listeners, and children in a single call:
+Create a DOM element programmatically with attributes, styles, event listeners, and children in a single call. Returns a `ZQueryCollection` so you can chain additional methods:
 
 ```js
 const btn = $.create('button', {
@@ -295,9 +295,13 @@ const btn = $.create('button', {
   style: { padding: '10px', borderRadius: '6px' },
   onclick: () => alert('Clicked!'),
   data: { action: 'submit', id: '42' }  // sets data-action, data-id
-}, 'Click Me');
+}, 'Click Me').appendTo('body');
 
-document.body.appendChild(btn);
+// Chaining example — create, style, and insert in one expression
+$.create('div', { class: 'toast' })
+  .text('Saved!')
+  .css({ opacity: 1 })
+  .appendTo('#toasts');
 ```
 
 | Attribute Key | Behavior |
@@ -549,6 +553,142 @@ const dispose = $.effect(() => {
 
 x.value = 10;  // re-runs: "sum: 12"
 dispose();      // stops tracking
+```
+
+---
+
+## Router
+
+### `router(config)`
+
+Create and activate a client-side SPA router.
+
+**Returns:** `Router` instance
+
+### Router Config Options
+
+| Option | Type | Default | Description |
+| --- | --- | --- | --- |
+| `el` | `string \| Element` | — | Outlet element where route components are rendered |
+| `mode` | `'history' \| 'hash'` | `'history'` | Routing mode. Hash mode uses `#/path`. **Note:** On `file://` protocol, hash mode is always forced regardless of this setting (pushState cannot work on `file://`). |
+| `base` | `string` | `''` | Base path prefix (e.g. `'/my-app'`). Stripped from path matching. **Auto-detected** from `<base href>` if not set (also checks `window.__ZQ_BASE`). |
+| `routes` | `Array<RouteObject>` | `[]` | Initial route definitions |
+| `fallback` | `string` | `null` | Component name to render when no route matches (404) |
+
+```js
+const router = $.router({
+  el: '#app',
+  mode: 'history',
+  base: '/my-app',
+  routes: [
+    { path: '/', component: 'home-page' },
+    { path: '/user/:id', component: 'user-page' },
+    { path: '/lazy', load: () => import('./pages/lazy.js'), component: 'lazy-page' },
+  ],
+  fallback: 'not-found',
+});
+```
+
+#### Using `<base href>` for Sub-Path Deployments
+
+When deploying under a sub-directory (e.g. `https://example.com/my-app/`), add a `<base href>` tag to your HTML:
+
+```html
+<head>
+  <base href="/my-app/">
+</head>
+```
+
+The router picks this up automatically — no extra code needed:
+
+```js
+$.router({ el: '#app', routes, fallback: 'not-found' });
+```
+
+Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base href>` tag.
+
+> This approach keeps all path configuration in one place and also affects how the browser resolves relative URLs for scripts, stylesheets, and fetch requests.
+
+### Route Object
+
+| Property | Type | Required | Description |
+| --- | --- | --- | --- |
+| `path` | `string` | **Yes** | URL pattern. Supports `:param` and `*` wildcard. |
+| `component` | `string \| function` | **Yes** | Registered component name (auto-mounted), or `(route) => html` render function. |
+| `load` | `() => Promise` | No | Async function called before mounting (for lazy-loading modules). |
+| `fallback` | `string` | No | An additional path that also matches this route. When matched via fallback, missing `:param` values are `undefined`. Useful with `pages` config: `{ path: '/docs/:section', fallback: '/docs' }`. |
+
+**Path pattern examples:**
+
+| Pattern | Matches | Params |
+| --- | --- | --- |
+| `/` | Exactly `/` | — |
+| `/user/:id` | `/user/42`, `/user/abc` | `{ id: '42' }` |
+| `/post/:id/comment/:cid` | `/post/1/comment/5` | `{ id: '1', cid: '5' }` |
+| `/files/*` | `/files/a/b/c` | Captured by wildcard group |
+
+### Router Instance Methods
+
+| Method | Signature | Returns | Description |
+| --- | --- | --- | --- |
+| `navigate` | `navigate(path, options?)` | `this` | Push new state and resolve route. `options.state` passed to `pushState`. |
+| `replace` | `replace(path, options?)` | `this` | Replace current state (no new history entry). |
+| `back` | `back()` | `this` | `history.back()` |
+| `forward` | `forward()` | `this` | `history.forward()` |
+| `go` | `go(n)` | `this` | `history.go(n)` |
+| `add` | `add(route)` | `this` | Add a route dynamically. Chainable. |
+| `remove` | `remove(path)` | `this` | Remove route by path. |
+| `beforeEach` | `beforeEach(fn)` | `this` | Add navigation guard. `fn(to, from)` — return `false` to cancel, `string` to redirect. |
+| `afterEach` | `afterEach(fn)` | `this` | Add post-navigation guard. |
+| `onChange` | `onChange(fn)` | `() => void` | Subscribe to route changes. Returns unsubscribe. `fn(to, from)`. |
+| `resolve` | `resolve(path)` | `string` | Resolve an app-relative path to a full URL path (including base). Useful for programmatic link generation. |
+| `destroy` | `destroy()` | — | Teardown router and mounted component. |
+
+### Router Properties
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `current` | `object \| null` | `{ route, params, query, path }` for the current route. |
+| `path` | `string` | Current path (with `base` stripped in history mode). |
+| `query` | `object` | Parsed query string as object. |
+| `base` | `string` | The resolved base path (from config, `window.__ZQ_BASE`, or `<base href>`). |
+
+### Navigation Context
+
+The `to` and `from` objects passed to guards and `onChange`:
+
+```js
+{
+  route: { path, component, ... },  // matched route definition
+  params: { id: '42' },             // parsed :param values
+  query: { tab: 'settings' },       // parsed query string
+  path: '/user/42',                  // matched path
+}
+```
+
+**Routed component props:** When a component is mounted by the router, it receives:
+- `this.props.$route` — the full route context
+- `this.props.$params` — route params
+- `this.props.$query` — query params
+- Plus all route params individually (e.g. `this.props.id`)
+
+### `z-link` — Navigation Links
+
+Use the `z-link` attribute on `<a>` tags for SPA navigation. Clicks are intercepted and handled by the router (no page reload).
+
+```html
+<a z-link="/">Home</a>
+<a z-link="/user/42">Profile</a>
+<a z-link="/search?q=zQuery">Search</a>
+```
+
+### `getRouter()`
+
+Get the currently active router instance.
+
+```js
+const router = $.getRouter();
+router.navigate('/settings');
 ```
 
 ---
@@ -1434,142 +1574,6 @@ $.style('/assets/global.css');
 
 ---
 
-## Router
-
-### `router(config)`
-
-Create and activate a client-side SPA router.
-
-**Returns:** `Router` instance
-
-### Router Config Options
-
-| Option | Type | Default | Description |
-| --- | --- | --- | --- |
-| `el` | `string \| Element` | — | Outlet element where route components are rendered |
-| `mode` | `'history' \| 'hash'` | `'history'` | Routing mode. Hash mode uses `#/path`. **Note:** On `file://` protocol, hash mode is always forced regardless of this setting (pushState cannot work on `file://`). |
-| `base` | `string` | `''` | Base path prefix (e.g. `'/my-app'`). Stripped from path matching. **Auto-detected** from `<base href>` if not set (also checks `window.__ZQ_BASE`). |
-| `routes` | `Array<RouteObject>` | `[]` | Initial route definitions |
-| `fallback` | `string` | `null` | Component name to render when no route matches (404) |
-
-```js
-const router = $.router({
-  el: '#app',
-  mode: 'history',
-  base: '/my-app',
-  routes: [
-    { path: '/', component: 'home-page' },
-    { path: '/user/:id', component: 'user-page' },
-    { path: '/lazy', load: () => import('./pages/lazy.js'), component: 'lazy-page' },
-  ],
-  fallback: 'not-found',
-});
-```
-
-#### Using `<base href>` for Sub-Path Deployments
-
-When deploying under a sub-directory (e.g. `https://example.com/my-app/`), add a `<base href>` tag to your HTML:
-
-```html
-<head>
-  <base href="/my-app/">
-</head>
-```
-
-The router picks this up automatically — no extra code needed:
-
-```js
-$.router({ el: '#app', routes, fallback: 'not-found' });
-```
-
-Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base href>` tag.
-
-> This approach keeps all path configuration in one place and also affects how the browser resolves relative URLs for scripts, stylesheets, and fetch requests.
-
-### Route Object
-
-| Property | Type | Required | Description |
-| --- | --- | --- | --- |
-| `path` | `string` | **Yes** | URL pattern. Supports `:param` and `*` wildcard. |
-| `component` | `string \| function` | **Yes** | Registered component name (auto-mounted), or `(route) => html` render function. |
-| `load` | `() => Promise` | No | Async function called before mounting (for lazy-loading modules). |
-| `fallback` | `string` | No | An additional path that also matches this route. When matched via fallback, missing `:param` values are `undefined`. Useful with `pages` config: `{ path: '/docs/:section', fallback: '/docs' }`. |
-
-**Path pattern examples:**
-
-| Pattern | Matches | Params |
-| --- | --- | --- |
-| `/` | Exactly `/` | — |
-| `/user/:id` | `/user/42`, `/user/abc` | `{ id: '42' }` |
-| `/post/:id/comment/:cid` | `/post/1/comment/5` | `{ id: '1', cid: '5' }` |
-| `/files/*` | `/files/a/b/c` | Captured by wildcard group |
-
-### Router Instance Methods
-
-| Method | Signature | Returns | Description |
-| --- | --- | --- | --- |
-| `navigate` | `navigate(path, options?)` | `this` | Push new state and resolve route. `options.state` passed to `pushState`. |
-| `replace` | `replace(path, options?)` | `this` | Replace current state (no new history entry). |
-| `back` | `back()` | `this` | `history.back()` |
-| `forward` | `forward()` | `this` | `history.forward()` |
-| `go` | `go(n)` | `this` | `history.go(n)` |
-| `add` | `add(route)` | `this` | Add a route dynamically. Chainable. |
-| `remove` | `remove(path)` | `this` | Remove route by path. |
-| `beforeEach` | `beforeEach(fn)` | `this` | Add navigation guard. `fn(to, from)` — return `false` to cancel, `string` to redirect. |
-| `afterEach` | `afterEach(fn)` | `this` | Add post-navigation guard. |
-| `onChange` | `onChange(fn)` | `() => void` | Subscribe to route changes. Returns unsubscribe. `fn(to, from)`. |
-| `resolve` | `resolve(path)` | `string` | Resolve an app-relative path to a full URL path (including base). Useful for programmatic link generation. |
-| `destroy` | `destroy()` | — | Teardown router and mounted component. |
-
-### Router Properties
-
-| Property | Type | Description |
-| --- | --- | --- |
-| `current` | `object \| null` | `{ route, params, query, path }` for the current route. |
-| `path` | `string` | Current path (with `base` stripped in history mode). |
-| `query` | `object` | Parsed query string as object. |
-| `base` | `string` | The resolved base path (from config, `window.__ZQ_BASE`, or `<base href>`). |
-
-### Navigation Context
-
-The `to` and `from` objects passed to guards and `onChange`:
-
-```js
-{
-  route: { path, component, ... },  // matched route definition
-  params: { id: '42' },             // parsed :param values
-  query: { tab: 'settings' },       // parsed query string
-  path: '/user/42',                  // matched path
-}
-```
-
-**Routed component props:** When a component is mounted by the router, it receives:
-- `this.props.$route` — the full route context
-- `this.props.$params` — route params
-- `this.props.$query` — query params
-- Plus all route params individually (e.g. `this.props.id`)
-
-### `z-link` — Navigation Links
-
-Use the `z-link` attribute on `<a>` tags for SPA navigation. Clicks are intercepted and handled by the router (no page reload).
-
-```html
-<a z-link="/">Home</a>
-<a z-link="/user/42">Profile</a>
-<a z-link="/search?q=zQuery">Search</a>
-```
-
-### `getRouter()`
-
-Get the currently active router instance.
-
-```js
-const router = $.getRouter();
-router.navigate('/settings');
-```
-
----
-
 ## Store
 
 ### `store(config)` / `store(name, config)`
@@ -2126,7 +2130,7 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
 | `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. See [z-key](#z-key--keyed-reconciliation). |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
-| `$.version` | Library version string (e.g. `'0.6.3'`). |
+| `$.version` | Library version string (e.g. `'0.6.7'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |

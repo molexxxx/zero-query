@@ -232,8 +232,12 @@ export class ZQueryCollection {
     return this.each((_, el) => el.classList.remove(...classes));
   }
 
-  toggleClass(name, force) {
-    return this.each((_, el) => el.classList.toggle(name, force));
+  toggleClass(...args) {
+    const force = typeof args[args.length - 1] === 'boolean' ? args.pop() : undefined;
+    const classes = args.flatMap(n => n.split(/\s+/));
+    return this.each((_, el) => {
+      classes.forEach(c => force !== undefined ? el.classList.toggle(c, force) : el.classList.toggle(c));
+    });
   }
 
   hasClass(name) {
@@ -763,7 +767,7 @@ query.children = (parentId) => {
   return new ZQueryCollection(p ? Array.from(p.children) : []);
 };
 
-// Create element shorthand
+// Create element shorthand — returns ZQueryCollection for chaining
 query.create = (tag, attrs = {}, ...children) => {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -777,7 +781,7 @@ query.create = (tag, attrs = {}, ...children) => {
     if (typeof child === 'string') el.appendChild(document.createTextNode(child));
     else if (child instanceof Node) el.appendChild(child);
   });
-  return el;
+  return new ZQueryCollection(el);
 };
 
 // DOM ready

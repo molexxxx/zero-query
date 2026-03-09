@@ -298,6 +298,26 @@ describe('ZQueryCollection', () => {
       col.toggleClass('toggled');
       expect(col.hasClass('toggled')).toBe(false);
     });
+
+    it('toggleClass with multiple classes', () => {
+      const col = queryAll('#main');
+      col.toggleClass('a', 'b');
+      expect(col[0].classList.contains('a')).toBe(true);
+      expect(col[0].classList.contains('b')).toBe(true);
+      col.toggleClass('a', 'b');
+      expect(col[0].classList.contains('a')).toBe(false);
+      expect(col[0].classList.contains('b')).toBe(false);
+    });
+
+    it('toggleClass with force boolean', () => {
+      const col = queryAll('#main');
+      col.toggleClass('forced', true);
+      expect(col.hasClass('forced')).toBe(true);
+      col.toggleClass('forced', true);
+      expect(col.hasClass('forced')).toBe(true);
+      col.toggleClass('forced', false);
+      expect(col.hasClass('forced')).toBe(false);
+    });
   });
 
 
@@ -454,7 +474,10 @@ describe('query quick refs', () => {
   });
 
   it('$.create() creates element with attributes', () => {
-    const el = query.create('div', { class: 'new', id: 'created' }, 'text');
+    const col = query.create('div', { class: 'new', id: 'created' }, 'text');
+    expect(col).toBeInstanceOf(ZQueryCollection);
+    expect(col.length).toBe(1);
+    const el = col[0];
     expect(el.tagName).toBe('DIV');
     expect(el.className).toBe('new');
     expect(el.id).toBe('created');

@@ -21,8 +21,8 @@
 
 | Module | Highlights |
 | --- | --- |
-| **Components** | Reactive state, template literals, `@event` delegation (8 modifiers), `z-model` two-way binding, computed properties, watch callbacks, slot-based content projection, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`), DOM morphing engine (no innerHTML rebuild), CSP-safe expression evaluation, scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles |
 | **Router** | History & hash mode, route params (`:id`), guards, lazy loading, `z-link` navigation |
+| **Components** | Reactive state, template literals, `@event` delegation (8 modifiers), `z-model` two-way binding, computed properties, watch callbacks, slot-based content projection, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`), DOM morphing engine (no innerHTML rebuild), CSP-safe expression evaluation, scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles |
 | **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions |
 | **HTTP** | Fetch wrapper with auto-JSON, interceptors, timeout/abort, base URL |
 | **Reactive** | Deep proxy reactivity, Signals, computed values, effects |
