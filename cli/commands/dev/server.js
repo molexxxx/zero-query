@@ -45,21 +45,50 @@ class SSEPool {
 // ---------------------------------------------------------------------------
 
 /**
+ * Prompt the user to auto-install zero-http when it isn't found.
+ * Resolves `true` if the user accepts, `false` otherwise.
+ */
+function promptInstall() {
+  const rl = require('readline').createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  return new Promise((resolve) => {
+    rl.question(
+      '\n  The local dev server requires zero-http, which is not installed.\n' +
+      '  This package is only used during development and is not needed\n' +
+      '  for building, bundling, or production.\n' +
+      '  Install it now? (y/n): ',
+      (answer) => {
+        rl.close();
+        resolve(answer.trim().toLowerCase() === 'y');
+      }
+    );
+  });
+}
+
+/**
  * @param {object} opts
  * @param {string} opts.root        — absolute path to project root
  * @param {string} opts.htmlEntry   — e.g. 'index.html'
  * @param {number} opts.port
  * @param {boolean} opts.noIntercept — skip zquery.min.js auto-resolve
- * @returns {{ app, pool: SSEPool, listen: Function }}
+ * @returns {Promise<{ app, pool: SSEPool, listen: Function }>}
  */
-function createServer({ root, htmlEntry, port, noIntercept }) {
+async function createServer({ root, htmlEntry, port, noIntercept }) {
   let zeroHttp;
   try {
     zeroHttp = require('zero-http');
   } catch {
-    console.error(`\n  \u2717 zero-http is required for the dev server.`);
-    console.error(`    Install it: npm install zero-http --save-dev\n`);
-    process.exit(1);
+    const ok = await promptInstall();
+    if (!ok) {
+      console.error('\n  ✖ Cannot start dev server without zero-http.\n');
+      process.exit(1);
+    }
+    const { execSync } = require('child_process');
+    console.log('\n  Installing zero-http...\n');
+    execSync('npm install zero-http --save-dev', { stdio: 'inherit' });
+    zeroHttp = require('zero-http');
   }
 
   const { createApp, static: serveStatic } = zeroHttp;

@@ -46,14 +46,14 @@ function resolveRoot(htmlEntry) {
 // devServer — main entry point (called from cli/index.js)
 // ---------------------------------------------------------------------------
 
-function devServer() {
+async function devServer() {
   const htmlEntry   = option('index', 'i', 'index.html');
   const port        = parseInt(option('port', 'p', '3100'), 10);
   const noIntercept = flag('no-intercept');
   const root        = resolveRoot(htmlEntry);
 
   // Start HTTP server + SSE pool
-  const { app, pool, listen } = createServer({ root, htmlEntry, port, noIntercept });
+  const { app, pool, listen } = await createServer({ root, htmlEntry, port, noIntercept });
 
   // Start file watcher
   const watcher = startWatcher({ root, pool });
