@@ -1,13 +1,13 @@
 /**
- * zQuery (zeroQuery) v0.6.4
+ * zQuery (zeroQuery) v0.6.5
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
- * (c) 2026 Anthony Wiedman — MIT License
+ * (c) 2026 Anthony Wiedman - MIT License
  */
 (function(global) {
   'use strict';
 
-// --- src/errors.js ———————————————————————————————————————————————
+// --- src/errors.js -----------------------------------------------
 /**
  * zQuery Errors — Structured error handling system
  *
@@ -164,7 +164,7 @@ function validate(value, name, expectedType) {
   }
 }
 
-// --- src/reactive.js —————————————————————————————————————————————
+// --- src/reactive.js ---------------------------------------------
 /**
  * zQuery Reactive — Proxy-based deep reactivity system
  * 
@@ -315,7 +315,7 @@ function effect(fn) {
   };
 }
 
-// --- src/core.js —————————————————————————————————————————————————
+// --- src/core.js -------------------------------------------------
 /**
  * zQuery Core — Selector engine & chainable DOM collection
  * 
@@ -1128,7 +1128,7 @@ query.off = (event, handler) => {
 // Extend collection prototype (like $.fn in jQuery)
 query.fn = ZQueryCollection.prototype;
 
-// --- src/expression.js ———————————————————————————————————————————
+// --- src/expression.js -------------------------------------------
 /**
  * zQuery Expression Parser — CSP-safe expression evaluator
  *
@@ -1936,7 +1936,7 @@ function safeEval(expr, scope) {
   }
 }
 
-// --- src/diff.js —————————————————————————————————————————————————
+// --- src/diff.js -------------------------------------------------
 /**
  * zQuery Diff — Lightweight DOM morphing engine
  *
@@ -2218,7 +2218,7 @@ function _getKey(node) {
   return node.getAttribute('z-key') || null;
 }
 
-// --- src/component.js ————————————————————————————————————————————
+// --- src/component.js --------------------------------------------
 /**
  * zQuery Component — Lightweight reactive component system
  * 
@@ -3518,7 +3518,7 @@ function style(urls, opts = {}) {
   };
 }
 
-// --- src/router.js ———————————————————————————————————————————————
+// --- src/router.js -----------------------------------------------
 /**
  * zQuery Router — Client-side SPA router
  * 
@@ -3893,7 +3893,7 @@ function getRouter() {
   return _activeRouter;
 }
 
-// --- src/store.js ————————————————————————————————————————————————
+// --- src/store.js ------------------------------------------------
 /**
  * zQuery Store — Global reactive state management
  * 
@@ -4079,7 +4079,7 @@ function getStore(name = 'default') {
   return _stores.get(name) || null;
 }
 
-// --- src/http.js —————————————————————————————————————————————————
+// --- src/http.js -------------------------------------------------
 /**
  * zQuery HTTP — Lightweight fetch wrapper
  * 
@@ -4266,7 +4266,7 @@ const http = {
   raw: (url, opts) => fetch(url, opts),
 };
 
-// --- src/utils.js ————————————————————————————————————————————————
+// --- src/utils.js ------------------------------------------------
 /**
  * zQuery Utils — Common utility functions
  * 
@@ -4539,7 +4539,7 @@ class EventBus {
 
 const bus = new EventBus();
 
-// --- index.js (assembly) ——————————————————————————————————————————
+// --- index.js (assembly) ------------------------------------------
 /**
  * ┌---------------------------------------------------------┐
  * │  zQuery (zeroQuery) — Lightweight Frontend Library     │
@@ -4682,7 +4682,7 @@ $.ZQueryError = ZQueryError;
 $.ErrorCode   = ErrorCode;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.6.4';
+$.version = '0.6.5';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

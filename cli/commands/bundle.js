@@ -113,6 +113,227 @@ function rewriteResourceUrls(code, filePath, projectRoot) {
 }
 
 /**
+ * Minify HTML for inlining — strips indentation and collapses whitespace
+ * between tags.  Preserves content inside <pre>, <code>, and <textarea>
+ * blocks verbatim so syntax-highlighted code samples survive.
+ */
+function minifyHTML(html) {
+  const preserved = [];
+  // Protect <pre>…</pre> and <textarea>…</textarea> (multiline code blocks)
+  html = html.replace(/<(pre|textarea)(\b[^>]*)>[\s\S]*?<\/\1>/gi, m => {
+    preserved.push(m);
+    return `\x00P${preserved.length - 1}\x00`;
+  });
+  // Strip HTML comments
+  html = html.replace(/<!--[\s\S]*?-->/g, '');
+  // Collapse runs of whitespace (newlines + indentation) to a single space
+  html = html.replace(/\s{2,}/g, ' ');
+  // Remove space between tags: "> <" → "><"
+  html = html.replace(/>\s+</g, '><');
+  // Remove spaces inside opening tags:  <tag  attr = "val" > → <tag attr="val">
+  html = html.replace(/ *\/ *>/g, '/>');
+  html = html.replace(/ *= */g, '=');
+  // Trim
+  html = html.trim();
+  // Restore preserved blocks
+  html = html.replace(/\x00P(\d+)\x00/g, (_, i) => preserved[+i]);
+  return html;
+}
+
+/**
+ * Minify CSS for inlining — strips comments, collapses whitespace,
+ * removes unnecessary spaces around punctuation.
+ */
+function minifyCSS(css) {
+  // Strip block comments
+  css = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  // Collapse whitespace
+  css = css.replace(/\s{2,}/g, ' ');
+  // Remove spaces around { } : ; ,
+  css = css.replace(/\s*([{};:,])\s*/g, '$1');
+  // Remove trailing semicolons before }
+  css = css.replace(/;}/g, '}');
+  return css.trim();
+}
+
+/**
+ * Walk JS source and minify the HTML/CSS inside template literals.
+ * Handles ${…} interpolations (with nesting) and preserves <pre> blocks.
+ * Only trims whitespace sequences that appear between/around HTML tags.
+ */
+function minifyTemplateLiterals(code) {
+  let out = '';
+  let i = 0;
+  while (i < code.length) {
+    const ch = code[i];
+
+    // Regular string: copy verbatim
+    if (ch === '"' || ch === "'") {
+      const q = ch; out += ch; i++;
+      while (i < code.length) {
+        if (code[i] === '\\') { out += code[i] + (code[i + 1] || ''); i += 2; continue; }
+        out += code[i];
+        if (code[i] === q) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+
+    // Line comment: copy verbatim
+    if (ch === '/' && code[i + 1] === '/') {
+      while (i < code.length && code[i] !== '\n') out += code[i++];
+      continue;
+    }
+    // Block comment: copy verbatim
+    if (ch === '/' && code[i + 1] === '*') {
+      out += '/*'; i += 2;
+      while (i < code.length && !(code[i] === '*' && code[i + 1] === '/')) out += code[i++];
+      out += '*/'; i += 2;
+      continue;
+    }
+
+    // Template literal: extract, minify HTML, and emit
+    if (ch === '`') {
+      out += _minifyTemplate(code, i);
+      // Advance past the template
+      i = _skipTemplateLiteral(code, i);
+      continue;
+    }
+
+    out += ch; i++;
+  }
+  return out;
+}
+
+/** Extract a full template literal (handling nested ${…}) and return it minified. */
+function _minifyTemplate(code, start) {
+  const end = _skipTemplateLiteral(code, start);
+  const raw = code.substring(start, end);
+  // Only minify templates that contain HTML tags or CSS rules
+  if (/<\w/.test(raw)) return _collapseTemplateWS(raw);
+  if (/[{};]\s/.test(raw) && /[.#\w-]+\s*\{/.test(raw)) return _collapseTemplateCSS(raw);
+  return raw;
+}
+
+/** Return index past the closing backtick of a template starting at `start`. */
+function _skipTemplateLiteral(code, start) {
+  let i = start + 1; // skip opening backtick
+  let depth = 0;
+  while (i < code.length) {
+    if (code[i] === '\\') { i += 2; continue; }
+    if (code[i] === '$' && code[i + 1] === '{') { depth++; i += 2; continue; }
+    if (depth > 0) {
+      if (code[i] === '{') { depth++; i++; continue; }
+      if (code[i] === '}') { depth--; i++; continue; }
+      if (code[i] === '`') { i = _skipTemplateLiteral(code, i); continue; }
+      if (code[i] === '"' || code[i] === "'") {
+        const q = code[i]; i++;
+        while (i < code.length) {
+          if (code[i] === '\\') { i += 2; continue; }
+          if (code[i] === q) { i++; break; }
+          i++;
+        }
+        continue;
+      }
+      i++; continue;
+    }
+    if (code[i] === '`') { i++; return i; } // closing backtick
+    i++;
+  }
+  return i;
+}
+
+/**
+ * Collapse whitespace in the text portions of an HTML template literal,
+ * preserving ${…} expressions, <pre> blocks, and inline text spacing.
+ */
+function _collapseTemplateWS(tpl) {
+  // Build array of segments: text portions vs ${…} expressions
+  const segments = [];
+  let i = 1; // skip opening backtick
+  let text = '';
+  while (i < tpl.length - 1) { // stop before closing backtick
+    if (tpl[i] === '\\') { text += tpl[i] + (tpl[i + 1] || ''); i += 2; continue; }
+    if (tpl[i] === '$' && tpl[i + 1] === '{') {
+      if (text) { segments.push({ type: 'text', val: text }); text = ''; }
+      // Collect the full expression
+      let depth = 1; let expr = '${'; i += 2;
+      while (i < tpl.length - 1 && depth > 0) {
+        if (tpl[i] === '\\') { expr += tpl[i] + (tpl[i + 1] || ''); i += 2; continue; }
+        if (tpl[i] === '{') depth++;
+        if (tpl[i] === '}') depth--;
+        if (depth > 0) { expr += tpl[i]; i++; } else { expr += '}'; i++; }
+      }
+      segments.push({ type: 'expr', val: expr });
+      continue;
+    }
+    text += tpl[i]; i++;
+  }
+  if (text) segments.push({ type: 'text', val: text });
+
+  // Minify text segments (collapse whitespace between/around tags)
+  for (let s = 0; s < segments.length; s++) {
+    if (segments[s].type !== 'text') continue;
+    let t = segments[s].val;
+    // Protect <pre>…</pre> regions
+    const preserved = [];
+    t = t.replace(/<pre(\b[^>]*)>[\s\S]*?<\/pre>/gi, m => {
+      preserved.push(m);
+      return `\x00P${preserved.length - 1}\x00`;
+    });
+    // Collapse whitespace runs that touch a < or > to nothing
+    // ">  \n   <"  →  "><"   and  ">  \n  text"  →  "> text"
+    t = t.replace(/>\s{2,}/g, '>');
+    t = t.replace(/\s{2,}</g, '<');
+    // Collapse other multi-whitespace runs to a single space
+    t = t.replace(/\s{2,}/g, ' ');
+    // Restore <pre> blocks
+    t = t.replace(/\x00P(\d+)\x00/g, (_, idx) => preserved[+idx]);
+    segments[s].val = t;
+  }
+
+  return '`' + segments.map(s => s.val).join('') + '`';
+}
+
+/**
+ * Collapse CSS whitespace inside a template literal (styles: `…`).
+ * Uses the same segment-splitting approach as _collapseTemplateWS so
+ * ${…} expressions are preserved untouched.
+ */
+function _collapseTemplateCSS(tpl) {
+  const segments = [];
+  let i = 1; let text = '';
+  while (i < tpl.length - 1) {
+    if (tpl[i] === '\\') { text += tpl[i] + (tpl[i + 1] || ''); i += 2; continue; }
+    if (tpl[i] === '$' && tpl[i + 1] === '{') {
+      if (text) { segments.push({ type: 'text', val: text }); text = ''; }
+      let depth = 1; let expr = '${'; i += 2;
+      while (i < tpl.length - 1 && depth > 0) {
+        if (tpl[i] === '\\') { expr += tpl[i] + (tpl[i + 1] || ''); i += 2; continue; }
+        if (tpl[i] === '{') depth++;
+        if (tpl[i] === '}') depth--;
+        if (depth > 0) { expr += tpl[i]; i++; } else { expr += '}'; i++; }
+      }
+      segments.push({ type: 'expr', val: expr });
+      continue;
+    }
+    text += tpl[i]; i++;
+  }
+  if (text) segments.push({ type: 'text', val: text });
+
+  for (let s = 0; s < segments.length; s++) {
+    if (segments[s].type !== 'text') continue;
+    let t = segments[s].val;
+    t = t.replace(/\/\*[\s\S]*?\*\//g, '');
+    t = t.replace(/\s{2,}/g, ' ');
+    t = t.replace(/\s*([{};:,])\s*/g, '$1');
+    t = t.replace(/;}/g, '}');
+    segments[s].val = t;
+  }
+  return '`' + segments.map(s => s.val).join('') + '`';
+}
+
+/**
  * Scan bundled source files for external resource references
  * (pages config, templateUrl, styleUrl) and return a map of
  * { relativePath: fileContent } for inlining.
@@ -152,7 +373,8 @@ function collectInlineResources(files, projectRoot) {
     }
 
     // styleUrl:
-    const styleMatch = code.match(/styleUrl\s*:\s*['"]([^'"]+)['"]/);
+    const styleUrlRe = /styleUrl\s*:\s*['"]([^'"]+)['"]/g;
+    const styleMatch = styleUrlRe.exec(code);
     if (styleMatch) {
       const stylePath = path.join(fileDir, styleMatch[1]);
       if (fs.existsSync(stylePath)) {
@@ -170,6 +392,12 @@ function collectInlineResources(files, projectRoot) {
         inlineMap[relKey] = fs.readFileSync(tmplPath, 'utf-8');
       }
     }
+  }
+
+  // Minify inlined resources by type
+  for (const key of Object.keys(inlineMap)) {
+    if (key.endsWith('.html')) inlineMap[key] = minifyHTML(inlineMap[key]);
+    else if (key.endsWith('.css')) inlineMap[key] = minifyCSS(inlineMap[key]);
   }
 
   return inlineMap;
@@ -574,8 +802,9 @@ function bundleApp() {
     code = stripModuleSyntax(code);
     code = replaceImportMeta(code, file, projectRoot);
     code = rewriteResourceUrls(code, file, projectRoot);
+    code = minifyTemplateLiterals(code);
     const rel = path.relative(projectRoot, file);
-    return `// --- ${rel} ${'—'.repeat(Math.max(1, 60 - rel.length))}\n${code.trim()}`;
+    return `// --- ${rel} ${'-'.repeat(Math.max(1, 60 - rel.length))}\n${code.trim()}`;
   });
 
   // Embed zquery.min.js
@@ -612,8 +841,8 @@ function bundleApp() {
 
     if (libPath) {
       const libBytes = fs.statSync(libPath).size;
-      libSection = `// --- zquery.min.js (library) ${'—'.repeat(34)}\n${fs.readFileSync(libPath, 'utf-8').trim()}\n\n`
-                 + `// --- Build-time metadata ————————————————————————————\nif(typeof $!=="undefined"){$.meta=Object.assign($.meta||{},{libSize:${libBytes}});}\n\n`;
+      libSection = `// --- zquery.min.js (library) ${'-'.repeat(34)}\n${fs.readFileSync(libPath, 'utf-8').trim()}\n\n`
+                 + `// --- Build-time metadata ${'-'.repeat(50)}\nif(typeof $!=="undefined"){$.meta=Object.assign($.meta||{},{libSize:${libBytes}});}\n\n`;
       console.log(`  Embedded library from ${path.relative(projectRoot, libPath)} (${(libBytes / 1024).toFixed(1)} KB)`);
     } else {
       console.warn(`\n  ⚠  Could not find zquery.min.js anywhere`);
@@ -621,7 +850,7 @@ function bundleApp() {
     }
   }
 
-  const banner = `/**\n * App bundle — built by zQuery CLI\n * Entry: ${entryRel}\n * ${new Date().toISOString()}\n */`;
+  const banner = `/**\n * App bundle - built by zQuery CLI\n * Entry: ${entryRel}\n * ${new Date().toISOString()}\n */`;
 
   // Inline resources
   const inlineMap = collectInlineResources(files, projectRoot);
@@ -635,7 +864,7 @@ function bundleApp() {
         .replace(/\r/g, '');
       return `  '${key}': '${escaped}'`;
     });
-    inlineSection = `// --- Inlined resources (file:// support) ${'—'.repeat(20)}\nwindow.__zqInline = {\n${entries.join(',\n')}\n};\n\n`;
+    inlineSection = `// --- Inlined resources (file:// support) ${'-'.repeat(20)}\nwindow.__zqInline = {\n${entries.join(',\n')}\n};\n\n`;
     console.log(`\n  Inlined ${Object.keys(inlineMap).length} external resource(s)`);
   }
 
@@ -668,10 +897,10 @@ function bundleApp() {
   console.log(`\n  ✓ ${bundleBase} (${sizeKB(fs.readFileSync(bundleFile))} KB)`);
   console.log(`  ✓ ${minBase} (${sizeKB(fs.readFileSync(minFile))} KB)`);
 
-  // Rewrite HTML (use full bundle — minified version mangles template literal whitespace)
+  // Rewrite HTML to reference the minified bundle
   const bundledFileSet = new Set(files);
   if (htmlFile) {
-    rewriteHtml(projectRoot, htmlFile, bundleFile, true, bundledFileSet, serverDir, localDir);
+    rewriteHtml(projectRoot, htmlFile, minFile, true, bundledFileSet, serverDir, localDir);
   }
 
   // Copy static asset directories (icons/, images/, fonts/, etc.)

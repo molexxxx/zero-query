@@ -34,7 +34,7 @@ function buildLibrary() {
     code = code.replace(/^import\s+[\s\S]*?from\s+['"].*?['"];?\s*$/gm, '');
     code = code.replace(/^export\s+(default\s+)?/gm, '');
     code = code.replace(/^export\s*\{[\s\S]*?\};\s*$/gm, '');
-    return `// --- ${file} ${'—'.repeat(60 - file.length)}\n${code.trim()}`;
+    return `// --- ${file} ${'-'.repeat(60 - file.length)}\n${code.trim()}`;
   });
 
   let indexCode = fs.readFileSync(path.join(process.cwd(), 'index.js'), 'utf-8');
@@ -42,9 +42,9 @@ function buildLibrary() {
   indexCode = indexCode.replace(/^export\s*\{[\s\S]*?\};\s*$/gm, '');
   indexCode = indexCode.replace(/^export\s+(default\s+)?/gm, '');
 
-  const banner = `/**\n * zQuery (zeroQuery) v${VERSION}\n * Lightweight Frontend Library\n * https://github.com/tonywied17/zero-query\n * (c) ${new Date().getFullYear()} Anthony Wiedman — MIT License\n */`;
+  const banner = `/**\n * zQuery (zeroQuery) v${VERSION}\n * Lightweight Frontend Library\n * https://github.com/tonywied17/zero-query\n * (c) ${new Date().getFullYear()} Anthony Wiedman - MIT License\n */`;
 
-  const bundle = `${banner}\n(function(global) {\n  'use strict';\n\n${parts.join('\n\n')}\n\n// --- index.js (assembly) ${'—'.repeat(42)}\n${indexCode.trim().replace("'__VERSION__'", `'${VERSION}'`)}\n\n})(typeof window !== 'undefined' ? window : globalThis);\n`;
+  const bundle = `${banner}\n(function(global) {\n  'use strict';\n\n${parts.join('\n\n')}\n\n// --- index.js (assembly) ${'-'.repeat(42)}\n${indexCode.trim().replace("'__VERSION__'", `'${VERSION}'`)}\n\n})(typeof window !== 'undefined' ? window : globalThis);\n`;
 
   fs.writeFileSync(OUT_FILE, bundle, 'utf-8');
   fs.writeFileSync(MIN_FILE, minify(bundle, banner), 'utf-8');

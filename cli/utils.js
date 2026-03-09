@@ -83,15 +83,120 @@ function stripComments(code) {
 }
 
 // ---------------------------------------------------------------------------
-// minify — quick minification (strips comments + collapses whitespace)
+// minify — single-pass minification
+//   Strips comments, collapses whitespace to the minimum required,
+//   and preserves string / template-literal / regex content verbatim.
 // ---------------------------------------------------------------------------
 
 function minify(code, banner) {
-  const body = stripComments(code.replace(banner, ''))
-    .replace(/^\s*\n/gm, '')
-    .replace(/\n\s+/g, '\n')
-    .replace(/\s{2,}/g, ' ');
-  return banner + '\n' + body;
+  return banner + '\n' + _minifyBody(code.replace(banner, ''));
+}
+
+/**
+ * Single-pass minifier: walks character-by-character, skips strings/regex,
+ * strips comments, and emits a space only when both neighbours are
+ * identifier-like characters (or when collapsing would create ++, --, // or /*).
+ */
+function _minifyBody(code) {
+  let out = '';
+  let i = 0;
+
+  while (i < code.length) {
+    const ch = code[i];
+    const nx = code[i + 1];
+
+    // ── String / template literal: copy verbatim ────────────────
+    if (ch === '"' || ch === "'" || ch === '`') {
+      const q = ch;
+      out += ch; i++;
+      while (i < code.length) {
+        if (code[i] === '\\') { out += code[i] + (code[i + 1] || ''); i += 2; continue; }
+        out += code[i];
+        if (code[i] === q) { i++; break; }
+        i++;
+      }
+      continue;
+    }
+
+    // ── Block comment: skip ─────────────────────────────────────
+    if (ch === '/' && nx === '*') {
+      i += 2;
+      while (i < code.length && !(code[i] === '*' && code[i + 1] === '/')) i++;
+      i += 2;
+      continue;
+    }
+
+    // ── Line comment: skip ──────────────────────────────────────
+    if (ch === '/' && nx === '/') {
+      i += 2;
+      while (i < code.length && code[i] !== '\n') i++;
+      continue;
+    }
+
+    // ── Regex literal: copy verbatim ────────────────────────────
+    if (ch === '/') {
+      if (_isRegexCtx(out)) {
+        out += ch; i++;
+        let inCC = false;
+        while (i < code.length) {
+          const rc = code[i];
+          if (rc === '\\') { out += rc + (code[i + 1] || ''); i += 2; continue; }
+          if (rc === '[') inCC = true;
+          if (rc === ']') inCC = false;
+          out += rc; i++;
+          if (rc === '/' && !inCC) {
+            while (i < code.length && /[gimsuy]/.test(code[i])) { out += code[i]; i++; }
+            break;
+          }
+        }
+        continue;
+      }
+    }
+
+    // ── Whitespace: collapse ────────────────────────────────────
+    if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
+      while (i < code.length && (code[i] === ' ' || code[i] === '\t' || code[i] === '\n' || code[i] === '\r')) i++;
+      const before = out[out.length - 1];
+      const after  = code[i];
+      if (_needsSpace(before, after)) out += ' ';
+      continue;
+    }
+
+    out += ch;
+    i++;
+  }
+
+  return out;
+}
+
+/** True when removing the space between a and b would change semantics. */
+function _needsSpace(a, b) {
+  if (!a || !b) return false;
+  const idA = (a >= 'a' && a <= 'z') || (a >= 'A' && a <= 'Z') || (a >= '0' && a <= '9') || a === '_' || a === '$';
+  const idB = (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') || b === '_' || b === '$';
+  if (idA && idB) return true;   // e.g. const x, return value
+  if (a === '+' && b === '+') return true; // prevent ++
+  if (a === '-' && b === '-') return true; // prevent --
+  if (a === '/' && (b === '/' || b === '*')) return true; // prevent // or /*
+  return false;
+}
+
+/** Heuristic: is the next '/' a regex start (vs division)? */
+function _isRegexCtx(out) {
+  let end = out.length - 1;
+  while (end >= 0 && out[end] === ' ') end--;
+  if (end < 0) return true;
+  const last = out[end];
+  if ('=({[,;:!&|?~+-*/%^>'.includes(last)) return true;
+  const tail = out.substring(Math.max(0, end - 7), end + 1);
+  const kws = ['return', 'typeof', 'case', 'in', 'delete', 'void', 'throw', 'new'];
+  for (const kw of kws) {
+    if (tail.endsWith(kw)) {
+      const pos = end - kw.length;
+      if (pos < 0 || !((out[pos] >= 'a' && out[pos] <= 'z') || (out[pos] >= 'A' && out[pos] <= 'Z') || (out[pos] >= '0' && out[pos] <= '9') || out[pos] === '_' || out[pos] === '$')) return true;
+    }
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
