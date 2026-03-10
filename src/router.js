@@ -90,7 +90,8 @@ class Router {
       this.navigate(href);
       // z-to-top modifier: scroll to top after navigation
       if (link.hasAttribute('z-to-top')) {
-        window.scrollTo({ top: 0, behavior: 'instant' });
+        const scrollBehavior = link.getAttribute('z-to-top') || 'instant';
+        window.scrollTo({ top: 0, behavior: scrollBehavior });
       }
     });
 
