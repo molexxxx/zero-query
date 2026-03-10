@@ -280,6 +280,7 @@ class Router {
     // Prevent re-entrant calls (e.g. listener triggering navigation)
     if (this._resolving) return;
     this._resolving = true;
+    this._redirectCount = 0;
     try {
       await this.__resolve();
     } finally {
@@ -321,7 +322,21 @@ class Router {
         const result = await guard(to, from);
         if (result === false) return;                    // Cancel
         if (typeof result === 'string') {                // Redirect
-          return this.navigate(result);
+          if (++this._redirectCount > 10) {
+            reportError(ErrorCode.ROUTER_GUARD, 'Too many guard redirects (possible loop)', { to }, null);
+            return;
+          }
+          // Update URL directly and re-resolve (avoids re-entrancy block)
+          const [rPath, rFrag] = result.split('#');
+          const rNorm = this._normalizePath(rPath || '/');
+          const rHash = rFrag ? '#' + rFrag : '';
+          if (this._mode === 'hash') {
+            if (rFrag) window.__zqScrollTarget = rFrag;
+            window.location.replace('#' + rNorm);
+          } else {
+            window.history.replaceState({}, '', this._base + rNorm + rHash);
+          }
+          return this.__resolve();
         }
       } catch (err) {
         reportError(ErrorCode.ROUTER_GUARD, 'Before-guard threw', { to, from }, err);
