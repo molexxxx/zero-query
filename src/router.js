@@ -88,6 +88,10 @@ class Router {
         } catch { /* ignore malformed JSON */ }
       }
       this.navigate(href);
+      // z-to-top modifier: scroll to top after navigation
+      if (link.hasAttribute('z-to-top')) {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
     });
 
     // Initial resolve

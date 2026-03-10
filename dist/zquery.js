@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.7.2
+ * zQuery (zeroQuery) v0.7.3
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -3620,6 +3620,10 @@ class Router {
         } catch { /* ignore malformed JSON */ }
       }
       this.navigate(href);
+      // z-to-top modifier: scroll to top after navigation
+      if (link.hasAttribute('z-to-top')) {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
     });
 
     // Initial resolve
@@ -4736,7 +4740,7 @@ $.ZQueryError = ZQueryError;
 $.ErrorCode   = ErrorCode;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.7.2';
+$.version = '0.7.3';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

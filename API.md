@@ -733,6 +733,17 @@ Use the `z-link` attribute on `<a>` tags for SPA navigation. Clicks are intercep
 <a z-link="/search?q=zQuery">Search</a>
 ```
 
+### `z-to-top` — Scroll to Top on Navigation
+
+Add the `z-to-top` modifier to any `z-link` element to scroll the page to the top after navigation. The scroll is instant to avoid visual jitter when the destination page has a different content height.
+
+```html
+<a z-link="/" z-to-top>Home</a>
+<a z-link="/about" z-to-top>About</a>
+```
+
+Omit `z-to-top` to preserve the scroll position across navigations (useful for tabs or sub-views).
+
 **Dynamic paths in `render()` — template literal interpolation:**
 
 ```js
@@ -2208,7 +2219,7 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
 | `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. See [z-key](#z-key--keyed-reconciliation). |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
-| `$.version` | Library version string (e.g. `'0.7.2'`). |
+| `$.version` | Library version string (e.g. `'0.7.3'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |
