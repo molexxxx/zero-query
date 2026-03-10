@@ -28,6 +28,14 @@ function isIgnored(filepath) {
   return filepath.split(path.sep).some(p => IGNORE_DIRS.has(p));
 }
 
+/**
+ * Return the file's mtime as a millisecond timestamp, or 0 if unreadable.
+ * Used to ignore spurious fs.watch events (Windows fires on reads too).
+ */
+function mtime(filepath) {
+  try { return fs.statSync(filepath).mtimeMs; } catch { return 0; }
+}
+
 /** Recursively collect every directory under `dir` (excluding ignored). */
 function collectWatchDirs(dir) {
   const dirs = [dir];
@@ -59,6 +67,24 @@ function startWatcher({ root, pool }) {
   let debounceTimer;
   let currentError = null;   // track which file has an active error
 
+  // Track file mtimes so we only react to genuine writes.
+  // On Windows, fs.watch fires on reads/access too, which causes
+  // spurious reloads the first time the server serves a file.
+  // We seed the cache with current mtimes so the first real save
+  // (which changes the mtime) is always detected.
+  const mtimeCache = new Map();
+  for (const d of watchDirs) {
+    try {
+      for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+        if (entry.isFile()) {
+          const fp = path.join(d, entry.name);
+          const mt = mtime(fp);
+          if (mt) mtimeCache.set(fp, mt);
+        }
+      }
+    } catch { /* skip */ }
+  }
+
   for (const dir of watchDirs) {
     try {
       const watcher = fs.watch(dir, (_, filename) => {
@@ -68,6 +94,13 @@ function startWatcher({ root, pool }) {
 
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
+          // Skip if the file hasn't actually been modified
+          const mt = mtime(fullPath);
+          if (mt === 0) return;                 // deleted or unreadable
+          const prev = mtimeCache.get(fullPath);
+          mtimeCache.set(fullPath, mt);
+          if (prev !== undefined && mt === prev) return; // unchanged
+
           const rel = path.relative(root, fullPath).replace(/\\/g, '/');
           const ext = path.extname(filename).toLowerCase();
 

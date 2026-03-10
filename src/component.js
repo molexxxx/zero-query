@@ -381,11 +381,14 @@ class Component {
     if (def.styleUrl && !def._styleLoaded) {
       const su = def.styleUrl;
       if (typeof su === 'string') {
-        def._externalStyles = await _fetchResource(_resolveUrl(su, base));
+        const resolved = _resolveUrl(su, base);
+        def._externalStyles = await _fetchResource(resolved);
+        def._resolvedStyleUrls = [resolved];
       } else if (Array.isArray(su)) {
         const urls = su.map(u => _resolveUrl(u, base));
         const results = await Promise.all(urls.map(u => _fetchResource(u)));
         def._externalStyles = results.join('\n');
+        def._resolvedStyleUrls = urls;
       }
       def._styleLoaded = true;
     }
@@ -512,6 +515,13 @@ class Component {
       const styleEl = document.createElement('style');
       styleEl.textContent = scoped;
       styleEl.setAttribute('data-zq-component', this._def._name || '');
+      styleEl.setAttribute('data-zq-scope', scopeAttr);
+      if (this._def._resolvedStyleUrls) {
+        styleEl.setAttribute('data-zq-style-urls', this._def._resolvedStyleUrls.join(' '));
+        if (this._def.styles) {
+          styleEl.setAttribute('data-zq-inline', this._def.styles);
+        }
+      }
       document.head.appendChild(styleEl);
       this._styleEl = styleEl;
     }

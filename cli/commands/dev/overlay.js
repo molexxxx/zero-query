@@ -281,14 +281,63 @@ const OVERLAY_SCRIPT = `<script>
       location.reload();
     });
 
-    es.addEventListener('css', function() {
+    es.addEventListener('css', function(e) {
+      var changedPath = (e.data || '').replace(/^\\/+/, '');
+      var matched = false;
+
+      // 1) Try cache-busting matching <link rel="stylesheet"> tags
       var sheets = document.querySelectorAll('link[rel="stylesheet"]');
       sheets.forEach(function(l) {
         var href = l.getAttribute('href');
         if (!href) return;
+        var clean = href.replace(/[?&]_zqr=\\d+/, '').replace(/^\\/+/, '');
+        if (changedPath && clean.indexOf(changedPath) === -1) return;
+        matched = true;
         var sep = href.indexOf('?') >= 0 ? '&' : '?';
-        l.setAttribute('href', href.replace(/[?&]_zqr=\\\\d+/, '') + sep + '_zqr=' + Date.now());
+        l.setAttribute('href', href.replace(/[?&]_zqr=\\d+/, '') + sep + '_zqr=' + Date.now());
       });
+
+      // 2) Try hot-swapping scoped <style data-zq-style-urls> elements
+      //    These come from component styleUrl — the CSS was fetched, scoped,
+      //    and injected as an inline <style>. We re-fetch and re-scope it.
+      if (!matched) {
+        var scopedEls = document.querySelectorAll('style[data-zq-style-urls]');
+        scopedEls.forEach(function(el) {
+          var urls = el.getAttribute('data-zq-style-urls') || '';
+          var hit = urls.split(' ').some(function(u) {
+            return u && u.replace(/^\\/+/, '').indexOf(changedPath) !== -1;
+          });
+          if (!hit) return;
+          matched = true;
+
+          var scopeAttr = el.getAttribute('data-zq-scope') || '';
+          var inlineStyles = el.getAttribute('data-zq-inline') || '';
+
+          // Re-fetch all style URLs (cache-busted)
+          var urlList = urls.split(' ').filter(Boolean);
+          Promise.all(urlList.map(function(u) {
+            return fetch(u + (u.indexOf('?') >= 0 ? '&' : '?') + '_zqr=' + Date.now())
+              .then(function(r) { return r.text(); });
+          })).then(function(results) {
+            var raw = (inlineStyles ? inlineStyles + '\\n' : '') + results.join('\\n');
+            // Re-scope CSS with the same scope attribute
+            if (scopeAttr) {
+              var inAt = 0;
+              raw = raw.replace(/([^{}]+)\\{|\\}/g, function(m, sel) {
+                if (m === '}') { if (inAt > 0) inAt--; return m; }
+                var t = sel.trim();
+                if (t.charAt(0) === '@') { inAt++; return m; }
+                if (inAt > 0 && /^[\\d%\\s,fromto]+$/.test(t.replace(/\\s/g, ''))) return m;
+                return sel.split(',').map(function(s) { return '[' + scopeAttr + '] ' + s.trim(); }).join(', ') + ' {';
+              });
+            }
+            el.textContent = raw;
+          });
+        });
+      }
+
+      // 3) Nothing matched — fall back to full reload
+      if (!matched) { location.reload(); }
     });
 
     es.addEventListener('error:syntax', function(e) {
