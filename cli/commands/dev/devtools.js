@@ -477,6 +477,17 @@ background:rgba(88,166,255,0.08);line-height:16px;display:inline-flex;align-item
         document.getElementById('disconnected').style.display = 'flex';
         return;
       }
+      // Keep targetDoc fresh — the opener may have reloaded (live-reload)
+      try {
+        var freshDoc = targetWin.document;
+        if (freshDoc !== targetDoc) {
+          targetDoc = freshDoc;
+          // Re-attach MutationObserver to the new document
+          if (observer) { observer.disconnect(); observer = null; }
+          startObserver();
+          buildDOMTree();
+        }
+      } catch(e) {}
       var activeTab = document.querySelector('.tab.active');
       var tabName = activeTab ? activeTab.dataset.tab : '';
       if (tabName === 'components') renderComponents();
@@ -490,7 +501,7 @@ background:rgba(88,166,255,0.08);line-height:16px;display:inline-flex;align-item
           morphEvents = stored.slice();
         }
       }
-      if (tabName === 'performance') renderPerf();
+      if (tabName === 'perf') renderPerf();
     }, 800);
   }
 
@@ -777,9 +788,12 @@ background:rgba(88,166,255,0.08);line-height:16px;display:inline-flex;align-item
     var nodePath = getNodePath(node);
     var hasChildren = false;
     var childNodes = node.childNodes;
-    for (var i = 0; i < childNodes.length; i++) {
-      var cn = childNodes[i];
-      if (cn.nodeType === 1 || (cn.nodeType === 3 && cn.textContent.trim())) { hasChildren = true; break; }
+    // style/script content is shown inline via the peek button — treat as leaf
+    if (tag !== 'style' && tag !== 'script') {
+      for (var i = 0; i < childNodes.length; i++) {
+        var cn = childNodes[i];
+        if (cn.nodeType === 1 || (cn.nodeType === 3 && cn.textContent.trim())) { hasChildren = true; break; }
+      }
     }
 
     // Detect special nodes
@@ -1307,8 +1321,8 @@ background:rgba(88,166,255,0.08);line-height:16px;display:inline-flex;align-item
       }
       for (var n = 0; n < names.length; n++) {
         var name = names[n];
-        // Find mounted instances
-        var hosts = targetDoc.querySelectorAll(name + ',[data-zq-component="' + name + '"]');
+        // Find mounted instances (exclude scoped <style> tags that carry data-zq-component)
+        var hosts = targetDoc.querySelectorAll(name + ':not(style)');
         html += '<div class="comp-card">';
         html += '<div class="comp-name">&lt;' + name + '&gt;</div>';
         html += '<div class="comp-host">' + hosts.length + ' instance' + (hosts.length !== 1 ? 's' : '') + ' mounted</div>';
