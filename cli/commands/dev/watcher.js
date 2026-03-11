@@ -60,12 +60,13 @@ function collectWatchDirs(dir) {
  * @param {SSEPool} opts.pool  — SSE broadcast pool
  * @returns {{ dirs: string[], destroy: Function }}
  */
-function startWatcher({ root, pool }) {
+function startWatcher({ root, pool, bundleMode, serveRoot }) {
   const watchDirs = collectWatchDirs(root);
   const watchers  = [];
 
   let debounceTimer;
   let currentError = null;   // track which file has an active error
+  let bundleTimer = null;    // debounce for bundle rebuilds
 
   // Track file mtimes so we only react to genuine writes.
   // On Windows, fs.watch fires on reads/access too, which causes
@@ -128,6 +129,30 @@ function startWatcher({ root, pool }) {
           }
 
           // ---- Full reload ----
+          if (bundleMode) {
+            // Debounce bundle rebuilds (500ms) so rapid saves don't spam
+            clearTimeout(bundleTimer);
+            bundleTimer = setTimeout(() => {
+              try {
+                const bundleFn = require('../bundle');
+                const { args: cliArgs } = require('../../args');
+                const savedArgs = cliArgs.slice();
+                cliArgs.length = 0;
+                cliArgs.push('bundle');
+                const prevCwd = process.cwd();
+                process.chdir(root);
+                bundleFn();
+                process.chdir(prevCwd);
+                cliArgs.length = 0;
+                savedArgs.forEach(a => cliArgs.push(a));
+                logReload(rel + ' (rebuilt)');
+                pool.broadcast('reload', rel);
+              } catch (err) {
+                console.error('  Bundle rebuild failed:', err.message);
+              }
+            }, 500);
+            return;
+          }
           logReload(rel);
           pool.broadcast('reload', rel);
         }, 100);

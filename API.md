@@ -33,6 +33,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [$.getInstance()](#getinstancetarget)
   - [$.destroy()](#destroytarget)
   - [$.components() / getRegistry()](#components--getregistry)
+  - [$.prefetch()](#prefetchname)
   - [$.style()](#styleurls)
 - [Store](#store)
   - [$.store() — createStore](#storeconfig)
@@ -224,7 +225,8 @@ $('#cart-count').text('3');
 
 | Method | Signature | Returns | Description |
 | --- | --- | --- | --- |
-| `html` | `html(content?)` | `string \| this` | Get/set innerHTML |
+| `html` | `html(content?)` | `string \| this` | Get innerHTML, or set with **auto-morph**: diffs existing children via the morph engine (LIS keyed reconciliation, `isEqualNode()` bail-outs). Empty elements use raw `innerHTML` for fast first-paint. Use `empty().html()` to force raw innerHTML. |
+| `morph` | `morph(content)` | `this` | Always morph — run content through the diff engine regardless of whether the element already has children |
 | `text` | `text(content?)` | `string \| this` | Get/set textContent |
 | `val` | `val(value?)` | `string \| this` | Get/set input/textarea value |
 | `append` | `append(content)` | `this` | Append HTML string, Node, or ZQueryCollection |
@@ -235,7 +237,7 @@ $('#cart-count').text('3');
 | `remove` | `remove()` | `this` | Remove all elements from DOM |
 | `empty` | `empty()` | `this` | Clear innerHTML of all elements |
 | `clone` | `clone(deep = true)` | `ZQueryCollection` | Deep-clone all elements |
-| `replaceWith` | `replaceWith(content)` | `this` | Replace each element with new content |
+| `replaceWith` | `replaceWith(content)` | `this` | Replace each element with new content. When given an HTML string with the same tag, **auto-morphs** the element in place (preserves identity). Falls back to full replacement when the tag differs. |
 | `appendTo` | `appendTo(target)` | `this` | Insert every element at the end of the target |
 | `prependTo` | `prependTo(target)` | `this` | Insert every element at the beginning of the target |
 | `insertAfter` | `insertAfter(target)` | `this` | Insert every element after the target |
@@ -1536,6 +1538,62 @@ $.morph($.id('list'), '<li>Updated</li><li>Items</li>');
 | `rootEl` | `Element` | The live DOM container to patch |
 | `newHTML` | `string` | The desired HTML string |
 
+### `morphElement(oldEl, newHTML)`
+
+Morph a single element **in place** — diffs attributes and children without replacing the node reference. When the tag name matches, the element is patched (preserving its identity, event listeners, and references). When the tag name differs, the element is replaced.
+
+Used internally by `replaceWith()` for automatic DOM diffing.
+
+```js
+// Morph a card’s content without losing event listeners
+$.morphElement($.id('user-card'), '<div id="user-card" class="updated">New info</div>');
+```
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `oldEl` | `Element` | The live DOM element to patch |
+| `newHTML` | `string` | HTML string for the replacement element |
+| **Returns** | `Element` | The resulting element (same ref if morphed, new ref if tag changed) |
+
+### Auto-Morph — Automatic DOM Diffing via `$()`
+
+The `$()` collection methods **automatically route through the diff engine** when updating existing DOM, using the same strategy as the component system:
+
+| Method | Behavior |
+| --- | --- |
+| `.html(content)` | **Auto-morphs** when the element already has children. Empty elements use raw `innerHTML` for fast first-paint. |
+| `.replaceWith(content)` | **Auto-morphs** when given an HTML string with the same tag name. Falls back to full replacement when the tag differs or content is a Node. |
+| `.morph(content)` | **Always morphs** — explicit call, skips the empty-element check. |
+
+This means every `$('#app').html(newContent)` automatically gets LIS-keyed reconciliation, `isEqualNode()` fast-skips, and attribute diffing — no extra method calls required.
+
+```js
+// Auto-morph: element has children → diff engine patches in place
+$('#user-list').html(updatedListHTML);
+
+// Auto-morph: same tag → element identity preserved
+$('#card').replaceWith('<div id="card" class="active">Updated</div>');
+
+// Force raw innerHTML: empty first, then set
+$('#app').empty().html(freshContent);
+
+// Explicit morph: always use diff engine
+$('#app').morph(newContent);
+```
+
+#### Auto-Key Detection
+
+The LIS-keyed reconciliation path activates automatically whenever elements carry `id`, `data-id`, or `data-key` attributes — no `z-key` required:
+
+| Attribute | Priority | Example |
+| --- | --- | --- |
+| `z-key` | Highest | `<li z-key="abc">` |
+| `id` | Auto-detected | `<div id="user-42">` |
+| `data-id` | Auto-detected | `<tr data-id="row-7">` |
+| `data-key` | Auto-detected | `<card data-key="item-3">` |
+
+> **Explicit `z-key` takes priority.** Auto-detected keys use an internal prefix to avoid collisions with explicit keys.
+
 #### Morph Engine Optimizations
 
 | Optimization | Description |
@@ -1643,6 +1701,27 @@ console.log($.components());
 // ES module equivalent:
 import { getRegistry } from '@tonywied17/zero-query';
 console.log(getRegistry());
+```
+
+### `prefetch(name)`
+
+Pre-load external templates and styles for a registered component. Useful for warming the cache before navigation to avoid blank flashes when switching routes.
+
+The router calls this automatically before destroying the current component, but you can call it manually to prefetch upcoming components in advance.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | Registered component name |
+
+**Returns:** `Promise<void>` — resolves when all external resources have been fetched and cached.
+
+```js
+// Prefetch a component before the user navigates
+$.prefetch('about-page');
+
+// ES module equivalent:
+import { prefetch } from '@tonywied17/zero-query';
+await prefetch('about-page');
 ```
 
 ### `style(urls)`
@@ -2252,8 +2331,11 @@ validate(el, 'target');             // throws if el is null/undefined
 | --- | --- |
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
 | `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. Uses LIS-based keyed reconciliation, `isEqualNode()` bail-outs, and `z-skip` opt-out. See [z-key](#z-key--keyed-reconciliation) and [z-skip](#z-skip--opt-out-of-diffing). |
+| `$.morphElement(el, html)` | Morph a single element in place — diffs attributes and children without replacing the node reference. If the tag name matches, the element is patched; if the tag differs, the element is replaced. Returns the resulting element. |
+| `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
-| `$.version` | Library version string (e.g. `'0.8.1'`). |
+| `$.libSize` | Minified library size string (e.g. `'~86 KB'`), injected at build time. |
+| `$.version` | Library version string (e.g. `'0.8.2'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |
@@ -2282,27 +2364,59 @@ app.component('hello-world', {
 });
 ```
 
-### `renderToString(app, name, props?)`
+### `renderToString(definition, props?)`
 
-Render a registered component to an HTML string.
+Quick one-shot render of a component definition to an HTML string (without registering it in an app).
 
 ```js
-const html = await renderToString(app, 'hello-world', { name: 'Tony' });
+import { renderToString } from '@tonywied17/zero-query';
+
+const html = renderToString({
+  state: () => ({ name: 'Tony' }),
+  render() { return `<h1>Hello, ${this.state.name}!</h1>`; }
+});
+// '<h1>Hello, Tony!</h1>'
+```
+
+### `app.renderToString(name, props?, options?)`
+
+Render a registered component to an HTML string via the SSR app.
+
+```js
+const html = await app.renderToString('hello-world', { name: 'Tony' });
 // '<hello-world data-zq-ssr><h1>Hello, Tony!</h1></hello-world>'
 ```
 
-### `app.renderPage(name, options?)`
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | Registered component name |
+| `props` | `object` | Props to pass (optional) |
+| `options.hydrate` | `boolean` | Add `data-zq-ssr` marker for client hydration (default `true`) |
 
-Render a full HTML page with the component embedded.
+### `app.renderPage(options?)`
+
+Render a full HTML page with a component embedded.
 
 ```js
-const page = await app.renderPage('hello-world', {
+const page = await app.renderPage({
+  component: 'hello-world',
   title: 'My App',
   lang: 'en',
   styles: ['global.css'],
   scripts: ['app/app.js'],
 });
 ```
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `component` | `string` | Component name to render in the page body |
+| `props` | `object` | Props to pass to the component |
+| `title` | `string` | Page `<title>` |
+| `styles` | `string[]` | CSS file paths to inject as `<link>` tags |
+| `scripts` | `string[]` | JS file paths to inject as `<script>` tags |
+| `lang` | `string` | HTML `lang` attribute (default `'en'`) |
+| `meta` | `string` | Additional HTML for `<head>` |
+| `bodyAttrs` | `string` | Attributes for `<body>` tag |
 
 | Detail | Description |
 | --- | --- |
@@ -2320,8 +2434,8 @@ When used as an ES module (not the built bundle), the library exports:
 import {
   $, zQuery, ZQueryCollection, queryAll,
   reactive, signal, computed, effect,
-  component, mount, mountAll, getInstance, destroy, getRegistry, style,
-  morph, safeEval,
+  component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style,
+  morph, morphElement, safeEval,
   createRouter, getRouter,
   createStore, getStore,
   createSSRApp, renderToString,

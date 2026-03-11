@@ -29,7 +29,7 @@
 | **Selectors & DOM** | jQuery-like chainable selectors, traversal, DOM manipulation, events, animation |
 | **HTTP** | Fetch wrapper with auto-JSON, interceptors, timeout/abort, base URL |
 | **Utils** | debounce, throttle, pipe, once, sleep, escapeHtml, uuid, deepClone, deepMerge, storage/session wrappers, event bus |
-| **Dev Tools** | CLI dev server with live-reload, full-screen error overlay (syntax + runtime), CLI bundler for single-file production builds |
+| **Dev Tools** | CLI dev server with live-reload, CSS hot-swap, full-screen error overlay, floating toolbar, dark-themed inspector panel (DOM tree, network log, component viewer, performance dashboard), fetch interceptor, render instrumentation, CLI bundler for single-file production builds |
 
 ---
 
@@ -62,6 +62,10 @@ The dev server includes a **full-screen error overlay** that surfaces errors dir
 - **Syntax errors** — JS files are validated on every save *before* the reload is triggered. If a syntax error is found the page stays intact and a dark overlay appears with the error message, file path, line:column, and a code frame pointing to the exact location.
 - **Runtime errors** — uncaught exceptions and unhandled promise rejections are captured and displayed in the same overlay with a cleaned-up stack trace.
 - The overlay **auto-clears** when you fix the error and save. Press `Esc` or click `×` to dismiss manually.
+
+#### Floating Toolbar & Inspector
+
+A compact toolbar appears in the bottom-right corner showing live request/render counters and a DOM button. Click any counter to open a **dark-themed DevTools inspector** as a popup — or visit `http://localhost:<port>/_devtools` for a standalone split-view panel with four tabs: **Elements** (live DOM tree with component badges, source viewer, expand/collapse), **Network** (fetch log with JSON viewer), **Components** (live state cards), and **Performance** (render timeline with timing metrics).
 
 ### Alternative: Manual Setup (No npm)
 
@@ -252,8 +256,8 @@ location / {
 | `$.create` | Element factory |
 | `$.ready` `$.on` `$.off` | DOM ready, global event delegation & direct listeners |
 | `$.fn` | Collection prototype (extend it) |
-| `$.component` `$.mount` `$.mountAll` `$.getInstance` `$.destroy` `$.components` | Component system |
-| `$.morph` | DOM morphing engine — LIS-based keyed reconciliation, `isEqualNode()` bail-outs, `z-skip` opt-out. Patches existing DOM to match new HTML without destroying unchanged nodes |
+| `$.component` `$.mount` `$.mountAll` `$.getInstance` `$.destroy` `$.components` `$.prefetch` | Component system |
+| `$.morph` `$.morphElement` | DOM morphing engine — LIS-based keyed reconciliation, `isEqualNode()` bail-outs, `z-skip` opt-out. Patches existing DOM to match new HTML without destroying unchanged nodes. Auto-key detection (`id`, `data-id`, `data-key`) — no `z-key` required. `$().html()` and `$().replaceWith()` auto-morph existing content; `$().morph()` for explicit morph |
 | `$.safeEval` | CSP-safe expression evaluator (replaces `eval` / `new Function`) |
 | `$.style` | Dynamically load global stylesheet file(s) at runtime |
 | `$.router` `$.getRouter` | SPA router |
@@ -266,14 +270,14 @@ location / {
 | `$.param` `$.parseQuery` | URL utils |
 | `$.storage` `$.session` | Storage wrappers |
 | `$.bus` | Event bus |
-| `$.version` | Library version |
+| `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~86 KB\"`) |
 | `$.meta` | Build metadata (populated by CLI bundler) |
 | `$.noConflict` | Release `$` global |
 
 | CLI Command | Description |
 | --- | --- |
 | `zquery create [dir]` | Scaffold a new project (index.html, components, store, styles) |
-| `zquery dev [root]` | Dev server with live-reload &amp; error overlay (port 3100). `--index` for custom HTML. |
+| `zquery dev [root]` | Dev server with live-reload, CSS hot-swap, error overlay, floating toolbar &amp; inspector panel (port 3100). Visit `/_devtools` for the standalone panel. `--index` for custom HTML, `--bundle` for bundled mode, `--no-intercept` to skip CDN intercept. |
 | `zquery bundle [dir\|file]` | Bundle app into a single IIFE file. Accepts dir or direct entry file. |
 | `zquery build` | Build the zQuery library (`dist/zquery.min.js`) |
 | `zquery --help` | Show CLI usage |

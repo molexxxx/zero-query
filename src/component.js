@@ -561,8 +561,10 @@ class Component {
 
     // Update DOM via morphing (diffing) — preserves unchanged nodes
     // First render uses innerHTML for speed; subsequent renders morph.
+    const _renderStart = typeof window !== 'undefined' && (window.__zqMorphHook || window.__zqRenderHook) ? performance.now() : 0;
     if (!this._mounted) {
       this._el.innerHTML = html;
+      if (_renderStart && window.__zqRenderHook) window.__zqRenderHook(this._el, performance.now() - _renderStart, 'mount', this._def._name);
     } else {
       morph(this._el, html);
     }
@@ -1254,6 +1256,36 @@ export function destroy(target) {
  */
 export function getRegistry() {
   return Object.fromEntries(_registry);
+}
+
+/**
+ * Pre-load a component's external templates and styles so the next mount
+ * renders synchronously (no blank flash while fetching).
+ * Safe to call multiple times — skips if already loaded.
+ * @param {string} name — registered component name
+ * @returns {Promise<void>}
+ */
+export async function prefetch(name) {
+  const def = _registry.get(name);
+  if (!def) return;
+
+  // Load templateUrl, styleUrl, and normalize pages config
+  if ((def.templateUrl && !def._templateLoaded) ||
+      (def.styleUrl && !def._styleLoaded) ||
+      (def.pages && !def._pagesNormalized)) {
+    await Component.prototype._loadExternals.call({ _def: def });
+  }
+
+  // For pages-based components, prefetch ALL page templates so any
+  // active page renders instantly on mount.
+  if (def._pageUrls && def._externalTemplates) {
+    const missing = Object.entries(def._pageUrls)
+      .filter(([id]) => !(id in def._externalTemplates));
+    if (missing.length) {
+      const results = await Promise.all(missing.map(([, url]) => _fetchResource(url)));
+      missing.forEach(([id], i) => { def._externalTemplates[id] = results[i]; });
+    }
+  }
 }
 
 

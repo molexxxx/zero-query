@@ -48,17 +48,22 @@ function logError(descriptor) {
 // Startup banner
 // ---------------------------------------------------------------------------
 
-function printBanner({ port, root, htmlEntry, noIntercept, watchDirCount }) {
+function printBanner({ port, root, htmlEntry, noIntercept, bundleMode, watchDirCount }) {
   const rule = c.dim + '-'.repeat(40) + c.reset;
   console.log(`\n  ${c.bold}zQuery Dev Server${c.reset}`);
   console.log(`  ${rule}`);
   console.log(`  Local:       ${c.cyan}http://localhost:${port}/${c.reset}`);
+  console.log(`  DevTools:    ${c.cyan}http://localhost:${port}/_devtools${c.reset}`);
   console.log(`  Root:        ${root}`);
+  if (bundleMode) {
+    console.log(`  Mode:        ${c.yellow}bundled${c.reset} (serving from dist/server/)`);
+  }
   if (htmlEntry !== 'index.html') {
     console.log(`  HTML:        ${c.cyan}${htmlEntry}${c.reset}`);
   }
   console.log(`  Live Reload: ${c.green}enabled${c.reset} (SSE)`);
   console.log(`  Overlay:     ${c.green}enabled${c.reset} (syntax + runtime + ZQueryError)`);
+  console.log(`  Fetch Log:   ${c.green}enabled${c.reset} (auto-intercept all fetch/$.http)`);
   if (noIntercept) {
     console.log(`  Intercept:   ${c.yellow}disabled${c.reset} (--no-intercept)`);
   }

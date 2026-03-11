@@ -16,6 +16,7 @@ const { args, flag, option } = require('../../args');
 const { createServer }       = require('./server');
 const { startWatcher }       = require('./watcher');
 const { printBanner }        = require('./logger');
+const bundleApp              = require('../bundle');
 
 // ---------------------------------------------------------------------------
 // Resolve project root
@@ -50,13 +51,36 @@ async function devServer() {
   const htmlEntry   = option('index', 'i', 'index.html');
   const port        = parseInt(option('port', 'p', '3100'), 10);
   const noIntercept = flag('no-intercept');
+  const bundleMode  = flag('bundle', 'b');
   const root        = resolveRoot(htmlEntry);
 
-  // Start HTTP server + SSE pool
-  const { app, pool, listen } = await createServer({ root, htmlEntry, port, noIntercept });
+  // In bundle mode, build the app first then serve from dist/server/
+  let serveRoot = root;
+  if (bundleMode) {
+    console.log('\n  Building bundled app...\n');
+    // Clear the shared args array so the bundler auto-detects entry from cwd
+    // instead of re-parsing the dev command's positional args
+    const { args: cliArgs } = require('../../args');
+    const savedArgs = cliArgs.slice();
+    cliArgs.length = 0;
+    cliArgs.push('bundle');
+    const prevCwd = process.cwd();
+    try {
+      process.chdir(root);
+      bundleApp();
+    } finally {
+      process.chdir(prevCwd);
+      cliArgs.length = 0;
+      savedArgs.forEach(a => cliArgs.push(a));
+    }
+    serveRoot = path.join(root, 'dist', 'server');
+  }
 
-  // Start file watcher
-  const watcher = startWatcher({ root, pool });
+  // Start HTTP server + SSE pool
+  const { app, pool, listen } = await createServer({ root: serveRoot, htmlEntry, port, noIntercept });
+
+  // Start file watcher (watches source root, rebuilds in bundle mode)
+  const watcher = startWatcher({ root, pool, bundleMode, serveRoot });
 
   // Boot
   listen(() => {
@@ -65,6 +89,7 @@ async function devServer() {
       root:          path.relative(process.cwd(), root) || '.',
       htmlEntry,
       noIntercept,
+      bundleMode,
       watchDirCount: watcher.dirs.length,
     });
   });

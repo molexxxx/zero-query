@@ -17,7 +17,7 @@
  *   });
  */
 
-import { mount, destroy } from './component.js';
+import { mount, destroy, prefetch } from './component.js';
 import { reportError, ErrorCode } from './errors.js';
 
 class Router {
@@ -362,6 +362,12 @@ class Router {
 
     // Mount component into outlet
     if (this._el && matched.component) {
+      // Pre-load external templates/styles so the mount renders synchronously
+      // (keeps old content visible during the fetch instead of showing blank)
+      if (typeof matched.component === 'string') {
+        await prefetch(matched.component);
+      }
+
       // Destroy previous
       if (this._instance) {
         this._instance.destroy();
@@ -369,6 +375,7 @@ class Router {
       }
 
       // Create container
+      const _routeStart = typeof window !== 'undefined' && window.__zqRenderHook ? performance.now() : 0;
       this._el.innerHTML = '';
 
       // Pass route params and query as props
@@ -379,10 +386,12 @@ class Router {
         const container = document.createElement(matched.component);
         this._el.appendChild(container);
         this._instance = mount(container, matched.component, props);
+        if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', matched.component);
       }
       // If component is a render function
       else if (typeof matched.component === 'function') {
         this._el.innerHTML = matched.component(to);
+        if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', to);
       }
     }
 

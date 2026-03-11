@@ -209,8 +209,19 @@ export class ZQueryCollection {
 
   /** Get `innerHTML` of the first element, or `undefined` if empty. */
   html(): string | undefined;
-  /** Set `innerHTML` on all elements. */
+  /**
+   * Set content on all elements. Auto-morphs when the element already has
+   * children (preserves focus, scroll, form state, keyed reorder via LIS).
+   * Empty elements receive raw `innerHTML` for fast first-paint.
+   * Use `empty().html(content)` to force raw innerHTML.
+   */
   html(content: string): this;
+
+  /**
+   * Morph all elements' children to match new HTML using the diff engine.
+   * Always morphs regardless of whether the element already has children.
+   */
+  morph(content: string): this;
 
   /** Get `textContent` of the first element, or `undefined` if empty. */
   text(): string | undefined;
@@ -248,7 +259,11 @@ export class ZQueryCollection {
   /** Clone elements (default: deep clone). */
   clone(deep?: boolean): ZQueryCollection;
 
-  /** Replace elements with new content. */
+  /**
+   * Replace elements with new content. When given an HTML string with the
+   * same tag name, morphs the element in place (preserving identity and state).
+   * Falls back to full replacement when the tag name differs or content is a Node.
+   */
   replaceWith(content: string | Node): this;
 
   /** Insert every element in the collection at the end of the target. */

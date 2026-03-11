@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.8.1
+ * @version 0.8.2
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -35,6 +35,7 @@ export {
   getInstance,
   destroy,
   getRegistry,
+  prefetch,
   StyleHandle,
   StyleOptions,
   style,
@@ -112,6 +113,7 @@ export {
 
 export {
   morph,
+  morphElement,
   safeEval,
   EventModifier,
 } from './types/misc';
@@ -122,7 +124,7 @@ export {
 
 import type { ZQueryCollection } from './types/collection';
 import type { reactive, Signal, signal, computed, effect } from './types/reactive';
-import type { component, mount, mountAll, getInstance, destroy, getRegistry, style } from './types/component';
+import type { component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style } from './types/component';
 import type { createRouter, getRouter } from './types/router';
 import type { createStore, getStore } from './types/store';
 import type { HttpClient } from './types/http';
@@ -133,7 +135,7 @@ import type {
   StorageWrapper, EventBus,
 } from './types/utils';
 import type { onError, ZQueryError, ErrorCode } from './types/errors';
-import type { morph, safeEval } from './types/misc';
+import type { morph, morphElement, safeEval } from './types/misc';
 
 /**
  * Main selector / DOM-ready function — always returns a `ZQueryCollection` (like jQuery).
@@ -220,8 +222,12 @@ interface ZQueryStatic {
   destroy: typeof destroy;
   /** Returns all registered component definitions. */
   components: typeof getRegistry;
+  /** Pre-load external templates and styles for a component. */
+  prefetch: typeof prefetch;
   style: typeof style;
   morph: typeof morph;
+  /** Morph a single element in place — preserves identity when tag name matches. */
+  morphElement: typeof morphElement;
   safeEval: typeof safeEval;
 
   // -- Router --------------------------------------------------------------

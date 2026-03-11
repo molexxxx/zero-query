@@ -5,6 +5,8 @@
  * into a full jQuery-like chainable wrapper with modern APIs.
  */
 
+import { morph as _morph, morphElement as _morphElement } from './diff.js';
+
 // ---------------------------------------------------------------------------
 // ZQueryCollection — wraps an array of elements with chainable methods
 // ---------------------------------------------------------------------------
@@ -223,21 +225,46 @@ export class ZQueryCollection {
   // --- Classes -------------------------------------------------------------
 
   addClass(...names) {
+    // Fast path: single class, no spaces — avoids flatMap + regex split allocation
+    if (names.length === 1 && names[0].indexOf(' ') === -1) {
+      const c = names[0];
+      for (let i = 0; i < this.elements.length; i++) this.elements[i].classList.add(c);
+      return this;
+    }
     const classes = names.flatMap(n => n.split(/\s+/));
-    return this.each((_, el) => el.classList.add(...classes));
+    for (let i = 0; i < this.elements.length; i++) this.elements[i].classList.add(...classes);
+    return this;
   }
 
   removeClass(...names) {
+    if (names.length === 1 && names[0].indexOf(' ') === -1) {
+      const c = names[0];
+      for (let i = 0; i < this.elements.length; i++) this.elements[i].classList.remove(c);
+      return this;
+    }
     const classes = names.flatMap(n => n.split(/\s+/));
-    return this.each((_, el) => el.classList.remove(...classes));
+    for (let i = 0; i < this.elements.length; i++) this.elements[i].classList.remove(...classes);
+    return this;
   }
 
   toggleClass(...args) {
     const force = typeof args[args.length - 1] === 'boolean' ? args.pop() : undefined;
+    // Fast path: single class, no spaces
+    if (args.length === 1 && args[0].indexOf(' ') === -1) {
+      const c = args[0];
+      for (let i = 0; i < this.elements.length; i++) {
+        force !== undefined ? this.elements[i].classList.toggle(c, force) : this.elements[i].classList.toggle(c);
+      }
+      return this;
+    }
     const classes = args.flatMap(n => n.split(/\s+/));
-    return this.each((_, el) => {
-      classes.forEach(c => force !== undefined ? el.classList.toggle(c, force) : el.classList.toggle(c));
-    });
+    for (let i = 0; i < this.elements.length; i++) {
+      const el = this.elements[i];
+      for (let j = 0; j < classes.length; j++) {
+        force !== undefined ? el.classList.toggle(classes[j], force) : el.classList.toggle(classes[j]);
+      }
+    }
+    return this;
   }
 
   hasClass(name) {
@@ -273,7 +300,8 @@ export class ZQueryCollection {
 
   css(props) {
     if (typeof props === 'string') {
-      return getComputedStyle(this.first())[props];
+      const el = this.first();
+      return el ? getComputedStyle(el)[props] : undefined;
     }
     return this.each((_, el) => Object.assign(el.style, props));
   }
@@ -349,7 +377,21 @@ export class ZQueryCollection {
 
   html(content) {
     if (content === undefined) return this.first()?.innerHTML;
-    return this.each((_, el) => { el.innerHTML = content; });
+    // Auto-morph: if the element already has children, use the diff engine
+    // to patch the DOM (preserves focus, scroll, state, keyed reorder via LIS).
+    // Empty elements get raw innerHTML for fast first-paint — same strategy
+    // the component system uses (first render = innerHTML, updates = morph).
+    return this.each((_, el) => {
+      if (el.childNodes.length > 0) {
+        _morph(el, content);
+      } else {
+        el.innerHTML = content;
+      }
+    });
+  }
+
+  morph(content) {
+    return this.each((_, el) => { _morph(el, content); });
   }
 
   text(content) {
@@ -406,7 +448,8 @@ export class ZQueryCollection {
   }
 
   empty() {
-    return this.each((_, el) => { el.innerHTML = ''; });
+    // textContent = '' clears all children without invoking the HTML parser
+    return this.each((_, el) => { el.textContent = ''; });
   }
 
   clone(deep = true) {
@@ -416,8 +459,9 @@ export class ZQueryCollection {
   replaceWith(content) {
     return this.each((_, el) => {
       if (typeof content === 'string') {
-        el.insertAdjacentHTML('afterend', content);
-        el.remove();
+        // Auto-morph: diff attributes + children when the tag name matches
+        // instead of destroying and re-creating the element.
+        _morphElement(el, content);
       } else if (content instanceof Node) {
         el.parentNode.replaceChild(content, el);
       }
@@ -503,7 +547,9 @@ export class ZQueryCollection {
 
   toggle(display = '') {
     return this.each((_, el) => {
-      el.style.display = (el.style.display === 'none' || getComputedStyle(el).display === 'none') ? display : 'none';
+      // Check inline style first (cheap) before forcing layout via getComputedStyle
+      const hidden = el.style.display === 'none' || (el.style.display !== '' ? false : getComputedStyle(el).display === 'none');
+      el.style.display = hidden ? display : 'none';
     });
   }
 

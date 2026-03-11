@@ -40,6 +40,7 @@ function _getTemplate() {
  * @param {string} newHTML — The desired HTML string
  */
 export function morph(rootEl, newHTML) {
+  const start = typeof window !== 'undefined' && window.__zqMorphHook ? performance.now() : 0;
   const tpl = _getTemplate();
   tpl.innerHTML = newHTML;
   const newRoot = tpl.content;
@@ -50,6 +51,42 @@ export function morph(rootEl, newHTML) {
   while (newRoot.firstChild) tempDiv.appendChild(newRoot.firstChild);
 
   _morphChildren(rootEl, tempDiv);
+
+  if (start) window.__zqMorphHook(rootEl, performance.now() - start);
+}
+
+/**
+ * Morph a single element in place — diffs attributes and children
+ * without replacing the node reference. Useful for replaceWith-style
+ * updates where you want to keep the element identity when the tag
+ * name matches.
+ *
+ * If the new HTML produces a different tag, falls back to native replace.
+ *
+ * @param {Element} oldEl — The live DOM element to patch
+ * @param {string} newHTML — HTML string for the replacement element
+ * @returns {Element} — The resulting element (same ref if morphed, new if replaced)
+ */
+export function morphElement(oldEl, newHTML) {
+  const start = typeof window !== 'undefined' && window.__zqMorphHook ? performance.now() : 0;
+  const tpl = _getTemplate();
+  tpl.innerHTML = newHTML;
+  const newEl = tpl.content.firstElementChild;
+  if (!newEl) return oldEl;
+
+  // Same tag — morph in place (preserves identity, event listeners, refs)
+  if (oldEl.nodeName === newEl.nodeName) {
+    _morphAttributes(oldEl, newEl);
+    _morphChildren(oldEl, newEl);
+    if (start) window.__zqMorphHook(oldEl, performance.now() - start);
+    return oldEl;
+  }
+
+  // Different tag — must replace (can't morph <div> into <span>)
+  const clone = newEl.cloneNode(true);
+  oldEl.parentNode.replaceChild(clone, oldEl);
+  if (start) window.__zqMorphHook(clone, performance.now() - start);
+  return clone;
 }
 
 /**
@@ -408,10 +445,34 @@ function _syncInputValue(oldEl, newEl) {
 }
 
 /**
- * Get the reconciliation key from a node (z-key attribute).
+ * Get the reconciliation key from a node.
+ *
+ * Priority: z-key attribute → id attribute → data-id / data-key.
+ * Auto-detected keys use a `\0` prefix to avoid collisions with
+ * explicit z-key values.
+ *
+ * This means the LIS-optimised keyed path activates automatically
+ * whenever elements carry `id` or `data-id` / `data-key` attributes
+ * — no extra markup required.
+ *
  * @returns {string|null}
  */
 function _getKey(node) {
   if (node.nodeType !== 1) return null;
-  return node.getAttribute('z-key') || null;
+
+  // Explicit z-key — highest priority
+  const zk = node.getAttribute('z-key');
+  if (zk) return zk;
+
+  // Auto-key: id attribute (unique by spec)
+  if (node.id) return '\0id:' + node.id;
+
+  // Auto-key: data-id or data-key attributes
+  const ds = node.dataset;
+  if (ds) {
+    if (ds.id)  return '\0data-id:'  + ds.id;
+    if (ds.key) return '\0data-key:' + ds.key;
+  }
+
+  return null;
 }

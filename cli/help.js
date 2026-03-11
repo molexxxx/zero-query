@@ -15,6 +15,8 @@ function showHelp() {
       --index, -i <file>        Index HTML file (default: index.html)
       --no-intercept           Disable auto-resolution of zquery.min.js
                                (serve the on-disk vendor copy instead)
+      --bundle, -b             Serve the bundled build (runs bundler first,
+                               serves from dist/server/, auto-rebuilds on save)
 
                                Includes error overlay: syntax errors are
                                caught on save and shown as a full-screen

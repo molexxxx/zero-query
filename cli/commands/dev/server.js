@@ -11,6 +11,7 @@
 const fs   = require('fs');
 const path = require('path');
 const OVERLAY_SCRIPT = require('./overlay');
+const DEVTOOLS_HTML  = require('./devtools');
 
 // ---------------------------------------------------------------------------
 // SSE client pool
@@ -100,6 +101,13 @@ async function createServer({ root, htmlEntry, port, noIntercept }) {
   app.get('/__zq_reload', (req, res) => {
     const sse = res.sse({ keepAlive: 30000, keepAliveComment: 'ping' });
     pool.add(sse);
+  });
+
+  // ---- DevTools panel ----
+  app.get('/_devtools', (req, res) => {
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.set('Cache-Control', 'no-cache');
+    res.send(DEVTOOLS_HTML);
   });
 
   // ---- Auto-resolve zquery.min.js ----
