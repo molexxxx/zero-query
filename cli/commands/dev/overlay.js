@@ -360,6 +360,300 @@ const OVERLAY_SCRIPT = `<script>
   }
 
   connect();
+
+  // =====================================================================
+  // Fetch / $.http Interceptor — pretty console logging
+  // =====================================================================
+  var __zqChannel;
+  try { __zqChannel = new BroadcastChannel('__zq_devtools'); } catch(e) {}
+
+  var __zqRequests = [];
+  var __zqMorphCount = 0;
+  var __zqRenderCount = 0;
+  var __zqReqId = 0;
+  var _origFetch = window.fetch;
+
+  window.fetch = function(input, init) {
+    var url = typeof input === 'string' ? input : (input && input.url ? input.url : String(input));
+    var method = ((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+    var id = ++__zqReqId;
+    var start = performance.now();
+
+    // Skip internal dev-server requests
+    if (url.indexOf('__zq_') !== -1 || url.indexOf('/_devtools') !== -1) {
+      return _origFetch.apply(this, arguments);
+    }
+
+    return _origFetch.apply(this, arguments).then(function(response) {
+      var elapsed = Math.round(performance.now() - start);
+      var status = response.status;
+      var cloned = response.clone();
+
+      cloned.text().then(function(bodyText) {
+        var entry = {
+          id: id, method: method, url: url, status: status,
+          elapsed: elapsed, bodyPreview: bodyText.slice(0, 5000),
+          timestamp: Date.now()
+        };
+        __zqRequests.push(entry);
+        if (__zqRequests.length > 500) __zqRequests.shift();
+        updateDevBar();
+
+        // Pretty console log
+        var isOk = status >= 200 && status < 300;
+        var color = isOk ? '#2ecc71' : status < 400 ? '#f39c12' : '#e74c3c';
+
+        console.groupCollapsed(
+          '%c ' + method + ' %c' + status + '%c ' + url + '  %c' + elapsed + 'ms',
+          'background:' + color + ';color:#fff;padding:2px 6px;border-radius:3px;font-weight:700;font-size:11px',
+          'color:' + color + ';font-weight:700;margin-left:8px',
+          'color:inherit;margin-left:4px',
+          'color:#888;margin-left:8px;font-size:11px'
+        );
+
+        // Response body
+        try {
+          var parsed = JSON.parse(bodyText);
+          console.log('%c Response  ', 'background:#1e1e2e;color:#8be9fd;padding:2px 6px;border-radius:2px;font-weight:600', parsed);
+        } catch(pe) {
+          if (bodyText.length > 0) {
+            console.log('%c Response  ', 'background:#1e1e2e;color:#8be9fd;padding:2px 6px;border-radius:2px;font-weight:600',
+              bodyText.length > 500 ? bodyText.slice(0, 500) + '... (' + bodyText.length + ' chars)' : bodyText);
+          }
+        }
+
+        // Headers
+        try {
+          console.log('%c Headers   ', 'background:#1e1e2e;color:#bd93f9;padding:2px 6px;border-radius:2px;font-weight:600',
+            Object.fromEntries(response.headers.entries()));
+        } catch(he) {}
+
+        // Request body (if sent)
+        if (init && init.body) {
+          try {
+            console.log('%c Request   ', 'background:#1e1e2e;color:#f1fa8c;padding:2px 6px;border-radius:2px;font-weight:600',
+              JSON.parse(init.body));
+          } catch(re) {
+            console.log('%c Request   ', 'background:#1e1e2e;color:#f1fa8c;padding:2px 6px;border-radius:2px;font-weight:600',
+              String(init.body).slice(0, 500));
+          }
+        }
+
+        console.groupEnd();
+
+        // Broadcast to devtools
+        if (__zqChannel) {
+          try { __zqChannel.postMessage({ type: 'http', data: entry }); } catch(ce) {}
+        }
+      }).catch(function() {});
+
+      return response;
+    }, function(err) {
+      var elapsed = Math.round(performance.now() - start);
+      console.groupCollapsed(
+        '%c ' + method + ' %cERR%c ' + url + '  %c' + elapsed + 'ms',
+        'background:#e74c3c;color:#fff;padding:2px 6px;border-radius:3px;font-weight:700;font-size:11px',
+        'color:#e74c3c;font-weight:700;margin-left:8px',
+        'color:inherit;margin-left:4px',
+        'color:#888;margin-left:8px;font-size:11px'
+      );
+      console.error(err);
+      console.groupEnd();
+
+      var entry = { id: id, method: method, url: url, status: 0, elapsed: elapsed, bodyPreview: err.message, timestamp: Date.now() };
+      __zqRequests.push(entry);
+      updateDevBar();
+      if (__zqChannel) {
+        try { __zqChannel.postMessage({ type: 'http', data: entry }); } catch(ce) {}
+      }
+
+      throw err;
+    });
+  };
+
+  // =====================================================================
+  // Morph instrumentation — hook via window.__zqMorphHook (set by diff.js)
+  // =====================================================================
+  window.__zqMorphHook = function(el, elapsed) {
+    __zqMorphCount++;
+    updateDevBar();
+
+    // Console timing for slow morphs (> 4ms)
+    if (elapsed > 4) {
+      console.log(
+        '%c morph %c' + elapsed.toFixed(2) + 'ms%c ' + (el.id || el.tagName.toLowerCase()),
+        'background:#9b59b6;color:#fff;padding:2px 6px;border-radius:3px;font-weight:700;font-size:11px',
+        'color:' + (elapsed > 16 ? '#e74c3c' : '#f39c12') + ';font-weight:700;margin-left:8px',
+        'color:#888;margin-left:4px'
+      );
+    }
+
+    // Broadcast to devtools
+    if (__zqChannel) {
+      try {
+        __zqChannel.postMessage({
+          type: 'morph-detail',
+          data: { target: el.id || el.tagName.toLowerCase(), elapsed: elapsed, timestamp: Date.now() }
+        });
+      } catch(ce) {}
+    }
+  };
+
+  // =====================================================================
+  // Render instrumentation — hook for first-renders & route swaps
+  // =====================================================================
+  window.__zqRenderHook = function(el, elapsed, kind, name) {
+    __zqRenderCount++;
+    __zqMorphCount++; // count renders in the morph total for the toolbar
+    updateDevBar();
+
+    // Console log for route/mount renders
+    var label = kind === 'route' ? ' route ' : ' mount ';
+    var bg = kind === 'route' ? '#d29922' : '#3fb950';
+    console.log(
+      '%c' + label + '%c' + elapsed.toFixed(2) + 'ms%c ' + (name || el.id || el.tagName.toLowerCase()),
+      'background:' + bg + ';color:#fff;padding:2px 6px;border-radius:3px;font-weight:700;font-size:11px',
+      'color:' + (elapsed > 16 ? '#e74c3c' : '#888') + ';font-weight:700;margin-left:8px',
+      'color:#888;margin-left:4px'
+    );
+
+    // Broadcast to devtools
+    if (__zqChannel) {
+      try {
+        __zqChannel.postMessage({
+          type: 'render-detail',
+          data: { target: name || el.id || el.tagName.toLowerCase(), elapsed: elapsed, kind: kind, timestamp: Date.now() }
+        });
+      } catch(ce) {}
+    }
+  };
+
+  // =====================================================================
+  // Dev Toolbar — floating bar with DOM viewer button & request counter
+  // =====================================================================
+  var devBar;
+
+  function createDevBar() {
+    devBar = document.createElement('div');
+    devBar.id = '__zq_devbar';
+    devBar.setAttribute('style',
+      'position:fixed;bottom:12px;right:12px;z-index:2147483646;' +
+      'display:flex;align-items:center;gap:6px;' +
+      'background:rgba(22,27,34,0.92);border:1px solid rgba(48,54,61,0.8);' +
+      'border-radius:8px;padding:4px 6px;backdrop-filter:blur(8px);' +
+      'font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;' +
+      'font-size:11px;color:#8b949e;user-select:none;cursor:default;' +
+      'box-shadow:0 4px 12px rgba(0,0,0,0.4);'
+    );
+    devBar.innerHTML =
+      '<span style="color:#58a6ff;font-weight:700;padding:0 4px;font-size:10px;letter-spacing:.5px">zQ</span>' +
+      '<span id="__zq_bar_reqs" title="Network requests" style="padding:2px 6px;border-radius:4px;' +
+        'background:rgba(88,166,255,0.1);color:#58a6ff;cursor:pointer;font-size:10px;font-weight:600;">0 req</span>' +
+      '<span id="__zq_bar_morphs" title="Render operations" style="padding:2px 6px;border-radius:4px;' +
+        'background:rgba(188,140,255,0.1);color:#bc8cff;cursor:pointer;font-size:10px;font-weight:600;">0 render</span>' +
+      '<button id="__zq_bar_dom" title="Open DevTools (/_devtools)" style="' +
+        'padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;' +
+        'background:rgba(63,185,80,0.15);color:#3fb950;border:1px solid rgba(63,185,80,0.3);' +
+        'cursor:pointer;font-family:inherit;transition:all .15s;' +
+      '">DOM</button>' +
+      '<button id="__zq_bar_close" title="Close toolbar" style="' +
+        'padding:0 4px;color:#484f58;cursor:pointer;font-size:14px;border:none;' +
+        'background:none;font-family:inherit;line-height:1;' +
+      '">&times;</button>';
+
+    document.body.appendChild(devBar);
+
+    // Check if we're inside a devtools split-view iframe
+    function isInSplitFrame() {
+      try { return window.parent !== window && window.parent.document.getElementById('app-frame'); }
+      catch(e) { return false; }
+    }
+
+    // Switch tab in devtools (works for both split iframe and popup)
+    function switchDevTab(tab) {
+      if (__zqChannel) {
+        __zqChannel.postMessage({ type: 'switch-tab', tab: tab });
+      }
+    }
+
+    // Req counter → Network tab
+    document.getElementById('__zq_bar_reqs').addEventListener('click', function() {
+      if (isInSplitFrame()) {
+        switchDevTab('network');
+      } else {
+        openDevToolsPopup('network');
+      }
+    });
+
+    // Render counter → Performance tab
+    document.getElementById('__zq_bar_morphs').addEventListener('click', function() {
+      if (isInSplitFrame()) {
+        switchDevTab('perf');
+      } else {
+        openDevToolsPopup('perf');
+      }
+    });
+
+    // DOM button → Elements tab (in split) or open popup
+    var __zqPopup = null;
+    function openDevToolsPopup(tab) {
+      // If popup is already open, just switch the tab via BroadcastChannel
+      if (__zqPopup && !__zqPopup.closed) {
+        switchDevTab(tab);
+        __zqPopup.focus();
+        return;
+      }
+      var w = 700, h = 600;
+      var left = window.screenX + window.outerWidth - w - 20;
+      var top = window.screenY + 60;
+      var url = '/_devtools' + (tab ? '#' + tab : '');
+      __zqPopup = window.open(url, '__zq_devtools',
+        'width=' + w + ',height=' + h + ',left=' + left + ',top=' + top +
+        ',resizable=yes,scrollbars=yes');
+    }
+
+    document.getElementById('__zq_bar_dom').addEventListener('click', function() {
+      if (isInSplitFrame()) {
+        switchDevTab('dom');
+      } else {
+        openDevToolsPopup('dom');
+      }
+    });
+
+    // Close button
+    document.getElementById('__zq_bar_close').addEventListener('click', function() {
+      devBar.style.display = 'none';
+    });
+
+    // Hover effects
+    document.getElementById('__zq_bar_dom').addEventListener('mouseover', function() {
+      this.style.background = 'rgba(63,185,80,0.3)';
+    });
+    document.getElementById('__zq_bar_dom').addEventListener('mouseout', function() {
+      this.style.background = 'rgba(63,185,80,0.15)';
+    });
+  }
+
+  function updateDevBar() {
+    if (!devBar) return;
+    var reqEl = document.getElementById('__zq_bar_reqs');
+    var morphEl = document.getElementById('__zq_bar_morphs');
+    if (reqEl) reqEl.textContent = __zqRequests.length + ' req';
+    if (morphEl) morphEl.textContent = __zqMorphCount + ' render';
+  }
+
+  // Expose for devtools popup
+  window.__zqDevTools = {
+    get requests() { return __zqRequests; },
+    get morphCount() { return __zqMorphCount; },
+    get renderCount() { return __zqRenderCount; }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', createDevBar);
+  } else {
+    createDevBar();
+  }
 })();
 </script>`;
 

@@ -356,10 +356,57 @@ describe('ZQueryCollection', () => {
       expect(col.html()).toBe('<b>bold</b>');
     });
 
+    it('html() auto-morphs when element has existing children', () => {
+      const main = document.querySelector('#main');
+      main.innerHTML = '<p id="preserved">old text</p>';
+      const ref = main.children[0];  // grab DOM reference
+      const col = queryAll('#main');
+      col.html('<p id="preserved">new text</p>');
+      // Same DOM node preserved — morph, not innerHTML replace
+      expect(main.children[0]).toBe(ref);
+      expect(main.children[0].textContent).toBe('new text');
+    });
+
+    it('html() uses innerHTML for empty elements (fast first-paint)', () => {
+      const main = document.querySelector('#main');
+      main.innerHTML = '';  // make it empty
+      const col = queryAll('#main');
+      col.html('<p id="fresh">hello</p>');
+      expect(main.innerHTML).toBe('<p id="fresh">hello</p>');
+    });
+
+    it('empty().html() forces raw innerHTML (opt-out of morph)', () => {
+      const main = document.querySelector('#main');
+      main.innerHTML = '<p id="old">will be destroyed</p>';
+      const ref = main.children[0];
+      const col = queryAll('#main');
+      col.empty().html('<p id="old">replaced</p>');
+      // NOT the same node — empty() cleared children, so html() used innerHTML
+      expect(main.children[0]).not.toBe(ref);
+      expect(main.children[0].textContent).toBe('replaced');
+    });
+
     it('text get/set', () => {
       const col = queryAll('.text').eq(0);
       col.text('Changed');
       expect(col.text()).toBe('Changed');
+    });
+
+    it('morph() diffs content instead of replacing', () => {
+      const main = document.querySelector('#main');
+      main.innerHTML = '<p id="keep">old</p>';
+      const ref = main.children[0];
+      const col = queryAll('#main');
+      col.morph('<p id="keep">new</p>');
+      // Same DOM node preserved (morph, not innerHTML)
+      expect(main.children[0]).toBe(ref);
+      expect(main.children[0].textContent).toBe('new');
+    });
+
+    it('morph() is chainable', () => {
+      const col = queryAll('#main');
+      const ret = col.morph('<p>m</p>');
+      expect(ret).toBe(col);
     });
   });
 
@@ -827,6 +874,24 @@ describe('ZQueryCollection — replaceWith()', () => {
     queryAll('#old').replaceWith('<span id="new">new</span>');
     expect(document.querySelector('#old')).toBeNull();
     expect(document.querySelector('#new')).not.toBeNull();
+  });
+
+  it('auto-morphs when tag name matches (preserves identity)', () => {
+    document.body.innerHTML = '<div id="container"><p id="target" class="old">old text</p></div>';
+    const target = document.querySelector('#target');
+    queryAll('#target').replaceWith('<p id="target" class="new">new text</p>');
+    // Same DOM node — morphed, not replaced
+    expect(document.querySelector('#target')).toBe(target);
+    expect(target.className).toBe('new');
+    expect(target.textContent).toBe('new text');
+  });
+
+  it('replaces when tag name differs', () => {
+    document.body.innerHTML = '<div id="container"><p id="old">old</p></div>';
+    const oldRef = document.querySelector('#old');
+    queryAll('#old').replaceWith('<section id="replaced">new</section>');
+    expect(document.querySelector('#replaced')).not.toBe(oldRef);
+    expect(document.querySelector('#replaced').tagName).toBe('SECTION');
   });
 });
 

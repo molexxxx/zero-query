@@ -224,7 +224,8 @@ $('#cart-count').text('3');
 
 | Method | Signature | Returns | Description |
 | --- | --- | --- | --- |
-| `html` | `html(content?)` | `string \| this` | Get/set innerHTML |
+| `html` | `html(content?)` | `string \| this` | Get innerHTML, or set with **auto-morph**: diffs existing children via the morph engine (LIS keyed reconciliation, `isEqualNode()` bail-outs). Empty elements use raw `innerHTML` for fast first-paint. Use `empty().html()` to force raw innerHTML. |
+| `morph` | `morph(content)` | `this` | Always morph — run content through the diff engine regardless of whether the element already has children |
 | `text` | `text(content?)` | `string \| this` | Get/set textContent |
 | `val` | `val(value?)` | `string \| this` | Get/set input/textarea value |
 | `append` | `append(content)` | `this` | Append HTML string, Node, or ZQueryCollection |
@@ -235,7 +236,7 @@ $('#cart-count').text('3');
 | `remove` | `remove()` | `this` | Remove all elements from DOM |
 | `empty` | `empty()` | `this` | Clear innerHTML of all elements |
 | `clone` | `clone(deep = true)` | `ZQueryCollection` | Deep-clone all elements |
-| `replaceWith` | `replaceWith(content)` | `this` | Replace each element with new content |
+| `replaceWith` | `replaceWith(content)` | `this` | Replace each element with new content. When given an HTML string with the same tag, **auto-morphs** the element in place (preserves identity). Falls back to full replacement when the tag differs. |
 | `appendTo` | `appendTo(target)` | `this` | Insert every element at the end of the target |
 | `prependTo` | `prependTo(target)` | `this` | Insert every element at the beginning of the target |
 | `insertAfter` | `insertAfter(target)` | `this` | Insert every element after the target |
@@ -1536,6 +1537,62 @@ $.morph($.id('list'), '<li>Updated</li><li>Items</li>');
 | `rootEl` | `Element` | The live DOM container to patch |
 | `newHTML` | `string` | The desired HTML string |
 
+### `morphElement(oldEl, newHTML)`
+
+Morph a single element **in place** — diffs attributes and children without replacing the node reference. When the tag name matches, the element is patched (preserving its identity, event listeners, and references). When the tag name differs, the element is replaced.
+
+Used internally by `replaceWith()` for automatic DOM diffing.
+
+```js
+// Morph a card’s content without losing event listeners
+$.morphElement($.id('user-card'), '<div id="user-card" class="updated">New info</div>');
+```
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `oldEl` | `Element` | The live DOM element to patch |
+| `newHTML` | `string` | HTML string for the replacement element |
+| **Returns** | `Element` | The resulting element (same ref if morphed, new ref if tag changed) |
+
+### Auto-Morph — Automatic DOM Diffing via `$()`
+
+The `$()` collection methods **automatically route through the diff engine** when updating existing DOM, using the same strategy as the component system:
+
+| Method | Behavior |
+| --- | --- |
+| `.html(content)` | **Auto-morphs** when the element already has children. Empty elements use raw `innerHTML` for fast first-paint. |
+| `.replaceWith(content)` | **Auto-morphs** when given an HTML string with the same tag name. Falls back to full replacement when the tag differs or content is a Node. |
+| `.morph(content)` | **Always morphs** — explicit call, skips the empty-element check. |
+
+This means every `$('#app').html(newContent)` automatically gets LIS-keyed reconciliation, `isEqualNode()` fast-skips, and attribute diffing — no extra method calls required.
+
+```js
+// Auto-morph: element has children → diff engine patches in place
+$('#user-list').html(updatedListHTML);
+
+// Auto-morph: same tag → element identity preserved
+$('#card').replaceWith('<div id="card" class="active">Updated</div>');
+
+// Force raw innerHTML: empty first, then set
+$('#app').empty().html(freshContent);
+
+// Explicit morph: always use diff engine
+$('#app').morph(newContent);
+```
+
+#### Auto-Key Detection
+
+The LIS-keyed reconciliation path activates automatically whenever elements carry `id`, `data-id`, or `data-key` attributes — no `z-key` required:
+
+| Attribute | Priority | Example |
+| --- | --- | --- |
+| `z-key` | Highest | `<li z-key="abc">` |
+| `id` | Auto-detected | `<div id="user-42">` |
+| `data-id` | Auto-detected | `<tr data-id="row-7">` |
+| `data-key` | Auto-detected | `<card data-key="item-3">` |
+
+> **Explicit `z-key` takes priority.** Auto-detected keys use an internal prefix to avoid collisions with explicit keys.
+
 #### Morph Engine Optimizations
 
 | Optimization | Description |
@@ -2253,7 +2310,7 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
 | `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. Uses LIS-based keyed reconciliation, `isEqualNode()` bail-outs, and `z-skip` opt-out. See [z-key](#z-key--keyed-reconciliation) and [z-skip](#z-skip--opt-out-of-diffing). |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
-| `$.version` | Library version string (e.g. `'0.8.1'`). |
+| `$.version` | Library version string (e.g. `'0.8.2'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |

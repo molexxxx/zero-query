@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.8.1
+ * zQuery (zeroQuery) v0.8.2
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -355,6 +355,7 @@ function effect(fn) {
  * into a full jQuery-like chainable wrapper with modern APIs.
  */
 
+
 // ---------------------------------------------------------------------------
 // ZQueryCollection — wraps an array of elements with chainable methods
 // ---------------------------------------------------------------------------
@@ -573,21 +574,46 @@ class ZQueryCollection {
   // --- Classes -------------------------------------------------------------
 
   addClass(...names) {
+    // Fast path: single class, no spaces — avoids flatMap + regex split allocation
+    if (names.length === 1 && names[0].indexOf(' ') === -1) {
+      const c = names[0];
+      for (let i = 0; i < this.elements.length; i++) this.elements[i].classList.add(c);
+      return this;
+    }
     const classes = names.flatMap(n => n.split(/\s+/));
-    return this.each((_, el) => el.classList.add(...classes));
+    for (let i = 0; i < this.elements.length; i++) this.elements[i].classList.add(...classes);
+    return this;
   }
 
   removeClass(...names) {
+    if (names.length === 1 && names[0].indexOf(' ') === -1) {
+      const c = names[0];
+      for (let i = 0; i < this.elements.length; i++) this.elements[i].classList.remove(c);
+      return this;
+    }
     const classes = names.flatMap(n => n.split(/\s+/));
-    return this.each((_, el) => el.classList.remove(...classes));
+    for (let i = 0; i < this.elements.length; i++) this.elements[i].classList.remove(...classes);
+    return this;
   }
 
   toggleClass(...args) {
     const force = typeof args[args.length - 1] === 'boolean' ? args.pop() : undefined;
+    // Fast path: single class, no spaces
+    if (args.length === 1 && args[0].indexOf(' ') === -1) {
+      const c = args[0];
+      for (let i = 0; i < this.elements.length; i++) {
+        force !== undefined ? this.elements[i].classList.toggle(c, force) : this.elements[i].classList.toggle(c);
+      }
+      return this;
+    }
     const classes = args.flatMap(n => n.split(/\s+/));
-    return this.each((_, el) => {
-      classes.forEach(c => force !== undefined ? el.classList.toggle(c, force) : el.classList.toggle(c));
-    });
+    for (let i = 0; i < this.elements.length; i++) {
+      const el = this.elements[i];
+      for (let j = 0; j < classes.length; j++) {
+        force !== undefined ? el.classList.toggle(classes[j], force) : el.classList.toggle(classes[j]);
+      }
+    }
+    return this;
   }
 
   hasClass(name) {
@@ -623,7 +649,8 @@ class ZQueryCollection {
 
   css(props) {
     if (typeof props === 'string') {
-      return getComputedStyle(this.first())[props];
+      const el = this.first();
+      return el ? getComputedStyle(el)[props] : undefined;
     }
     return this.each((_, el) => Object.assign(el.style, props));
   }
@@ -699,7 +726,21 @@ class ZQueryCollection {
 
   html(content) {
     if (content === undefined) return this.first()?.innerHTML;
-    return this.each((_, el) => { el.innerHTML = content; });
+    // Auto-morph: if the element already has children, use the diff engine
+    // to patch the DOM (preserves focus, scroll, state, keyed reorder via LIS).
+    // Empty elements get raw innerHTML for fast first-paint — same strategy
+    // the component system uses (first render = innerHTML, updates = morph).
+    return this.each((_, el) => {
+      if (el.childNodes.length > 0) {
+        _morph(el, content);
+      } else {
+        el.innerHTML = content;
+      }
+    });
+  }
+
+  morph(content) {
+    return this.each((_, el) => { _morph(el, content); });
   }
 
   text(content) {
@@ -756,7 +797,8 @@ class ZQueryCollection {
   }
 
   empty() {
-    return this.each((_, el) => { el.innerHTML = ''; });
+    // textContent = '' clears all children without invoking the HTML parser
+    return this.each((_, el) => { el.textContent = ''; });
   }
 
   clone(deep = true) {
@@ -766,8 +808,9 @@ class ZQueryCollection {
   replaceWith(content) {
     return this.each((_, el) => {
       if (typeof content === 'string') {
-        el.insertAdjacentHTML('afterend', content);
-        el.remove();
+        // Auto-morph: diff attributes + children when the tag name matches
+        // instead of destroying and re-creating the element.
+        _morphElement(el, content);
       } else if (content instanceof Node) {
         el.parentNode.replaceChild(content, el);
       }
@@ -853,7 +896,9 @@ class ZQueryCollection {
 
   toggle(display = '') {
     return this.each((_, el) => {
-      el.style.display = (el.style.display === 'none' || getComputedStyle(el).display === 'none') ? display : 'none';
+      // Check inline style first (cheap) before forcing layout via getComputedStyle
+      const hidden = el.style.display === 'none' || (el.style.display !== '' ? false : getComputedStyle(el).display === 'none');
+      el.style.display = hidden ? display : 'none';
     });
   }
 
@@ -2053,6 +2098,7 @@ function _getTemplate() {
  * @param {string} newHTML — The desired HTML string
  */
 function morph(rootEl, newHTML) {
+  const start = typeof window !== 'undefined' && window.__zqMorphHook ? performance.now() : 0;
   const tpl = _getTemplate();
   tpl.innerHTML = newHTML;
   const newRoot = tpl.content;
@@ -2063,6 +2109,42 @@ function morph(rootEl, newHTML) {
   while (newRoot.firstChild) tempDiv.appendChild(newRoot.firstChild);
 
   _morphChildren(rootEl, tempDiv);
+
+  if (start) window.__zqMorphHook(rootEl, performance.now() - start);
+}
+
+/**
+ * Morph a single element in place — diffs attributes and children
+ * without replacing the node reference. Useful for replaceWith-style
+ * updates where you want to keep the element identity when the tag
+ * name matches.
+ *
+ * If the new HTML produces a different tag, falls back to native replace.
+ *
+ * @param {Element} oldEl — The live DOM element to patch
+ * @param {string} newHTML — HTML string for the replacement element
+ * @returns {Element} — The resulting element (same ref if morphed, new if replaced)
+ */
+function morphElement(oldEl, newHTML) {
+  const start = typeof window !== 'undefined' && window.__zqMorphHook ? performance.now() : 0;
+  const tpl = _getTemplate();
+  tpl.innerHTML = newHTML;
+  const newEl = tpl.content.firstElementChild;
+  if (!newEl) return oldEl;
+
+  // Same tag — morph in place (preserves identity, event listeners, refs)
+  if (oldEl.nodeName === newEl.nodeName) {
+    _morphAttributes(oldEl, newEl);
+    _morphChildren(oldEl, newEl);
+    if (start) window.__zqMorphHook(oldEl, performance.now() - start);
+    return oldEl;
+  }
+
+  // Different tag — must replace (can't morph <div> into <span>)
+  const clone = newEl.cloneNode(true);
+  oldEl.parentNode.replaceChild(clone, oldEl);
+  if (start) window.__zqMorphHook(clone, performance.now() - start);
+  return clone;
 }
 
 /**
@@ -2421,12 +2503,36 @@ function _syncInputValue(oldEl, newEl) {
 }
 
 /**
- * Get the reconciliation key from a node (z-key attribute).
+ * Get the reconciliation key from a node.
+ *
+ * Priority: z-key attribute → id attribute → data-id / data-key.
+ * Auto-detected keys use a `\0` prefix to avoid collisions with
+ * explicit z-key values.
+ *
+ * This means the LIS-optimised keyed path activates automatically
+ * whenever elements carry `id` or `data-id` / `data-key` attributes
+ * — no extra markup required.
+ *
  * @returns {string|null}
  */
 function _getKey(node) {
   if (node.nodeType !== 1) return null;
-  return node.getAttribute('z-key') || null;
+
+  // Explicit z-key — highest priority
+  const zk = node.getAttribute('z-key');
+  if (zk) return zk;
+
+  // Auto-key: id attribute (unique by spec)
+  if (node.id) return '\0id:' + node.id;
+
+  // Auto-key: data-id or data-key attributes
+  const ds = node.dataset;
+  if (ds) {
+    if (ds.id)  return '\0data-id:'  + ds.id;
+    if (ds.key) return '\0data-key:' + ds.key;
+  }
+
+  return null;
 }
 
 // --- src/component.js --------------------------------------------
@@ -2992,8 +3098,10 @@ class Component {
 
     // Update DOM via morphing (diffing) — preserves unchanged nodes
     // First render uses innerHTML for speed; subsequent renders morph.
+    const _renderStart = typeof window !== 'undefined' && (window.__zqMorphHook || window.__zqRenderHook) ? performance.now() : 0;
     if (!this._mounted) {
       this._el.innerHTML = html;
+      if (_renderStart && window.__zqRenderHook) window.__zqRenderHook(this._el, performance.now() - _renderStart, 'mount', this._def._name);
     } else {
       morph(this._el, html);
     }
@@ -3687,6 +3795,36 @@ function getRegistry() {
   return Object.fromEntries(_registry);
 }
 
+/**
+ * Pre-load a component's external templates and styles so the next mount
+ * renders synchronously (no blank flash while fetching).
+ * Safe to call multiple times — skips if already loaded.
+ * @param {string} name — registered component name
+ * @returns {Promise<void>}
+ */
+async function prefetch(name) {
+  const def = _registry.get(name);
+  if (!def) return;
+
+  // Load templateUrl, styleUrl, and normalize pages config
+  if ((def.templateUrl && !def._templateLoaded) ||
+      (def.styleUrl && !def._styleLoaded) ||
+      (def.pages && !def._pagesNormalized)) {
+    await Component.prototype._loadExternals.call({ _def: def });
+  }
+
+  // For pages-based components, prefetch ALL page templates so any
+  // active page renders instantly on mount.
+  if (def._pageUrls && def._externalTemplates) {
+    const missing = Object.entries(def._pageUrls)
+      .filter(([id]) => !(id in def._externalTemplates));
+    if (missing.length) {
+      const results = await Promise.all(missing.map(([, url]) => _fetchResource(url)));
+      missing.forEach(([id], i) => { def._externalTemplates[id] = results[i]; });
+    }
+  }
+}
+
 
 // ---------------------------------------------------------------------------
 // Global stylesheet loader
@@ -4152,6 +4290,12 @@ class Router {
 
     // Mount component into outlet
     if (this._el && matched.component) {
+      // Pre-load external templates/styles so the mount renders synchronously
+      // (keeps old content visible during the fetch instead of showing blank)
+      if (typeof matched.component === 'string') {
+        await prefetch(matched.component);
+      }
+
       // Destroy previous
       if (this._instance) {
         this._instance.destroy();
@@ -4159,6 +4303,7 @@ class Router {
       }
 
       // Create container
+      const _routeStart = typeof window !== 'undefined' && window.__zqRenderHook ? performance.now() : 0;
       this._el.innerHTML = '';
 
       // Pass route params and query as props
@@ -4169,10 +4314,12 @@ class Router {
         const container = document.createElement(matched.component);
         this._el.appendChild(container);
         this._instance = mount(container, matched.component, props);
+        if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', matched.component);
       }
       // If component is a render function
       else if (typeof matched.component === 'function') {
         this._el.innerHTML = matched.component(to);
+        if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', to);
       }
     }
 
@@ -4953,7 +5100,8 @@ $.getInstance = getInstance;
 $.destroy     = destroy;
 $.components  = getRegistry;
 $.style       = style;
-$.morph       = morph;
+$.morph        = morph;
+$.morphElement = morphElement;
 $.safeEval    = safeEval;
 
 // --- Router ----------------------------------------------------------------
@@ -4999,8 +5147,8 @@ $.ZQueryError = ZQueryError;
 $.ErrorCode   = ErrorCode;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.8.1';
-$.libSize = '~86 KB';
+$.version = '0.8.2';
+$.libSize = '~88 KB';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.8.1
+ * @version 0.8.2
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -112,6 +112,7 @@ export {
 
 export {
   morph,
+  morphElement,
   safeEval,
   EventModifier,
 } from './types/misc';
@@ -133,7 +134,7 @@ import type {
   StorageWrapper, EventBus,
 } from './types/utils';
 import type { onError, ZQueryError, ErrorCode } from './types/errors';
-import type { morph, safeEval } from './types/misc';
+import type { morph, morphElement, safeEval } from './types/misc';
 
 /**
  * Main selector / DOM-ready function — always returns a `ZQueryCollection` (like jQuery).
@@ -222,6 +223,8 @@ interface ZQueryStatic {
   components: typeof getRegistry;
   style: typeof style;
   morph: typeof morph;
+  /** Morph a single element in place — preserves identity when tag name matches. */
+  morphElement: typeof morphElement;
   safeEval: typeof safeEval;
 
   // -- Router --------------------------------------------------------------

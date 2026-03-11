@@ -15,7 +15,7 @@ import { component, mount, mountAll, getInstance, destroy, getRegistry, style } 
 import { createRouter, getRouter } from './src/router.js';
 import { createStore, getStore } from './src/store.js';
 import { http } from './src/http.js';
-import { morph } from './src/diff.js';
+import { morph, morphElement } from './src/diff.js';
 import { safeEval } from './src/expression.js';
 import {
   debounce, throttle, pipe, once, sleep,
@@ -101,7 +101,8 @@ $.getInstance = getInstance;
 $.destroy     = destroy;
 $.components  = getRegistry;
 $.style       = style;
-$.morph       = morph;
+$.morph        = morph;
+$.morphElement = morphElement;
 $.safeEval    = safeEval;
 
 // --- Router ----------------------------------------------------------------

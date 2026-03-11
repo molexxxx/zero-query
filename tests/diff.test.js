@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { morph } from '../src/diff.js';
+import { morph, morphElement } from '../src/diff.js';
 
 
 // ---------------------------------------------------------------------------
@@ -424,5 +424,102 @@ describe('morph — edge cases', () => {
   it('handles empty string to empty string', () => {
     const root = morphAndGet('', '');
     expect(root.childNodes.length).toBe(0);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Auto-keyed reconciliation (id / data-id / data-key)
+// ---------------------------------------------------------------------------
+
+describe('morph — auto-keyed via id attribute', () => {
+  it('reorders elements by id without z-key', () => {
+    const root = el(
+      '<div id="a">A</div><div id="b">B</div><div id="c">C</div>'
+    );
+    const refA = root.children[0];
+    const refB = root.children[1];
+    morph(root, '<div id="c">C</div><div id="a">A</div><div id="b">B</div>');
+    // Node identity preserved — same DOM nodes, different order
+    expect(root.children[1]).toBe(refA);
+    expect(root.children[2]).toBe(refB);
+    expect([...root.children].map(c => c.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('reorders elements by data-id without z-key', () => {
+    const root = el(
+      '<li data-id="1">One</li><li data-id="2">Two</li><li data-id="3">Three</li>'
+    );
+    const ref1 = root.children[0];
+    morph(root, '<li data-id="3">Three</li><li data-id="1">One</li><li data-id="2">Two</li>');
+    expect(root.children[1]).toBe(ref1);
+    expect([...root.children].map(c => c.dataset.id)).toEqual(['3', '1', '2']);
+  });
+
+  it('reorders elements by data-key without z-key', () => {
+    const root = el(
+      '<span data-key="x">X</span><span data-key="y">Y</span>'
+    );
+    const refX = root.children[0];
+    morph(root, '<span data-key="y">Y</span><span data-key="x">X</span>');
+    expect(root.children[1]).toBe(refX);
+  });
+
+  it('removes auto-keyed elements not in new tree', () => {
+    const root = morphAndGet(
+      '<p id="a">A</p><p id="b">B</p><p id="c">C</p>',
+      '<p id="a">A</p><p id="c">C</p>'
+    );
+    expect(root.children.length).toBe(2);
+    expect([...root.children].map(c => c.id)).toEqual(['a', 'c']);
+  });
+
+  it('inserts new auto-keyed elements', () => {
+    const root = morphAndGet(
+      '<p id="a">A</p><p id="c">C</p>',
+      '<p id="a">A</p><p id="b">B</p><p id="c">C</p>'
+    );
+    expect(root.children.length).toBe(3);
+    expect([...root.children].map(c => c.id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// morphElement — single-element morph
+// ---------------------------------------------------------------------------
+
+describe('morphElement', () => {
+  it('morphs attributes and children, preserving identity', () => {
+    const root = el('<div class="old"><span>old</span></div>');
+    const target = root.children[0];
+    const result = morphElement(target, '<div class="new"><span>new</span></div>');
+    expect(result).toBe(target);  // same node
+    expect(target.className).toBe('new');
+    expect(target.children[0].textContent).toBe('new');
+  });
+
+  it('replaces element when tag name differs', () => {
+    const root = el('<div>old</div>');
+    const target = root.children[0];
+    const result = morphElement(target, '<section>new</section>');
+    expect(result).not.toBe(target);
+    expect(result.tagName).toBe('SECTION');
+    expect(result.textContent).toBe('new');
+    expect(root.children[0]).toBe(result);
+  });
+
+  it('returns original element when nothing changes', () => {
+    const root = el('<p class="x">same</p>');
+    const target = root.children[0];
+    const result = morphElement(target, '<p class="x">same</p>');
+    expect(result).toBe(target);
+  });
+
+  it('handles empty new HTML gracefully', () => {
+    const root = el('<div>content</div>');
+    const target = root.children[0];
+    const result = morphElement(target, '');
+    expect(result).toBe(target);  // no-op on empty
   });
 });

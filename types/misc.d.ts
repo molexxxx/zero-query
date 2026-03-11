@@ -14,11 +14,24 @@
  * positions, video playback, and other live DOM state.
  *
  * Use `z-key="uniqueId"` attributes on list items for keyed reconciliation.
+ * Elements with `id`, `data-id`, or `data-key` attributes are auto-keyed.
  *
  * @param rootEl The live DOM container to patch.
  * @param newHTML The desired HTML string.
  */
 export function morph(rootEl: Element, newHTML: string): void;
+
+/**
+ * Morph a single element in place — diffs attributes and children
+ * without replacing the node reference. If the tag name matches, the
+ * element is patched in place (preserving identity). If the tag differs,
+ * the element is replaced.
+ *
+ * @param oldEl The live DOM element to patch.
+ * @param newHTML HTML string for the replacement element.
+ * @returns The resulting element (same ref if morphed, new if replaced).
+ */
+export function morphElement(oldEl: Element, newHTML: string): Element;
 
 // ---------------------------------------------------------------------------
 // Safe Expression Evaluator

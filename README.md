@@ -253,7 +253,7 @@ location / {
 | `$.ready` `$.on` `$.off` | DOM ready, global event delegation & direct listeners |
 | `$.fn` | Collection prototype (extend it) |
 | `$.component` `$.mount` `$.mountAll` `$.getInstance` `$.destroy` `$.components` | Component system |
-| `$.morph` | DOM morphing engine — LIS-based keyed reconciliation, `isEqualNode()` bail-outs, `z-skip` opt-out. Patches existing DOM to match new HTML without destroying unchanged nodes |
+| `$.morph` `$.morphElement` | DOM morphing engine — LIS-based keyed reconciliation, `isEqualNode()` bail-outs, `z-skip` opt-out. Patches existing DOM to match new HTML without destroying unchanged nodes. Auto-key detection (`id`, `data-id`, `data-key`) — no `z-key` required. `$().html()` and `$().replaceWith()` auto-morph existing content; `$().morph()` for explicit morph |
 | `$.safeEval` | CSP-safe expression evaluator (replaces `eval` / `new Function`) |
 | `$.style` | Dynamically load global stylesheet file(s) at runtime |
 | `$.router` `$.getRouter` | SPA router |
