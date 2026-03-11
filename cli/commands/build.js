@@ -9,6 +9,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { minify, sizeKB } = require('../utils');
 
 function buildLibrary() {
@@ -62,6 +63,105 @@ function buildLibrary() {
   console.log(`  ✓ dist/zquery.js (${sizeKB(fs.readFileSync(OUT_FILE))} KB)`);
   console.log(`  ✓ dist/zquery.min.js (${sizeKB(fs.readFileSync(MIN_FILE))} KB)`);
   console.log(`  Done in ${elapsed}ms\n`);
+
+  // --- Create dist/zquery.dist.zip -----------------------------------------
+  const root = process.cwd();
+  const zipFiles = [
+    { src: OUT_FILE,                        name: 'zquery.js' },
+    { src: MIN_FILE,                        name: 'zquery.min.js' },
+    { src: path.join(root, 'LICENSE'),      name: 'LICENSE' },
+    { src: path.join(root, 'API.md'),       name: 'API.md' },
+    { src: path.join(root, 'README.md'),    name: 'README.md' },
+  ];
+
+  // Minimal ZIP builder (deflate via zlib, no external deps)
+  function buildZip(entries) {
+    const localHeaders = [];
+    const centralHeaders = [];
+    let offset = 0;
+
+    for (const { name, data } of entries) {
+      const nameBytes = Buffer.from(name, 'utf-8');
+      const compressed = zlib.deflateRawSync(data, { level: 9 });
+      const crc = crc32(data);
+      const compLen = compressed.length;
+      const uncompLen = data.length;
+
+      // Local file header
+      const local = Buffer.alloc(30 + nameBytes.length);
+      local.writeUInt32LE(0x04034b50, 0);   // signature
+      local.writeUInt16LE(20, 4);            // version needed
+      local.writeUInt16LE(0, 6);             // flags
+      local.writeUInt16LE(8, 8);             // compression: deflate
+      local.writeUInt16LE(0, 10);            // mod time
+      local.writeUInt16LE(0, 12);            // mod date
+      local.writeUInt32LE(crc, 14);
+      local.writeUInt32LE(compLen, 18);
+      local.writeUInt32LE(uncompLen, 22);
+      local.writeUInt16LE(nameBytes.length, 26);
+      local.writeUInt16LE(0, 28);            // extra field length
+      nameBytes.copy(local, 30);
+
+      localHeaders.push(Buffer.concat([local, compressed]));
+
+      // Central directory header
+      const central = Buffer.alloc(46 + nameBytes.length);
+      central.writeUInt32LE(0x02014b50, 0);
+      central.writeUInt16LE(20, 4);          // version made by
+      central.writeUInt16LE(20, 6);          // version needed
+      central.writeUInt16LE(0, 8);           // flags
+      central.writeUInt16LE(8, 10);          // compression: deflate
+      central.writeUInt16LE(0, 12);          // mod time
+      central.writeUInt16LE(0, 14);          // mod date
+      central.writeUInt32LE(crc, 16);
+      central.writeUInt32LE(compLen, 20);
+      central.writeUInt32LE(uncompLen, 24);
+      central.writeUInt16LE(nameBytes.length, 28);
+      central.writeUInt16LE(0, 30);          // extra field length
+      central.writeUInt16LE(0, 32);          // comment length
+      central.writeUInt16LE(0, 34);          // disk number
+      central.writeUInt16LE(0, 36);          // internal attrs
+      central.writeUInt32LE(0, 38);          // external attrs
+      central.writeUInt32LE(offset, 42);     // local header offset
+      nameBytes.copy(central, 46);
+      centralHeaders.push(central);
+
+      offset += local.length + compressed.length;
+    }
+
+    const centralDir = Buffer.concat(centralHeaders);
+    const eocd = Buffer.alloc(22);
+    eocd.writeUInt32LE(0x06054b50, 0);
+    eocd.writeUInt16LE(0, 4);               // disk number
+    eocd.writeUInt16LE(0, 6);               // central dir disk
+    eocd.writeUInt16LE(entries.length, 8);   // entries on disk
+    eocd.writeUInt16LE(entries.length, 10);  // total entries
+    eocd.writeUInt32LE(centralDir.length, 12);
+    eocd.writeUInt32LE(offset, 16);          // central dir offset
+    eocd.writeUInt16LE(0, 20);              // comment length
+
+    return Buffer.concat([...localHeaders, centralDir, eocd]);
+  }
+
+  function crc32(buf) {
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < buf.length; i++) {
+      crc ^= buf[i];
+      for (let j = 0; j < 8; j++) {
+        crc = (crc >>> 1) ^ ((crc & 1) ? 0xEDB88320 : 0);
+      }
+    }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  const entries = zipFiles
+    .filter(f => fs.existsSync(f.src))
+    .map(f => ({ name: f.name, data: fs.readFileSync(f.src) }));
+
+  const zipBuf = buildZip(entries);
+  const zipPath = path.join(DIST, 'zquery.dist.zip');
+  fs.writeFileSync(zipPath, zipBuf);
+  console.log(`  ✓ dist/zquery.dist.zip (${sizeKB(zipBuf)} KB) — ${entries.length} files`);
 
   return { DIST, OUT_FILE, MIN_FILE };
 }
