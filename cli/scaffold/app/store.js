@@ -11,11 +11,11 @@ export const store = $.store('main', {
 
     // Contacts
     contacts: [
-      { id: 1, name: 'Alice Johnson',  email: 'alice@example.com',  role: 'Designer',  status: 'online',  favorite: true  },
-      { id: 2, name: 'Bob Martinez',   email: 'bob@example.com',    role: 'Developer', status: 'offline', favorite: false },
-      { id: 3, name: 'Carol White',    email: 'carol@example.com',  role: 'Manager',   status: 'online',  favorite: true  },
-      { id: 4, name: 'Dave Kim',       email: 'dave@example.com',   role: 'Designer',  status: 'away',    favorite: false },
-      { id: 5, name: 'Eve Torres',     email: 'eve@example.com',    role: 'Developer', status: 'online',  favorite: false },
+      { id: 1, name: 'Tony Wiedman',     email: 'tony@z-query.com',     role: 'Developer', status: 'online',  favorite: true  },
+      { id: 2, name: 'Robert Baratheon', email: 'robert@stormlands.io', role: 'Manager',   status: 'offline', favorite: false },
+      { id: 3, name: 'Terry A. Davis',   email: 'terry@templeos.net',   role: 'Developer', status: 'online',  favorite: true  },
+      { id: 4, name: 'Trevor Moore',     email: 'trevor@wkuk.tv',       role: 'Designer',  status: 'away',    favorite: false },
+      { id: 5, name: 'Carlo Acutis',     email: 'carlo@vatican.va',     role: 'Developer', status: 'online',  favorite: false },
     ],
     contactsAdded: 0,
   },
