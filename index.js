@@ -11,7 +11,7 @@
 
 import { query, queryAll, ZQueryCollection } from './src/core.js';
 import { reactive, Signal, signal, computed, effect } from './src/reactive.js';
-import { component, mount, mountAll, getInstance, destroy, getRegistry, style } from './src/component.js';
+import { component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style } from './src/component.js';
 import { createRouter, getRouter } from './src/router.js';
 import { createStore, getStore } from './src/store.js';
 import { http } from './src/http.js';
@@ -100,6 +100,7 @@ $.mountAll    = mountAll;
 $.getInstance = getInstance;
 $.destroy     = destroy;
 $.components  = getRegistry;
+$.prefetch    = prefetch;
 $.style       = style;
 $.morph        = morph;
 $.morphElement = morphElement;
@@ -178,8 +179,8 @@ export {
   ZQueryCollection,
   queryAll,
   reactive, Signal, signal, computed, effect,
-  component, mount, mountAll, getInstance, destroy, getRegistry, style,
-  morph,
+  component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style,
+  morph, morphElement,
   safeEval,
   createRouter, getRouter,
   createStore, getStore,

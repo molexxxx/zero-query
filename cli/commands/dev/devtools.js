@@ -30,8 +30,8 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* Layout */
 #root{display:grid;height:100vh}
 #root.popup{grid-template-columns:1fr;grid-template-rows:0 1fr}
-#root.split-h{grid-template-columns:1fr 4px 1fr;grid-template-rows:1fr}
-#root.split-v{grid-template-columns:1fr;grid-template-rows:1fr 4px 1fr}
+#root.split-h{grid-template-columns:65% 4px 1fr;grid-template-rows:1fr}
+#root.split-v{grid-template-columns:1fr;grid-template-rows:60% 4px 1fr}
 #root.devtools-only{grid-template-columns:1fr;grid-template-rows:1fr}
 #root.devtools-only #app-frame,#root.devtools-only .divider{display:none}
 #app-frame{border:none;width:100%;height:100%;background:#0d1117;color-scheme:dark}
@@ -88,6 +88,11 @@ color:var(--text2);font-size:8px;flex-shrink:0;transition:transform .12s;cursor:
 .tree-badge.scoped{background:rgba(121,192,255,0.15);color:var(--cyan)}
 .tree-badge.entry{background:rgba(63,185,80,0.15);color:var(--green)}
 .tree-badge.router{background:rgba(210,153,34,0.15);color:var(--yellow)}
+.tree-actions{display:none;margin-left:2px;gap:1px;align-items:center}
+.tree-row:hover .tree-actions{display:inline-flex}
+.tree-action{font-size:10px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;
+cursor:pointer;border-radius:3px;color:var(--text2);flex-shrink:0;border:none;background:none;font-family:inherit;padding:0}
+.tree-action:hover{background:rgba(88,166,255,0.2);color:var(--accent)}
 
 /* Morph highlights */
 .tree-row.morph-added{background:rgba(63,185,80,0.15);animation:morphFade 2s ease-out forwards}
@@ -97,12 +102,14 @@ color:var(--text2);font-size:8px;flex-shrink:0;transition:transform .12s;cursor:
 
 /* Details panel (above tree for elements) */
 .detail{padding:12px;border-bottom:1px solid var(--border);background:var(--bg2);
-max-height:40vh;overflow-y:auto;font-size:11px;position:relative}
+max-height:40vh;overflow-y:auto;font-size:11px;position:sticky;top:0;z-index:10}
 .detail h4{color:var(--accent);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin:0 0 6px}
 .detail-section{margin-bottom:12px}
 .detail-row{display:flex;gap:8px;padding:2px 0}
 .detail-key{color:var(--cyan);min-width:80px;flex-shrink:0}
 .detail-val{color:var(--text);word-break:break-all}
+.detail-val a{color:var(--accent);text-decoration:none}
+.detail-val a:hover{text-decoration:underline}
 .detail-close{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--text2);cursor:pointer;
 font-size:14px;line-height:1;padding:2px 6px;border-radius:3px}
 .detail-close:hover{background:rgba(88,166,255,0.15);color:var(--accent)}
@@ -176,6 +183,37 @@ justify-content:center;background:rgba(13,17,23,0.95);z-index:100;gap:12px}
 .empty-state{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text2);
 font-size:13px;flex-direction:column;gap:8px}
 
+/* Source viewer overlay */
+.source-overlay{display:none;position:absolute;inset:0;z-index:200;background:rgba(13,17,23,0.85);backdrop-filter:blur(4px);
+align-items:center;justify-content:center;padding:24px}
+.source-overlay.open{display:flex}
+.source-box{background:var(--bg2);border:1px solid var(--border);border-radius:8px;width:90%;max-width:720px;
+max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.5)}
+.source-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;
+border-bottom:1px solid var(--border);flex-shrink:0}
+.source-title{font-weight:700;font-size:12px;color:var(--accent);display:flex;align-items:center;gap:6px}
+.source-title .tree-badge{font-size:9px}
+.source-close{background:none;border:none;color:var(--text2);cursor:pointer;font-size:16px;padding:2px 8px;border-radius:3px}
+.source-close:hover{background:rgba(88,166,255,0.15);color:var(--accent)}
+.source-body{overflow:auto;padding:14px;flex:1;min-height:0}
+.source-body pre{margin:0;white-space:pre-wrap;word-break:break-all;font-size:11px;line-height:1.6;color:var(--text);font-family:var(--font)}
+.css-tree{font-size:11px;line-height:1.7;font-family:var(--font)}
+.css-rule{margin:0 0 2px;border-radius:4px}
+.css-sel{color:var(--purple);cursor:pointer;user-select:none;display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:3px}
+.css-sel:hover{background:rgba(188,140,255,0.08)}
+.css-sel .css-arrow{display:inline-block;font-size:8px;color:var(--text2);transition:transform .12s;width:12px;text-align:center}
+.css-sel .css-arrow.open{transform:rotate(90deg)}
+.css-sel .css-brace{color:var(--text2);margin-left:4px}
+.css-props{display:none;padding:0 0 4px 20px}
+.css-props.open{display:block}
+.css-prop{padding:1px 4px;color:var(--text)}
+.css-prop-name{color:var(--cyan)}
+.css-prop-val{color:var(--green)}
+.css-comment{color:#555;font-style:italic;padding:1px 4px}
+.tree-peek{font-size:9px;padding:0 4px;border-radius:3px;color:var(--text2);cursor:pointer;margin-left:4px;
+background:rgba(88,166,255,0.08);line-height:16px;display:inline-flex;align-items:center;flex-shrink:0}
+.tree-peek:hover{background:rgba(88,166,255,0.2);color:var(--accent)}
+
 /* Scrollbar */
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:transparent}
@@ -241,6 +279,16 @@ font-size:13px;flex-direction:column;gap:8px}
       <div id="perf-content"></div>
     </div>
   </div>
+  </div>
+</div>
+
+<div class="source-overlay" id="source-overlay">
+  <div class="source-box">
+    <div class="source-header">
+      <span class="source-title" id="source-title">Source</span>
+      <button class="source-close" id="source-close" title="Close">&times;</button>
+    </div>
+    <div class="source-body"><pre id="source-content"></pre></div>
   </div>
 </div>
 
@@ -379,10 +427,14 @@ font-size:13px;flex-direction:column;gap:8px}
 
   function connectToTarget() {
 
-    // Read existing requests from opener
+    // Read existing requests and render events from opener
     if (targetWin.__zqDevTools) {
       requests = targetWin.__zqDevTools.requests.slice();
       morphCount = targetWin.__zqDevTools.morphCount || 0;
+      var stored = targetWin.__zqDevTools.morphEvents;
+      if (stored && stored.length) {
+        morphEvents = stored.slice();
+      }
     }
 
     buildDOMTree();
@@ -419,20 +471,27 @@ font-size:13px;flex-direction:column;gap:8px}
       };
     }
 
-    // Periodic refresh for components + perf
+    // Periodic refresh for components + perf (fast when tab is visible)
     setInterval(function() {
       if (!isConnected()) {
         document.getElementById('disconnected').style.display = 'flex';
         return;
       }
-      renderComponents();
+      var activeTab = document.querySelector('.tab.active');
+      var tabName = activeTab ? activeTab.dataset.tab : '';
+      if (tabName === 'components') renderComponents();
       updateStats();
-      // Sync requests from opener
+      // Sync requests and render events from opener
       if (targetWin.__zqDevTools) {
         requests = targetWin.__zqDevTools.requests.slice();
         morphCount = targetWin.__zqDevTools.morphCount || 0;
+        var stored = targetWin.__zqDevTools.morphEvents;
+        if (stored && stored.length) {
+          morphEvents = stored.slice();
+        }
       }
-    }, 2000);
+      if (tabName === 'performance') renderPerf();
+    }, 800);
   }
 
   // ===================================================================
@@ -454,6 +513,9 @@ font-size:13px;flex-direction:column;gap:8px}
     var panel = document.getElementById('panel-' + tabName);
     if (tabBtn) tabBtn.classList.add('active');
     if (panel) panel.classList.add('active');
+    // Immediately refresh the tab's content
+    if (tabName === 'components') renderComponents();
+    else if (tabName === 'performance') renderPerf();
   }
 
   document.querySelector('.topbar-right').addEventListener('click', function(e) {
@@ -486,8 +548,148 @@ font-size:13px;flex-direction:column;gap:8px}
   document.getElementById('perf-clear').addEventListener('click', function() {
     morphEvents = [];
     morphCount = 0;
+    // Also clear the source data so the interval doesn't re-sync stale events
+    try {
+      if (targetWin && targetWin.__zqDevTools) {
+        targetWin.__zqDevTools.morphEvents = [];
+        targetWin.__zqDevTools.morphCount = 0;
+      }
+    } catch(e) {}
     renderPerf();
     updateStats();
+  });
+
+  // ===================================================================
+  // Source Viewer Overlay
+  // ===================================================================
+  var sourceOverlay = document.getElementById('source-overlay');
+  var sourceTitle = document.getElementById('source-title');
+  var sourceContent = document.getElementById('source-content');
+  document.getElementById('source-close').addEventListener('click', function() {
+    sourceOverlay.classList.remove('open');
+  });
+  sourceOverlay.addEventListener('click', function(e) {
+    if (e.target === sourceOverlay) sourceOverlay.classList.remove('open');
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && sourceOverlay.classList.contains('open')) {
+      sourceOverlay.classList.remove('open');
+    }
+  });
+
+  function openSourceViewer(label, text, isCSS) {
+    sourceTitle.innerHTML = label || 'Source';
+    var body = sourceOverlay.querySelector('.source-body');
+    if (isCSS) {
+      body.innerHTML = buildCSSTree(text || '');
+    } else {
+      body.innerHTML = '<pre id="source-content"></pre>';
+      body.querySelector('pre').textContent = text || '';
+    }
+    sourceOverlay.classList.add('open');
+  }
+
+  // Delegated click for CSS tree toggle (always wired, doesn't stack)
+  sourceOverlay.querySelector('.source-body').addEventListener('click', function(e) {
+    var sel = e.target.closest('.css-sel');
+    if (!sel) return;
+    var arrow = sel.querySelector('.css-arrow');
+    var props = sel.nextElementSibling;
+    if (props && props.classList.contains('css-props')) {
+      props.classList.toggle('open');
+      if (arrow) arrow.classList.toggle('open');
+    }
+  });
+
+  function buildCSSTree(css) {
+    var html = '<div class="css-tree">';
+    // Simple CSS parser: split into rules, comments, and at-rules
+    var i = 0, len = css.length;
+    while (i < len) {
+      // Skip whitespace
+      while (i < len && /\s/.test(css[i])) i++;
+      if (i >= len) break;
+      // Comment
+      if (css[i] === '/' && css[i+1] === '*') {
+        var end = css.indexOf('*/', i + 2);
+        if (end === -1) end = len;
+        else end += 2;
+        html += '<div class="css-comment">' + esc(css.slice(i, end)) + '</div>';
+        i = end;
+        continue;
+      }
+      // Find selector (everything up to {)
+      var bracePos = css.indexOf('{', i);
+      if (bracePos === -1) {
+        // Remaining text (malformed)
+        html += '<div class="css-comment">' + esc(css.slice(i).trim()) + '</div>';
+        break;
+      }
+      var selector = css.slice(i, bracePos).trim();
+      i = bracePos + 1;
+      // Find matching closing brace (handle nesting for @media etc, skip comments and strings)
+      var depth = 1, bodyStart = i;
+      while (i < len && depth > 0) {
+        // Skip comments
+        if (css[i] === '/' && css[i+1] === '*') {
+          i += 2;
+          while (i < len && !(css[i] === '*' && css[i+1] === '/')) i++;
+          i += 2;
+          continue;
+        }
+        // Skip quoted strings
+        if (css[i] === '"' || css[i] === "'") {
+          var q = css[i]; i++;
+          while (i < len && css[i] !== q) { if (css[i] === '\\\\') i++; i++; }
+          i++;
+          continue;
+        }
+        if (css[i] === '{') depth++;
+        else if (css[i] === '}') depth--;
+        if (depth > 0) i++;
+      }
+      var body = css.slice(bodyStart, i).trim();
+      i++; // skip }
+      // Check if body contains nested rules (e.g. @media)
+      if (body.indexOf('{') !== -1) {
+        html += '<div class="css-rule">';
+        html += '<div class="css-sel"><span class="css-arrow">&#9654;</span><span>' + esc(selector) + '</span><span class="css-brace">{</span></div>';
+        html += '<div class="css-props">' + buildCSSTree(body) + '</div>';
+        html += '</div>';
+      } else {
+        // Parse properties
+        html += '<div class="css-rule">';
+        html += '<div class="css-sel"><span class="css-arrow">&#9654;</span><span>' + esc(selector) + '</span><span class="css-brace">{</span></div>';
+        html += '<div class="css-props">';
+        var declarations = body.split(';');
+        for (var d = 0; d < declarations.length; d++) {
+          var decl = declarations[d].trim();
+          if (!decl) continue;
+          var colonIdx = decl.indexOf(':');
+          if (colonIdx !== -1) {
+            var prop = decl.slice(0, colonIdx).trim();
+            var val = decl.slice(colonIdx + 1).trim();
+            html += '<div class="css-prop"><span class="css-prop-name">' + esc(prop) + '</span>: <span class="css-prop-val">' + esc(val) + '</span>;</div>';
+          } else {
+            html += '<div class="css-prop">' + esc(decl) + '</div>';
+          }
+        }
+        html += '</div></div>';
+      }
+    }
+    html += '</div>';
+    return html;
+  }
+
+  // Delegated peek handler on the DOM tree
+  document.getElementById('dom-tree').addEventListener('click', function(e) {
+    var peek = e.target.closest('.tree-peek');
+    if (!peek) return;
+    e.stopPropagation();
+    var row = peek.closest('.tree-row');
+    if (row && row.__sourceText) {
+      openSourceViewer(row.__sourceLabel || 'Source', row.__sourceText, row.__sourceIsCSS);
+    }
   });
 
   // ===================================================================
@@ -495,6 +697,8 @@ font-size:13px;flex-direction:column;gap:8px}
   // ===================================================================
   var expandedPaths = {}; // track expanded nodes by path to survive rebuilds
   var componentNames = {}; // cache of registered component tag names
+  var changedPaths = {};   // paths mutated since last rebuild (for auto-expand)
+  var mutatedPaths = {};   // actual mutation targets (for highlight + scroll)
 
   function getNodePath(node) {
     var parts = [];
@@ -545,8 +749,14 @@ font-size:13px;flex-direction:column;gap:8px}
       if (!text) return wrap;
       var row = document.createElement('div');
       row.className = 'tree-row';
+      var truncated = text.length > 60;
       row.innerHTML = '<span class="tree-toggle leaf"></span><span class="tree-text">' +
-        esc(text.length > 60 ? text.slice(0, 60) + '...' : text) + '</span>';
+        esc(truncated ? text.slice(0, 60) + '...' : text) + '</span>' +
+        (truncated ? '<span class="tree-peek" title="View full text">&#x1f441;</span>' : '');
+      if (truncated) {
+        row.__sourceText = text;
+        row.__sourceLabel = 'Text content';
+      }
       wrap.appendChild(row);
       return wrap;
     }
@@ -587,12 +797,13 @@ font-size:13px;flex-direction:column;gap:8px}
     var html = '<span class="' + toggleCls + '">&#9654;</span>';
     html += '<span class="tree-tag">&lt;' + tag + '</span>';
 
-    // Show key attributes inline
+    // Show key attributes inline (skip internal zq attrs on scoped styles)
     var attrs = node.attributes;
     var shown = 0;
     for (var i = 0; i < attrs.length && shown < 4; i++) {
       var a = attrs[i];
       if (a.name === 'style' || a.name === 'class' && a.value.length > 40) continue;
+      if (isScopedStyle && /^data-zq-/.test(a.name)) continue;
       html += ' <span class="tree-attr-name">' + esc(a.name) + '</span>';
       if (a.value) html += '=<span class="tree-attr-val">&quot;' + esc(a.value.length > 30 ? a.value.slice(0, 30) + '...' : a.value) + '&quot;</span>';
       shown++;
@@ -600,21 +811,57 @@ font-size:13px;flex-direction:column;gap:8px}
     html += '<span class="tree-tag">&gt;</span>';
 
     // Badges for components, router, entry-point, scoped css
-    if (isScopedStyle) html += '<span class="tree-badge scoped">scoped css</span>';
-    else if (isComponent) html += '<span class="tree-badge comp">component</span>';
+    if (isScopedStyle) {
+      var scopeComp = node.getAttribute('data-zq-component');
+      html += '<span class="tree-badge scoped">scoped css' + (scopeComp ? ' · ' + esc(scopeComp) : '') + '</span>';
+    } else if (isComponent) html += '<span class="tree-badge comp">component</span>';
     if (isRouterView) html += '<span class="tree-badge router">router</span>';
     else if (isEntryPoint) html += '<span class="tree-badge entry">entry</span>';
 
-    // Inline text for leaf elements
-    if (!hasChildren || (childNodes.length === 1 && childNodes[0].nodeType === 3)) {
+    // Expand / collapse action buttons (visible on hover)
+    if (hasChildren) {
+      html += '<span class="tree-actions">';
+      html += '<button class="tree-action" data-act="expand" title="Expand all">&#43;</button>';
+      html += '<button class="tree-action" data-act="collapse" title="Collapse all">&#8722;</button>';
+      html += '</span>';
+    }
+
+    // Inline text for leaf elements; add peek button for style/script with any content, or long text
+    var hasInlineContent = false;
+    if (tag === 'style' || tag === 'script') {
+      var fullText = node.textContent.trim();
+      if (fullText) {
+        var preview = fullText.length > 50 ? fullText.slice(0, 50) + '...' : fullText;
+        html += '<span class="tree-text">' + esc(preview) + '</span>';
+        html += '<span class="tree-peek" title="View full source">&#x1f441;</span>';
+        hasInlineContent = true;
+      }
+    } else if (!hasChildren || (childNodes.length === 1 && childNodes[0].nodeType === 3)) {
       var text = node.textContent.trim();
       if (text && text.length < 60) {
         html += '<span class="tree-text">' + esc(text) + '</span>';
         html += '<span class="tree-tag">&lt;/' + tag + '&gt;</span>';
+      } else if (text && text.length >= 60) {
+        html += '<span class="tree-text">' + esc(text.slice(0, 50) + '...') + '</span>';
+        html += '<span class="tree-peek" title="View full text">&#x1f441;</span>';
+        hasInlineContent = true;
       }
     }
 
     row.innerHTML = html;
+    // Attach source data for peek overlay
+    if (hasInlineContent) {
+      row.__sourceText = node.textContent.trim();
+      row.__sourceIsCSS = (tag === 'style');
+      if (tag === 'style') {
+        var scopeComp = node.getAttribute('data-zq-component');
+        row.__sourceLabel = '<span class="tree-tag">&lt;style&gt;</span>' + (scopeComp ? ' <span class="tree-badge scoped">scoped css \u00b7 ' + esc(scopeComp) + '</span>' : '');
+      } else if (tag === 'script') {
+        row.__sourceLabel = '<span class="tree-tag">&lt;script&gt;</span>';
+      } else {
+        row.__sourceLabel = '<span class="tree-tag">&lt;' + tag + '&gt;</span> text content';
+      }
+    }
     wrap.appendChild(row);
 
     // Children container
@@ -622,11 +869,19 @@ font-size:13px;flex-direction:column;gap:8px}
       var childDiv = document.createElement('div');
       childDiv.className = 'tree-children';
 
-      // Restore expanded state or auto-expand first 3 levels
-      var isExpanded = expandedPaths.hasOwnProperty(nodePath) ? expandedPaths[nodePath] : (depth < 3);
+      // Restore expanded state or auto-expand; entry/router always expand, changed paths auto-expand (capped at depth 5)
+      var alwaysOpen = isEntryPoint || isRouterView;
+      var changedNow = changedPaths[nodePath] && depth < 6;
+      var isExpanded = alwaysOpen || (expandedPaths.hasOwnProperty(nodePath) ? expandedPaths[nodePath] : (depth < 3 || changedNow));
       if (isExpanded) {
         childDiv.classList.add('open');
         row.querySelector('.tree-toggle').classList.add('open');
+      }
+
+      // Flash only actual mutation targets, not ancestors
+      if (mutatedPaths[nodePath]) {
+        row.classList.add('morph-changed');
+        row.setAttribute('data-changed', '1');
       }
 
       for (var i = 0; i < childNodes.length; i++) {
@@ -651,10 +906,39 @@ font-size:13px;flex-direction:column;gap:8px}
       });
     }
 
+    // Expand / collapse action buttons
+    row.addEventListener('click', function(e) {
+      var actBtn = e.target.closest('.tree-action');
+      if (!actBtn) return;
+      e.stopPropagation();
+      var childContainer = row.nextElementSibling;
+      if (!childContainer || !childContainer.classList.contains('tree-children')) return;
+      var opening = actBtn.dataset.act === 'expand';
+      if (opening) { childContainer.classList.add('open'); toggleEl.classList.add('open'); }
+      else { childContainer.classList.remove('open'); toggleEl.classList.remove('open'); }
+      expandedPaths[nodePath] = opening;
+      var maxDepth = opening ? 4 : Infinity;
+      function toggleNested(container, level) {
+        if (level >= maxDepth) return;
+        var children = container.children;
+        for (var j = 0; j < children.length; j++) {
+          var nested = children[j].querySelector(':scope > .tree-children');
+          if (nested) {
+            if (opening) nested.classList.add('open');
+            else nested.classList.remove('open');
+            var arrow = nested.previousElementSibling ? nested.previousElementSibling.querySelector('.tree-toggle') : null;
+            if (arrow) { if (opening) arrow.classList.add('open'); else arrow.classList.remove('open'); }
+            toggleNested(nested, level + 1);
+          }
+        }
+      }
+      toggleNested(childContainer, 0);
+    });
+
     // Row click — select element (not toggle)
     row.addEventListener('click', function(e) {
-      // Don't select when clicking toggle arrow
-      if (e.target.closest('.tree-toggle')) return;
+      // Don't select when clicking toggle arrow, badge, action buttons, or peek
+      if (e.target.closest('.tree-toggle') || e.target.closest('.tree-badge') || e.target.closest('.tree-action') || e.target.closest('.tree-peek')) return;
       document.querySelectorAll('.tree-row.selected').forEach(function(r) { r.classList.remove('selected'); });
       row.classList.add('selected');
       selectedEl = node;
@@ -715,7 +999,11 @@ font-size:13px;flex-direction:column;gap:8px}
       html += '<div class="detail-section"><h4>Attributes</h4>';
       for (var i = 0; i < node.attributes.length; i++) {
         var a = node.attributes[i];
-        html += '<div class="detail-row"><span class="detail-key">' + esc(a.name) + '</span><span class="detail-val">' + esc(a.value) + '</span></div>';
+        var val = esc(a.value);
+        if (/^(src|href|action|data-src|poster|srcset)$/i.test(a.name) && a.value) {
+          val = '<a href="' + esc(a.value) + '" target="_blank" rel="noopener" title="Open in new tab">' + val + '</a>';
+        }
+        html += '<div class="detail-row"><span class="detail-key">' + esc(a.name) + '</span><span class="detail-val">' + val + '</span></div>';
       }
       html += '</div>';
     }
@@ -761,11 +1049,57 @@ font-size:13px;flex-direction:column;gap:8px}
   function startObserver() {
     if (!targetDoc || observer) return;
     observer = new MutationObserver(function(mutations) {
+      // Collect paths of mutated nodes so we can auto-expand + highlight them
+      var dominated = false;
+      for (var i = 0; i < mutations.length; i++) {
+        var m = mutations[i];
+        var target = m.target.nodeType === 1 ? m.target : m.target.parentElement;
+        if (!target) continue;
+        // Skip mutations caused by the devtools highlight overlay
+        if (target.id === '__zq_highlight' || target.id === '__zq_error_overlay' || target.id === '__zq_devbar') continue;
+        var isHighlightMutation = false;
+        if (m.addedNodes) { for (var k = 0; k < m.addedNodes.length; k++) { if (m.addedNodes[k].id === '__zq_highlight') { isHighlightMutation = true; break; } } }
+        if (!isHighlightMutation && m.removedNodes) { for (var k = 0; k < m.removedNodes.length; k++) { if (m.removedNodes[k].id === '__zq_highlight') { isHighlightMutation = true; break; } } }
+        if (isHighlightMutation) continue;
+        dominated = true;
+          var tp = getNodePath(target);
+          changedPaths[tp] = true;
+          mutatedPaths[tp] = true;
+          // Also mark added nodes
+          if (m.addedNodes) {
+            for (var j = 0; j < m.addedNodes.length; j++) {
+              if (m.addedNodes[j].nodeType === 1) {
+                var ap = getNodePath(m.addedNodes[j]);
+                changedPaths[ap] = true;
+                mutatedPaths[ap] = true;
+              }
+            }
+          }
+          // Mark ancestor paths so they auto-expand to reveal changes
+          var cur = target.parentElement;
+          while (cur && cur.nodeType === 1) {
+            var p = getNodePath(cur);
+            if (!expandedPaths.hasOwnProperty(p)) changedPaths[p] = true;
+            cur = cur.parentElement;
+          }
+      }
+
+      if (!dominated) return; // All mutations were from devtools highlight — skip rebuild
+
       // Debounce tree rebuild
       clearTimeout(startObserver._timer);
       startObserver._timer = setTimeout(function() {
         buildDOMTree();
         updateStats();
+
+        // Scroll to deepest (last in DOM order) changed row
+        var allChanged = document.querySelectorAll('.tree-row[data-changed]');
+        if (allChanged.length) {
+          allChanged[allChanged.length - 1].scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+        // Clear changed paths after applying
+        changedPaths = {};
+        mutatedPaths = {};
       }, 150);
     });
     observer.observe(targetDoc.documentElement, {

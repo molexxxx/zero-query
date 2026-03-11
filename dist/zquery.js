@@ -5099,6 +5099,7 @@ $.mountAll    = mountAll;
 $.getInstance = getInstance;
 $.destroy     = destroy;
 $.components  = getRegistry;
+$.prefetch    = prefetch;
 $.style       = style;
 $.morph        = morph;
 $.morphElement = morphElement;

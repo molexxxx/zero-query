@@ -187,6 +187,13 @@ export function destroy(target: string | Element): void;
 /** Returns an object of all registered component definitions (for debugging). */
 export function getRegistry(): Record<string, ComponentDefinition>;
 
+/**
+ * Pre-load external templates and styles for a registered component.
+ * Useful for warming the cache before navigation to avoid blank flashes.
+ * @param name Registered component name.
+ */
+export function prefetch(name: string): Promise<void>;
+
 /** Handle returned by `$.style()`. */
 export interface StyleHandle {
   /** Remove all injected `<link>` elements. */

@@ -33,6 +33,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [$.getInstance()](#getinstancetarget)
   - [$.destroy()](#destroytarget)
   - [$.components() / getRegistry()](#components--getregistry)
+  - [$.prefetch()](#prefetchname)
   - [$.style()](#styleurls)
 - [Store](#store)
   - [$.store() — createStore](#storeconfig)
@@ -1702,6 +1703,27 @@ import { getRegistry } from '@tonywied17/zero-query';
 console.log(getRegistry());
 ```
 
+### `prefetch(name)`
+
+Pre-load external templates and styles for a registered component. Useful for warming the cache before navigation to avoid blank flashes when switching routes.
+
+The router calls this automatically before destroying the current component, but you can call it manually to prefetch upcoming components in advance.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | Registered component name |
+
+**Returns:** `Promise<void>` — resolves when all external resources have been fetched and cached.
+
+```js
+// Prefetch a component before the user navigates
+$.prefetch('about-page');
+
+// ES module equivalent:
+import { prefetch } from '@tonywied17/zero-query';
+await prefetch('about-page');
+```
+
 ### `style(urls)`
 
 Dynamically load one or more **global** (unscoped) stylesheet files into `<head>`. Unlike component `styleUrl` (which scopes CSS to the component), `$.style()` injects stylesheets that apply to the entire page.
@@ -2309,7 +2331,10 @@ validate(el, 'target');             // throws if el is null/undefined
 | --- | --- |
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
 | `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. Uses LIS-based keyed reconciliation, `isEqualNode()` bail-outs, and `z-skip` opt-out. See [z-key](#z-key--keyed-reconciliation) and [z-skip](#z-skip--opt-out-of-diffing). |
+| `$.morphElement(el, html)` | Morph a single element in place — diffs attributes and children without replacing the node reference. If the tag name matches, the element is patched; if the tag differs, the element is replaced. Returns the resulting element. |
+| `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
+| `$.libSize` | Minified library size string (e.g. `'~86 KB'`), injected at build time. |
 | `$.version` | Library version string (e.g. `'0.8.2'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
@@ -2339,27 +2364,59 @@ app.component('hello-world', {
 });
 ```
 
-### `renderToString(app, name, props?)`
+### `renderToString(definition, props?)`
 
-Render a registered component to an HTML string.
+Quick one-shot render of a component definition to an HTML string (without registering it in an app).
 
 ```js
-const html = await renderToString(app, 'hello-world', { name: 'Tony' });
+import { renderToString } from '@tonywied17/zero-query';
+
+const html = renderToString({
+  state: () => ({ name: 'Tony' }),
+  render() { return `<h1>Hello, ${this.state.name}!</h1>`; }
+});
+// '<h1>Hello, Tony!</h1>'
+```
+
+### `app.renderToString(name, props?, options?)`
+
+Render a registered component to an HTML string via the SSR app.
+
+```js
+const html = await app.renderToString('hello-world', { name: 'Tony' });
 // '<hello-world data-zq-ssr><h1>Hello, Tony!</h1></hello-world>'
 ```
 
-### `app.renderPage(name, options?)`
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | Registered component name |
+| `props` | `object` | Props to pass (optional) |
+| `options.hydrate` | `boolean` | Add `data-zq-ssr` marker for client hydration (default `true`) |
 
-Render a full HTML page with the component embedded.
+### `app.renderPage(options?)`
+
+Render a full HTML page with a component embedded.
 
 ```js
-const page = await app.renderPage('hello-world', {
+const page = await app.renderPage({
+  component: 'hello-world',
   title: 'My App',
   lang: 'en',
   styles: ['global.css'],
   scripts: ['app/app.js'],
 });
 ```
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `component` | `string` | Component name to render in the page body |
+| `props` | `object` | Props to pass to the component |
+| `title` | `string` | Page `<title>` |
+| `styles` | `string[]` | CSS file paths to inject as `<link>` tags |
+| `scripts` | `string[]` | JS file paths to inject as `<script>` tags |
+| `lang` | `string` | HTML `lang` attribute (default `'en'`) |
+| `meta` | `string` | Additional HTML for `<head>` |
+| `bodyAttrs` | `string` | Attributes for `<body>` tag |
 
 | Detail | Description |
 | --- | --- |
@@ -2377,8 +2434,8 @@ When used as an ES module (not the built bundle), the library exports:
 import {
   $, zQuery, ZQueryCollection, queryAll,
   reactive, signal, computed, effect,
-  component, mount, mountAll, getInstance, destroy, getRegistry, style,
-  morph, safeEval,
+  component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style,
+  morph, morphElement, safeEval,
   createRouter, getRouter,
   createStore, getStore,
   createSSRApp, renderToString,

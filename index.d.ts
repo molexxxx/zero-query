@@ -35,6 +35,7 @@ export {
   getInstance,
   destroy,
   getRegistry,
+  prefetch,
   StyleHandle,
   StyleOptions,
   style,
@@ -123,7 +124,7 @@ export {
 
 import type { ZQueryCollection } from './types/collection';
 import type { reactive, Signal, signal, computed, effect } from './types/reactive';
-import type { component, mount, mountAll, getInstance, destroy, getRegistry, style } from './types/component';
+import type { component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style } from './types/component';
 import type { createRouter, getRouter } from './types/router';
 import type { createStore, getStore } from './types/store';
 import type { HttpClient } from './types/http';
@@ -221,6 +222,8 @@ interface ZQueryStatic {
   destroy: typeof destroy;
   /** Returns all registered component definitions. */
   components: typeof getRegistry;
+  /** Pre-load external templates and styles for a component. */
+  prefetch: typeof prefetch;
   style: typeof style;
   morph: typeof morph;
   /** Morph a single element in place — preserves identity when tag name matches. */

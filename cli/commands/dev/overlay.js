@@ -368,6 +368,7 @@ const OVERLAY_SCRIPT = `<script>
   try { __zqChannel = new BroadcastChannel('__zq_devtools'); } catch(e) {}
 
   var __zqRequests = [];
+  var __zqMorphEvents = [];
   var __zqMorphCount = 0;
   var __zqRenderCount = 0;
   var __zqReqId = 0;
@@ -478,6 +479,10 @@ const OVERLAY_SCRIPT = `<script>
     __zqMorphCount++;
     updateDevBar();
 
+    var evt = { target: el.id || el.tagName.toLowerCase(), elapsed: elapsed, kind: 'morph', timestamp: Date.now() };
+    __zqMorphEvents.push(evt);
+    if (__zqMorphEvents.length > 200) __zqMorphEvents.shift();
+
     // Console timing for slow morphs (> 4ms)
     if (elapsed > 4) {
       console.log(
@@ -493,7 +498,7 @@ const OVERLAY_SCRIPT = `<script>
       try {
         __zqChannel.postMessage({
           type: 'morph-detail',
-          data: { target: el.id || el.tagName.toLowerCase(), elapsed: elapsed, timestamp: Date.now() }
+          data: evt
         });
       } catch(ce) {}
     }
@@ -506,6 +511,10 @@ const OVERLAY_SCRIPT = `<script>
     __zqRenderCount++;
     __zqMorphCount++; // count renders in the morph total for the toolbar
     updateDevBar();
+
+    var evt = { target: name || el.id || el.tagName.toLowerCase(), elapsed: elapsed, kind: kind, timestamp: Date.now() };
+    __zqMorphEvents.push(evt);
+    if (__zqMorphEvents.length > 200) __zqMorphEvents.shift();
 
     // Console log for route/mount renders
     var label = kind === 'route' ? ' route ' : ' mount ';
@@ -522,7 +531,7 @@ const OVERLAY_SCRIPT = `<script>
       try {
         __zqChannel.postMessage({
           type: 'render-detail',
-          data: { target: name || el.id || el.tagName.toLowerCase(), elapsed: elapsed, kind: kind, timestamp: Date.now() }
+          data: evt
         });
       } catch(ce) {}
     }
@@ -562,6 +571,7 @@ const OVERLAY_SCRIPT = `<script>
       '">&times;</button>';
 
     document.body.appendChild(devBar);
+    updateDevBar();
 
     // Check if we're inside a devtools split-view iframe
     function isInSplitFrame() {
@@ -645,6 +655,7 @@ const OVERLAY_SCRIPT = `<script>
   // Expose for devtools popup
   window.__zqDevTools = {
     get requests() { return __zqRequests; },
+    get morphEvents() { return __zqMorphEvents; },
     get morphCount() { return __zqMorphCount; },
     get renderCount() { return __zqRenderCount; }
   };
