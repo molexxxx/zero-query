@@ -276,6 +276,8 @@ interface ZQueryStatic {
   // -- Meta ----------------------------------------------------------------
   /** Library version string. */
   version: string;
+  /** Minified library size string (e.g. `"~85.5 KB"`), injected at build time. */
+  libSize: string;
   /** Populated at build time by the CLI bundler. */
   meta: Record<string, any>;
   /** Remove `$` from `window` and return the library object. */

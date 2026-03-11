@@ -5000,6 +5000,7 @@ $.ErrorCode   = ErrorCode;
 
 // --- Meta ------------------------------------------------------------------
 $.version = '0.8.1';
+$.libSize = '~86 KB';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

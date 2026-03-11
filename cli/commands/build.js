@@ -47,7 +47,16 @@ function buildLibrary() {
   const bundle = `${banner}\n(function(global) {\n  'use strict';\n\n${parts.join('\n\n')}\n\n// --- index.js (assembly) ${'-'.repeat(42)}\n${indexCode.trim().replace("'__VERSION__'", `'${VERSION}'`)}\n\n})(typeof window !== 'undefined' ? window : globalThis);\n`;
 
   fs.writeFileSync(OUT_FILE, bundle, 'utf-8');
-  fs.writeFileSync(MIN_FILE, minify(bundle, banner), 'utf-8');
+  const minified = minify(bundle, banner);
+  fs.writeFileSync(MIN_FILE, minified, 'utf-8');
+
+  // Inject actual minified library size into both outputs
+  const libSizeKB = Math.round(Buffer.from(minified).length / 1024);
+  const libSizeStr = `~${libSizeKB} KB`;
+  const outContent = fs.readFileSync(OUT_FILE, 'utf-8').replace("'__LIB_SIZE__'", `'${libSizeStr}'`);
+  const minContent = minified.replace("'__LIB_SIZE__'", `'${libSizeStr}'`);
+  fs.writeFileSync(OUT_FILE, outContent, 'utf-8');
+  fs.writeFileSync(MIN_FILE, minContent, 'utf-8');
 
   const elapsed = Date.now() - start;
   console.log(`  ✓ dist/zquery.js (${sizeKB(fs.readFileSync(OUT_FILE))} KB)`);

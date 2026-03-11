@@ -148,6 +148,7 @@ $.ErrorCode   = ErrorCode;
 
 // --- Meta ------------------------------------------------------------------
 $.version = '__VERSION__';
+$.libSize = '__LIB_SIZE__';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

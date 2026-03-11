@@ -856,8 +856,12 @@ function bundleApp() {
   // ------ doBuild (inlined) ------
   const start = Date.now();
 
-  if (!fs.existsSync(serverDir)) fs.mkdirSync(serverDir, { recursive: true });
-  if (!fs.existsSync(localDir))  fs.mkdirSync(localDir, { recursive: true });
+  // Clean previous dist outputs for a fresh build
+  for (const dir of [serverDir, localDir]) {
+    if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true });
+  }
+  fs.mkdirSync(serverDir, { recursive: true });
+  fs.mkdirSync(localDir, { recursive: true });
 
   const files = walkImportGraph(entry);
   console.log(`  Resolved ${files.length} module(s):`);
@@ -979,12 +983,13 @@ function bundleApp() {
   // ------------------------------------------------------------------
   let globalCssHash = null;
   let globalCssOrigHref = null;
+  let globalCssPath = null;
   if (htmlAbs) {
     const htmlContent = fs.readFileSync(htmlAbs, 'utf-8');
     const htmlDir = path.dirname(htmlAbs);
 
     // Determine global CSS path: --global-css flag overrides, else first <link rel="stylesheet"> in HTML
-    let globalCssPath = null;
+    globalCssPath = null;
     if (globalCssOverride) {
       globalCssPath = path.resolve(projectRoot, globalCssOverride);
       // Reconstruct relative href for HTML rewriting
@@ -1026,6 +1031,8 @@ function bundleApp() {
 
   // Rewrite HTML to reference the minified bundle
   const bundledFileSet = new Set(files);
+  // Skip the original unminified global CSS from static asset copying
+  if (globalCssPath) bundledFileSet.add(path.resolve(globalCssPath));
   if (htmlFile) {
     rewriteHtml(projectRoot, htmlFile, minFile, true, bundledFileSet, serverDir, localDir, globalCssOrigHref, globalCssHash);
   }
