@@ -353,7 +353,7 @@ function _collapseTemplateCSS(tpl) {
 
 /**
  * Scan bundled source files for external resource references
- * (pages config, templateUrl, styleUrl) and return a map of
+ * (templateUrl, styleUrl) and return a map of
  * { relativePath: fileContent } for inlining.
  */
 function collectInlineResources(files, projectRoot) {
@@ -362,33 +362,6 @@ function collectInlineResources(files, projectRoot) {
   for (const file of files) {
     const code    = fs.readFileSync(file, 'utf-8');
     const fileDir = path.dirname(file);
-
-    // pages: config
-    const pagesMatch = code.match(/pages\s*:\s*\{[^}]*dir\s*:\s*['"]([^'"]+)['"]/s);
-    if (pagesMatch) {
-      const pagesDir = pagesMatch[1];
-      const ext = (code.match(/pages\s*:\s*\{[^}]*ext\s*:\s*['"]([^'"]+)['"]/s) || [])[1] || '.html';
-      const itemsMatch = code.match(/items\s*:\s*\[([\s\S]*?)\]/);
-      if (itemsMatch) {
-        const itemsBlock = itemsMatch[1];
-        const ids = [];
-        let m;
-        const strRe = /['"]([^'"]+)['"]/g;
-        while ((m = strRe.exec(itemsBlock)) !== null) {
-          const before = itemsBlock.substring(Math.max(0, m.index - 20), m.index);
-          if (/label\s*:\s*$/.test(before)) continue;
-          ids.push(m[1]);
-        }
-        const absPagesDir = path.join(fileDir, pagesDir);
-        for (const id of ids) {
-          const pagePath = path.join(absPagesDir, id + ext);
-          if (fs.existsSync(pagePath)) {
-            const relKey = path.relative(projectRoot, pagePath).replace(/\\/g, '/');
-            inlineMap[relKey] = fs.readFileSync(pagePath, 'utf-8');
-          }
-        }
-      }
-    }
 
     // styleUrl:
     const styleUrlRe = /styleUrl\s*:\s*['"]([^'"]+)['"]/g;
@@ -409,6 +382,25 @@ function collectInlineResources(files, projectRoot) {
         const relKey = path.relative(projectRoot, tmplPath).replace(/\\/g, '/');
         inlineMap[relKey] = fs.readFileSync(tmplPath, 'utf-8');
       }
+    } else if (/templateUrl\s*:/.test(code)) {
+      // Dynamic templateUrl (e.g. Object.fromEntries, computed map) —
+      // inline all .html files in the component's directory tree so
+      // the runtime __zqInline lookup can resolve them by suffix.
+      (function scanHtml(dir) {
+        try {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isFile() && entry.name.endsWith('.html')) {
+              const relKey = path.relative(projectRoot, full).replace(/\\/g, '/');
+              if (!inlineMap[relKey]) {
+                inlineMap[relKey] = fs.readFileSync(full, 'utf-8');
+              }
+            } else if (entry.isDirectory()) {
+              scanHtml(full);
+            }
+          }
+        } catch { /* permission error — skip */ }
+      })(fileDir);
     }
   }
 

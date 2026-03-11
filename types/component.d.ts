@@ -7,28 +7,6 @@
 import type { ReactiveProxy } from './reactive';
 import type { NavigationContext } from './router';
 
-/** Item in a `pages` config — either a string id or an `{ id, label }` object. */
-export type PageItem = string | { id: string; label?: string };
-
-/**
- * Declarative multi-page configuration for a component.
- *
- * Pages are **lazy-loaded**: only the active page is fetched on first render.
- * Remaining pages are prefetched in the background for instant navigation.
- */
-export interface PagesConfig {
-  /** Directory containing the page HTML files (resolved relative to `base`). */
-  dir?: string;
-  /** Route parameter name to read (e.g. `'section'` for `/docs/:section`). */
-  param?: string;
-  /** Default page id when the param is absent. */
-  default?: string;
-  /** File extension appended to each page id (default `'.html'`). */
-  ext?: string;
-  /** List of page ids and/or `{ id, label }` objects. */
-  items?: PageItem[];
-}
-
 /** The object passed to `$.component()` to define a component. */
 export interface ComponentDefinition {
   /**
@@ -58,12 +36,9 @@ export interface ComponentDefinition {
    */
   styleUrl?: string | string[];
 
-  /** High-level multi-page configuration shorthand. */
-  pages?: PagesConfig;
-
   /**
-   * Override the base path for resolving relative `templateUrl`, `styleUrl`,
-   * and `pages.dir` paths. Normally auto-detected from the calling file.
+   * Override the base path for resolving relative `templateUrl` and `styleUrl`
+   * paths. Normally auto-detected from the calling file.
    */
   base?: string;
 
@@ -121,14 +96,8 @@ export interface ComponentInstance {
   /** Map of `z-ref` name → DOM element. Populated after each render. */
   refs: Record<string, Element>;
 
-  /** Keyed template map (when using multi-`templateUrl` or `pages`). */
+  /** Keyed template map (when using multi-`templateUrl`). */
   templates: Record<string, string>;
-
-  /** Normalized page metadata (when using `pages` config). */
-  pages: Array<{ id: string; label: string }>;
-
-  /** Active page id derived from route param (when using `pages` config). */
-  activePage: string;
 
   /**
    * Computed properties — lazy getters derived from state.

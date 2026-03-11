@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.8.6
+ * zQuery (zeroQuery) v0.8.7
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -2553,7 +2553,7 @@ function _getKey(node) {
  *   - Scoped styles (inline or via styleUrl)
  *   - External templates via templateUrl (with {{expression}} interpolation)
  *   - External styles via styleUrl (fetched & scoped automatically)
- *   - Relative path resolution — templateUrl, styleUrl, and pages.dir
+ *   - Relative path resolution — templateUrl and styleUrl
  *     resolve relative to the component file automatically
  */
 
@@ -2621,16 +2621,6 @@ function _fetchResource(url) {
   });
   _resourceCache.set(url, promise);
   return promise;
-}
-
-/**
- * Convert a kebab-case id to Title Case.
- * 'getting-started' → 'Getting Started'
- * @param {string} id
- * @returns {string}
- */
-function _titleCase(id) {
-  return id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 /**
@@ -2851,46 +2841,9 @@ class Component {
   //   - string              → single stylesheet
   //   - string[]            → array of URLs → all fetched & concatenated
   //
-  // pages config (shorthand for multi-template + route-param page switching):
-  //   pages: {
-  //     dir:     'pages',             // relative to component file (or base)
-  //     param:   'section',           // route param name → this.activePage
-  //     default: 'getting-started',   // fallback when param is absent
-  //     ext:     '.html',             // file extension (default '.html')
-  //     items:   ['page-a', { id: 'page-b', label: 'Page B' }, ...]
-  //   }
-  //   Exposes this.pages (array of {id,label}), this.activePage (current id)
-  //   Pages are lazy-loaded: only the active page is fetched on first render,
-  //   remaining pages are prefetched in the background for instant navigation.
-  //
   async _loadExternals() {
     const def = this._def;
     const base = def._base; // auto-detected or explicit
-
-    // -- Pages config ---------------------------------------------
-    if (def.pages && !def._pagesNormalized) {
-      const p = def.pages;
-      const ext = p.ext || '.html';
-      const dir = _resolveUrl((p.dir || '').replace(/\/+$/, ''), base);
-
-      // Normalize items → [{id, label}, …]
-      def._pages = (p.items || []).map(item => {
-        if (typeof item === 'string') return { id: item, label: _titleCase(item) };
-        return { ...item, label: item.label || _titleCase(item.id) };
-      });
-
-      // Build URL map for lazy per-page loading.
-      // Pages are fetched on demand (active page first, rest prefetched in
-      // the background) so the component renders as soon as the visible
-      // page is ready instead of waiting for every page to download.
-      def._pageUrls = {};
-      for (const { id } of def._pages) {
-        def._pageUrls[id] = `${dir}/${id}${ext}`;
-      }
-      if (!def._externalTemplates) def._externalTemplates = {};
-
-      def._pagesNormalized = true;
-    }
 
     // -- External templates --------------------------------------
     if (def.templateUrl && !def._templateLoaded) {
@@ -2904,9 +2857,8 @@ class Component {
         results.forEach((html, i) => { def._externalTemplates[i] = html; });
       } else if (typeof tu === 'object') {
         const entries = Object.entries(tu);
-        // Pages config already resolved; plain objects still need resolving
         const results = await Promise.all(
-          entries.map(([, url]) => _fetchResource(def._pagesNormalized ? url : _resolveUrl(url, base)))
+          entries.map(([, url]) => _fetchResource(_resolveUrl(url, base)))
         );
         def._externalTemplates = {};
         entries.forEach(([key], i) => { def._externalTemplates[key] = results[i]; });
@@ -2935,8 +2887,7 @@ class Component {
   _render() {
     // If externals haven't loaded yet, trigger async load then re-render
     if ((this._def.templateUrl && !this._def._templateLoaded) ||
-        (this._def.styleUrl && !this._def._styleLoaded) ||
-        (this._def.pages && !this._def._pagesNormalized)) {
+        (this._def.styleUrl && !this._def._styleLoaded)) {
       this._loadExternals().then(() => {
         if (!this._destroyed) this._render();
       });
@@ -2946,43 +2897,6 @@ class Component {
     // Expose multi-template map on instance (if available)
     if (this._def._externalTemplates) {
       this.templates = this._def._externalTemplates;
-    }
-
-    // Expose pages metadata and active page (derived from route param)
-    if (this._def._pages) {
-      this.pages = this._def._pages;
-      const pc = this._def.pages;
-      let active = (pc.param && this.props.$params?.[pc.param]) || pc.default || this._def._pages[0]?.id || '';
-
-      // Fall back to default if the param doesn't match any known page
-      if (this._def._pageUrls && !(active in this._def._pageUrls)) {
-        active = pc.default || this._def._pages[0]?.id || '';
-      }
-      this.activePage = active;
-
-      // Lazy-load: fetch only the active page's template on demand
-      if (this._def._pageUrls && !(active in this._def._externalTemplates)) {
-        const url = this._def._pageUrls[active];
-        if (url) {
-          _fetchResource(url).then(html => {
-            this._def._externalTemplates[active] = html;
-            if (!this._destroyed) this._render();
-          });
-          return; // Wait for active page before rendering
-        }
-      }
-
-      // Prefetch remaining pages in background (once, after active page is ready)
-      if (this._def._pageUrls && !this._def._pagesPrefetched) {
-        this._def._pagesPrefetched = true;
-        for (const [id, url] of Object.entries(this._def._pageUrls)) {
-          if (!(id in this._def._externalTemplates)) {
-            _fetchResource(url).then(html => {
-              this._def._externalTemplates[id] = html;
-            });
-          }
-        }
-      }
     }
 
     // Determine HTML content
@@ -3687,7 +3601,7 @@ class Component {
 // Reserved definition keys (not user methods)
 const _reservedKeys = new Set([
   'state', 'render', 'styles', 'init', 'mounted', 'updated', 'destroyed', 'props',
-  'templateUrl', 'styleUrl', 'templates', 'pages', 'activePage', 'base',
+  'templateUrl', 'styleUrl', 'templates', 'base',
   'computed', 'watch'
 ]);
 
@@ -3710,8 +3624,8 @@ function component(name, definition) {
   }
   definition._name = name;
 
-  // Auto-detect the calling module's URL so that relative templateUrl,
-  // styleUrl, and pages.dir paths resolve relative to the component file.
+  // Auto-detect the calling module's URL so that relative templateUrl
+  // and styleUrl paths resolve relative to the component file.
   // An explicit `base` string on the definition overrides auto-detection.
   if (definition.base !== undefined) {
     definition._base = definition.base;   // explicit override
@@ -3838,22 +3752,10 @@ async function prefetch(name) {
   const def = _registry.get(name);
   if (!def) return;
 
-  // Load templateUrl, styleUrl, and normalize pages config
+  // Load templateUrl and styleUrl if not already loaded.
   if ((def.templateUrl && !def._templateLoaded) ||
-      (def.styleUrl && !def._styleLoaded) ||
-      (def.pages && !def._pagesNormalized)) {
+      (def.styleUrl && !def._styleLoaded)) {
     await Component.prototype._loadExternals.call({ _def: def });
-  }
-
-  // For pages-based components, prefetch ALL page templates so any
-  // active page renders instantly on mount.
-  if (def._pageUrls && def._externalTemplates) {
-    const missing = Object.entries(def._pageUrls)
-      .filter(([id]) => !(id in def._externalTemplates));
-    if (missing.length) {
-      const results = await Promise.all(missing.map(([, url]) => _fetchResource(url)));
-      missing.forEach(([id], i) => { def._externalTemplates[id] = results[i]; });
-    }
   }
 }
 
@@ -4098,7 +4000,7 @@ class Router {
 
     // Per-route fallback: register an alias path for the same component.
     // e.g. { path: '/docs/:section', fallback: '/docs', component: 'docs-page' }
-    // When matched via fallback, missing params are undefined → pages `default` kicks in.
+    // When matched via fallback, missing params are undefined.
     if (route.fallback) {
       const fbKeys = [];
       const fbPattern = route.fallback
@@ -5362,8 +5264,8 @@ $.guardCallback  = guardCallback;
 $.validate       = validate;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.8.6';
-$.libSize = '~91 KB';
+$.version = '0.8.7';
+$.libSize = '~89 KB';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

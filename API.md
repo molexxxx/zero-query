@@ -1,4 +1,4 @@
-# zQuery (zeroQuery) — Full API Reference
+﻿# zQuery (zeroQuery) — Full API Reference
 
 Complete API documentation for every module, method, option, and type in zQuery. All examples assume the global `$` is available via the built `zquery.min.js` bundle. For getting started, project setup, the dev server, and the CLI bundler, see [README.md](README.md).
 
@@ -24,7 +24,6 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Watch Callbacks](#watch-callbacks)
   - [Slots — Content Projection](#slots--content-projection)
   - [External Templates & Styles](#external-templates--styles)
-  - [Pages Config](#pages-config)
   - [Directives](#directives)
   - [z-key — Keyed Reconciliation](#z-key--keyed-reconciliation)
   - [z-skip — Opt Out of Diffing](#z-skip--opt-out-of-diffing)
@@ -642,7 +641,7 @@ Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base hre
 | `path` | `string` | **Yes** | URL pattern. Supports `:param` and `*` wildcard. |
 | `component` | `string \| function` | **Yes** | Registered component name (auto-mounted), or `(route) => html` render function. |
 | `load` | `() => Promise` | No | Async function called before mounting (for lazy-loading modules). |
-| `fallback` | `string` | No | An additional path that also matches this route. When matched via fallback, missing `:param` values are `undefined`. Useful with `pages` config: `{ path: '/docs/:section', fallback: '/docs' }`. |
+| `fallback` | `string` | No | An additional path that also matches this route. When matched via fallback, missing `:param` values are `undefined`. Example: `{ path: '/docs/:section', fallback: '/docs' }`. |
 
 **Path pattern examples:**
 
@@ -865,8 +864,7 @@ $.component('app-counter', {
 | `styles` | `string` | No | CSS string — automatically scoped to this component's root element on first render. |
 | `templateUrl` | `string \| string[] \| { key: url }` | No | URL to an external HTML template file, or an array/object map of URLs for multi-template components. If `render()` is also defined, `render()` takes priority. See [External Templates & Styles](#external-templates--styles). |
 | `styleUrl` | `string \| string[]` | No | URL (or array of URLs) to external CSS file(s). Fetched and scoped automatically on first mount. Merged with inline `styles` if both are present. |
-| `pages` | `object` | No | Declarative multi-page config with lazy loading. Exposes `this.pages`, `this.activePage`, `this.templates`. See [Pages Config](#pages-config). |
-| `base` | `string` | No | Optional override for the base path used to resolve relative `templateUrl`, `styleUrl`, and `pages.dir` paths. By default, paths resolve relative to the component file automatically — you only need `base` if you want to point somewhere else (e.g. `base: 'app/shared/'`). |
+| `base` | `string` | No | Optional override for the base path used to resolve relative `templateUrl` and `styleUrl` paths. By default, paths resolve relative to the component file automatically — you only need `base` if you want to point somewhere else (e.g. `base: 'app/shared/'`). |
 | `init` | `() => void` | No | Called before first render (during construction). |
 | `mounted` | `() => void` | No | Called once after first render and DOM insertion. |
 | `updated` | `() => void` | No | Called after every subsequent re-render. |
@@ -947,9 +945,7 @@ Available inside component methods as `this`, or from `$.mount()` / `$.getInstan
 | `this.state.__raw` | `object` | Raw (unwrapped) state object. Write here to avoid triggering re-render. |
 | `this.props` | `object` | Frozen props passed from parent. |
 | `this.refs` | `object` | Map of `z-ref` name → DOM element. Populated after each render. |
-| `this.templates` | `object` | Keyed map of loaded templates (when using multi-`templateUrl` or `pages`). With `pages`, templates are populated lazily — the active page is always available, others fill in via background prefetch. |
-| `this.pages` | `Array<{id, label}>` | Normalized page metadata (when using `pages` config). |
-| `this.activePage` | `string` | Active page id derived from route param (when using `pages` config). |
+| `this.templates` | `object` | Keyed map of loaded templates (when using multi-`templateUrl`). |
 | `this.setState(partial)` | `(object) => void` | Merge partial state (triggers re-render). |
 | `this.emit(name, detail)` | `(string, any) => void` | Dispatch a bubbling CustomEvent from the component root. |
 | `this.destroy()` | `() => void` | Teardown: removes listeners, scoped styles, clears DOM. |
@@ -1175,117 +1171,6 @@ $.component('my-widget', {
   render() { return '<div class="widget">Content</div>'; }
 });
 ```
-
-### Pages Config
-
-The `pages` option is a high-level shorthand for components that load and display multiple HTML pages from a directory. It normalizes page metadata, derives the active page from a route parameter, and **lazy-loads templates** — only the active page is fetched on first render, and remaining pages are prefetched in the background for instant navigation.
-
-```js
-// File: app/components/docs/docs.js
-$.component('docs-page', {
-  pages: {
-    dir:     'pages',                  // → app/components/docs/pages/
-    param:   'section',                // reads :section from the route
-    default: 'getting-started',
-    items: [
-      'getting-started',
-      { id: 'dev-workflow', label: 'Development' },
-      { id: 'cli-bundler', label: 'CLI Bundler' },
-      'project-structure',
-      { id: 'selectors', label: 'Selectors & DOM' },
-      'components',
-      'router',
-      'store',
-      { id: 'http', label: 'HTTP Client' },
-      'reactive',
-      { id: 'utils', label: 'Utilities' },
-    ],
-  },
-
-  styleUrl: 'docs.css',               // → app/components/docs/docs.css
-
-  render() {
-    return `
-      <nav>
-        ${this.pages.map(p => `
-          <a class="${this.activePage === p.id ? 'active' : ''}"
-             z-link="/docs/${p.id}">${p.label}</a>
-        `).join('')}
-      </nav>
-      <main>${this.templates[this.activePage] || ''}</main>
-    `;
-  }
-});
-```
-
-The `param` property tells the component **which route parameter to read**. It must match a `:param` segment in your router config. Use `fallback` so one route handles both the bare path and the parameterized path:
-
-```js
-// routes.js
-$.router({
-  routes: [
-    { path: '/docs/:section', component: 'docs-page', fallback: '/docs' },
-  ]
-});
-// /docs           → activePage = default ('getting-started')
-// /docs/router    → activePage = 'router'
-```
-
-#### Pages Config Options
-
-| Property | Type | Default | Description |
-| --- | --- | --- | --- |
-| `dir` | `string` | `''` | Directory containing the page HTML files (resolved via `base` if set). |
-| `param` | `string` | — | Route param name — must match a `:param` segment in your route (e.g. `'section'` for `/docs/:section`). |
-| `default` | `string` | first item | Page id shown when the route param is absent. |
-| `ext` | `string` | `'.html'` | File extension appended to each page id. |
-| `items` | `Array<string \| {id, label}>` | `[]` | List of page ids and/or objects. |
-
-#### How `pages` Works
-
-1. **Normalizes items** — Strings auto-derive labels by converting kebab-case to Title Case: `'getting-started'` → `{ id: 'getting-started', label: 'Getting Started' }`. Objects pass through with an optional auto-label.
-2. **Builds a URL map** — Creates `{ id: 'dir/id.ext', … }` for each item.
-3. **Lazy-loads the active page** — On first render only the active page’s HTML is fetched. The component renders as soon as that single file is ready.
-4. **Prefetches remaining pages** — After the active page renders, all other page templates are fetched in the background. Navigation to those pages is then instant.
-5. **Exposes `this.pages`** — Array of `{ id, label }` objects available inside `render()`.
-6. **Exposes `this.activePage`** — The current page id, derived from `this.props.$params[param]` (falling back to `default` or the first item). If the param doesn’t match any known page, it falls back to the default.
-7. **Exposes `this.templates`** — Keyed template map. The active page is always present; other pages appear as their background prefetch completes.
-
-#### Adding Interactivity to Pages
-
-Page HTML files are static content by default. If a page needs interactivity, embed a component tag directly in the HTML — the component system automatically initializes custom elements found in rendered content:
-
-```html
-<!-- pages/getting-started.html -->
-<h2>Getting Started</h2>
-<p>Follow the steps below to set up your project.</p>
-
-<!-- Interactive component embedded in a static page -->
-<install-wizard></install-wizard>
-
-<h3>Next Steps</h3>
-<p>Once installed, explore the Components section.</p>
-```
-
-```js
-// components/install-wizard.js — registered separately
-$.component('install-wizard', {
-  state: () => ({ step: 1 }),
-  render() {
-    return `
-      <div class="wizard">
-        <p>Step ${this.state.step} of 3</p>
-        <button @click="next">Next</button>
-      </div>
-    `;
-  },
-  next() { if (this.state.step < 3) this.state.step++; },
-});
-```
-
-> **Tip:** Keep page files as plain HTML for content. When you need interactive widgets, create a component and drop its tag into the page HTML. If a "page" needs its own layout, lifecycle, or completely different UI, make it a separate route + component instead.
-
-> **Tip:** The `pages` config is the recommended approach for documentation pages, multi-step wizards, tabbed views, or any component that switches between multiple HTML files driven by a route parameter.
 
 ### Directives
 
@@ -2383,7 +2268,7 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
 | `$.libSize` | Minified library size string (e.g. `'~91 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'0.8.6'`). |
+| `$.version` | Library version string (e.g. `'0.8.7'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |

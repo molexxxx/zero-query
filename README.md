@@ -189,13 +189,12 @@ Output goes to `dist/` next to your `index.html`:
 dist/
   server/               ← deploy to your web server (<base href="/"> for SPA routes)
     index.html
-    z-app.<hash>.js
     z-app.<hash>.min.js
     global.<hash>.min.css
     assets/
   local/                ← open from disk (file://) — no server needed
     index.html
-    z-app.<hash>.js
+    z-app.<hash>.min.js
     ...
 ```
 
@@ -217,7 +216,7 @@ dist/
    4. **Convention fallbacks** — `app/app.js`, `scripts/app.js`, `src/app.js`, `js/app.js`, `app.js`, `main.js`.
 2. Resolves all `import` statements and topologically sorts dependencies
 3. Strips `import`/`export` syntax, wraps in an IIFE
-4. Embeds zQuery library and inlines `templateUrl` / `styleUrl` / `pages` files
+4. Embeds zQuery library and inlines `templateUrl` / `styleUrl` files
 5. Rewrites HTML, copies assets, produces hashed filenames
 
 ---
