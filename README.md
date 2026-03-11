@@ -65,7 +65,7 @@ The dev server includes a **full-screen error overlay** that surfaces errors dir
 
 ### Alternative: Manual Setup (No npm)
 
-If you prefer **zero tooling**, download `dist/zquery.min.js` from the [GitHub releases](https://github.com/tonywied17/zero-query/releases/tag/RELEASE) and drop it into `scripts/vendor/`. Then open `index.html` directly in a browser — no Node.js required.
+If you prefer **zero tooling**, download `dist/zquery.min.js` from the [GitHub releases](https://github.com/tonywied17/zero-query/releases/tag/RELEASE) and drop it into your project root or `assets/scripts/`. Then open `index.html` directly in a browser — no Node.js required.
 
 ```bash
 git clone https://github.com/tonywied17/zero-query.git
@@ -82,9 +82,9 @@ npx zquery build
 <head>
   <meta charset="UTF-8">
   <title>My App</title>
-  <link rel="stylesheet" href="styles/styles.css">
-  <script src="scripts/vendor/zquery.min.js"></script>
-  <script type="module" src="scripts/app.js"></script>
+  <link rel="stylesheet" href="global.css">
+  <script src="zquery.min.js"></script>
+  <script type="module" src="app/app.js"></script>
 </head>
 <body>
   <nav>
@@ -99,7 +99,7 @@ npx zquery build
 ### Boot Your App
 
 ```js
-// scripts/app.js
+// app/app.js
 import './components/home.js';
 import './components/about.js';
 import './components/contacts/contacts.js';
@@ -111,7 +111,7 @@ $.router({ el: '#app', routes, fallback: 'not-found' });
 ### Define a Component
 
 ```js
-// scripts/components/home.js
+// app/components/home.js
 $.component('home-page', {
   state: () => ({ count: 0 }),
   increment() { this.state.count++; },
@@ -134,9 +134,8 @@ That's it — a fully working SPA with the dev server's live-reload.
 ```
 my-app/
   index.html
-  scripts/
-    vendor/
-      zquery.min.js       ← only needed for manual setup; dev server auto-resolves
+  global.css
+  app/
     app.js
     routes.js
     store.js
@@ -151,14 +150,17 @@ my-app/
         contacts.js
         contacts.html
         contacts.css
-  styles/
-    styles.css
+  assets/
+    scripts/              ← third-party JS (e.g. zquery.min.js for manual setup)
+    styles/               ← additional stylesheets, fonts, etc.
 ```
 
 - One component per file inside `components/`.
 - Names **must contain a hyphen** (Web Component convention): `home-page`, `app-counter`, etc.
 - Components with external templates or styles can use a subfolder (e.g. `contacts/contacts.js` + `contacts.html` + `contacts.css`).
 - `app.js` is the single entry point — import components, create the store, and boot the router.
+- `global.css` lives next to `index.html` for easy access; the bundler hashes it into `global.<hash>.min.css` for production.
+- `assets/` holds static files that get copied to `dist/` as-is.
 
 ---
 
@@ -174,7 +176,7 @@ npx zquery bundle
 npx zquery bundle my-app/
 
 # Or pass a direct entry file (skips auto-detection)
-npx zquery bundle my-app/scripts/main.js
+npx zquery bundle my-app/app/main.js
 ```
 
 Output goes to `dist/` next to your `index.html`:
@@ -185,7 +187,8 @@ dist/
     index.html
     z-app.<hash>.js
     z-app.<hash>.min.js
-    styles/
+    global.<hash>.min.css
+    assets/
   local/                ← open from disk (file://) — no server needed
     index.html
     z-app.<hash>.js
@@ -198,7 +201,8 @@ dist/
 | --- | --- | --- |
 | `--out <path>` | `-o` | Custom output directory |
 | `--index <file>` | `-i` | Index HTML file (default: auto-detected) |
-| `--minimal` | `-m` | Only output HTML + bundled JS (skip static assets) |
+| `--minimal` | `-m` | Only output HTML, bundled JS, and global CSS (skip static assets) |
+| `--global-css <path>` | | Override global CSS input file (default: first `<link>` in HTML) |
 
 ### What the Bundler Does
 
@@ -206,7 +210,7 @@ dist/
    1. **HTML files** — `index.html` is checked first, then other `.html` files (root + one level deep).
    2. **Module scripts within HTML** — within each HTML file, a `<script type="module">` whose `src` resolves to `app.js` wins; otherwise the first module script tag is used.
    3. **JS file scan** — if no HTML match, JS files (up to 2 levels deep) are scanned in two passes: first for `$.router(` (the canonical app entry point), then for `$.mount(`, `$.store(`, or `mountAll(`.
-   4. **Convention fallbacks** — `scripts/app.js`, `src/app.js`, `js/app.js`, `app.js`, `main.js`.
+   4. **Convention fallbacks** — `app/app.js`, `scripts/app.js`, `src/app.js`, `js/app.js`, `app.js`, `main.js`.
 2. Resolves all `import` statements and topologically sorts dependencies
 3. Strips `import`/`export` syntax, wraps in an IIFE
 4. Embeds zQuery library and inlines `templateUrl` / `styleUrl` / `pages` files

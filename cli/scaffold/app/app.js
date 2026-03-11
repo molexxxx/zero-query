@@ -1,4 +1,4 @@
-// scripts/app.js — application entry point
+// app/app.js — application entry point
 //
 // This file bootstraps the zQuery app: imports all components,
 // sets up routing, wires the responsive nav, and demonstrates

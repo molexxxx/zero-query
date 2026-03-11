@@ -1,4 +1,4 @@
-// scripts/store.js — global state management
+// app/store.js — global state management
 //
 // $.store() creates a centralized store with state, actions, and getters.
 // Components can dispatch actions and subscribe to changes.

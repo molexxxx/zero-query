@@ -7,7 +7,7 @@ function showHelp() {
   COMMANDS
 
     create [dir]               Scaffold a new zQuery project
-                               Creates index.html, scripts/, styles/ in the target directory
+                               Creates index.html, global.css, app/, assets/ in the target directory
                                (defaults to the current directory)
 
     dev [root]                 Start a dev server with live-reload
@@ -24,7 +24,8 @@ function showHelp() {
     bundle [dir|file]          Bundle app ES modules into a single file
       --out, -o <path>         Output directory (default: dist/ next to HTML file)
       --index, -i <file>        Index HTML file (default: auto-detected)
-      --minimal, -m            Only output HTML + bundled JS (skip static assets)
+      --minimal, -m            Only output HTML, bundled JS, and global CSS (skip static assets)
+      --global-css <path>      Override global CSS input (default: first <link> in HTML)
 
     build                      Build the zQuery library \u2192 dist/      --watch, -w              Watch src/ and rebuild on changes                               (must be run from the project root where src/ lives)
 
@@ -35,7 +36,7 @@ function showHelp() {
         1. index.html first, then other .html files
         2. Within HTML: module script pointing to app.js, else first module script
         3. JS scan: $.router( first (entry point), then $.mount( / $.store(
-        4. Convention fallbacks (scripts/app.js, app.js, etc.)
+        4. Convention fallbacks (app/app.js, scripts/app.js, app.js, etc.)
       • Passing a directory auto-detects the entry; passing a file uses it directly
       • zquery.min.js is always embedded (auto-built from source if not found)
       • HTML file is auto-detected (any .html, not just index.html)
@@ -83,12 +84,12 @@ function showHelp() {
     zquery bundle my-app/
 
     # Pass a direct entry file (skip auto-detection)
-    zquery bundle my-app/scripts/main.js
+    zquery bundle my-app/app/main.js
 
     # Custom output directory
     zquery bundle my-app/ -o build/
 
-    # Minimal build (only HTML + bundled JS, no static assets)
+    # Minimal build (HTML + JS + global CSS, no static asset copying)
     zquery bundle my-app/ --minimal
 
     # Dev server with a custom index page

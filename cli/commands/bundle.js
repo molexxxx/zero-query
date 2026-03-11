@@ -521,7 +521,7 @@ function detectEntry(projectRoot) {
   }
 
   // 3. Convention fallbacks
-  const fallbacks = ['scripts/app.js', 'src/app.js', 'js/app.js', 'app.js', 'main.js'];
+  const fallbacks = ['app/app.js', 'scripts/app.js', 'src/app.js', 'js/app.js', 'app.js', 'main.js'];
   for (const f of fallbacks) {
     const fp = path.join(projectRoot, f);
     if (fs.existsSync(fp)) return fp;
@@ -539,7 +539,7 @@ function detectEntry(projectRoot) {
  *   server/index.html — <base href="/"> for SPA deep routes
  *   local/index.html  — relative paths for file:// access
  */
-function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFiles, serverDir, localDir) {
+function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFiles, serverDir, localDir, globalCssOrigHref, globalCssHash) {
   const htmlPath = path.resolve(projectRoot, htmlRelPath);
   if (!fs.existsSync(htmlPath)) {
     console.warn(`  ⚠  HTML file not found: ${htmlRelPath}`);
@@ -647,6 +647,15 @@ function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFi
     );
   }
 
+  // Rewrite global CSS link to hashed version
+  if (globalCssOrigHref && globalCssHash) {
+    const escapedHref = globalCssOrigHref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const cssLinkRe = new RegExp(
+      `(<link[^>]+href\\s*=\\s*["'])${escapedHref}(["'][^>]*>)`, 'i'
+    );
+    html = html.replace(cssLinkRe, `$1${globalCssHash}$2`);
+  }
+
   const serverHtml = html;
   const localHtml  = html.replace(/<base\s+href\s*=\s*["']\/["'][^>]*>\s*\n?\s*/i, '');
 
@@ -664,19 +673,26 @@ function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFi
 
 /**
  * Copy the entire app directory into both dist/server and dist/local,
- * skipping only build outputs and tooling dirs.  This ensures all static
- * assets (icons/, images/, fonts/, styles/, scripts/, manifests, etc.)
- * are available in the built output without maintaining a fragile whitelist.
+ * skipping only build outputs, tooling dirs, and the app/ source dir.
+ * This ensures all static assets (assets/, icons/, images/, fonts/,
+ * manifests, etc.) are available in the built output without maintaining
+ * a fragile whitelist.
  */
 function copyStaticAssets(appRoot, serverDir, localDir, bundledFiles) {
-  const SKIP_DIRS = new Set(['dist', 'node_modules', '.git', '.vscode', 'scripts']);
+  const SKIP_DIRS = new Set(['dist', 'node_modules', '.git', '.vscode']);
+
+  // Case-insensitive match for App/ directory (contains bundled source)
+  function isAppDir(name) {
+    return name.toLowerCase() === 'app';
+  }
 
   let copiedCount = 0;
 
   function copyEntry(srcPath, relPath) {
     const stat = fs.statSync(srcPath);
     if (stat.isDirectory()) {
-      if (SKIP_DIRS.has(path.basename(srcPath))) return;
+      const dirName = path.basename(srcPath);
+      if (SKIP_DIRS.has(dirName) || isAppDir(dirName)) return;
       for (const child of fs.readdirSync(srcPath)) {
         copyEntry(path.join(srcPath, child), path.join(relPath, child));
       }
@@ -695,7 +711,7 @@ function copyStaticAssets(appRoot, serverDir, localDir, bundledFiles) {
 
   for (const entry of fs.readdirSync(appRoot, { withFileTypes: true })) {
     if (entry.isDirectory()) {
-      if (SKIP_DIRS.has(entry.name)) continue;
+      if (SKIP_DIRS.has(entry.name) || isAppDir(entry.name)) continue;
       copyEntry(path.join(appRoot, entry.name), entry.name);
     } else {
       copyEntry(path.join(appRoot, entry.name), entry.name);
@@ -714,6 +730,7 @@ function copyStaticAssets(appRoot, serverDir, localDir, bundledFiles) {
 function bundleApp() {
   const projectRoot = process.cwd();
   const minimal = flag('minimal', 'm');
+  const globalCssOverride = option('global-css', null, null);
 
   // Entry point — positional arg (directory or file) or auto-detection
   let entry = null;
@@ -833,7 +850,7 @@ function bundleApp() {
   console.log(`  Output:  ${path.relative(projectRoot, baseDistDir)}/server/ & local/`);
   console.log(`  Library: embedded`);
   console.log(`  HTML:    ${htmlFile || 'not found (no HTML detected)'}`);
-  if (minimal) console.log(`  Mode:    minimal (HTML + bundle only)`);
+  if (minimal) console.log(`  Mode:    minimal (HTML + JS + global CSS only)`);
   console.log('');
 
   // ------ doBuild (inlined) ------
@@ -876,8 +893,24 @@ function bundleApp() {
     }
 
     const htmlDir = htmlAbs ? path.dirname(htmlAbs) : null;
+
+    // Case-insensitive search for Assets/ directory
+    function findAssetsDir(root) {
+      try {
+        for (const e of fs.readdirSync(root, { withFileTypes: true })) {
+          if (e.isDirectory() && e.name.toLowerCase() === 'assets') return path.join(root, e.name);
+        }
+      } catch { /* skip */ }
+      return null;
+    }
+
+    const assetsDir    = findAssetsDir(htmlDir || projectRoot);
+    const altAssetsDir = htmlDir ? findAssetsDir(projectRoot) : null;
+
     const libCandidates = [
       path.join(pkgRoot, 'dist/zquery.min.js'),
+      assetsDir    && path.join(assetsDir, 'scripts/zquery.min.js'),
+      altAssetsDir && path.join(altAssetsDir, 'scripts/zquery.min.js'),
       htmlDir && path.join(htmlDir, 'scripts/vendor/zquery.min.js'),
       htmlDir && path.join(htmlDir, 'vendor/zquery.min.js'),
       path.join(projectRoot, 'scripts/vendor/zquery.min.js'),
@@ -895,7 +928,7 @@ function bundleApp() {
       console.log(`  Embedded library from ${path.relative(projectRoot, libPath)} (${(libBytes / 1024).toFixed(1)} KB)`);
     } else {
       console.warn(`\n  ⚠  Could not find zquery.min.js anywhere`);
-      console.warn(`     Place zquery.min.js in scripts/vendor/, vendor/, lib/, or dist/`);
+      console.warn(`     Place zquery.min.js in assets/scripts/, vendor/, lib/, or dist/`);
     }
   }
 
@@ -921,8 +954,7 @@ function bundleApp() {
 
   // Content-hashed filenames
   const contentHash = crypto.createHash('sha256').update(bundle).digest('hex').slice(0, 8);
-  const bundleBase  = `z-${entryName}.${contentHash}.js`;
-  const minBase     = `z-${entryName}.${contentHash}.min.js`;
+  const minBase = `z-${entryName}.${contentHash}.min.js`;
 
   // Clean previous builds
   const escName = entryName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -935,21 +967,67 @@ function bundleApp() {
     }
   }
 
-  // Write bundles
-  const bundleFile = path.join(serverDir, bundleBase);
-  const minFile    = path.join(serverDir, minBase);
-  fs.writeFileSync(bundleFile, bundle, 'utf-8');
+  // Write minified bundle
+  const minFile = path.join(serverDir, minBase);
   fs.writeFileSync(minFile, minify(bundle, banner), 'utf-8');
-  fs.copyFileSync(bundleFile, path.join(localDir, bundleBase));
   fs.copyFileSync(minFile, path.join(localDir, minBase));
 
-  console.log(`\n  ✓ ${bundleBase} (${sizeKB(fs.readFileSync(bundleFile))} KB)`);
-  console.log(`  ✓ ${minBase} (${sizeKB(fs.readFileSync(minFile))} KB)`);
+  console.log(`\n  ✓ ${minBase} (${sizeKB(fs.readFileSync(minFile))} KB)`);
+
+  // ------------------------------------------------------------------
+  // Global CSS bundling — extract from index.html <link> or --global-css
+  // ------------------------------------------------------------------
+  let globalCssHash = null;
+  let globalCssOrigHref = null;
+  if (htmlAbs) {
+    const htmlContent = fs.readFileSync(htmlAbs, 'utf-8');
+    const htmlDir = path.dirname(htmlAbs);
+
+    // Determine global CSS path: --global-css flag overrides, else first <link rel="stylesheet"> in HTML
+    let globalCssPath = null;
+    if (globalCssOverride) {
+      globalCssPath = path.resolve(projectRoot, globalCssOverride);
+      // Reconstruct relative href for HTML rewriting
+      globalCssOrigHref = path.relative(htmlDir, globalCssPath).replace(/\\/g, '/');
+    } else {
+      const linkRe = /<link[^>]+rel\s*=\s*["']stylesheet["'][^>]+href\s*=\s*["']([^"']+)["']/gi;
+      const altRe  = /<link[^>]+href\s*=\s*["']([^"']+)["'][^>]+rel\s*=\s*["']stylesheet["']/gi;
+      let linkMatch = linkRe.exec(htmlContent) || altRe.exec(htmlContent);
+      if (linkMatch) {
+        globalCssOrigHref = linkMatch[1];
+        // Strip query string / fragment so the path resolves to the actual file
+        const cleanHref = linkMatch[1].split('?')[0].split('#')[0];
+        globalCssPath = path.resolve(htmlDir, cleanHref);
+      }
+    }
+
+    if (globalCssPath && fs.existsSync(globalCssPath)) {
+      let cssContent = fs.readFileSync(globalCssPath, 'utf-8');
+      const cssMin = minifyCSS(cssContent);
+      const cssHash = crypto.createHash('sha256').update(cssMin).digest('hex').slice(0, 8);
+      const cssOutName = `global.${cssHash}.min.css`;
+
+      // Clean previous global CSS builds
+      const cssCleanRe = /^global\.[a-f0-9]{8}\.min\.css$/;
+      for (const dir of [serverDir, localDir]) {
+        if (fs.existsSync(dir)) {
+          for (const f of fs.readdirSync(dir)) {
+            if (cssCleanRe.test(f)) fs.unlinkSync(path.join(dir, f));
+          }
+        }
+      }
+
+      fs.writeFileSync(path.join(serverDir, cssOutName), cssMin, 'utf-8');
+      fs.writeFileSync(path.join(localDir, cssOutName), cssMin, 'utf-8');
+      globalCssHash = cssOutName;
+      console.log(`  ✓ ${cssOutName} (${sizeKB(Buffer.from(cssMin))} KB)`);
+    }
+  }
 
   // Rewrite HTML to reference the minified bundle
   const bundledFileSet = new Set(files);
   if (htmlFile) {
-    rewriteHtml(projectRoot, htmlFile, minFile, true, bundledFileSet, serverDir, localDir);
+    rewriteHtml(projectRoot, htmlFile, minFile, true, bundledFileSet, serverDir, localDir, globalCssOrigHref, globalCssHash);
   }
 
   // Copy static asset directories (icons/, images/, fonts/, etc.)

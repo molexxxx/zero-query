@@ -26,7 +26,7 @@ function createProject(args) {
   const name   = path.basename(target);
 
   // Guard: refuse to overwrite existing files
-  const conflicts = ['index.html', 'scripts'].filter(f =>
+  const conflicts = ['index.html', 'global.css', 'app', 'assets'].filter(f =>
     fs.existsSync(path.join(target, f))
   );
   if (conflicts.length) {

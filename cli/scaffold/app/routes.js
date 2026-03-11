@@ -1,4 +1,4 @@
-// scripts/routes.js — route definitions
+// app/routes.js — route definitions
 //
 // Each route maps a URL path to a component tag name.
 // Supports: static paths, :params, wildcards, and lazy loading via `load`.

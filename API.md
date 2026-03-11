@@ -816,7 +816,7 @@ $.component('app-counter', {
 | `templateUrl` | `string \| string[] \| { key: url }` | No | URL to an external HTML template file, or an array/object map of URLs for multi-template components. If `render()` is also defined, `render()` takes priority. See [External Templates & Styles](#external-templates--styles). |
 | `styleUrl` | `string \| string[]` | No | URL (or array of URLs) to external CSS file(s). Fetched and scoped automatically on first mount. Merged with inline `styles` if both are present. |
 | `pages` | `object` | No | Declarative multi-page config with lazy loading. Exposes `this.pages`, `this.activePage`, `this.templates`. See [Pages Config](#pages-config). |
-| `base` | `string` | No | Optional override for the base path used to resolve relative `templateUrl`, `styleUrl`, and `pages.dir` paths. By default, paths resolve relative to the component file automatically — you only need `base` if you want to point somewhere else (e.g. `base: 'scripts/shared/'`). |
+| `base` | `string` | No | Optional override for the base path used to resolve relative `templateUrl`, `styleUrl`, and `pages.dir` paths. By default, paths resolve relative to the component file automatically — you only need `base` if you want to point somewhere else (e.g. `base: 'app/shared/'`). |
 | `init` | `() => void` | No | Called before first render (during construction). |
 | `mounted` | `() => void` | No | Called once after first render and DOM insertion. |
 | `updated` | `() => void` | No | Called after every subsequent re-render. |
@@ -1131,10 +1131,10 @@ $.component('my-widget', {
 The `pages` option is a high-level shorthand for components that load and display multiple HTML pages from a directory. It normalizes page metadata, derives the active page from a route parameter, and **lazy-loads templates** — only the active page is fetched on first render, and remaining pages are prefetched in the background for instant navigation.
 
 ```js
-// File: scripts/components/docs/docs.js
+// File: app/components/docs/docs.js
 $.component('docs-page', {
   pages: {
-    dir:     'pages',                  // → scripts/components/docs/pages/
+    dir:     'pages',                  // → app/components/docs/pages/
     param:   'section',                // reads :section from the route
     default: 'getting-started',
     items: [
@@ -1152,7 +1152,7 @@ $.component('docs-page', {
     ],
   },
 
-  styleUrl: 'docs.css',               // → scripts/components/docs/docs.css
+  styleUrl: 'docs.css',               // → app/components/docs/docs.css
 
   render() {
     return `
@@ -2253,7 +2253,7 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
 | `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. Uses LIS-based keyed reconciliation, `isEqualNode()` bail-outs, and `z-skip` opt-out. See [z-key](#z-key--keyed-reconciliation) and [z-skip](#z-skip--opt-out-of-diffing). |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
-| `$.version` | Library version string (e.g. `'0.8.0'`). |
+| `$.version` | Library version string (e.g. `'0.8.1'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |
@@ -2299,8 +2299,8 @@ Render a full HTML page with the component embedded.
 const page = await app.renderPage('hello-world', {
   title: 'My App',
   lang: 'en',
-  styles: ['styles/global.css'],
-  scripts: ['scripts/app.js'],
+  styles: ['global.css'],
+  scripts: ['app/app.js'],
 });
 ```
 
