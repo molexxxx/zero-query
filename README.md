@@ -15,7 +15,7 @@
 
 </p>
 
-> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~83 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
+> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~86 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
 
 ## Features
 
@@ -71,7 +71,7 @@ If you prefer **zero tooling**, download `dist/zquery.min.js` from the [GitHub r
 git clone https://github.com/tonywied17/zero-query.git
 cd zero-query
 npx zquery build
-# → dist/zquery.min.js  (~83 KB)
+# → dist/zquery.min.js  (~86 KB)
 ```
 
 ### Include in HTML
