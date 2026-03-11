@@ -5355,9 +5355,11 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Error handling --------------------------------------------------------
-$.onError     = onError;
-$.ZQueryError = ZQueryError;
-$.ErrorCode   = ErrorCode;
+$.onError        = onError;
+$.ZQueryError    = ZQueryError;
+$.ErrorCode      = ErrorCode;
+$.guardCallback  = guardCallback;
+$.validate       = validate;
 
 // --- Meta ------------------------------------------------------------------
 $.version = '0.8.6';

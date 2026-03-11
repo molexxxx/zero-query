@@ -2400,7 +2400,7 @@ zQuery includes a lightweight SSR module for rendering components to HTML string
 Create an SSR application instance.
 
 ```js
-import { createSSRApp, renderToString } from '@tonywied17/zero-query';
+import { createSSRApp, renderToString } from '@tonywied17/zero-query/src/ssr.js';
 
 const app = createSSRApp();
 
@@ -2417,7 +2417,7 @@ app.component('hello-world', {
 Quick one-shot render of a component definition to an HTML string (without registering it in an app).
 
 ```js
-import { renderToString } from '@tonywied17/zero-query';
+import { renderToString } from '@tonywied17/zero-query/src/ssr.js';
 
 const html = renderToString({
   state: () => ({ name: 'Tony' }),
@@ -2488,7 +2488,6 @@ import {
   createStore, getStore,
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, validate,
-  createSSRApp, renderToString,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, html, trust, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
@@ -2496,4 +2495,8 @@ import {
 } from '@tonywied17/zero-query';
 ```
 
+SSR is a separate Node.js-only module — import it directly:
 
+```js
+import { createSSRApp, renderToString } from '@tonywied17/zero-query/src/ssr.js';
+```

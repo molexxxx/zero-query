@@ -64,23 +64,88 @@ detectMode();
 // ===================================================================
 // Layout toggle: split-h → split-v → devtools-only → split-h
 // ===================================================================
-document.getElementById('mode-toggle').addEventListener('click', function() {
-  if (mode === 'popup') return; // can't toggle in popup mode
-  if (mode === 'split-h') mode = 'split-v';
-  else if (mode === 'split-v') mode = 'devtools-only';
-  else mode = 'split-h';
-  // Clear any inline grid overrides from drag-resize so the CSS class takes over
+var modeToggle = document.getElementById('mode-toggle');
+
+function setMode(newMode) {
+  mode = newMode;
   rootEl.style.gridTemplateColumns = '';
   rootEl.style.gridTemplateRows = '';
   rootEl.className = mode;
-  this.textContent = mode === 'split-h' ? '\u2b82' : mode === 'split-v' ? '\u2b81' : '\u25a1';
+  modeToggle.textContent = mode === 'split-h' ? '\u2b82' : mode === 'split-v' ? '\u2b81' : '\u25a1';
+  // Reset toolbar drag position
+  var tb = document.getElementById('divider-toolbar');
+  if (tb) { tb.style.left = ''; tb.style.top = ''; }
+}
+
+modeToggle.addEventListener('click', function() {
+  if (mode === 'popup') return;
+  if (mode === 'split-h') setMode('split-v');
+  else if (mode === 'split-v') setMode('devtools-only');
+  else setMode('split-h');
+  // Reset viewport presets to desktop when switching modes
+  var vBtns = document.querySelectorAll('.viewport-btn');
+  vBtns.forEach(function(b) { b.classList.remove('active'); });
+  var desk = document.querySelector('.viewport-btn[data-width="0"]');
+  if (desk) desk.classList.add('active');
 });
 
 // ===================================================================
 // Divider drag-to-resize
 // ===================================================================
 var divider = document.getElementById('divider');
+var toolbar = document.getElementById('divider-toolbar');
+
+// --- Toolbar drag (Y-axis in split-h, X-axis in split-v) ------------------
+var tbDragging = false;
+(function() {
+  var startPos, startOffset;
+  toolbar.addEventListener('mousedown', function(e) {
+    if (e.target.closest('button') || e.target.closest('.route-label')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    tbDragging = true;
+    toolbar.classList.add('dragging');
+    iframe.style.pointerEvents = 'none';
+    document.body.style.userSelect = 'none';
+
+    var isH = mode === 'split-h';
+    if (isH) {
+      // Vertical column divider — drag toolbar up/down
+      startPos = e.clientY;
+      startOffset = parseInt(toolbar.style.top, 10) || toolbar.offsetTop;
+    } else {
+      // Horizontal row divider — drag toolbar left/right
+      startPos = e.clientX;
+      startOffset = parseInt(toolbar.style.left, 10) || toolbar.offsetLeft;
+    }
+
+    function onMove(e2) {
+      if (isH) {
+        var delta = e2.clientY - startPos;
+        var max = divider.offsetHeight - toolbar.offsetHeight - 4;
+        toolbar.style.top = Math.max(4, Math.min(max, startOffset + delta)) + 'px';
+      } else {
+        var delta = e2.clientX - startPos;
+        var max = divider.offsetWidth - toolbar.offsetWidth - 4;
+        toolbar.style.left = Math.max(4, Math.min(max, startOffset + delta)) + 'px';
+      }
+    }
+    function onUp() {
+      tbDragging = false;
+      toolbar.classList.remove('dragging');
+      iframe.style.pointerEvents = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+})();
+
 divider.addEventListener('mousedown', function(e) {
+  // Don't start drag when clicking toolbar buttons or dragging toolbar
+  if (e.target.closest('.divider-toolbar')) return;
   e.preventDefault();
   var startX = e.clientX, startY = e.clientY;
   var isH = mode === 'split-h';
@@ -101,6 +166,7 @@ divider.addEventListener('mousedown', function(e) {
     var rest = ((1 - frac) * 100).toFixed(1) + '%';
     if (isH) rootEl.style.gridTemplateColumns = pct + ' 4px ' + rest;
     else rootEl.style.gridTemplateRows = pct + ' 4px ' + rest;
+    updateViewportActive();
   }
   function onUp() {
     iframe.style.pointerEvents = '';
@@ -112,6 +178,92 @@ divider.addEventListener('mousedown', function(e) {
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
 });
+
+// ===================================================================
+// Refresh button — reload the embedded iframe
+// ===================================================================
+document.getElementById('btn-refresh').addEventListener('click', function(e) {
+  e.stopPropagation();
+  if (mode === 'popup' && targetWin && !targetWin.closed) {
+    targetWin.location.reload();
+  } else if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.location.reload();
+  }
+});
+
+// ===================================================================
+// Viewport preset buttons — resize browser pane to mobile/tablet/desktop
+// ===================================================================
+var viewportBtns = document.querySelectorAll('.viewport-btn');
+
+function updateViewportActive() {
+  var w = iframe.offsetWidth;
+  viewportBtns.forEach(function(b) {
+    var target = parseInt(b.getAttribute('data-width'), 10);
+    if (target === 0) {
+      // Desktop is active when width doesn't match any preset
+      b.classList.toggle('active', w > 780);
+    } else {
+      b.classList.toggle('active', Math.abs(w - target) < 20);
+    }
+  });
+}
+
+viewportBtns.forEach(function(btn) {
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    if (mode === 'popup') return;
+    // Ensure we're in side-by-side mode
+    if (mode !== 'split-h') setMode('split-h');
+    var targetWidth = parseInt(this.getAttribute('data-width'), 10);
+    var total = rootEl.offsetWidth;
+
+    if (targetWidth === 0) {
+      // Desktop — reset to default CSS proportions
+      rootEl.style.gridTemplateColumns = '';
+    } else {
+      // Mobile/Tablet — set iframe column to exact pixel width
+      var pct = Math.min(85, Math.max(15, (targetWidth / total) * 100));
+      rootEl.style.gridTemplateColumns = pct.toFixed(1) + '% 4px 1fr';
+    }
+
+    viewportBtns.forEach(function(b) { b.classList.remove('active'); });
+    this.classList.add('active');
+  });
+});
+
+// ===================================================================
+// Route indicator — toggle label showing current path + hash
+// ===================================================================
+var routeBtn = document.getElementById('btn-route');
+var routeLabel = document.getElementById('route-label');
+
+function getRoutePath() {
+  try {
+    var win = (mode === 'popup' && targetWin) ? targetWin : (iframe && iframe.contentWindow);
+    if (!win) return '/';
+    var loc = win.location;
+    return (loc.pathname || '/') + (loc.hash || '');
+  } catch(e) { return '/'; }
+}
+
+routeBtn.addEventListener('click', function(e) {
+  e.stopPropagation();
+  var isOpen = routeLabel.classList.toggle('open');
+  if (isOpen) {
+    routeLabel.textContent = getRoutePath();
+    this.classList.add('active');
+  } else {
+    this.classList.remove('active');
+  }
+});
+
+// Keep label in sync while open
+setInterval(function() {
+  if (routeLabel.classList.contains('open')) {
+    routeLabel.textContent = getRoutePath();
+  }
+}, 500);
 
 // ===================================================================
 // init — connect to target window (popup or iframe)

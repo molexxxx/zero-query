@@ -106,12 +106,6 @@ export {
 } from './types/errors';
 
 export {
-  SSRApp,
-  createSSRApp,
-  renderToString,
-} from './types/ssr';
-
-export {
   morph,
   morphElement,
   safeEval,
