@@ -59,11 +59,13 @@ export interface RouterInstance {
   /**
    * Push a new state and resolve the route.
    * Supports `:param` interpolation when `options.params` is provided.
+   * Same-path navigation is deduplicated (skipped unless `options.force` is true).
+   * Hash-only changes on the same route use `replaceState` to avoid extra history entries.
    * @example
    * router.navigate('/user/:id', { params: { id: 42 } }); // navigates to /user/42
    * router.navigate('/dashboard', { state: { from: 'login' } });
    */
-  navigate(path: string, options?: { params?: Record<string, string | number>; state?: any }): RouterInstance;
+  navigate(path: string, options?: { params?: Record<string, string | number>; state?: any; force?: boolean }): RouterInstance;
   /**
    * Replace the current state (no new history entry).
    * Supports `:param` interpolation when `options.params` is provided.
@@ -105,6 +107,33 @@ export interface RouterInstance {
    */
   onChange(
     fn: (to: NavigationContext, from: NavigationContext | null) => void,
+  ): () => void;
+
+  /**
+   * Push a lightweight history entry for in-component UI state (modal, tab, panel).
+   * The URL does NOT change — only a history entry is added so the back button
+   * can undo the UI change before navigating away from the route.
+   * @param key — identifier for the substate (e.g. 'modal', 'tab')
+   * @param data — arbitrary serializable state
+   * @example
+   * router.pushSubstate('modal', { id: 'confirm-delete' });
+   */
+  pushSubstate(key: string, data?: any): RouterInstance;
+
+  /**
+   * Register a listener for substate pops (back button on a substate entry).
+   * The callback receives `(key, data, action)` and should return `true` if it
+   * handled the pop (prevents route resolution). If no listener returns `true`,
+   * normal route resolution proceeds.
+   * @returns An unsubscribe function.
+   * @example
+   * const unsub = router.onSubstate((key, data, action) => {
+   *   if (action === 'reset') { resetDefaults(); return true; }
+   *   if (key === 'modal') { closeModal(); return true; }
+   * });
+   */
+  onSubstate(
+    fn: (key: string | null, data: any, action: 'pop' | 'resolve' | 'reset') => boolean | void,
   ): () => void;
 
   /** Teardown the router and mounted component. */

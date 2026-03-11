@@ -421,6 +421,217 @@ describe('Router — multi-param routes', () => {
 
 
 // ---------------------------------------------------------------------------
+// Same-path deduplication
+// ---------------------------------------------------------------------------
+
+describe('Router — same-path deduplication', () => {
+  let router;
+
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="app"></div>';
+    window.location.hash = '#/';
+    router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+      ],
+    });
+  });
+
+  it('skips duplicate hash navigation to the same path', () => {
+    router.navigate('/about');
+    expect(window.location.hash).toBe('#/about');
+    // Navigate to the same path again — should be a no-op
+    const result = router.navigate('/about');
+    expect(window.location.hash).toBe('#/about');
+    expect(result).toBe(router);                // still returns the router chain
+  });
+
+  it('allows forced duplicate navigation with options.force', () => {
+    router.navigate('/about');
+    // Force navigation to same path
+    router.navigate('/about', { force: true });
+    expect(window.location.hash).toBe('#/about');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// History mode — same-path / hash-only navigation
+// ---------------------------------------------------------------------------
+
+describe('Router — history mode deduplication', () => {
+  let router;
+  let pushSpy, replaceSpy;
+
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="app"></div>';
+    pushSpy = vi.spyOn(window.history, 'pushState');
+    replaceSpy = vi.spyOn(window.history, 'replaceState');
+    router = createRouter({
+      el: '#app',
+      mode: 'history',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+        { path: '/docs', component: 'docs-page' },
+      ],
+    });
+    // Reset spy call counts after initial resolve
+    pushSpy.mockClear();
+    replaceSpy.mockClear();
+  });
+
+  afterEach(() => {
+    pushSpy.mockRestore();
+    replaceSpy.mockRestore();
+  });
+
+  it('uses pushState for different routes', () => {
+    router.navigate('/about');
+    expect(pushSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses replaceState for same-route hash-only change', () => {
+    // Navigate to /docs first
+    router.navigate('/docs');
+    pushSpy.mockClear();
+    replaceSpy.mockClear();
+    // Navigate to /docs#section — same route, different hash
+    router.navigate('/docs#section');
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(replaceSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Sub-route history substates
+// ---------------------------------------------------------------------------
+
+describe('Router — substates', () => {
+  let router;
+  let pushSpy;
+
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="app"></div>';
+    pushSpy = vi.spyOn(window.history, 'pushState');
+    router = createRouter({
+      el: '#app',
+      mode: 'history',
+      routes: [
+        { path: '/', component: 'home-page' },
+      ],
+    });
+    pushSpy.mockClear();
+  });
+
+  afterEach(() => {
+    pushSpy.mockRestore();
+  });
+
+  it('pushSubstate pushes a history entry with substate marker', () => {
+    router.pushSubstate('modal', { id: 'confirm' });
+    expect(pushSpy).toHaveBeenCalledTimes(1);
+    const state = pushSpy.mock.calls[0][0];
+    expect(state.__zq).toBe('substate');
+    expect(state.key).toBe('modal');
+    expect(state.data).toEqual({ id: 'confirm' });
+  });
+
+  it('onSubstate registers and unregisters listeners', () => {
+    const fn = vi.fn();
+    const unsub = router.onSubstate(fn);
+    expect(router._substateListeners).toContain(fn);
+    unsub();
+    expect(router._substateListeners).not.toContain(fn);
+  });
+
+  it('_fireSubstate calls listeners and returns true if any handles it', () => {
+    const fn1 = vi.fn(() => false);
+    const fn2 = vi.fn(() => true);
+    router.onSubstate(fn1);
+    router.onSubstate(fn2);
+    const handled = router._fireSubstate('modal', { id: 'x' }, 'pop');
+    expect(fn1).toHaveBeenCalledWith('modal', { id: 'x' }, 'pop');
+    expect(fn2).toHaveBeenCalledWith('modal', { id: 'x' }, 'pop');
+    expect(handled).toBe(true);
+  });
+
+  it('_fireSubstate returns false if no listener handles it', () => {
+    const fn = vi.fn(() => undefined);
+    router.onSubstate(fn);
+    const handled = router._fireSubstate('tab', { index: 0 }, 'pop');
+    expect(handled).toBe(false);
+  });
+
+  it('_fireSubstate catches errors in listeners', () => {
+    const fn = vi.fn(() => { throw new Error('oops'); });
+    router.onSubstate(fn);
+    // Should not throw
+    expect(() => router._fireSubstate('modal', {}, 'pop')).not.toThrow();
+  });
+
+  it('destroy clears substate listeners', () => {
+    router.onSubstate(() => {});
+    router.onSubstate(() => {});
+    router.destroy();
+    expect(router._substateListeners.length).toBe(0);
+  });
+
+  it('pushSubstate sets _inSubstate flag', () => {
+    expect(router._inSubstate).toBe(false);
+    router.pushSubstate('tab', { id: 'a' });
+    expect(router._inSubstate).toBe(true);
+  });
+
+  it('popstate past all substates fires reset action', () => {
+    const fn = vi.fn(() => true);
+    router.onSubstate(fn);
+    router.pushSubstate('tab', { id: 'a' });
+    expect(router._inSubstate).toBe(true);
+
+    // Simulate popstate landing on a non-substate entry
+    const evt = new PopStateEvent('popstate', { state: { __zq: 'route' } });
+    window.dispatchEvent(evt);
+
+    // Should have fired with reset action
+    expect(fn).toHaveBeenCalledWith(null, null, 'reset');
+    expect(router._inSubstate).toBe(false);
+  });
+
+  it('popstate on a substate entry keeps _inSubstate true', () => {
+    const fn = vi.fn(() => true);
+    router.onSubstate(fn);
+    router.pushSubstate('tab', { id: 'a' });
+    router.pushSubstate('tab', { id: 'b' });
+
+    // Simulate popstate landing on a substate entry
+    const evt = new PopStateEvent('popstate', {
+      state: { __zq: 'substate', key: 'tab', data: { id: 'a' } }
+    });
+    window.dispatchEvent(evt);
+
+    expect(fn).toHaveBeenCalledWith('tab', { id: 'a' }, 'pop');
+    expect(router._inSubstate).toBe(true);
+  });
+
+  it('reset action is not fired when no substates were active', () => {
+    const fn = vi.fn();
+    router.onSubstate(fn);
+    // _inSubstate is false, so popstate on a route entry should not fire reset
+    const evt = new PopStateEvent('popstate', { state: { __zq: 'route' } });
+    window.dispatchEvent(evt);
+    // fn should NOT have been called with 'reset'
+    const resetCalls = fn.mock.calls.filter(c => c[2] === 'reset');
+    expect(resetCalls.length).toBe(0);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
 // Edge cases
 // ---------------------------------------------------------------------------
 

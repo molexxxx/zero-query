@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.8.5
+ * @version 0.8.6
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -104,12 +104,6 @@ export {
   guardCallback,
   validate,
 } from './types/errors';
-
-export {
-  SSRApp,
-  createSSRApp,
-  renderToString,
-} from './types/ssr';
 
 export {
   morph,

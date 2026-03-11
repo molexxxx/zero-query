@@ -15,21 +15,21 @@
 
 </p>
 
-> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~86 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
+> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~91 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
 
 ## Features
 
 | Module | Highlights |
 | --- | --- |
 | **Components** | Reactive state, template literals, `@event` delegation (8 modifiers), `z-model` two-way binding, computed properties, watch callbacks, slot-based content projection, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip`), DOM morphing engine with LIS-based keyed reconciliation (no innerHTML rebuild), CSP-safe expression evaluation with AST caching, scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles |
-| **Router** | History & hash mode, route params (`:id`), guards, lazy loading, `z-link` navigation, `z-to-top` scroll modifier (`instant`/`smooth`) |
+| **Router** | History & hash mode, route params (`:id`), wildcards, guards (`beforeEach`/`afterEach`), lazy loading, `z-link` navigation, `z-to-top` scroll modifier (`instant`/`smooth`), sub-route history substates (`pushSubstate`/`onSubstate`) |
 | **Directives** | `z-if`, `z-for`, `z-model`, `z-show`, `z-bind`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip` &mdash; 17 built-in template directives |
 | **Reactive** | Deep proxy reactivity, Signals (`.value`, `.peek()`), computed values, effects (auto-tracked with dispose) |
-| **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions |
+| **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions, time-travel (undo/redo/history) |
 | **Selectors & DOM** | jQuery-like chainable selectors, traversal, DOM manipulation, events, animation |
 | **HTTP** | Fetch wrapper with auto-JSON, interceptors, timeout/abort, base URL |
 | **Utils** | debounce, throttle, pipe, once, sleep, escapeHtml, uuid, deepClone, deepMerge, storage/session wrappers, event bus |
-| **Dev Tools** | CLI dev server with live-reload, CSS hot-swap, full-screen error overlay, floating toolbar, dark-themed inspector panel (DOM tree, network log, component viewer, performance dashboard), fetch interceptor, render instrumentation, CLI bundler for single-file production builds |
+| **Dev Tools** | CLI dev server with live-reload, CSS hot-swap, full-screen error overlay, floating toolbar, dark-themed inspector panel (Router view, DOM tree, network log, component viewer, performance dashboard), fetch interceptor, render instrumentation, CLI bundler for single-file production builds |
 
 ---
 
@@ -75,7 +75,7 @@ If you prefer **zero tooling**, download `dist/zquery.min.js` from the [dist/ fo
 git clone https://github.com/tonywied17/zero-query.git
 cd zero-query
 npx zquery build
-# → dist/zquery.min.js  (~86 KB)
+# → dist/zquery.min.js  (~91 KB)
 ```
 
 ### Include in HTML
@@ -270,7 +270,7 @@ location / {
 | `$.param` `$.parseQuery` | URL utils |
 | `$.storage` `$.session` | Storage wrappers |
 | `$.bus` | Event bus |
-| `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~86 KB\"`) |
+| `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~91 KB\"`) |
 | `$.meta` | Build metadata (populated by CLI bundler) |
 | `$.noConflict` | Release `$` global |
 
