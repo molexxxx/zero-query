@@ -138,7 +138,7 @@ class Router {
 
     // Per-route fallback: register an alias path for the same component.
     // e.g. { path: '/docs/:section', fallback: '/docs', component: 'docs-page' }
-    // When matched via fallback, missing params are undefined → pages `default` kicks in.
+    // When matched via fallback, missing params are undefined.
     if (route.fallback) {
       const fbKeys = [];
       const fbPattern = route.fallback

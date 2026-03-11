@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.8.6
+ * zQuery (zeroQuery) v0.8.7
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -4000,7 +4000,7 @@ class Router {
 
     // Per-route fallback: register an alias path for the same component.
     // e.g. { path: '/docs/:section', fallback: '/docs', component: 'docs-page' }
-    // When matched via fallback, missing params are undefined → pages `default` kicks in.
+    // When matched via fallback, missing params are undefined.
     if (route.fallback) {
       const fbKeys = [];
       const fbPattern = route.fallback
@@ -5264,7 +5264,7 @@ $.guardCallback  = guardCallback;
 $.validate       = validate;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.8.6';
+$.version = '0.8.7';
 $.libSize = '~89 KB';
 $.meta    = {};                // populated at build time by CLI bundler
 

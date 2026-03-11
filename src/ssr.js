@@ -94,7 +94,7 @@ class SSRComponent {
 
 const SSR_RESERVED = new Set([
   'state', 'render', 'styles', 'init', 'mounted', 'updated', 'destroyed',
-  'props', 'templateUrl', 'styleUrl', 'templates', 'pages', 'activePage',
+  'props', 'templateUrl', 'styleUrl', 'templates',
   'base', 'computed', 'watch'
 ]);
 
