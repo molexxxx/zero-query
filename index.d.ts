@@ -25,8 +25,6 @@ export {
 } from './types/reactive';
 
 export {
-  PageItem,
-  PagesConfig,
   ComponentDefinition,
   ComponentInstance,
   component,

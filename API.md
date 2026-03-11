@@ -24,7 +24,6 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Watch Callbacks](#watch-callbacks)
   - [Slots — Content Projection](#slots--content-projection)
   - [External Templates & Styles](#external-templates--styles)
-  - [Pages Config](#pages-config)
   - [Directives](#directives)
   - [z-key — Keyed Reconciliation](#z-key--keyed-reconciliation)
   - [z-skip — Opt Out of Diffing](#z-skip--opt-out-of-diffing)
@@ -865,8 +864,7 @@ $.component('app-counter', {
 | `styles` | `string` | No | CSS string — automatically scoped to this component's root element on first render. |
 | `templateUrl` | `string \| string[] \| { key: url }` | No | URL to an external HTML template file, or an array/object map of URLs for multi-template components. If `render()` is also defined, `render()` takes priority. See [External Templates & Styles](#external-templates--styles). |
 | `styleUrl` | `string \| string[]` | No | URL (or array of URLs) to external CSS file(s). Fetched and scoped automatically on first mount. Merged with inline `styles` if both are present. |
-| `pages` | `object` | No | Declarative multi-page config with lazy loading. Exposes `this.pages`, `this.activePage`, `this.templates`. See [Pages Config](#pages-config). |
-| `base` | `string` | No | Optional override for the base path used to resolve relative `templateUrl`, `styleUrl`, and `pages.dir` paths. By default, paths resolve relative to the component file automatically — you only need `base` if you want to point somewhere else (e.g. `base: 'app/shared/'`). |
+| `base` | `string` | No | Optional override for the base path used to resolve relative `templateUrl` and `styleUrl` paths. By default, paths resolve relative to the component file automatically — you only need `base` if you want to point somewhere else (e.g. `base: 'app/shared/'`). |
 | `init` | `() => void` | No | Called before first render (during construction). |
 | `mounted` | `() => void` | No | Called once after first render and DOM insertion. |
 | `updated` | `() => void` | No | Called after every subsequent re-render. |
@@ -947,9 +945,7 @@ Available inside component methods as `this`, or from `$.mount()` / `$.getInstan
 | `this.state.__raw` | `object` | Raw (unwrapped) state object. Write here to avoid triggering re-render. |
 | `this.props` | `object` | Frozen props passed from parent. |
 | `this.refs` | `object` | Map of `z-ref` name → DOM element. Populated after each render. |
-| `this.templates` | `object` | Keyed map of loaded templates (when using multi-`templateUrl` or `pages`). With `pages`, templates are populated lazily — the active page is always available, others fill in via background prefetch. |
-| `this.pages` | `Array<{id, label}>` | Normalized page metadata (when using `pages` config). |
-| `this.activePage` | `string` | Active page id derived from route param (when using `pages` config). |
+| `this.templates` | `object` | Keyed map of loaded templates (when using multi-`templateUrl`). |
 | `this.setState(partial)` | `(object) => void` | Merge partial state (triggers re-render). |
 | `this.emit(name, detail)` | `(string, any) => void` | Dispatch a bubbling CustomEvent from the component root. |
 | `this.destroy()` | `() => void` | Teardown: removes listeners, scoped styles, clears DOM. |

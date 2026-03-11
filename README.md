@@ -189,13 +189,12 @@ Output goes to `dist/` next to your `index.html`:
 dist/
   server/               ← deploy to your web server (<base href="/"> for SPA routes)
     index.html
-    z-app.<hash>.js
     z-app.<hash>.min.js
     global.<hash>.min.css
     assets/
   local/                ← open from disk (file://) — no server needed
     index.html
-    z-app.<hash>.js
+    z-app.<hash>.min.js
     ...
 ```
 
