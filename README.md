@@ -65,7 +65,7 @@ The dev server includes a **full-screen error overlay** that surfaces errors dir
 
 ### Alternative: Manual Setup (No npm)
 
-If you prefer **zero tooling**, download `dist/zquery.min.js` from the [GitHub releases](https://github.com/tonywied17/zero-query/releases/tag/RELEASE) and drop it into your project root or `assets/scripts/`. Then open `index.html` directly in a browser — no Node.js required.
+If you prefer **zero tooling**, download `dist/zquery.min.js` from the [dist/ folder](https://github.com/tonywied17/zero-query/tree/main/dist) and drop it into your project root or `assets/scripts/`. Then open `index.html` directly in a browser — no Node.js required.
 
 ```bash
 git clone https://github.com/tonywied17/zero-query.git
