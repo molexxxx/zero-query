@@ -332,3 +332,151 @@ describe('expression parser — multi-scope', () => {
     expect(safeEval('y', [{ x: 1 }, { y: 2 }])).toBe(2);
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// in operator
+// ---------------------------------------------------------------------------
+
+describe('expression parser — in operator', () => {
+  it('checks property existence', () => {
+    expect(eval_("'x' in obj", { obj: { x: 1 } })).toBe(true);
+    expect(eval_("'y' in obj", { obj: { x: 1 } })).toBe(false);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// instanceof operator
+// ---------------------------------------------------------------------------
+
+describe('expression parser — instanceof', () => {
+  it('checks instanceOf', () => {
+    expect(eval_('arr instanceof Array', { arr: [1, 2] })).toBe(true);
+    expect(eval_('obj instanceof Array', { obj: {} })).toBe(false);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Nested ternary
+// ---------------------------------------------------------------------------
+
+describe('expression parser — nested ternary', () => {
+  it('evaluates simple ternary correctly', () => {
+    expect(eval_("x > 10 ? 'big' : 'small'", { x: 12 })).toBe('big');
+    expect(eval_("x > 10 ? 'big' : 'small'", { x: 2 })).toBe('small');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Chained method calls
+// ---------------------------------------------------------------------------
+
+describe('expression parser — chained calls', () => {
+  it('chains array methods', () => {
+    expect(eval_('items.filter(x => x > 1).map(x => x * 2)', { items: [1, 2, 3] })).toEqual([4, 6]);
+  });
+
+  it('chains string methods', () => {
+    expect(eval_("name.trim().toUpperCase()", { name: ' hello ' })).toBe('HELLO');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Spread operator
+// ---------------------------------------------------------------------------
+
+describe('expression parser — spread / rest', () => {
+  it('spread is not supported — returns gracefully', () => {
+    // The parser does not support spread syntax; verify it doesn't throw
+    const result = eval_('[...items, 4]', { items: [1, 2, 3] });
+    expect(result).toBeDefined();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Destructuring assignment in arrow body
+// ---------------------------------------------------------------------------
+
+describe('expression parser — complex arrow', () => {
+  it('arrow as callback in array method', () => {
+    const items = [{ n: 'a' }, { n: 'b' }];
+    expect(eval_('items.map(x => x.n)', { items })).toEqual(['a', 'b']);
+  });
+
+  it('arrow with ternary body', () => {
+    const fn = eval_('x => x > 0 ? "pos" : "neg"');
+    expect(fn(1)).toBe('pos');
+    expect(fn(-1)).toBe('neg');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Bitwise operators
+// ---------------------------------------------------------------------------
+
+describe('expression parser — bitwise', () => {
+  it('bitwise operators are not supported — does not throw', () => {
+    // The expression parser does not implement bitwise operators
+    // Verify graceful fallback rather than crashes
+    expect(() => eval_('5 | 3')).not.toThrow();
+    expect(() => eval_('5 & 3')).not.toThrow();
+    expect(() => eval_('5 ^ 3')).not.toThrow();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Comma expressions
+// ---------------------------------------------------------------------------
+
+describe('expression parser — comma', () => {
+  it('comma expressions are not supported — does not throw', () => {
+    // The parser does not support comma expressions
+    expect(() => eval_('(1, 2, 3)')).not.toThrow();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
+describe('expression parser — edge cases', () => {
+  it('handles very long dot chains', () => {
+    const data = { a: { b: { c: { d: { e: 42 } } } } };
+    expect(eval_('a.b.c.d.e', data)).toBe(42);
+  });
+
+  it('handles numeric string keys in bracket access', () => {
+    expect(eval_("items['0']", { items: ['a', 'b'] })).toBe('a');
+  });
+
+  it('handles conditional access chains', () => {
+    expect(eval_('a?.b?.c', { a: null })).toBe(undefined);
+    expect(eval_('a?.b?.c', { a: { b: { c: 1 } } })).toBe(1);
+  });
+
+  it('handles string with special characters', () => {
+    expect(eval_("'hello\\nworld'")).toContain('hello');
+  });
+
+  it('handles negative numbers in expressions', () => {
+    expect(eval_('-1 + -2')).toBe(-3);
+  });
+
+  it('exponentiation ** is not supported — does not throw', () => {
+    // The parser does not implement ** operator
+    expect(() => eval_('2 ** 3')).not.toThrow();
+  });
+
+  it('handles empty array/object', () => {
+    expect(eval_('[]')).toEqual([]);
+    expect(eval_('{}')).toEqual({});
+  });
+});

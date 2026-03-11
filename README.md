@@ -15,19 +15,21 @@
 
 </p>
 
-> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~80 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
+> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~83 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
 
 ## Features
 
 | Module | Highlights |
 | --- | --- |
+| **Components** | Reactive state, template literals, `@event` delegation (8 modifiers), `z-model` two-way binding, computed properties, watch callbacks, slot-based content projection, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip`), DOM morphing engine with LIS-based keyed reconciliation (no innerHTML rebuild), CSP-safe expression evaluation with AST caching, scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles |
 | **Router** | History & hash mode, route params (`:id`), guards, lazy loading, `z-link` navigation, `z-to-top` scroll modifier (`instant`/`smooth`) |
-| **Components** | Reactive state, template literals, `@event` delegation (8 modifiers), `z-model` two-way binding, computed properties, watch callbacks, slot-based content projection, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`), DOM morphing engine (no innerHTML rebuild), CSP-safe expression evaluation, scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles |
+| **Directives** | `z-if`, `z-for`, `z-model`, `z-show`, `z-bind`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip` &mdash; 17 built-in template directives |
+| **Reactive** | Deep proxy reactivity, Signals (`.value`, `.peek()`), computed values, effects (auto-tracked with dispose) |
 | **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions |
-| **HTTP** | Fetch wrapper with auto-JSON, interceptors, timeout/abort, base URL |
-| **Reactive** | Deep proxy reactivity, Signals, computed values, effects |
 | **Selectors & DOM** | jQuery-like chainable selectors, traversal, DOM manipulation, events, animation |
+| **HTTP** | Fetch wrapper with auto-JSON, interceptors, timeout/abort, base URL |
 | **Utils** | debounce, throttle, pipe, once, sleep, escapeHtml, uuid, deepClone, deepMerge, storage/session wrappers, event bus |
+| **Dev Tools** | CLI dev server with live-reload, full-screen error overlay (syntax + runtime), CLI bundler for single-file production builds |
 
 ---
 
@@ -63,13 +65,13 @@ The dev server includes a **full-screen error overlay** that surfaces errors dir
 
 ### Alternative: Manual Setup (No npm)
 
-If you prefer **zero tooling**, download `dist/zQuery.min.js` from the [GitHub releases](https://github.com/tonywied17/zero-query/releases/tag/RELEASE) and drop it into `scripts/vendor/`. Then open `index.html` directly in a browser — no Node.js required.
+If you prefer **zero tooling**, download `dist/zquery.min.js` from the [GitHub releases](https://github.com/tonywied17/zero-query/releases/tag/RELEASE) and drop it into `scripts/vendor/`. Then open `index.html` directly in a browser — no Node.js required.
 
 ```bash
 git clone https://github.com/tonywied17/zero-query.git
 cd zero-query
 npx zquery build
-# → dist/zQuery.min.js  (~80 KB)
+# → dist/zquery.min.js  (~83 KB)
 ```
 
 ### Include in HTML
@@ -81,7 +83,7 @@ npx zquery build
   <meta charset="UTF-8">
   <title>My App</title>
   <link rel="stylesheet" href="styles/styles.css">
-  <script src="scripts/vendor/zQuery.min.js"></script>
+  <script src="scripts/vendor/zquery.min.js"></script>
   <script type="module" src="scripts/app.js"></script>
 </head>
 <body>
@@ -134,7 +136,7 @@ my-app/
   index.html
   scripts/
     vendor/
-      zQuery.min.js       ← only needed for manual setup; dev server auto-resolves
+      zquery.min.js       ← only needed for manual setup; dev server auto-resolves
     app.js
     routes.js
     store.js
@@ -247,7 +249,7 @@ location / {
 | `$.ready` `$.on` `$.off` | DOM ready, global event delegation & direct listeners |
 | `$.fn` | Collection prototype (extend it) |
 | `$.component` `$.mount` `$.mountAll` `$.getInstance` `$.destroy` `$.components` | Component system |
-| `$.morph` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes |
+| `$.morph` | DOM morphing engine — LIS-based keyed reconciliation, `isEqualNode()` bail-outs, `z-skip` opt-out. Patches existing DOM to match new HTML without destroying unchanged nodes |
 | `$.safeEval` | CSP-safe expression evaluator (replaces `eval` / `new Function`) |
 | `$.style` | Dynamically load global stylesheet file(s) at runtime |
 | `$.router` `$.getRouter` | SPA router |
@@ -269,7 +271,7 @@ location / {
 | `zquery create [dir]` | Scaffold a new project (index.html, components, store, styles) |
 | `zquery dev [root]` | Dev server with live-reload &amp; error overlay (port 3100). `--index` for custom HTML. |
 | `zquery bundle [dir\|file]` | Bundle app into a single IIFE file. Accepts dir or direct entry file. |
-| `zquery build` | Build the zQuery library (`dist/zQuery.min.js`) |
+| `zquery build` | Build the zQuery library (`dist/zquery.min.js`) |
 | `zquery --help` | Show CLI usage |
 
 For full method signatures, options, and examples, see **[API.md](API.md)**.

@@ -39,6 +39,8 @@ export function reactive(target, onChange, _path = '') {
       const old = obj[key];
       if (old === value) return true;
       obj[key] = value;
+      // Invalidate proxy cache for the old value (it may have been replaced)
+      if (old && typeof old === 'object') proxyCache.delete(old);
       try {
         onChange(key, value, old);
       } catch (err) {
@@ -50,6 +52,7 @@ export function reactive(target, onChange, _path = '') {
     deleteProperty(obj, key) {
       const old = obj[key];
       delete obj[key];
+      if (old && typeof old === 'object') proxyCache.delete(old);
       try {
         onChange(key, undefined, old);
       } catch (err) {
@@ -76,6 +79,10 @@ export class Signal {
     // Track dependency if there's an active effect
     if (Signal._activeEffect) {
       this._subscribers.add(Signal._activeEffect);
+      // Record this signal in the effect's dependency set for proper cleanup
+      if (Signal._activeEffect._deps) {
+        Signal._activeEffect._deps.add(this);
+      }
     }
     return this._value;
   }
@@ -89,12 +96,15 @@ export class Signal {
   peek() { return this._value; }
 
   _notify() {
-    this._subscribers.forEach(fn => {
-      try { fn(); }
+    // Snapshot subscribers before iterating — a subscriber might modify
+    // the set (e.g., an effect re-running, adding itself back)
+    const subs = [...this._subscribers];
+    for (let i = 0; i < subs.length; i++) {
+      try { subs[i](); }
       catch (err) {
         reportError(ErrorCode.SIGNAL_CALLBACK, 'Signal subscriber threw', { signal: this }, err);
       }
-    });
+    }
   }
 
   subscribe(fn) {
@@ -129,12 +139,24 @@ export function computed(fn) {
 }
 
 /**
- * Create a side-effect that auto-tracks signal dependencies
+ * Create a side-effect that auto-tracks signal dependencies.
+ * Returns a dispose function that removes the effect from all
+ * signals it subscribed to — prevents memory leaks.
+ *
  * @param {Function} fn — effect function
  * @returns {Function} — dispose function
  */
 export function effect(fn) {
   const execute = () => {
+    // Clean up old subscriptions before re-running so stale
+    // dependencies from a previous run are properly removed
+    if (execute._deps) {
+      for (const sig of execute._deps) {
+        sig._subscribers.delete(execute);
+      }
+      execute._deps.clear();
+    }
+
     Signal._activeEffect = execute;
     try { fn(); }
     catch (err) {
@@ -142,9 +164,19 @@ export function effect(fn) {
     }
     finally { Signal._activeEffect = null; }
   };
+
+  // Track which signals this effect reads from
+  execute._deps = new Set();
+
   execute();
   return () => {
-    // Remove this effect from all signals that track it
+    // Dispose: remove this effect from every signal it subscribed to
+    if (execute._deps) {
+      for (const sig of execute._deps) {
+        sig._subscribers.delete(execute);
+      }
+      execute._deps.clear();
+    }
     Signal._activeEffect = null;
   };
 }

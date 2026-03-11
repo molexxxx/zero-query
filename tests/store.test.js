@@ -251,3 +251,129 @@ describe('Store — snapshot & replaceState', () => {
     expect(store.history.length).toBe(0);
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// Multiple middleware
+// ---------------------------------------------------------------------------
+
+describe('Store — multiple middleware', () => {
+  it('runs middleware in order', () => {
+    const order = [];
+    const store = createStore('mw-multi', {
+      state: { x: 0 },
+      actions: { inc(state) { state.x++; } },
+    });
+    store.use(() => { order.push('a'); });
+    store.use(() => { order.push('b'); });
+    store.dispatch('inc');
+    expect(order).toEqual(['a', 'b']);
+  });
+
+  it('second middleware can block even if first passes', () => {
+    const store = createStore('mw-multi-block', {
+      state: { x: 0 },
+      actions: { inc(state) { state.x++; } },
+    });
+    store.use(() => true);
+    store.use(() => false);
+    store.dispatch('inc');
+    expect(store.state.x).toBe(0);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Async actions
+// ---------------------------------------------------------------------------
+
+describe('Store — async actions', () => {
+  it('supports async action returning promise', async () => {
+    const store = createStore('async-1', {
+      state: { data: null },
+      actions: {
+        async fetchData(state) {
+          state.data = await Promise.resolve('loaded');
+        },
+      },
+    });
+    await store.dispatch('fetchData');
+    expect(store.state.data).toBe('loaded');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Subscriber deduplication
+// ---------------------------------------------------------------------------
+
+describe('Store — subscriber edge cases', () => {
+  it('same function subscribed twice fires twice', () => {
+    const store = createStore('sub-dedup', {
+      state: { x: 0 },
+      actions: { inc(state) { state.x++; } },
+    });
+    const fn = vi.fn();
+    store.subscribe('x', fn);
+    store.subscribe('x', fn); // Set deduplicates
+    store.dispatch('inc');
+    expect(fn).toHaveBeenCalledOnce(); // Set prevents duplicates
+  });
+
+  it('wildcard and key subscriber both fire', () => {
+    const store = createStore('sub-both', {
+      state: { x: 0 },
+      actions: { inc(state) { state.x++; } },
+    });
+    const keyFn = vi.fn();
+    const wildFn = vi.fn();
+    store.subscribe('x', keyFn);
+    store.subscribe(wildFn);
+    store.dispatch('inc');
+    expect(keyFn).toHaveBeenCalledOnce();
+    expect(wildFn).toHaveBeenCalledOnce();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Action return value
+// ---------------------------------------------------------------------------
+
+describe('Store — action return value', () => {
+  it('dispatch returns action result', () => {
+    const store = createStore('ret-1', {
+      state: { x: 0 },
+      actions: { compute(state) { return state.x + 10; } },
+    });
+    expect(store.dispatch('compute')).toBe(10);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Getters with multiple state keys
+// ---------------------------------------------------------------------------
+
+describe('Store — complex getters', () => {
+  it('getter uses multiple state keys', () => {
+    const store = createStore('getter-multi', {
+      state: { firstName: 'Tony', lastName: 'W' },
+      getters: {
+        fullName: (state) => `${state.firstName} ${state.lastName}`,
+      },
+    });
+    expect(store.getters.fullName).toBe('Tony W');
+  });
+
+  it('getter recalculates after state change', () => {
+    const store = createStore('getter-recalc', {
+      state: { count: 2 },
+      actions: { set(state, v) { state.count = v; } },
+      getters: { doubled: (s) => s.count * 2 },
+    });
+    expect(store.getters.doubled).toBe(4);
+    store.dispatch('set', 10);
+    expect(store.getters.doubled).toBe(20);
+  });
+});

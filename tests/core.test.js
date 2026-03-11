@@ -701,6 +701,192 @@ describe('CSS dimension methods', () => {
 
 
 // ---------------------------------------------------------------------------
+// prop() method
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — prop()', () => {
+  it('gets a DOM property', () => {
+    document.body.innerHTML = '<input type="checkbox" checked>';
+    const col = queryAll('input');
+    expect(col.prop('checked')).toBe(true);
+  });
+
+  it('sets a DOM property', () => {
+    document.body.innerHTML = '<input type="checkbox">';
+    const col = queryAll('input');
+    col.prop('checked', true);
+    expect(col[0].checked).toBe(true);
+  });
+
+  it('sets multiple properties via sequential calls', () => {
+    document.body.innerHTML = '<input type="text">';
+    const col = queryAll('input');
+    col.prop('disabled', true);
+    col.prop('value', 'hello');
+    expect(col[0].disabled).toBe(true);
+    expect(col[0].value).toBe('hello');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// css() method
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — css()', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="styled">test</div>';
+  });
+
+  it('sets style properties from object', () => {
+    queryAll('#styled').css({ color: 'red', 'font-size': '16px' });
+    const el = document.getElementById('styled');
+    expect(el.style.color).toBe('red');
+  });
+
+  it('returns collection for chaining', () => {
+    const col = queryAll('#styled').css({ color: 'blue' });
+    expect(col).toBeInstanceOf(ZQueryCollection);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// val() method
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — val()', () => {
+  it('gets input value', () => {
+    document.body.innerHTML = '<input value="test">';
+    expect(queryAll('input').val()).toBe('test');
+  });
+
+  it('sets input value', () => {
+    document.body.innerHTML = '<input value="">';
+    queryAll('input').val('new value');
+    expect(document.querySelector('input').value).toBe('new value');
+  });
+
+  it('gets select value', () => {
+    document.body.innerHTML = '<select><option value="a" selected>A</option><option value="b">B</option></select>';
+    expect(queryAll('select').val()).toBe('a');
+  });
+
+  it('gets textarea value', () => {
+    document.body.innerHTML = '<textarea>hello</textarea>';
+    expect(queryAll('textarea').val()).toBe('hello');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// after(), before() methods
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — after() / before()', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="container"><p id="target">target</p></div>';
+  });
+
+  it('after() inserts content after element', () => {
+    queryAll('#target').after('<span class="after">after</span>');
+    const next = document.getElementById('target').nextElementSibling;
+    expect(next.className).toBe('after');
+  });
+
+  it('before() inserts content before element', () => {
+    queryAll('#target').before('<span class="before">before</span>');
+    const prev = document.getElementById('target').previousElementSibling;
+    expect(prev.className).toBe('before');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// wrap() method
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — wrap()', () => {
+  it('wraps element in new parent', () => {
+    document.body.innerHTML = '<div id="container"><p id="target">text</p></div>';
+    queryAll('#target').wrap('<div class="wrapper"></div>');
+    const wrapper = document.querySelector('.wrapper');
+    expect(wrapper).not.toBeNull();
+    expect(wrapper.querySelector('#target')).not.toBeNull();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// replaceWith() method
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — replaceWith()', () => {
+  it('replaces element with new content', () => {
+    document.body.innerHTML = '<div id="container"><p id="old">old</p></div>';
+    queryAll('#old').replaceWith('<span id="new">new</span>');
+    expect(document.querySelector('#old')).toBeNull();
+    expect(document.querySelector('#new')).not.toBeNull();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// offset() and position()
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — offset() / position()', () => {
+  it('offset() returns object with top and left', () => {
+    document.body.innerHTML = '<div id="box">box</div>';
+    const off = queryAll('#box').offset();
+    expect(off).toHaveProperty('top');
+    expect(off).toHaveProperty('left');
+    expect(typeof off.top).toBe('number');
+  });
+
+  it('position() returns object with top and left', () => {
+    document.body.innerHTML = '<div id="box">box</div>';
+    const pos = queryAll('#box').position();
+    expect(pos).toHaveProperty('top');
+    expect(pos).toHaveProperty('left');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// width() and height()
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — width() / height()', () => {
+  it('width() returns a number', () => {
+    document.body.innerHTML = '<div id="box" style="width:100px">box</div>';
+    const val = queryAll('#box').width();
+    expect(typeof val).toBe('number');
+  });
+
+  it('height() returns a number', () => {
+    document.body.innerHTML = '<div id="box" style="height:50px">box</div>';
+    const val = queryAll('#box').height();
+    expect(typeof val).toBe('number');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// animate()
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — animate()', () => {
+  it('returns a promise', () => {
+    document.body.innerHTML = '<div id="box">box</div>';
+    const result = queryAll('#box').animate({ opacity: 0 }, 100);
+    // animate() returns a Promise
+    expect(result).toBeInstanceOf(Promise);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
 // hover() convenience
 // ---------------------------------------------------------------------------
 

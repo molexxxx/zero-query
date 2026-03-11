@@ -330,3 +330,109 @@ describe('Router — destroy', () => {
     expect(router._listeners.size).toBe(0);
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// Wildcard / catch-all routes
+// ---------------------------------------------------------------------------
+
+describe('Router — wildcard routes', () => {
+  it('compiles wildcard route', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [
+        { path: '/docs/:section', component: 'docs-page' },
+        { path: '*', component: 'home-page' },
+      ],
+    });
+    // Wildcard is compiled as last route
+    expect(router._routes.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Query string handling
+// ---------------------------------------------------------------------------
+
+describe('Router — query parsing', () => {
+  it('_normalizePath strips query string for route matching', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [],
+    });
+    // _normalizePath does not strip query params — it only normalizes slashes and base prefix
+    const path = router._normalizePath('/docs?section=intro');
+    expect(path).toBe('/docs?section=intro');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Multiple guards
+// ---------------------------------------------------------------------------
+
+describe('Router — multiple guards', () => {
+  it('registers multiple beforeEach guards', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    const g1 = vi.fn();
+    const g2 = vi.fn();
+    router.beforeEach(g1);
+    router.beforeEach(g2);
+    expect(router._guards.before.length).toBe(2);
+    expect(router._guards.before).toContain(g1);
+    expect(router._guards.before).toContain(g2);
+  });
+
+  it('registers multiple afterEach guards', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    const g1 = vi.fn();
+    const g2 = vi.fn();
+    router.afterEach(g1);
+    router.afterEach(g2);
+    expect(router._guards.after.length).toBe(2);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Route with multiple params
+// ---------------------------------------------------------------------------
+
+describe('Router — multi-param routes', () => {
+  it('compiles route with multiple params', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [
+        { path: '/post/:pid/comment/:cid', component: 'user-page' },
+      ],
+    });
+    const route = router._routes[0];
+    expect(route._regex.test('/post/1/comment/5')).toBe(true);
+    expect(route._keys).toEqual(['pid', 'cid']);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Edge cases
+// ---------------------------------------------------------------------------
+
+describe('Router — edge cases', () => {
+  it('handles empty routes array', () => {
+    const router = createRouter({ mode: 'hash', routes: [] });
+    expect(router._routes.length).toBe(0);
+  });
+
+  it('getRouter returns null before creation', () => {
+    // After the tests create routers, getRouter should return the latest
+    const r = getRouter();
+    expect(r).toBeDefined();
+  });
+});

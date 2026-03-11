@@ -179,3 +179,111 @@ describe('http — text response', () => {
     expect(result.data).toBe('Hello World');
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// Interceptors
+// ---------------------------------------------------------------------------
+
+describe('http — interceptors', () => {
+  it('request interceptor via onRequest', async () => {
+    http.configure({ baseURL: '' });
+    http.onRequest((fetchOpts, url) => {
+      fetchOpts.headers['X-Custom'] = 'test';
+    });
+    mockFetch({});
+    await http.get('https://api.test.com/data');
+    const opts = fetchSpy.mock.calls[0][1];
+    expect(opts.headers['X-Custom']).toBe('test');
+  });
+
+  it('response interceptor via onResponse', async () => {
+    http.onResponse((result) => {
+      result.intercepted = true;
+    });
+    mockFetch({ x: 1 });
+    const result = await http.get('https://api.test.com/data');
+    expect(result.intercepted).toBe(true);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Timeout / abort
+// ---------------------------------------------------------------------------
+
+describe('http — abort signal', () => {
+  it('passes signal through options', async () => {
+    const controller = new AbortController();
+    mockFetch({});
+    await http.get('https://api.test.com/data', null, { signal: controller.signal });
+    const opts = fetchSpy.mock.calls[0][1];
+    expect(opts.signal).toBe(controller.signal);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Blob response
+// ---------------------------------------------------------------------------
+
+describe('http — blob response', () => {
+  it('can request blob responses', async () => {
+    mockFetch('binary data');
+    const result = await http.get('https://api.test.com/file', null, { responseType: 'blob' });
+    // Should have a data field (blob or fallback text)
+    expect(result.data).toBeDefined();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// HEAD and OPTIONS methods
+// ---------------------------------------------------------------------------
+
+describe('http — raw fetch pass-through', () => {
+  it('raw() delegates to native fetch', async () => {
+    mockFetch({ ok: true });
+    await http.raw('https://api.test.com/ping', { method: 'HEAD' });
+    expect(fetchSpy).toHaveBeenCalledWith('https://api.test.com/ping', { method: 'HEAD' });
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Request with custom headers
+// ---------------------------------------------------------------------------
+
+describe('http — custom per-request headers', () => {
+  it('merges per-request headers', async () => {
+    mockFetch({});
+    await http.get('https://api.test.com/data', null, {
+      headers: { 'X-Request-Id': '123' },
+    });
+    const opts = fetchSpy.mock.calls[0][1];
+    expect(opts.headers['X-Request-Id']).toBe('123');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Response metadata
+// ---------------------------------------------------------------------------
+
+describe('http — response metadata', () => {
+  it('includes status and ok in result', async () => {
+    mockFetch({ data: 'yes' }, true, 200);
+    const result = await http.get('https://api.test.com/data');
+    expect(result.ok).toBe(true);
+    expect(result.status).toBe(200);
+  });
+
+  it('includes statusText in error', async () => {
+    mockFetch({ error: 'bad' }, false, 500);
+    try {
+      await http.get('https://api.test.com/fail');
+    } catch (err) {
+      expect(err.message).toContain('500');
+    }
+  });
+});

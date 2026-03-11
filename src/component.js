@@ -339,7 +339,7 @@ class Component {
       // Normalize items → [{id, label}, …]
       def._pages = (p.items || []).map(item => {
         if (typeof item === 'string') return { id: item, label: _titleCase(item) };
-        return { id: item.id, label: item.label || _titleCase(item.id) };
+        return { ...item, label: item.label || _titleCase(item.id) };
       });
 
       // Build URL map for lazy per-page loading.
@@ -605,31 +605,31 @@ class Component {
     }
   }
 
-  // Bind @event="method" and z-on:event="method" handlers via delegation
+  // Bind @event="method" and z-on:event="method" handlers via delegation.
+  //
+  // Optimization: on the FIRST render, we scan for event attributes, build
+  // a delegated handler map, and attach one listener per event type to the
+  // component root. On subsequent renders (re-bind), we only rebuild the
+  // internal binding map — existing DOM listeners are reused since they
+  // delegate to event.target.closest(selector) at fire time.
   _bindEvents() {
-    // Clean up old delegated listeners
-    this._listeners.forEach(({ event, handler }) => {
-      this._el.removeEventListener(event, handler);
-    });
-    this._listeners = [];
+    // Always rebuild the binding map from current DOM
+    const eventMap = new Map(); // event → [{ selector, methodExpr, modifiers, el }]
 
-    // Find all elements with @event or z-on:event attributes
     const allEls = this._el.querySelectorAll('*');
-    const eventMap = new Map(); // event → [{ selector, method, modifiers }]
-
     allEls.forEach(child => {
-      // Skip elements inside z-pre subtrees
       if (child.closest('[z-pre]')) return;
 
-      [...child.attributes].forEach(attr => {
-        // Support both @event and z-on:event syntax
+      const attrs = child.attributes;
+      for (let a = 0; a < attrs.length; a++) {
+        const attr = attrs[a];
         let raw;
-        if (attr.name.startsWith('@')) {
-          raw = attr.name.slice(1); // @click.prevent → click.prevent
+        if (attr.name.charCodeAt(0) === 64) { // '@'
+          raw = attr.name.slice(1);
         } else if (attr.name.startsWith('z-on:')) {
-          raw = attr.name.slice(5); // z-on:click.prevent → click.prevent
+          raw = attr.name.slice(5);
         } else {
-          return;
+          continue;
         }
 
         const parts = raw.split('.');
@@ -645,12 +645,45 @@ class Component {
 
         if (!eventMap.has(event)) eventMap.set(event, []);
         eventMap.get(event).push({ selector, methodExpr, modifiers, el: child });
-      });
+      }
     });
+
+    // Store binding map for the delegated handlers to reference
+    this._eventBindings = eventMap;
+
+    // Only attach DOM listeners once — reuse on subsequent renders.
+    // The handlers close over `this` and read `this._eventBindings`
+    // at fire time, so they always use the latest binding map.
+    if (this._delegatedEvents) {
+      // Already attached — just make sure new event types are covered
+      for (const event of eventMap.keys()) {
+        if (!this._delegatedEvents.has(event)) {
+          this._attachDelegatedEvent(event, eventMap.get(event));
+        }
+      }
+      // Remove listeners for event types no longer in the template
+      for (const event of this._delegatedEvents.keys()) {
+        if (!eventMap.has(event)) {
+          const { handler, opts } = this._delegatedEvents.get(event);
+          this._el.removeEventListener(event, handler, opts);
+          this._delegatedEvents.delete(event);
+          // Also remove from _listeners array
+          this._listeners = this._listeners.filter(l => l.event !== event);
+        }
+      }
+      return;
+    }
+
+    this._delegatedEvents = new Map();
 
     // Register delegated listeners on the component root
     for (const [event, bindings] of eventMap) {
-      // Determine listener options from modifiers
+      this._attachDelegatedEvent(event, bindings);
+    }
+  }
+
+  // Attach a single delegated listener for an event type
+  _attachDelegatedEvent(event, bindings) {
       const needsCapture = bindings.some(b => b.modifiers.includes('capture'));
       const needsPassive = bindings.some(b => b.modifiers.includes('passive'));
       const listenerOpts = (needsCapture || needsPassive)
@@ -658,7 +691,9 @@ class Component {
         : false;
 
       const handler = (e) => {
-        for (const { selector, methodExpr, modifiers, el } of bindings) {
+        // Read bindings from live map — always up to date after re-renders
+        const currentBindings = this._eventBindings?.get(event) || [];
+        for (const { selector, methodExpr, modifiers, el } of currentBindings) {
           if (!e.target.closest(selector)) continue;
 
           // .self — only fire if target is the element itself
@@ -728,7 +763,7 @@ class Component {
       };
       this._el.addEventListener(event, handler, listenerOpts);
       this._listeners.push({ event, handler });
-    }
+      this._delegatedEvents.set(event, { handler, opts: listenerOpts });
   }
 
   // Bind z-ref="name" → this.refs.name
@@ -767,7 +802,7 @@ class Component {
       // Read current state value (supports dot-path keys)
       const currentVal = _getPath(this.state, key);
 
-      // -- Set initial DOM value from state ------------------------
+      // -- Set initial DOM value from state (always sync) ----------
       if (tag === 'input' && type === 'checkbox') {
         el.checked = !!currentVal;
       } else if (tag === 'input' && type === 'radio') {
@@ -789,6 +824,11 @@ class Component {
         : isEditable ? 'input' : 'input';
 
       // -- Handler: read DOM → write to reactive state -------------
+      // Skip if already bound (morph preserves existing elements,
+      // so re-binding would stack duplicate listeners)
+      if (el._zqModelBound) return;
+      el._zqModelBound = true;
+
       const handler = () => {
         let val;
         if (type === 'checkbox')           val = el.checked;
@@ -960,25 +1000,32 @@ class Component {
     });
 
     // -- z-bind:attr / :attr (dynamic attribute binding) -----------
-    this._el.querySelectorAll('*').forEach(el => {
-      if (el.closest('[z-pre]')) return;
-      [...el.attributes].forEach(attr => {
+    // Use TreeWalker instead of querySelectorAll('*') — avoids
+    // creating a flat array of every single descendant element.
+    // TreeWalker visits nodes lazily and skips z-pre subtrees early.
+    const walker = document.createTreeWalker(this._el, NodeFilter.SHOW_ELEMENT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.closest('[z-pre]')) continue;
+      const attrs = node.attributes;
+      for (let i = attrs.length - 1; i >= 0; i--) {
+        const attr = attrs[i];
         let attrName;
         if (attr.name.startsWith('z-bind:')) attrName = attr.name.slice(7);
-        else if (attr.name.startsWith(':') && !attr.name.startsWith('::')) attrName = attr.name.slice(1);
-        else return;
+        else if (attr.name.charCodeAt(0) === 58 && attr.name.charCodeAt(1) !== 58) attrName = attr.name.slice(1); // ':' but not '::'
+        else continue;
 
         const val = this._evalExpr(attr.value);
-        el.removeAttribute(attr.name);
+        node.removeAttribute(attr.name);
         if (val === false || val === null || val === undefined) {
-          el.removeAttribute(attrName);
+          node.removeAttribute(attrName);
         } else if (val === true) {
-          el.setAttribute(attrName, '');
+          node.setAttribute(attrName, '');
         } else {
-          el.setAttribute(attrName, String(val));
+          node.setAttribute(attrName, String(val));
         }
-      });
-    });
+      }
+    }
 
     // -- z-class (dynamic class binding) ---------------------------
     this._el.querySelectorAll('[z-class]').forEach(el => {
@@ -1057,6 +1104,8 @@ class Component {
     }
     this._listeners.forEach(({ event, handler }) => this._el.removeEventListener(event, handler));
     this._listeners = [];
+    this._delegatedEvents = null;
+    this._eventBindings = null;
     if (this._styleEl) this._styleEl.remove();
     _instances.delete(this._el);
     this._el.innerHTML = '';

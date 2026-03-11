@@ -1,8 +1,8 @@
 # zQuery (zeroQuery) — Full API Reference
 
-Complete API documentation for every module, method, option, and type in zQuery. All examples assume the global `$` is available via the built `zQuery.min.js` bundle. For getting started, project setup, the dev server, and the CLI bundler, see [README.md](README.md).
+Complete API documentation for every module, method, option, and type in zQuery. All examples assume the global `$` is available via the built `zquery.min.js` bundle. For getting started, project setup, the dev server, and the CLI bundler, see [README.md](README.md).
 
-> **Editor Support:** Install the [zQuery for VS Code](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code) extension for autocomplete, hover docs, directive support, and 140+ code snippets.
+> **Editor Support:** Install the [zQuery for VS Code](https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code) extension for autocomplete, hover docs, directive support, and 185+ code snippets.
 
 ---
 
@@ -27,6 +27,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Pages Config](#pages-config)
   - [Directives](#directives)
   - [z-key — Keyed Reconciliation](#z-key--keyed-reconciliation)
+  - [z-skip — Opt Out of Diffing](#z-skip--opt-out-of-diffing)
   - [$.mount()](#mounttarget-name-props)
   - [$.mountAll()](#mountallroot)
   - [$.getInstance()](#getinstancetarget)
@@ -1240,7 +1241,7 @@ $.component('install-wizard', {
 
 Directives are special attributes used inside component `render()` HTML templates. They're processed automatically on each render, giving you declarative control over the DOM without manual queries.
 
-**Processing order:** `z-for` → `z-pre` → `z-if`/`z-else-if`/`z-else` → `z-show` → `z-bind`/`:attr` → `z-class` → `z-style` → `z-html` → `z-text` → `z-cloak` → `@event`/`z-on` → `z-ref` → `z-model` → `z-key` (morph engine)
+**Processing order:** `z-for` → `z-pre` → `z-if`/`z-else-if`/`z-else` → `z-show` → `z-bind`/`:attr` → `z-class` → `z-style` → `z-html` → `z-text` → `z-cloak` → `@event`/`z-on` → `z-ref` → `z-model` → `z-key` (morph engine) • `z-skip` (morph engine — opt out of diffing)
 
 #### `z-for` — List Rendering
 
@@ -1519,7 +1520,7 @@ Add `z-key` to elements inside a `z-for` loop to enable keyed DOM reconciliation
 | With key | Identity matching — existing DOM nodes are moved, not recreated. |
 | Avoid index | `z-key="{{i}}"` defeats the purpose since indices shift on insert/remove. |
 
-> **Under the hood:** The `morph()` engine builds key maps for old and new children, then reconciles by moving, patching, or removing nodes as needed. Combined with Proxy-based reactivity (only the changed component re-renders), this delivers minimal DOM updates.
+> **Under the hood:** The `morph()` engine builds key maps for old and new children, then reconciles using a **Longest Increasing Subsequence (LIS)** algorithm (the same approach used by Vue 3 and ivi) to minimize DOM moves. Unchanged subtrees are detected via native `isEqualNode()` checks and skipped entirely. Combined with Proxy-based reactivity (only the changed component re-renders), this delivers minimal DOM updates.
 
 ### `morph(rootEl, newHTML)`
 
@@ -1534,6 +1535,34 @@ $.morph($.id('list'), '<li>Updated</li><li>Items</li>');
 | --- | --- | --- |
 | `rootEl` | `Element` | The live DOM container to patch |
 | `newHTML` | `string` | The desired HTML string |
+
+#### Morph Engine Optimizations
+
+| Optimization | Description |
+| --- | --- |
+| **LIS-based moves** | Keyed children are reordered using a Longest Increasing Subsequence algorithm, minimizing the number of DOM move operations. |
+| **`isEqualNode()` bail-out** | Before recursing into a subtree, the engine checks `isEqualNode()` (a native C++ comparison). If the nodes are identical, the entire subtree is skipped. |
+| **`z-skip` attribute** | Add `z-skip` to any element to opt its entire subtree out of diffing. Useful for third-party widgets, charts, or other DOM that should never be touched by the morph engine. |
+| **Pre-allocated arrays** | Internal working arrays are reused across passes to reduce GC pressure. |
+| **Reusable template** | A single `<template>` element is reused for HTML parsing instead of creating a new one each render. |
+
+### z-skip — Opt Out of Diffing
+
+Add `z-skip` to any element to tell the morph engine to leave it (and its entire subtree) untouched during DOM reconciliation. This is useful for third-party widgets, canvas elements, embedded iframes, or any DOM managed by external code.
+
+```html
+<!-- Chart.js manages this canvas — morph will never touch it -->
+<canvas z-skip></canvas>
+
+<!-- Third-party widget container -->
+<div z-skip id="twitter-feed"></div>
+```
+
+| Detail | Description |
+| --- | --- |
+| Behavior | The morph engine skips the element and all of its descendants — no attribute patching, no child diffing. |
+| Placement | On any element inside a component template. |
+| Use case | Third-party libraries, rich-text editors, map widgets, canvas/WebGL, or any subtree you manage manually. |
 
 ### `safeEval(expr, scope)`
 
@@ -1552,6 +1581,7 @@ $.safeEval('price * qty + tax', { price: 9.99, qty: 2, tax: 1.50 });
 | Supported | Property access, arithmetic, comparisons, logical ops, ternary, optional chaining (`?.`), nullish coalescing (`??`), template literals, array/object literals, method calls, `typeof`. |
 | Blocked | `constructor`, `__proto__`, `prototype` access is blocked. |
 | Safe methods | Whitelisted Array/String/Number/Object methods only (e.g. `.map()`, `.filter()`, `.trim()`, `.toFixed()`). |
+| AST cache | Parsed ASTs are cached (up to 512 entries) so repeated expressions skip the parse step entirely. Simple identifiers use a fast path that bypasses the full parser. |
 
 ### `mount(target, name, props?)`
 
@@ -2221,9 +2251,9 @@ validate(el, 'target');             // throws if el is null/undefined
 | Property/Method | Description |
 | --- | --- |
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
-| `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. See [z-key](#z-key--keyed-reconciliation). |
+| `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. Uses LIS-based keyed reconciliation, `isEqualNode()` bail-outs, and `z-skip` opt-out. See [z-key](#z-key--keyed-reconciliation) and [z-skip](#z-skip--opt-out-of-diffing). |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
-| `$.version` | Library version string (e.g. `'0.7.5'`). |
+| `$.version` | Library version string (e.g. `'0.8.0'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |

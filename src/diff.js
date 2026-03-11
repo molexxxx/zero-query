@@ -7,7 +7,26 @@
  *
  * Approach: walk old and new trees in parallel, reconcile node by node.
  * Keyed elements (via `z-key`) get matched across position changes.
+ *
+ * Performance advantages over virtual DOM (React/Angular):
+ *   - No virtual tree allocation or diffing — works directly on real DOM
+ *   - Skips unchanged subtrees via fast isEqualNode() check
+ *   - z-skip attribute to opt out of diffing entire subtrees
+ *   - Reuses a single template element for HTML parsing (zero GC pressure)
+ *   - Keyed reconciliation uses LIS (Longest Increasing Subsequence) to
+ *     minimize DOM moves — same algorithm as Vue 3 / ivi
+ *   - Minimal attribute diffing with early bail-out
  */
+
+// ---------------------------------------------------------------------------
+// Reusable template element — avoids per-call allocation
+// ---------------------------------------------------------------------------
+let _tpl = null;
+
+function _getTemplate() {
+  if (!_tpl) _tpl = document.createElement('template');
+  return _tpl;
+}
 
 // ---------------------------------------------------------------------------
 // morph(existingRoot, newHTML) — patch existing DOM to match newHTML
@@ -21,11 +40,12 @@
  * @param {string} newHTML — The desired HTML string
  */
 export function morph(rootEl, newHTML) {
-  const template = document.createElement('template');
-  template.innerHTML = newHTML;
-  const newRoot = template.content;
+  const tpl = _getTemplate();
+  tpl.innerHTML = newHTML;
+  const newRoot = tpl.content;
 
-  // Convert to element for consistent handling — wrap in a div if needed
+  // Move children into a wrapper for consistent handling.
+  // We move (not clone) from the template — cheaper than cloning.
   const tempDiv = document.createElement('div');
   while (newRoot.firstChild) tempDiv.appendChild(newRoot.firstChild);
 
@@ -39,25 +59,42 @@ export function morph(rootEl, newHTML) {
  * @param {Element} newParent — desired state parent
  */
 function _morphChildren(oldParent, newParent) {
-  const oldChildren = [...oldParent.childNodes];
-  const newChildren = [...newParent.childNodes];
+  // Snapshot live NodeLists into arrays — childNodes is live and
+  // mutates during insertBefore/removeChild. Using a for loop to push
+  // avoids spread operator overhead for large child lists.
+  const oldCN = oldParent.childNodes;
+  const newCN = newParent.childNodes;
+  const oldLen = oldCN.length;
+  const newLen = newCN.length;
+  const oldChildren = new Array(oldLen);
+  const newChildren = new Array(newLen);
+  for (let i = 0; i < oldLen; i++) oldChildren[i] = oldCN[i];
+  for (let i = 0; i < newLen; i++) newChildren[i] = newCN[i];
 
-  // Build key maps for keyed element matching
-  const oldKeyMap = new Map();
-  const newKeyMap = new Map();
+  // Scan for keyed elements — only build maps if keys exist
+  let hasKeys = false;
+  let oldKeyMap, newKeyMap;
 
-  for (let i = 0; i < oldChildren.length; i++) {
-    const key = _getKey(oldChildren[i]);
-    if (key != null) oldKeyMap.set(key, i);
+  for (let i = 0; i < oldLen; i++) {
+    if (_getKey(oldChildren[i]) != null) { hasKeys = true; break; }
   }
-  for (let i = 0; i < newChildren.length; i++) {
-    const key = _getKey(newChildren[i]);
-    if (key != null) newKeyMap.set(key, i);
+  if (!hasKeys) {
+    for (let i = 0; i < newLen; i++) {
+      if (_getKey(newChildren[i]) != null) { hasKeys = true; break; }
+    }
   }
-
-  const hasKeys = oldKeyMap.size > 0 || newKeyMap.size > 0;
 
   if (hasKeys) {
+    oldKeyMap = new Map();
+    newKeyMap = new Map();
+    for (let i = 0; i < oldLen; i++) {
+      const key = _getKey(oldChildren[i]);
+      if (key != null) oldKeyMap.set(key, i);
+    }
+    for (let i = 0; i < newLen; i++) {
+      const key = _getKey(newChildren[i]);
+      if (key != null) newKeyMap.set(key, i);
+    }
     _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, newKeyMap);
   } else {
     _morphChildrenUnkeyed(oldParent, oldChildren, newChildren);
@@ -68,35 +105,42 @@ function _morphChildren(oldParent, newParent) {
  * Unkeyed reconciliation — positional matching.
  */
 function _morphChildrenUnkeyed(oldParent, oldChildren, newChildren) {
-  const maxLen = Math.max(oldChildren.length, newChildren.length);
+  const oldLen = oldChildren.length;
+  const newLen = newChildren.length;
+  const minLen = oldLen < newLen ? oldLen : newLen;
 
-  for (let i = 0; i < maxLen; i++) {
-    const oldNode = oldChildren[i];
-    const newNode = newChildren[i];
+  // Morph overlapping range
+  for (let i = 0; i < minLen; i++) {
+    _morphNode(oldParent, oldChildren[i], newChildren[i]);
+  }
 
-    if (!oldNode && newNode) {
-      // New node — append
-      oldParent.appendChild(newNode.cloneNode(true));
-    } else if (oldNode && !newNode) {
-      // Extra old node — remove
-      oldParent.removeChild(oldNode);
-    } else if (oldNode && newNode) {
-      _morphNode(oldParent, oldNode, newNode);
+  // Append new nodes
+  if (newLen > oldLen) {
+    for (let i = oldLen; i < newLen; i++) {
+      oldParent.appendChild(newChildren[i].cloneNode(true));
+    }
+  }
+
+  // Remove excess old nodes (iterate backwards to avoid index shifting)
+  if (oldLen > newLen) {
+    for (let i = oldLen - 1; i >= newLen; i--) {
+      oldParent.removeChild(oldChildren[i]);
     }
   }
 }
 
 /**
- * Keyed reconciliation — match by z-key, reorder minimal moves.
+ * Keyed reconciliation — match by z-key, reorder with minimal moves
+ * using Longest Increasing Subsequence (LIS) to find the maximum set
+ * of nodes that are already in the correct relative order, then only
+ * move the remaining nodes.
  */
 function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, newKeyMap) {
-  // Track which old nodes are consumed
   const consumed = new Set();
-
-  // Step 1: Build ordered list of matched old nodes for new children
   const newLen = newChildren.length;
-  const matched = new Array(newLen); // matched[newIdx] = oldNode | null
+  const matched = new Array(newLen);
 
+  // Step 1: Match new children to old children by key
   for (let i = 0; i < newLen; i++) {
     const key = _getKey(newChildren[i]);
     if (key != null && oldKeyMap.has(key)) {
@@ -108,21 +152,40 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
     }
   }
 
-  // Step 2: Remove old nodes that are not in the new tree
+  // Step 2: Remove old keyed nodes not in the new tree
   for (let i = oldChildren.length - 1; i >= 0; i--) {
     if (!consumed.has(i)) {
       const key = _getKey(oldChildren[i]);
       if (key != null && !newKeyMap.has(key)) {
         oldParent.removeChild(oldChildren[i]);
-      } else if (key == null) {
-        // Unkeyed old node — will be handled positionally below
       }
     }
   }
 
-  // Step 3: Insert/reorder/morph
+  // Step 3: Build index array for LIS of matched old indices.
+  // This finds the largest set of keyed nodes already in order,
+  // so we only need to move the rest — O(n log n) instead of O(n²).
+  const oldIndices = [];      // Maps new-position → old-position (or -1)
+  for (let i = 0; i < newLen; i++) {
+    if (matched[i]) {
+      const key = _getKey(newChildren[i]);
+      oldIndices.push(oldKeyMap.get(key));
+    } else {
+      oldIndices.push(-1);
+    }
+  }
+
+  const lisSet = _lis(oldIndices);
+
+  // Step 4: Insert / reorder / morph — walk new children forward,
+  // using LIS to decide which nodes stay in place.
   let cursor = oldParent.firstChild;
-  const unkeyedOld = oldChildren.filter((n, i) => !consumed.has(i) && _getKey(n) == null);
+  const unkeyedOld = [];
+  for (let i = 0; i < oldChildren.length; i++) {
+    if (!consumed.has(i) && _getKey(oldChildren[i]) == null) {
+      unkeyedOld.push(oldChildren[i]);
+    }
+  }
   let unkeyedIdx = 0;
 
   for (let i = 0; i < newLen; i++) {
@@ -131,16 +194,14 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
     let oldNode = matched[i];
 
     if (!oldNode && newKey == null) {
-      // Try to match an unkeyed old node positionally
       oldNode = unkeyedOld[unkeyedIdx++] || null;
     }
 
     if (oldNode) {
-      // Move into position if needed
-      if (oldNode !== cursor) {
+      // If this node is NOT part of the LIS, it needs to be moved
+      if (!lisSet.has(i)) {
         oldParent.insertBefore(oldNode, cursor);
       }
-      // Morph in place
       _morphNode(oldParent, oldNode, newNode);
       cursor = oldNode.nextSibling;
     } else {
@@ -151,11 +212,10 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
       } else {
         oldParent.appendChild(clone);
       }
-      // cursor stays the same — new node is before it
     }
   }
 
-  // Remove any remaining unkeyed old nodes at the end
+  // Remove remaining unkeyed old nodes
   while (unkeyedIdx < unkeyedOld.length) {
     const leftover = unkeyedOld[unkeyedIdx++];
     if (leftover.parentNode === oldParent) {
@@ -172,6 +232,54 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
       }
     }
   }
+}
+
+/**
+ * Compute the Longest Increasing Subsequence of an index array.
+ * Returns a Set of positions (in the input) that form the LIS.
+ * Entries with value -1 (unmatched) are excluded.
+ *
+ * O(n log n) — same algorithm used by Vue 3 and ivi.
+ *
+ * @param {number[]} arr — array of old-tree indices (-1 = unmatched)
+ * @returns {Set<number>} — positions in arr belonging to the LIS
+ */
+function _lis(arr) {
+  const len = arr.length;
+  const result = new Set();
+  if (len === 0) return result;
+
+  // tails[i] = index in arr of the smallest tail element for LIS of length i+1
+  const tails = [];
+  // prev[i] = predecessor index in arr for the LIS ending at arr[i]
+  const prev = new Array(len).fill(-1);
+  const tailIndices = []; // parallel to tails: actual positions
+
+  for (let i = 0; i < len; i++) {
+    if (arr[i] === -1) continue;
+    const val = arr[i];
+
+    // Binary search for insertion point in tails
+    let lo = 0, hi = tails.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (tails[mid] < val) lo = mid + 1;
+      else hi = mid;
+    }
+
+    tails[lo] = val;
+    tailIndices[lo] = i;
+    prev[i] = lo > 0 ? tailIndices[lo - 1] : -1;
+  }
+
+  // Reconstruct: walk backwards from the last element of LIS
+  let k = tailIndices[tails.length - 1];
+  for (let i = tails.length - 1; i >= 0; i--) {
+    result.add(k);
+    k = prev[k];
+  }
+
+  return result;
 }
 
 /**
@@ -200,10 +308,18 @@ function _morphNode(parent, oldNode, newNode) {
 
   // Both are elements — diff attributes then recurse children
   if (oldNode.nodeType === 1) {
+    // z-skip: developer opt-out — skip diffing this subtree entirely.
+    // Useful for third-party widgets, canvas, video, or large static content.
+    if (oldNode.hasAttribute('z-skip')) return;
+
+    // Fast bail-out: if the elements are identical, skip everything.
+    // isEqualNode() is a native C++ comparison — much faster than walking
+    // attributes + children in JS when trees haven't changed.
+    if (oldNode.isEqualNode(newNode)) return;
+
     _morphAttributes(oldNode, newNode);
 
     // Special elements: don't recurse into their children
-    // (textarea value, input value, select, etc.)
     const tag = oldNode.nodeName;
     if (tag === 'INPUT') {
       _syncInputValue(oldNode, newNode);
@@ -216,7 +332,6 @@ function _morphNode(parent, oldNode, newNode) {
       return;
     }
     if (tag === 'SELECT') {
-      // Recurse children (options) then sync value
       _morphChildren(oldNode, newNode);
       if (oldNode.value !== newNode.value) {
         oldNode.value = newNode.value;
@@ -231,23 +346,45 @@ function _morphNode(parent, oldNode, newNode) {
 
 /**
  * Sync attributes from newEl onto oldEl.
+ * Uses a single pass: build a set of new attribute names, iterate
+ * old attrs for removals, then apply new attrs.
  */
 function _morphAttributes(oldEl, newEl) {
-  // Add/update attributes
   const newAttrs = newEl.attributes;
-  for (let i = 0; i < newAttrs.length; i++) {
+  const oldAttrs = oldEl.attributes;
+  const newLen = newAttrs.length;
+  const oldLen = oldAttrs.length;
+
+  // Fast path: if both have same number of attributes, check if they're identical
+  if (newLen === oldLen) {
+    let same = true;
+    for (let i = 0; i < newLen; i++) {
+      const na = newAttrs[i];
+      if (oldEl.getAttribute(na.name) !== na.value) { same = false; break; }
+    }
+    if (same) {
+      // Also verify no extra old attrs (names mismatch)
+      for (let i = 0; i < oldLen; i++) {
+        if (!newEl.hasAttribute(oldAttrs[i].name)) { same = false; break; }
+      }
+    }
+    if (same) return;
+  }
+
+  // Build set of new attr names for O(1) lookup during removal pass
+  const newNames = new Set();
+  for (let i = 0; i < newLen; i++) {
     const attr = newAttrs[i];
+    newNames.add(attr.name);
     if (oldEl.getAttribute(attr.name) !== attr.value) {
       oldEl.setAttribute(attr.name, attr.value);
     }
   }
 
   // Remove stale attributes
-  const oldAttrs = oldEl.attributes;
-  for (let i = oldAttrs.length - 1; i >= 0; i--) {
-    const attr = oldAttrs[i];
-    if (!newEl.hasAttribute(attr.name)) {
-      oldEl.removeAttribute(attr.name);
+  for (let i = oldLen - 1; i >= 0; i--) {
+    if (!newNames.has(oldAttrs[i].name)) {
+      oldEl.removeAttribute(oldAttrs[i].name);
     }
   }
 }

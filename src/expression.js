@@ -789,13 +789,43 @@ function _evalBinary(node, scope) {
  *   Typical: [loopVars, state, { props, refs, $ }]
  * @returns {*} — evaluation result, or undefined on error
  */
+
+// AST cache — avoids re-tokenizing and re-parsing the same expression string.
+// Bounded to prevent unbounded memory growth in long-lived apps.
+const _astCache = new Map();
+const _AST_CACHE_MAX = 512;
+
 export function safeEval(expr, scope) {
   try {
     const trimmed = expr.trim();
     if (!trimmed) return undefined;
-    const tokens = tokenize(trimmed);
-    const parser = new Parser(tokens, scope);
-    const ast = parser.parse();
+
+    // Fast path for simple identifiers: "count", "name", "visible"
+    // Avoids full tokenize→parse→evaluate overhead for the most common case.
+    if (/^[a-zA-Z_$][\w$]*$/.test(trimmed)) {
+      for (const layer of scope) {
+        if (layer && typeof layer === 'object' && trimmed in layer) {
+          return layer[trimmed];
+        }
+      }
+      // Fall through to full parser for built-in globals (Math, JSON, etc.)
+    }
+
+    // Check AST cache
+    let ast = _astCache.get(trimmed);
+    if (!ast) {
+      const tokens = tokenize(trimmed);
+      const parser = new Parser(tokens, scope);
+      ast = parser.parse();
+
+      // Evict oldest entries when cache is full
+      if (_astCache.size >= _AST_CACHE_MAX) {
+        const first = _astCache.keys().next().value;
+        _astCache.delete(first);
+      }
+      _astCache.set(trimmed, ast);
+    }
+
     return evaluate(ast, scope);
   } catch (err) {
     if (typeof console !== 'undefined' && console.debug) {

@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.7.5
+ * zQuery (zeroQuery) v0.8.0
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -205,6 +205,8 @@ function reactive(target, onChange, _path = '') {
       const old = obj[key];
       if (old === value) return true;
       obj[key] = value;
+      // Invalidate proxy cache for the old value (it may have been replaced)
+      if (old && typeof old === 'object') proxyCache.delete(old);
       try {
         onChange(key, value, old);
       } catch (err) {
@@ -216,6 +218,7 @@ function reactive(target, onChange, _path = '') {
     deleteProperty(obj, key) {
       const old = obj[key];
       delete obj[key];
+      if (old && typeof old === 'object') proxyCache.delete(old);
       try {
         onChange(key, undefined, old);
       } catch (err) {
@@ -242,6 +245,10 @@ class Signal {
     // Track dependency if there's an active effect
     if (Signal._activeEffect) {
       this._subscribers.add(Signal._activeEffect);
+      // Record this signal in the effect's dependency set for proper cleanup
+      if (Signal._activeEffect._deps) {
+        Signal._activeEffect._deps.add(this);
+      }
     }
     return this._value;
   }
@@ -255,12 +262,15 @@ class Signal {
   peek() { return this._value; }
 
   _notify() {
-    this._subscribers.forEach(fn => {
-      try { fn(); }
+    // Snapshot subscribers before iterating — a subscriber might modify
+    // the set (e.g., an effect re-running, adding itself back)
+    const subs = [...this._subscribers];
+    for (let i = 0; i < subs.length; i++) {
+      try { subs[i](); }
       catch (err) {
         reportError(ErrorCode.SIGNAL_CALLBACK, 'Signal subscriber threw', { signal: this }, err);
       }
-    });
+    }
   }
 
   subscribe(fn) {
@@ -295,12 +305,24 @@ function computed(fn) {
 }
 
 /**
- * Create a side-effect that auto-tracks signal dependencies
+ * Create a side-effect that auto-tracks signal dependencies.
+ * Returns a dispose function that removes the effect from all
+ * signals it subscribed to — prevents memory leaks.
+ *
  * @param {Function} fn — effect function
  * @returns {Function} — dispose function
  */
 function effect(fn) {
   const execute = () => {
+    // Clean up old subscriptions before re-running so stale
+    // dependencies from a previous run are properly removed
+    if (execute._deps) {
+      for (const sig of execute._deps) {
+        sig._subscribers.delete(execute);
+      }
+      execute._deps.clear();
+    }
+
     Signal._activeEffect = execute;
     try { fn(); }
     catch (err) {
@@ -308,9 +330,19 @@ function effect(fn) {
     }
     finally { Signal._activeEffect = null; }
   };
+
+  // Track which signals this effect reads from
+  execute._deps = new Set();
+
   execute();
   return () => {
-    // Remove this effect from all signals that track it
+    // Dispose: remove this effect from every signal it subscribed to
+    if (execute._deps) {
+      for (const sig of execute._deps) {
+        sig._subscribers.delete(execute);
+      }
+      execute._deps.clear();
+    }
     Signal._activeEffect = null;
   };
 }
@@ -1932,13 +1964,43 @@ function _evalBinary(node, scope) {
  *   Typical: [loopVars, state, { props, refs, $ }]
  * @returns {*} — evaluation result, or undefined on error
  */
+
+// AST cache — avoids re-tokenizing and re-parsing the same expression string.
+// Bounded to prevent unbounded memory growth in long-lived apps.
+const _astCache = new Map();
+const _AST_CACHE_MAX = 512;
+
 function safeEval(expr, scope) {
   try {
     const trimmed = expr.trim();
     if (!trimmed) return undefined;
-    const tokens = tokenize(trimmed);
-    const parser = new Parser(tokens, scope);
-    const ast = parser.parse();
+
+    // Fast path for simple identifiers: "count", "name", "visible"
+    // Avoids full tokenize→parse→evaluate overhead for the most common case.
+    if (/^[a-zA-Z_$][\w$]*$/.test(trimmed)) {
+      for (const layer of scope) {
+        if (layer && typeof layer === 'object' && trimmed in layer) {
+          return layer[trimmed];
+        }
+      }
+      // Fall through to full parser for built-in globals (Math, JSON, etc.)
+    }
+
+    // Check AST cache
+    let ast = _astCache.get(trimmed);
+    if (!ast) {
+      const tokens = tokenize(trimmed);
+      const parser = new Parser(tokens, scope);
+      ast = parser.parse();
+
+      // Evict oldest entries when cache is full
+      if (_astCache.size >= _AST_CACHE_MAX) {
+        const first = _astCache.keys().next().value;
+        _astCache.delete(first);
+      }
+      _astCache.set(trimmed, ast);
+    }
+
     return evaluate(ast, scope);
   } catch (err) {
     if (typeof console !== 'undefined' && console.debug) {
@@ -1958,7 +2020,26 @@ function safeEval(expr, scope) {
  *
  * Approach: walk old and new trees in parallel, reconcile node by node.
  * Keyed elements (via `z-key`) get matched across position changes.
+ *
+ * Performance advantages over virtual DOM (React/Angular):
+ *   - No virtual tree allocation or diffing — works directly on real DOM
+ *   - Skips unchanged subtrees via fast isEqualNode() check
+ *   - z-skip attribute to opt out of diffing entire subtrees
+ *   - Reuses a single template element for HTML parsing (zero GC pressure)
+ *   - Keyed reconciliation uses LIS (Longest Increasing Subsequence) to
+ *     minimize DOM moves — same algorithm as Vue 3 / ivi
+ *   - Minimal attribute diffing with early bail-out
  */
+
+// ---------------------------------------------------------------------------
+// Reusable template element — avoids per-call allocation
+// ---------------------------------------------------------------------------
+let _tpl = null;
+
+function _getTemplate() {
+  if (!_tpl) _tpl = document.createElement('template');
+  return _tpl;
+}
 
 // ---------------------------------------------------------------------------
 // morph(existingRoot, newHTML) — patch existing DOM to match newHTML
@@ -1972,11 +2053,12 @@ function safeEval(expr, scope) {
  * @param {string} newHTML — The desired HTML string
  */
 function morph(rootEl, newHTML) {
-  const template = document.createElement('template');
-  template.innerHTML = newHTML;
-  const newRoot = template.content;
+  const tpl = _getTemplate();
+  tpl.innerHTML = newHTML;
+  const newRoot = tpl.content;
 
-  // Convert to element for consistent handling — wrap in a div if needed
+  // Move children into a wrapper for consistent handling.
+  // We move (not clone) from the template — cheaper than cloning.
   const tempDiv = document.createElement('div');
   while (newRoot.firstChild) tempDiv.appendChild(newRoot.firstChild);
 
@@ -1990,25 +2072,42 @@ function morph(rootEl, newHTML) {
  * @param {Element} newParent — desired state parent
  */
 function _morphChildren(oldParent, newParent) {
-  const oldChildren = [...oldParent.childNodes];
-  const newChildren = [...newParent.childNodes];
+  // Snapshot live NodeLists into arrays — childNodes is live and
+  // mutates during insertBefore/removeChild. Using a for loop to push
+  // avoids spread operator overhead for large child lists.
+  const oldCN = oldParent.childNodes;
+  const newCN = newParent.childNodes;
+  const oldLen = oldCN.length;
+  const newLen = newCN.length;
+  const oldChildren = new Array(oldLen);
+  const newChildren = new Array(newLen);
+  for (let i = 0; i < oldLen; i++) oldChildren[i] = oldCN[i];
+  for (let i = 0; i < newLen; i++) newChildren[i] = newCN[i];
 
-  // Build key maps for keyed element matching
-  const oldKeyMap = new Map();
-  const newKeyMap = new Map();
+  // Scan for keyed elements — only build maps if keys exist
+  let hasKeys = false;
+  let oldKeyMap, newKeyMap;
 
-  for (let i = 0; i < oldChildren.length; i++) {
-    const key = _getKey(oldChildren[i]);
-    if (key != null) oldKeyMap.set(key, i);
+  for (let i = 0; i < oldLen; i++) {
+    if (_getKey(oldChildren[i]) != null) { hasKeys = true; break; }
   }
-  for (let i = 0; i < newChildren.length; i++) {
-    const key = _getKey(newChildren[i]);
-    if (key != null) newKeyMap.set(key, i);
+  if (!hasKeys) {
+    for (let i = 0; i < newLen; i++) {
+      if (_getKey(newChildren[i]) != null) { hasKeys = true; break; }
+    }
   }
-
-  const hasKeys = oldKeyMap.size > 0 || newKeyMap.size > 0;
 
   if (hasKeys) {
+    oldKeyMap = new Map();
+    newKeyMap = new Map();
+    for (let i = 0; i < oldLen; i++) {
+      const key = _getKey(oldChildren[i]);
+      if (key != null) oldKeyMap.set(key, i);
+    }
+    for (let i = 0; i < newLen; i++) {
+      const key = _getKey(newChildren[i]);
+      if (key != null) newKeyMap.set(key, i);
+    }
     _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, newKeyMap);
   } else {
     _morphChildrenUnkeyed(oldParent, oldChildren, newChildren);
@@ -2019,35 +2118,42 @@ function _morphChildren(oldParent, newParent) {
  * Unkeyed reconciliation — positional matching.
  */
 function _morphChildrenUnkeyed(oldParent, oldChildren, newChildren) {
-  const maxLen = Math.max(oldChildren.length, newChildren.length);
+  const oldLen = oldChildren.length;
+  const newLen = newChildren.length;
+  const minLen = oldLen < newLen ? oldLen : newLen;
 
-  for (let i = 0; i < maxLen; i++) {
-    const oldNode = oldChildren[i];
-    const newNode = newChildren[i];
+  // Morph overlapping range
+  for (let i = 0; i < minLen; i++) {
+    _morphNode(oldParent, oldChildren[i], newChildren[i]);
+  }
 
-    if (!oldNode && newNode) {
-      // New node — append
-      oldParent.appendChild(newNode.cloneNode(true));
-    } else if (oldNode && !newNode) {
-      // Extra old node — remove
-      oldParent.removeChild(oldNode);
-    } else if (oldNode && newNode) {
-      _morphNode(oldParent, oldNode, newNode);
+  // Append new nodes
+  if (newLen > oldLen) {
+    for (let i = oldLen; i < newLen; i++) {
+      oldParent.appendChild(newChildren[i].cloneNode(true));
+    }
+  }
+
+  // Remove excess old nodes (iterate backwards to avoid index shifting)
+  if (oldLen > newLen) {
+    for (let i = oldLen - 1; i >= newLen; i--) {
+      oldParent.removeChild(oldChildren[i]);
     }
   }
 }
 
 /**
- * Keyed reconciliation — match by z-key, reorder minimal moves.
+ * Keyed reconciliation — match by z-key, reorder with minimal moves
+ * using Longest Increasing Subsequence (LIS) to find the maximum set
+ * of nodes that are already in the correct relative order, then only
+ * move the remaining nodes.
  */
 function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, newKeyMap) {
-  // Track which old nodes are consumed
   const consumed = new Set();
-
-  // Step 1: Build ordered list of matched old nodes for new children
   const newLen = newChildren.length;
-  const matched = new Array(newLen); // matched[newIdx] = oldNode | null
+  const matched = new Array(newLen);
 
+  // Step 1: Match new children to old children by key
   for (let i = 0; i < newLen; i++) {
     const key = _getKey(newChildren[i]);
     if (key != null && oldKeyMap.has(key)) {
@@ -2059,21 +2165,40 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
     }
   }
 
-  // Step 2: Remove old nodes that are not in the new tree
+  // Step 2: Remove old keyed nodes not in the new tree
   for (let i = oldChildren.length - 1; i >= 0; i--) {
     if (!consumed.has(i)) {
       const key = _getKey(oldChildren[i]);
       if (key != null && !newKeyMap.has(key)) {
         oldParent.removeChild(oldChildren[i]);
-      } else if (key == null) {
-        // Unkeyed old node — will be handled positionally below
       }
     }
   }
 
-  // Step 3: Insert/reorder/morph
+  // Step 3: Build index array for LIS of matched old indices.
+  // This finds the largest set of keyed nodes already in order,
+  // so we only need to move the rest — O(n log n) instead of O(n²).
+  const oldIndices = [];      // Maps new-position → old-position (or -1)
+  for (let i = 0; i < newLen; i++) {
+    if (matched[i]) {
+      const key = _getKey(newChildren[i]);
+      oldIndices.push(oldKeyMap.get(key));
+    } else {
+      oldIndices.push(-1);
+    }
+  }
+
+  const lisSet = _lis(oldIndices);
+
+  // Step 4: Insert / reorder / morph — walk new children forward,
+  // using LIS to decide which nodes stay in place.
   let cursor = oldParent.firstChild;
-  const unkeyedOld = oldChildren.filter((n, i) => !consumed.has(i) && _getKey(n) == null);
+  const unkeyedOld = [];
+  for (let i = 0; i < oldChildren.length; i++) {
+    if (!consumed.has(i) && _getKey(oldChildren[i]) == null) {
+      unkeyedOld.push(oldChildren[i]);
+    }
+  }
   let unkeyedIdx = 0;
 
   for (let i = 0; i < newLen; i++) {
@@ -2082,16 +2207,14 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
     let oldNode = matched[i];
 
     if (!oldNode && newKey == null) {
-      // Try to match an unkeyed old node positionally
       oldNode = unkeyedOld[unkeyedIdx++] || null;
     }
 
     if (oldNode) {
-      // Move into position if needed
-      if (oldNode !== cursor) {
+      // If this node is NOT part of the LIS, it needs to be moved
+      if (!lisSet.has(i)) {
         oldParent.insertBefore(oldNode, cursor);
       }
-      // Morph in place
       _morphNode(oldParent, oldNode, newNode);
       cursor = oldNode.nextSibling;
     } else {
@@ -2102,11 +2225,10 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
       } else {
         oldParent.appendChild(clone);
       }
-      // cursor stays the same — new node is before it
     }
   }
 
-  // Remove any remaining unkeyed old nodes at the end
+  // Remove remaining unkeyed old nodes
   while (unkeyedIdx < unkeyedOld.length) {
     const leftover = unkeyedOld[unkeyedIdx++];
     if (leftover.parentNode === oldParent) {
@@ -2123,6 +2245,54 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
       }
     }
   }
+}
+
+/**
+ * Compute the Longest Increasing Subsequence of an index array.
+ * Returns a Set of positions (in the input) that form the LIS.
+ * Entries with value -1 (unmatched) are excluded.
+ *
+ * O(n log n) — same algorithm used by Vue 3 and ivi.
+ *
+ * @param {number[]} arr — array of old-tree indices (-1 = unmatched)
+ * @returns {Set<number>} — positions in arr belonging to the LIS
+ */
+function _lis(arr) {
+  const len = arr.length;
+  const result = new Set();
+  if (len === 0) return result;
+
+  // tails[i] = index in arr of the smallest tail element for LIS of length i+1
+  const tails = [];
+  // prev[i] = predecessor index in arr for the LIS ending at arr[i]
+  const prev = new Array(len).fill(-1);
+  const tailIndices = []; // parallel to tails: actual positions
+
+  for (let i = 0; i < len; i++) {
+    if (arr[i] === -1) continue;
+    const val = arr[i];
+
+    // Binary search for insertion point in tails
+    let lo = 0, hi = tails.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (tails[mid] < val) lo = mid + 1;
+      else hi = mid;
+    }
+
+    tails[lo] = val;
+    tailIndices[lo] = i;
+    prev[i] = lo > 0 ? tailIndices[lo - 1] : -1;
+  }
+
+  // Reconstruct: walk backwards from the last element of LIS
+  let k = tailIndices[tails.length - 1];
+  for (let i = tails.length - 1; i >= 0; i--) {
+    result.add(k);
+    k = prev[k];
+  }
+
+  return result;
 }
 
 /**
@@ -2151,10 +2321,18 @@ function _morphNode(parent, oldNode, newNode) {
 
   // Both are elements — diff attributes then recurse children
   if (oldNode.nodeType === 1) {
+    // z-skip: developer opt-out — skip diffing this subtree entirely.
+    // Useful for third-party widgets, canvas, video, or large static content.
+    if (oldNode.hasAttribute('z-skip')) return;
+
+    // Fast bail-out: if the elements are identical, skip everything.
+    // isEqualNode() is a native C++ comparison — much faster than walking
+    // attributes + children in JS when trees haven't changed.
+    if (oldNode.isEqualNode(newNode)) return;
+
     _morphAttributes(oldNode, newNode);
 
     // Special elements: don't recurse into their children
-    // (textarea value, input value, select, etc.)
     const tag = oldNode.nodeName;
     if (tag === 'INPUT') {
       _syncInputValue(oldNode, newNode);
@@ -2167,7 +2345,6 @@ function _morphNode(parent, oldNode, newNode) {
       return;
     }
     if (tag === 'SELECT') {
-      // Recurse children (options) then sync value
       _morphChildren(oldNode, newNode);
       if (oldNode.value !== newNode.value) {
         oldNode.value = newNode.value;
@@ -2182,23 +2359,45 @@ function _morphNode(parent, oldNode, newNode) {
 
 /**
  * Sync attributes from newEl onto oldEl.
+ * Uses a single pass: build a set of new attribute names, iterate
+ * old attrs for removals, then apply new attrs.
  */
 function _morphAttributes(oldEl, newEl) {
-  // Add/update attributes
   const newAttrs = newEl.attributes;
-  for (let i = 0; i < newAttrs.length; i++) {
+  const oldAttrs = oldEl.attributes;
+  const newLen = newAttrs.length;
+  const oldLen = oldAttrs.length;
+
+  // Fast path: if both have same number of attributes, check if they're identical
+  if (newLen === oldLen) {
+    let same = true;
+    for (let i = 0; i < newLen; i++) {
+      const na = newAttrs[i];
+      if (oldEl.getAttribute(na.name) !== na.value) { same = false; break; }
+    }
+    if (same) {
+      // Also verify no extra old attrs (names mismatch)
+      for (let i = 0; i < oldLen; i++) {
+        if (!newEl.hasAttribute(oldAttrs[i].name)) { same = false; break; }
+      }
+    }
+    if (same) return;
+  }
+
+  // Build set of new attr names for O(1) lookup during removal pass
+  const newNames = new Set();
+  for (let i = 0; i < newLen; i++) {
     const attr = newAttrs[i];
+    newNames.add(attr.name);
     if (oldEl.getAttribute(attr.name) !== attr.value) {
       oldEl.setAttribute(attr.name, attr.value);
     }
   }
 
   // Remove stale attributes
-  const oldAttrs = oldEl.attributes;
-  for (let i = oldAttrs.length - 1; i >= 0; i--) {
-    const attr = oldAttrs[i];
-    if (!newEl.hasAttribute(attr.name)) {
-      oldEl.removeAttribute(attr.name);
+  for (let i = oldLen - 1; i >= 0; i--) {
+    if (!newNames.has(oldAttrs[i].name)) {
+      oldEl.removeAttribute(oldAttrs[i].name);
     }
   }
 }
@@ -2571,7 +2770,7 @@ class Component {
       // Normalize items → [{id, label}, …]
       def._pages = (p.items || []).map(item => {
         if (typeof item === 'string') return { id: item, label: _titleCase(item) };
-        return { id: item.id, label: item.label || _titleCase(item.id) };
+        return { ...item, label: item.label || _titleCase(item.id) };
       });
 
       // Build URL map for lazy per-page loading.
@@ -2837,31 +3036,31 @@ class Component {
     }
   }
 
-  // Bind @event="method" and z-on:event="method" handlers via delegation
+  // Bind @event="method" and z-on:event="method" handlers via delegation.
+  //
+  // Optimization: on the FIRST render, we scan for event attributes, build
+  // a delegated handler map, and attach one listener per event type to the
+  // component root. On subsequent renders (re-bind), we only rebuild the
+  // internal binding map — existing DOM listeners are reused since they
+  // delegate to event.target.closest(selector) at fire time.
   _bindEvents() {
-    // Clean up old delegated listeners
-    this._listeners.forEach(({ event, handler }) => {
-      this._el.removeEventListener(event, handler);
-    });
-    this._listeners = [];
+    // Always rebuild the binding map from current DOM
+    const eventMap = new Map(); // event → [{ selector, methodExpr, modifiers, el }]
 
-    // Find all elements with @event or z-on:event attributes
     const allEls = this._el.querySelectorAll('*');
-    const eventMap = new Map(); // event → [{ selector, method, modifiers }]
-
     allEls.forEach(child => {
-      // Skip elements inside z-pre subtrees
       if (child.closest('[z-pre]')) return;
 
-      [...child.attributes].forEach(attr => {
-        // Support both @event and z-on:event syntax
+      const attrs = child.attributes;
+      for (let a = 0; a < attrs.length; a++) {
+        const attr = attrs[a];
         let raw;
-        if (attr.name.startsWith('@')) {
-          raw = attr.name.slice(1); // @click.prevent → click.prevent
+        if (attr.name.charCodeAt(0) === 64) { // '@'
+          raw = attr.name.slice(1);
         } else if (attr.name.startsWith('z-on:')) {
-          raw = attr.name.slice(5); // z-on:click.prevent → click.prevent
+          raw = attr.name.slice(5);
         } else {
-          return;
+          continue;
         }
 
         const parts = raw.split('.');
@@ -2877,12 +3076,45 @@ class Component {
 
         if (!eventMap.has(event)) eventMap.set(event, []);
         eventMap.get(event).push({ selector, methodExpr, modifiers, el: child });
-      });
+      }
     });
+
+    // Store binding map for the delegated handlers to reference
+    this._eventBindings = eventMap;
+
+    // Only attach DOM listeners once — reuse on subsequent renders.
+    // The handlers close over `this` and read `this._eventBindings`
+    // at fire time, so they always use the latest binding map.
+    if (this._delegatedEvents) {
+      // Already attached — just make sure new event types are covered
+      for (const event of eventMap.keys()) {
+        if (!this._delegatedEvents.has(event)) {
+          this._attachDelegatedEvent(event, eventMap.get(event));
+        }
+      }
+      // Remove listeners for event types no longer in the template
+      for (const event of this._delegatedEvents.keys()) {
+        if (!eventMap.has(event)) {
+          const { handler, opts } = this._delegatedEvents.get(event);
+          this._el.removeEventListener(event, handler, opts);
+          this._delegatedEvents.delete(event);
+          // Also remove from _listeners array
+          this._listeners = this._listeners.filter(l => l.event !== event);
+        }
+      }
+      return;
+    }
+
+    this._delegatedEvents = new Map();
 
     // Register delegated listeners on the component root
     for (const [event, bindings] of eventMap) {
-      // Determine listener options from modifiers
+      this._attachDelegatedEvent(event, bindings);
+    }
+  }
+
+  // Attach a single delegated listener for an event type
+  _attachDelegatedEvent(event, bindings) {
       const needsCapture = bindings.some(b => b.modifiers.includes('capture'));
       const needsPassive = bindings.some(b => b.modifiers.includes('passive'));
       const listenerOpts = (needsCapture || needsPassive)
@@ -2890,7 +3122,9 @@ class Component {
         : false;
 
       const handler = (e) => {
-        for (const { selector, methodExpr, modifiers, el } of bindings) {
+        // Read bindings from live map — always up to date after re-renders
+        const currentBindings = this._eventBindings?.get(event) || [];
+        for (const { selector, methodExpr, modifiers, el } of currentBindings) {
           if (!e.target.closest(selector)) continue;
 
           // .self — only fire if target is the element itself
@@ -2960,7 +3194,7 @@ class Component {
       };
       this._el.addEventListener(event, handler, listenerOpts);
       this._listeners.push({ event, handler });
-    }
+      this._delegatedEvents.set(event, { handler, opts: listenerOpts });
   }
 
   // Bind z-ref="name" → this.refs.name
@@ -2999,7 +3233,7 @@ class Component {
       // Read current state value (supports dot-path keys)
       const currentVal = _getPath(this.state, key);
 
-      // -- Set initial DOM value from state ------------------------
+      // -- Set initial DOM value from state (always sync) ----------
       if (tag === 'input' && type === 'checkbox') {
         el.checked = !!currentVal;
       } else if (tag === 'input' && type === 'radio') {
@@ -3021,6 +3255,11 @@ class Component {
         : isEditable ? 'input' : 'input';
 
       // -- Handler: read DOM → write to reactive state -------------
+      // Skip if already bound (morph preserves existing elements,
+      // so re-binding would stack duplicate listeners)
+      if (el._zqModelBound) return;
+      el._zqModelBound = true;
+
       const handler = () => {
         let val;
         if (type === 'checkbox')           val = el.checked;
@@ -3192,25 +3431,32 @@ class Component {
     });
 
     // -- z-bind:attr / :attr (dynamic attribute binding) -----------
-    this._el.querySelectorAll('*').forEach(el => {
-      if (el.closest('[z-pre]')) return;
-      [...el.attributes].forEach(attr => {
+    // Use TreeWalker instead of querySelectorAll('*') — avoids
+    // creating a flat array of every single descendant element.
+    // TreeWalker visits nodes lazily and skips z-pre subtrees early.
+    const walker = document.createTreeWalker(this._el, NodeFilter.SHOW_ELEMENT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.closest('[z-pre]')) continue;
+      const attrs = node.attributes;
+      for (let i = attrs.length - 1; i >= 0; i--) {
+        const attr = attrs[i];
         let attrName;
         if (attr.name.startsWith('z-bind:')) attrName = attr.name.slice(7);
-        else if (attr.name.startsWith(':') && !attr.name.startsWith('::')) attrName = attr.name.slice(1);
-        else return;
+        else if (attr.name.charCodeAt(0) === 58 && attr.name.charCodeAt(1) !== 58) attrName = attr.name.slice(1); // ':' but not '::'
+        else continue;
 
         const val = this._evalExpr(attr.value);
-        el.removeAttribute(attr.name);
+        node.removeAttribute(attr.name);
         if (val === false || val === null || val === undefined) {
-          el.removeAttribute(attrName);
+          node.removeAttribute(attrName);
         } else if (val === true) {
-          el.setAttribute(attrName, '');
+          node.setAttribute(attrName, '');
         } else {
-          el.setAttribute(attrName, String(val));
+          node.setAttribute(attrName, String(val));
         }
-      });
-    });
+      }
+    }
 
     // -- z-class (dynamic class binding) ---------------------------
     this._el.querySelectorAll('[z-class]').forEach(el => {
@@ -3289,6 +3535,8 @@ class Component {
     }
     this._listeners.forEach(({ event, handler }) => this._el.removeEventListener(event, handler));
     this._listeners = [];
+    this._delegatedEvents = null;
+    this._eventBindings = null;
     if (this._styleEl) this._styleEl.remove();
     _instances.delete(this._el);
     this._el.innerHTML = '';
@@ -4751,7 +4999,7 @@ $.ZQueryError = ZQueryError;
 $.ErrorCode   = ErrorCode;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.7.5';
+$.version = '0.8.0';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

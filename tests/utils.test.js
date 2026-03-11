@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, trust, uuid, camelCase, kebabCase,
+  escapeHtml, html, trust, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
-  bus,
+  storage, session, bus,
 } from '../src/utils.js';
 
 
@@ -297,6 +297,165 @@ describe('parseQuery', () => {
   });
 });
 
+
+// ---------------------------------------------------------------------------
+// html template tag
+// ---------------------------------------------------------------------------
+
+describe('html template tag', () => {
+  it('auto-escapes interpolated values', () => {
+    const userInput = '<script>alert("xss")</script>';
+    const result = html`<div>${userInput}</div>`;
+    expect(result).toContain('&lt;script&gt;');
+    expect(result).not.toContain('<script>');
+  });
+
+  it('does not escape trusted HTML', () => {
+    const safe = trust('<b>bold</b>');
+    const result = html`<div>${safe}</div>`;
+    expect(result).toContain('<b>bold</b>');
+  });
+
+  it('handles null/undefined values', () => {
+    const result = html`<span>${null}</span>`;
+    expect(result).toBe('<span></span>');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// storage helpers
+// ---------------------------------------------------------------------------
+
+describe('storage (localStorage wrapper)', () => {
+  beforeEach(() => { localStorage.clear(); });
+
+  it('set and get a value', () => {
+    storage.set('key', { a: 1 });
+    expect(storage.get('key')).toEqual({ a: 1 });
+  });
+
+  it('returns fallback for missing key', () => {
+    expect(storage.get('missing', 'default')).toBe('default');
+  });
+
+  it('returns null as default fallback', () => {
+    expect(storage.get('missing')).toBeNull();
+  });
+
+  it('remove deletes a key', () => {
+    storage.set('key', 42);
+    storage.remove('key');
+    expect(storage.get('key')).toBeNull();
+  });
+
+  it('clear removes all keys', () => {
+    storage.set('a', 1);
+    storage.set('b', 2);
+    storage.clear();
+    expect(storage.get('a')).toBeNull();
+    expect(storage.get('b')).toBeNull();
+  });
+
+  it('handles non-JSON values gracefully', () => {
+    localStorage.setItem('bad', '{not json}');
+    expect(storage.get('bad', 'fallback')).toBe('fallback');
+  });
+});
+
+
+describe('session (sessionStorage wrapper)', () => {
+  beforeEach(() => { sessionStorage.clear(); });
+
+  it('set and get a value', () => {
+    session.set('key', [1, 2, 3]);
+    expect(session.get('key')).toEqual([1, 2, 3]);
+  });
+
+  it('returns fallback for missing key', () => {
+    expect(session.get('missing', 'default')).toBe('default');
+  });
+
+  it('remove deletes a key', () => {
+    session.set('key', 'val');
+    session.remove('key');
+    expect(session.get('key')).toBeNull();
+  });
+
+  it('clear removes all keys', () => {
+    session.set('a', 1);
+    session.clear();
+    expect(session.get('a')).toBeNull();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Event bus
+// ---------------------------------------------------------------------------
+
+describe('bus (event bus)', () => {
+  beforeEach(() => { bus.clear(); });
+
+  it('on() and emit()', () => {
+    const fn = vi.fn();
+    bus.on('test', fn);
+    bus.emit('test', 'data');
+    expect(fn).toHaveBeenCalledWith('data');
+  });
+
+  it('off() removes handler', () => {
+    const fn = vi.fn();
+    bus.on('test', fn);
+    bus.off('test', fn);
+    bus.emit('test');
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('on() returns unsubscribe function', () => {
+    const fn = vi.fn();
+    const unsub = bus.on('test', fn);
+    unsub();
+    bus.emit('test');
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('once() fires handler only once', () => {
+    const fn = vi.fn();
+    bus.once('test', fn);
+    bus.emit('test', 'first');
+    bus.emit('test', 'second');
+    expect(fn).toHaveBeenCalledOnce();
+    expect(fn).toHaveBeenCalledWith('first');
+  });
+
+  it('emit with multiple args', () => {
+    const fn = vi.fn();
+    bus.on('test', fn);
+    bus.emit('test', 1, 2, 3);
+    expect(fn).toHaveBeenCalledWith(1, 2, 3);
+  });
+
+  it('multiple handlers on same event', () => {
+    const fn1 = vi.fn();
+    const fn2 = vi.fn();
+    bus.on('test', fn1);
+    bus.on('test', fn2);
+    bus.emit('test');
+    expect(fn1).toHaveBeenCalledOnce();
+    expect(fn2).toHaveBeenCalledOnce();
+  });
+
+  it('clear() removes all handlers', () => {
+    const fn = vi.fn();
+    bus.on('a', fn);
+    bus.on('b', fn);
+    bus.clear();
+    bus.emit('a');
+    bus.emit('b');
+    expect(fn).not.toHaveBeenCalled();
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Event bus
