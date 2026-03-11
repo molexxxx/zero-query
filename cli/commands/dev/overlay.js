@@ -613,7 +613,7 @@ const OVERLAY_SCRIPT = `<script>
         __zqPopup.focus();
         return;
       }
-      var w = 700, h = 600;
+      var w = 1080, h = 800;
       var left = window.screenX + window.outerWidth - w - 20;
       var top = window.screenY + 60;
       var url = '/_devtools' + (tab ? '#' + tab : '');
