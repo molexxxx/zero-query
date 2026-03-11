@@ -657,7 +657,7 @@ Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base hre
 
 | Method | Signature | Returns | Description |
 | --- | --- | --- | --- |
-| `navigate` | `navigate(path, options?)` | `this` | Push new state and resolve route. See **options** below. |
+| `navigate` | `navigate(path, options?)` | `this` | Push new state and resolve route. Deduplicates same-path navigation. See **options** below. |
 | `replace` | `replace(path, options?)` | `this` | Replace current state (no new history entry). Same **options** as `navigate`. |
 | `back` | `back()` | `this` | `history.back()` |
 | `forward` | `forward()` | `this` | `history.forward()` |
@@ -667,6 +667,8 @@ Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base hre
 | `beforeEach` | `beforeEach(fn)` | `this` | Add navigation guard. `fn(to, from)` — return `false` to cancel, `string` to redirect. |
 | `afterEach` | `afterEach(fn)` | `this` | Add post-navigation guard. |
 | `onChange` | `onChange(fn)` | `() => void` | Subscribe to route changes. Returns unsubscribe. `fn(to, from)`. |
+| `pushSubstate` | `pushSubstate(key, data?)` | `this` | Push a sub-route history entry for in-component UI state. See **Substates** below. |
+| `onSubstate` | `onSubstate(fn)` | `() => void` | Subscribe to substate pops. Returns unsubscribe. `fn(key, data, action)`. |
 | `resolve` | `resolve(path)` | `string` | Resolve an app-relative path to a full URL path (including base). Useful for programmatic link generation. |
 | `destroy` | `destroy()` | — | Teardown router and mounted component. |
 
@@ -676,6 +678,7 @@ Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base hre
 | --- | --- | --- |
 | `params` | `object` | Key-value pairs that replace `:param` placeholders in the path. Values are URI-encoded automatically. |
 | `state` | `any` | Arbitrary data passed to `history.pushState()` / `history.replaceState()`. Accessible later via `history.state`. |
+| `force` | `boolean` | Force navigation even if the target URL is identical to the current one. Defaults to `false`. |
 
 ```js
 // Simple navigation
@@ -697,6 +700,51 @@ router.replace('/user/:id', { params: { id: userId } });
 ```
 
 > **`navigate()` vs `replace()`:** `navigate()` pushes a new history entry (user can go back). `replace()` overwrites the current entry — use it for redirects, post-login flows, or tab switches where going back doesn't make sense.
+
+> **Same-path deduplication:** Calling `navigate()` with the same URL that is already active is a no-op (no duplicate history entry). Hash-only changes on the same route (e.g. `/docs` → `/docs#api`) use `replaceState` internally so the back button returns to the *previous route* instead of toggling between scroll positions.
+
+### Sub-Route History Substates
+
+Substates let you push lightweight history entries for **in-component UI changes** — modals, tabs, panels, expandable sections — without changing the URL. The back button undoes the most recent UI change instead of leaving the page.
+
+```js
+// 1. Push a substate when opening a modal
+function openModal(id) {
+  showModal(id);
+  router.pushSubstate('modal', { id });
+}
+
+// 2. Listen for back-button on substates
+router.onSubstate((key, data, action) => {
+  if (key === 'modal') {
+    closeModal(data.id);
+    return true;          // ← handled; don't resolve routes
+  }
+});
+```
+
+**How it works:**
+- `pushSubstate(key, data)` calls `history.pushState()` with a zQuery state marker — the URL stays the same.
+- When the user presses Back, the `popstate` event fires with the substate marker. zQuery calls all `onSubstate` listeners first.
+- If any listener returns `true`, the pop is consumed and route resolution is skipped.
+- If no listener handles it, normal route resolution proceeds (the user navigates away).
+
+**Use cases:** modals, side panels, multi-step forms, tab switches, expandable detail views, inner-component navigation.
+
+```js
+// Tab switching with substates
+function switchTab(name) {
+  this.state.activeTab = name;
+  router.pushSubstate('tab', { name });
+}
+
+const unsub = router.onSubstate((key, data) => {
+  if (key === 'tab') {
+    this.state.activeTab = data.name;
+    return true;
+  }
+});
+```
 
 ### Router Properties
 
@@ -2334,8 +2382,8 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.morphElement(el, html)` | Morph a single element in place — diffs attributes and children without replacing the node reference. If the tag name matches, the element is patched; if the tag differs, the element is replaced. Returns the resulting element. |
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
-| `$.libSize` | Minified library size string (e.g. `'~86 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'0.8.5'`). |
+| `$.libSize` | Minified library size string (e.g. `'~91 KB'`), injected at build time. |
+| `$.version` | Library version string (e.g. `'0.8.6'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |
@@ -2438,9 +2486,9 @@ import {
   morph, morphElement, safeEval,
   createRouter, getRouter,
   createStore, getStore,
-  createSSRApp, renderToString,
   http,
-  ZQueryError, ErrorCode, onError, reportError,
+  ZQueryError, ErrorCode, onError, reportError, guardCallback, validate,
+  createSSRApp, renderToString,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, html, trust, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,

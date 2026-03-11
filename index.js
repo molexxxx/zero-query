@@ -23,7 +23,8 @@ import {
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, bus,
 } from './src/utils.js';
-import { ZQueryError, ErrorCode, onError, reportError } from './src/errors.js';
+import { ZQueryError, ErrorCode, onError, reportError, guardCallback, validate } from './src/errors.js';
+import { createSSRApp, renderToString } from './src/ssr.js';
 
 
 // ---------------------------------------------------------------------------
@@ -144,9 +145,15 @@ $.session    = session;
 $.bus        = bus;
 
 // --- Error handling --------------------------------------------------------
-$.onError     = onError;
-$.ZQueryError = ZQueryError;
-$.ErrorCode   = ErrorCode;
+$.onError        = onError;
+$.ZQueryError    = ZQueryError;
+$.ErrorCode      = ErrorCode;
+$.guardCallback  = guardCallback;
+$.validate       = validate;
+
+// --- SSR -------------------------------------------------------------------
+$.createSSRApp   = createSSRApp;
+$.renderToString = renderToString;
 
 // --- Meta ------------------------------------------------------------------
 $.version = '__VERSION__';
@@ -185,7 +192,8 @@ export {
   createRouter, getRouter,
   createStore, getStore,
   http,
-  ZQueryError, ErrorCode, onError, reportError,
+  ZQueryError, ErrorCode, onError, reportError, guardCallback, validate,
+  createSSRApp, renderToString,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, html, trust, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,

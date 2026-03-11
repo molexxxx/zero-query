@@ -472,6 +472,11 @@ class Component {
       html = '';
     }
 
+    // Pre-expand z-html and z-text at string level so the morph engine
+    // can diff their content properly (instead of clearing + re-injecting
+    // on every re-render). Same pattern as z-for: parse → evaluate → serialize.
+    html = this._expandContentDirectives(html);
+
     // -- Slot distribution ----------------------------------------
     // Replace <slot> elements with captured slot content from parent.
     // <slot> → default slot content
@@ -951,6 +956,41 @@ class Component {
   }
 
   // ---------------------------------------------------------------------------
+  // _expandContentDirectives — Pre-morph z-html & z-text expansion
+  //
+  // Evaluates z-html and z-text directives at the string level so the morph
+  // engine receives HTML with the actual content inline. This lets the diff
+  // algorithm properly compare old vs new content (text nodes, child elements)
+  // instead of clearing + re-injecting on every re-render.
+  //
+  // Same parse → evaluate → serialize pattern as _expandZFor.
+  // ---------------------------------------------------------------------------
+  _expandContentDirectives(html) {
+    if (!html.includes('z-html') && !html.includes('z-text')) return html;
+
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+
+    // z-html: evaluate expression → inject as innerHTML
+    temp.querySelectorAll('[z-html]').forEach(el => {
+      if (el.closest('[z-pre]')) return;
+      const val = this._evalExpr(el.getAttribute('z-html'));
+      el.innerHTML = val != null ? String(val) : '';
+      el.removeAttribute('z-html');
+    });
+
+    // z-text: evaluate expression → inject as textContent (HTML-safe)
+    temp.querySelectorAll('[z-text]').forEach(el => {
+      if (el.closest('[z-pre]')) return;
+      const val = this._evalExpr(el.getAttribute('z-text'));
+      el.textContent = val != null ? String(val) : '';
+      el.removeAttribute('z-text');
+    });
+
+    return temp.innerHTML;
+  }
+
+  // ---------------------------------------------------------------------------
   // _processDirectives — Post-innerHTML DOM-level directive processing
   // ---------------------------------------------------------------------------
   _processDirectives() {
@@ -1004,11 +1044,15 @@ class Component {
     // -- z-bind:attr / :attr (dynamic attribute binding) -----------
     // Use TreeWalker instead of querySelectorAll('*') — avoids
     // creating a flat array of every single descendant element.
-    // TreeWalker visits nodes lazily and skips z-pre subtrees early.
-    const walker = document.createTreeWalker(this._el, NodeFilter.SHOW_ELEMENT);
+    // TreeWalker visits nodes lazily; FILTER_REJECT skips z-pre subtrees
+    // at the walker level (faster than per-node closest('[z-pre]') checks).
+    const walker = document.createTreeWalker(this._el, NodeFilter.SHOW_ELEMENT, {
+      acceptNode(n) {
+        return n.hasAttribute('z-pre') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      }
+    });
     let node;
     while ((node = walker.nextNode())) {
-      if (node.closest('[z-pre]')) continue;
       const attrs = node.attributes;
       for (let i = attrs.length - 1; i >= 0; i--) {
         const attr = attrs[i];
@@ -1059,21 +1103,9 @@ class Component {
       el.removeAttribute('z-style');
     });
 
-    // -- z-html (innerHTML injection) ------------------------------
-    this._el.querySelectorAll('[z-html]').forEach(el => {
-      if (el.closest('[z-pre]')) return;
-      const val = this._evalExpr(el.getAttribute('z-html'));
-      el.innerHTML = val != null ? String(val) : '';
-      el.removeAttribute('z-html');
-    });
-
-    // -- z-text (safe textContent binding) -------------------------
-    this._el.querySelectorAll('[z-text]').forEach(el => {
-      if (el.closest('[z-pre]')) return;
-      const val = this._evalExpr(el.getAttribute('z-text'));
-      el.textContent = val != null ? String(val) : '';
-      el.removeAttribute('z-text');
-    });
+    // z-html and z-text are now pre-expanded at string level (before
+    // morph) via _expandContentDirectives(), so the diff engine can
+    // properly diff their content instead of clearing + re-injecting.
 
     // -- z-cloak (remove after render) -----------------------------
     this._el.querySelectorAll('[z-cloak]').forEach(el => {

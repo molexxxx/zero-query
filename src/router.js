@@ -3,6 +3,7 @@
  * 
  * Supports hash mode (#/path) and history mode (/path).
  * Route params, query strings, navigation guards, and lazy loading.
+ * Sub-route history substates for in-page UI changes (modals, tabs, etc.).
  * 
  * Usage:
  *   $.router({
@@ -19,6 +20,9 @@
 
 import { mount, destroy, prefetch } from './component.js';
 import { reportError, ErrorCode } from './errors.js';
+
+// Unique marker on history.state to identify zQuery-managed entries
+const _ZQ_STATE_KEY = '__zq';
 
 class Router {
   constructor(config = {}) {
@@ -53,6 +57,10 @@ class Router {
     this._instance = null;                        // current mounted component
     this._resolving = false;                      // re-entrancy guard
 
+    // Sub-route history substates
+    this._substateListeners = [];                 // [(key, data) => bool|void]
+    this._inSubstate = false;                       // true while substate entries are in the history stack
+
     // Set outlet element
     if (config.el) {
       this._el = typeof config.el === 'string' ? document.querySelector(config.el) : config.el;
@@ -67,7 +75,21 @@ class Router {
     if (this._mode === 'hash') {
       window.addEventListener('hashchange', () => this._resolve());
     } else {
-      window.addEventListener('popstate', () => this._resolve());
+      window.addEventListener('popstate', (e) => {
+        // Check for substate pop first — if a listener handles it, don't route
+        const st = e.state;
+        if (st && st[_ZQ_STATE_KEY] === 'substate') {
+          const handled = this._fireSubstate(st.key, st.data, 'pop');
+          if (handled) return;
+          // Unhandled substate — fall through to route resolve
+          // _inSubstate stays true so the next non-substate pop triggers reset
+        } else if (this._inSubstate) {
+          // Popped past all substates — notify listeners to reset to defaults
+          this._inSubstate = false;
+          this._fireSubstate(null, null, 'reset');
+        }
+        this._resolve();
+      });
     }
 
     // Intercept link clicks for SPA navigation
@@ -150,6 +172,19 @@ class Router {
     });
   }
 
+  /**
+   * Get the full current URL (path + hash) for same-URL detection.
+   * @returns {string}
+   */
+  _currentURL() {
+    if (this._mode === 'hash') {
+      return window.location.hash.slice(1) || '/';
+    }
+    const pathname = window.location.pathname || '/';
+    const hash = window.location.hash || '';
+    return pathname + hash;
+  }
+
   navigate(path, options = {}) {
     // Interpolate :param placeholders if options.params is provided
     if (options.params) path = this._interpolateParams(path, options.params);
@@ -161,9 +196,48 @@ class Router {
       // Hash mode uses the URL hash for routing, so a #fragment can't live
       // in the URL. Store it as a scroll target for the destination component.
       if (fragment) window.__zqScrollTarget = fragment;
-      window.location.hash = '#' + normalized;
+      const targetHash = '#' + normalized;
+      // Skip if already at this exact hash (prevents duplicate entries)
+      if (window.location.hash === targetHash && !options.force) return this;
+      window.location.hash = targetHash;
     } else {
-      window.history.pushState(options.state || {}, '', this._base + normalized + hash);
+      const targetURL = this._base + normalized + hash;
+      const currentURL = (window.location.pathname || '/') + (window.location.hash || '');
+
+      if (targetURL === currentURL && !options.force) {
+        // Same full URL (path + hash) — don't push duplicate entry.
+        // If only the hash changed to a fragment target, scroll to it.
+        if (fragment) {
+          const el = document.getElementById(fragment);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        return this;
+      }
+
+      // Same route path but different hash fragment — use replaceState
+      // so back goes to the previous *route*, not the previous scroll position.
+      const targetPathOnly = this._base + normalized;
+      const currentPathOnly = window.location.pathname || '/';
+      if (targetPathOnly === currentPathOnly && hash && !options.force) {
+        window.history.replaceState(
+          { ...options.state, [_ZQ_STATE_KEY]: 'route' },
+          '',
+          targetURL
+        );
+        // Scroll to the fragment target
+        if (fragment) {
+          const el = document.getElementById(fragment);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        // Don't re-resolve — same route, just a hash change
+        return this;
+      }
+
+      window.history.pushState(
+        { ...options.state, [_ZQ_STATE_KEY]: 'route' },
+        '',
+        targetURL
+      );
       this._resolve();
     }
     return this;
@@ -179,7 +253,11 @@ class Router {
       if (fragment) window.__zqScrollTarget = fragment;
       window.location.replace('#' + normalized);
     } else {
-      window.history.replaceState(options.state || {}, '', this._base + normalized + hash);
+      window.history.replaceState(
+        { ...options.state, [_ZQ_STATE_KEY]: 'route' },
+        '',
+        this._base + normalized + hash
+      );
       this._resolve();
     }
     return this;
@@ -232,6 +310,80 @@ class Router {
   onChange(fn) {
     this._listeners.add(fn);
     return () => this._listeners.delete(fn);
+  }
+
+  // --- Sub-route history substates -----------------------------------------
+
+  /**
+   * Push a lightweight history entry for in-component UI state.
+   * The URL path does NOT change — only a history entry is added so the
+   * back button can undo the UI change (close modal, revert tab, etc.)
+   * before navigating away.
+   *
+   * @param {string} key   — identifier (e.g. 'modal', 'tab', 'panel')
+   * @param {*}      data  — arbitrary state (serializable)
+   * @returns {Router}
+   *
+   * @example
+   * // Open a modal and push a substate
+   * router.pushSubstate('modal', { id: 'confirm-delete' });
+   * // User hits back → onSubstate fires → close the modal
+   */
+  pushSubstate(key, data) {
+    this._inSubstate = true;
+    if (this._mode === 'hash') {
+      // Hash mode: stash the substate in a global — hashchange will check.
+      // We still push a history entry via a sentinel hash suffix.
+      const current = window.location.hash || '#/';
+      window.history.pushState(
+        { [_ZQ_STATE_KEY]: 'substate', key, data },
+        '',
+        window.location.href
+      );
+    } else {
+      window.history.pushState(
+        { [_ZQ_STATE_KEY]: 'substate', key, data },
+        '',
+        window.location.href      // keep same URL
+      );
+    }
+    return this;
+  }
+
+  /**
+   * Register a listener for substate pops (back button on a substate entry).
+   * The callback receives `(key, data)` and should return `true` if it
+   * handled the pop (prevents route resolution). If no listener returns
+   * `true`, normal route resolution proceeds.
+   *
+   * @param {(key: string, data: any, action: string) => boolean|void} fn
+   * @returns {() => void} unsubscribe function
+   *
+   * @example
+   * const unsub = router.onSubstate((key, data) => {
+   *   if (key === 'modal') { closeModal(); return true; }
+   * });
+   */
+  onSubstate(fn) {
+    this._substateListeners.push(fn);
+    return () => {
+      this._substateListeners = this._substateListeners.filter(f => f !== fn);
+    };
+  }
+
+  /**
+   * Fire substate listeners. Returns true if any listener handled it.
+   * @private
+   */
+  _fireSubstate(key, data, action) {
+    for (const fn of this._substateListeners) {
+      try {
+        if (fn(key, data, action) === true) return true;
+      } catch (err) {
+        reportError(ErrorCode.ROUTER_GUARD, 'onSubstate listener threw', { key, data }, err);
+      }
+    }
+    return false;
   }
 
   // --- Current state -------------------------------------------------------
@@ -294,6 +446,16 @@ class Router {
   }
 
   async __resolve() {
+    // Check if we're landing on a substate entry (e.g. page refresh on a
+    // substate bookmark, or hash-mode popstate). Fire listeners and bail
+    // if handled — the URL hasn't changed so there's no route to resolve.
+    const histState = window.history.state;
+    if (histState && histState[_ZQ_STATE_KEY] === 'substate') {
+      const handled = this._fireSubstate(histState.key, histState.data, 'resolve');
+      if (handled) return;
+      // No listener handled it — fall through to normal routing
+    }
+
     const fullPath = this.path;
     const [pathPart, queryString] = fullPath.split('?');
     const path = pathPart || '/';
@@ -321,6 +483,18 @@ class Router {
     const to = { route: matched, params, query, path };
     const from = this._current;
 
+    // Same-route optimization: if the resolved route is the same component
+    // with the same params, skip the full destroy/mount cycle and just
+    // update props. This prevents flashing and unnecessary DOM churn.
+    if (from && this._instance && matched.component === from.route.component) {
+      const sameParams = JSON.stringify(params) === JSON.stringify(from.params);
+      const sameQuery = JSON.stringify(query) === JSON.stringify(from.query);
+      if (sameParams && sameQuery) {
+        // Identical navigation — nothing to do
+        return;
+      }
+    }
+
     // Run before guards
     for (const guard of this._guards.before) {
       try {
@@ -339,7 +513,11 @@ class Router {
             if (rFrag) window.__zqScrollTarget = rFrag;
             window.location.replace('#' + rNorm);
           } else {
-            window.history.replaceState({}, '', this._base + rNorm + rHash);
+            window.history.replaceState(
+              { [_ZQ_STATE_KEY]: 'route' },
+              '',
+              this._base + rNorm + rHash
+            );
           }
           return this.__resolve();
         }
@@ -409,6 +587,8 @@ class Router {
   destroy() {
     if (this._instance) this._instance.destroy();
     this._listeners.clear();
+    this._substateListeners = [];
+    this._inSubstate = false;
     this._routes = [];
     this._guards = { before: [], after: [] };
   }

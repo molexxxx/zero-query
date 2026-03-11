@@ -538,6 +538,77 @@ const OVERLAY_SCRIPT = `<script>
   };
 
   // =====================================================================
+  // Router instrumentation — history state tracking for devtools
+  // =====================================================================
+  var __zqRouterEvents = [];
+
+  var _origPushState = history.pushState;
+  history.pushState = function(state, title, url) {
+    _origPushState.apply(this, arguments);
+    var isSubstate = state && state.__zq === 'substate';
+    var evt = {
+      action: isSubstate ? 'substate' : 'navigate',
+      url: String(url || location.href).replace(location.origin, ''),
+      key: isSubstate ? state.key : null,
+      data: isSubstate ? state.data : null,
+      timestamp: Date.now()
+    };
+    __zqRouterEvents.push(evt);
+    if (__zqRouterEvents.length > 200) __zqRouterEvents.shift();
+    if (__zqChannel) {
+      try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
+    }
+  };
+
+  var _origReplaceState = history.replaceState;
+  history.replaceState = function(state, title, url) {
+    _origReplaceState.apply(this, arguments);
+    var isSubstate = state && state.__zq === 'substate';
+    var evt = {
+      action: 'replace',
+      url: String(url || location.href).replace(location.origin, ''),
+      key: isSubstate ? state.key : null,
+      data: isSubstate ? state.data : null,
+      timestamp: Date.now()
+    };
+    __zqRouterEvents.push(evt);
+    if (__zqRouterEvents.length > 200) __zqRouterEvents.shift();
+    if (__zqChannel) {
+      try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
+    }
+  };
+
+  window.addEventListener('popstate', function(e) {
+    var state = e.state;
+    var isSubstate = state && state.__zq === 'substate';
+    var evt = {
+      action: isSubstate ? 'pop-substate' : 'pop',
+      url: location.pathname + location.hash,
+      key: isSubstate ? state.key : null,
+      data: isSubstate ? state.data : null,
+      timestamp: Date.now()
+    };
+    __zqRouterEvents.push(evt);
+    if (__zqRouterEvents.length > 200) __zqRouterEvents.shift();
+    if (__zqChannel) {
+      try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
+    }
+  });
+
+  window.addEventListener('hashchange', function() {
+    var evt = {
+      action: 'hashchange',
+      url: location.hash,
+      timestamp: Date.now()
+    };
+    __zqRouterEvents.push(evt);
+    if (__zqRouterEvents.length > 200) __zqRouterEvents.shift();
+    if (__zqChannel) {
+      try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
+    }
+  });
+
+  // =====================================================================
   // Dev Toolbar — floating bar with DOM viewer button & request counter
   // =====================================================================
   var devBar;
@@ -657,7 +728,8 @@ const OVERLAY_SCRIPT = `<script>
     get requests() { return __zqRequests; },
     get morphEvents() { return __zqMorphEvents; },
     get morphCount() { return __zqMorphCount; },
-    get renderCount() { return __zqRenderCount; }
+    get renderCount() { return __zqRenderCount; },
+    get routerEvents() { return __zqRouterEvents; }
   };
 
   if (document.readyState === 'loading') {
