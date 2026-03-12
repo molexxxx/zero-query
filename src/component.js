@@ -264,7 +264,7 @@ class Component {
     if (!watchers) return;
     for (const [key, handler] of Object.entries(watchers)) {
       // Match exact key or parent key (e.g. watcher on 'user' fires when 'user.name' changes)
-      if (changedKey === key || key.startsWith(changedKey + '.') || changedKey.startsWith(key + '.') || changedKey === key) {
+      if (changedKey === key || key.startsWith(changedKey + '.') || changedKey.startsWith(key + '.')) {
         const currentVal = _getPath(this.state.__raw || this.state, key);
         const prevVal = this._prevWatchValues?.[key];
         if (currentVal !== prevVal) {
@@ -413,20 +413,26 @@ class Component {
     if (!this._mounted && combinedStyles) {
       const scopeAttr = `z-s${this._uid}`;
       this._el.setAttribute(scopeAttr, '');
-      let inAtBlock = 0;
+      let noScopeDepth = 0;   // brace depth at which a no-scope @-rule started (0 = none active)
+      let braceDepth = 0;     // overall brace depth
       const scoped = combinedStyles.replace(/([^{}]+)\{|\}/g, (match, selector) => {
         if (match === '}') {
-          if (inAtBlock > 0) inAtBlock--;
+          if (noScopeDepth > 0 && braceDepth <= noScopeDepth) noScopeDepth = 0;
+          braceDepth--;
           return match;
         }
+        braceDepth++;
         const trimmed = selector.trim();
-        // Don't scope @-rules (@media, @keyframes, @supports, @container, @layer, @font-face, etc.)
+        // Don't scope @-rules themselves
         if (trimmed.startsWith('@')) {
-          inAtBlock++;
+          // @keyframes and @font-face contain non-selector content — skip scoping inside them
+          if (/^@(keyframes|font-face)\b/.test(trimmed)) {
+            noScopeDepth = braceDepth;
+          }
           return match;
         }
-        // Don't scope keyframe stops (from, to, 0%, 50%, etc.)
-        if (inAtBlock > 0 && /^[\d%\s,fromto]+$/.test(trimmed.replace(/\s/g, ''))) {
+        // Inside @keyframes or @font-face — don't scope inner rules
+        if (noScopeDepth > 0 && braceDepth > noScopeDepth) {
           return match;
         }
         return selector.split(',').map(s => `[${scopeAttr}] ${s.trim()}`).join(', ') + ' {';
@@ -1054,6 +1060,21 @@ class Component {
     this._listeners = [];
     this._delegatedEvents = null;
     this._eventBindings = null;
+    // Clear any pending debounce/throttle timers to prevent stale closures.
+    // Timers are keyed by individual child elements, so iterate all descendants.
+    const allEls = this._el.querySelectorAll('*');
+    allEls.forEach(child => {
+      const dTimers = _debounceTimers.get(child);
+      if (dTimers) {
+        for (const key in dTimers) clearTimeout(dTimers[key]);
+        _debounceTimers.delete(child);
+      }
+      const tTimers = _throttleTimers.get(child);
+      if (tTimers) {
+        for (const key in tTimers) clearTimeout(tTimers[key]);
+        _throttleTimers.delete(child);
+      }
+    });
     if (this._styleEl) this._styleEl.remove();
     _instances.delete(this._el);
     this._el.innerHTML = '';

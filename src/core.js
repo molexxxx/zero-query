@@ -12,7 +12,7 @@ import { morph as _morph, morphElement as _morphElement } from './diff.js';
 // ---------------------------------------------------------------------------
 export class ZQueryCollection {
   constructor(elements) {
-    this.elements = Array.isArray(elements) ? elements : [elements];
+    this.elements = Array.isArray(elements) ? elements : (elements ? [elements] : []);
     this.length = this.elements.length;
     this.elements.forEach((el, i) => { this[i] = el; });
   }
@@ -69,10 +69,12 @@ export class ZQueryCollection {
     return new ZQueryCollection([...kids]);
   }
 
-  siblings() {
+  siblings(selector) {
     const sibs = [];
     this.elements.forEach(el => {
-      sibs.push(...[...el.parentElement.children].filter(c => c !== el));
+      if (!el.parentElement) return;
+      const all = [...el.parentElement.children].filter(c => c !== el);
+      sibs.push(...(selector ? all.filter(c => c.matches(selector)) : all));
     });
     return new ZQueryCollection(sibs);
   }
@@ -214,7 +216,8 @@ export class ZQueryCollection {
   index(selector) {
     if (selector === undefined) {
       const el = this.first();
-      return el ? Array.from(el.parentElement.children).indexOf(el) : -1;
+      if (!el || !el.parentElement) return -1;
+      return Array.from(el.parentElement.children).indexOf(el);
     }
     const target = (typeof selector === 'string')
       ? document.querySelector(selector)
@@ -274,6 +277,11 @@ export class ZQueryCollection {
   // --- Attributes ----------------------------------------------------------
 
   attr(name, value) {
+    if (typeof name === 'object' && name !== null) {
+      return this.each((_, el) => {
+        for (const [k, v] of Object.entries(name)) el.setAttribute(k, v);
+      });
+    }
     if (value === undefined) return this.first()?.getAttribute(name);
     return this.each((_, el) => el.setAttribute(name, value));
   }
@@ -298,7 +306,10 @@ export class ZQueryCollection {
 
   // --- CSS / Dimensions ----------------------------------------------------
 
-  css(props) {
+  css(props, value) {
+    if (typeof props === 'string' && value !== undefined) {
+      return this.each((_, el) => { el.style[props] = value; });
+    }
     if (typeof props === 'string') {
       const el = this.first();
       return el ? getComputedStyle(el)[props] : undefined;
@@ -438,6 +449,7 @@ export class ZQueryCollection {
   wrap(wrapper) {
     return this.each((_, el) => {
       const w = typeof wrapper === 'string' ? createFragment(wrapper).firstElementChild : wrapper.cloneNode(true);
+      if (!w || !el.parentNode) return;
       el.parentNode.insertBefore(w, el);
       w.appendChild(el);
     });
@@ -563,12 +575,18 @@ export class ZQueryCollection {
         if (typeof selectorOrHandler === 'function') {
           el.addEventListener(evt, selectorOrHandler);
         } else if (typeof selectorOrHandler === 'string') {
-          // Delegated event — only works on elements that support closest()
-          el.addEventListener(evt, (e) => {
+          // Delegated event — store wrapper so off() can remove it
+          const wrapper = (e) => {
             if (!e.target || typeof e.target.closest !== 'function') return;
             const target = e.target.closest(selectorOrHandler);
             if (target && el.contains(target)) handler.call(target, e);
-          });
+          };
+          wrapper._zqOriginal = handler;
+          wrapper._zqSelector = selectorOrHandler;
+          el.addEventListener(evt, wrapper);
+          // Track delegated handlers for removal
+          if (!el._zqDelegated) el._zqDelegated = [];
+          el._zqDelegated.push({ evt, wrapper });
         }
       });
     });
@@ -577,7 +595,20 @@ export class ZQueryCollection {
   off(event, handler) {
     const events = event.split(/\s+/);
     return this.each((_, el) => {
-      events.forEach(evt => el.removeEventListener(evt, handler));
+      events.forEach(evt => {
+        // Try direct removal first
+        el.removeEventListener(evt, handler);
+        // Also check delegated handlers
+        if (el._zqDelegated) {
+          el._zqDelegated = el._zqDelegated.filter(d => {
+            if (d.evt === evt && d.wrapper._zqOriginal === handler) {
+              el.removeEventListener(evt, d.wrapper);
+              return false;
+            }
+            return true;
+          });
+        }
+      });
     });
   }
 
@@ -606,8 +637,12 @@ export class ZQueryCollection {
   // --- Animation -----------------------------------------------------------
 
   animate(props, duration = 300, easing = 'ease') {
+    // Empty collection — resolve immediately
+    if (this.length === 0) return Promise.resolve(this);
     return new Promise(resolve => {
+      let resolved = false;
       const count = { done: 0 };
+      const listeners = [];
       this.each((_, el) => {
         el.style.transition = `all ${duration}ms ${easing}`;
         requestAnimationFrame(() => {
@@ -615,13 +650,27 @@ export class ZQueryCollection {
           const onEnd = () => {
             el.removeEventListener('transitionend', onEnd);
             el.style.transition = '';
-            if (++count.done >= this.length) resolve(this);
+            if (!resolved && ++count.done >= this.length) {
+              resolved = true;
+              resolve(this);
+            }
           };
           el.addEventListener('transitionend', onEnd);
+          listeners.push({ el, onEnd });
         });
       });
       // Fallback in case transitionend doesn't fire
-      setTimeout(() => resolve(this), duration + 50);
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          // Clean up any remaining transitionend listeners
+          for (const { el, onEnd } of listeners) {
+            el.removeEventListener('transitionend', onEnd);
+            el.style.transition = '';
+          }
+          resolve(this);
+        }
+      }, duration + 50);
     });
   }
 
@@ -635,7 +684,8 @@ export class ZQueryCollection {
 
   fadeToggle(duration = 300) {
     return Promise.all(this.elements.map(el => {
-      const visible = getComputedStyle(el).opacity !== '0' && getComputedStyle(el).display !== 'none';
+      const cs = getComputedStyle(el);
+      const visible = cs.opacity !== '0' && cs.display !== 'none';
       const col = new ZQueryCollection([el]);
       return visible ? col.fadeOut(duration) : col.fadeIn(duration);
     })).then(() => this);

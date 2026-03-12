@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { query, queryAll, ZQueryCollection } from '../src/core.js';
 
 
@@ -973,5 +973,897 @@ describe('hover()', () => {
     col.first().dispatchEvent(new Event('mouseenter'));
     col.first().dispatchEvent(new Event('mouseleave'));
     expect(count).toBe(2);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// ZQueryCollection — empty collection safety
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — empty collection operations', () => {
+  it('first() returns null on empty', () => {
+    expect(queryAll('.nonexistent').first()).toBeNull();
+  });
+
+  it('last() returns null on empty', () => {
+    expect(queryAll('.nonexistent').last()).toBeNull();
+  });
+
+  it('each() on empty collection does not call callback', () => {
+    const fn = vi.fn();
+    queryAll('.nonexistent').each(fn);
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('map() on empty returns empty array', () => {
+    expect(queryAll('.nonexistent').map(el => el)).toEqual([]);
+  });
+
+  it('html() get on empty returns undefined', () => {
+    const result = queryAll('.nonexistent').html();
+    expect(result).toBeUndefined();
+  });
+
+  it('text() get on empty returns undefined', () => {
+    const result = queryAll('.nonexistent').text();
+    expect(result).toBeUndefined();
+  });
+
+  it('val() get on empty returns undefined', () => {
+    expect(queryAll('.nonexistent').val()).toBeUndefined();
+  });
+
+  it('addClass on empty does not throw', () => {
+    expect(() => queryAll('.nonexistent').addClass('test')).not.toThrow();
+  });
+
+  it('attr() get on empty returns undefined', () => {
+    expect(queryAll('.nonexistent').attr('id')).toBeUndefined();
+  });
+
+  it('chaining on empty collection', () => {
+    const col = queryAll('.nonexistent');
+    const result = col.addClass('x').removeClass('x').toggleClass('y');
+    expect(result).toBeInstanceOf(ZQueryCollection);
+    expect(result.length).toBe(0);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Collection wrapping edge cases
+// ---------------------------------------------------------------------------
+
+describe('query — wrapping edge cases', () => {
+  it('wraps an HTMLCollection', () => {
+    const col = queryAll(document.getElementsByClassName('text'));
+    expect(col).toBeInstanceOf(ZQueryCollection);
+    expect(col.length).toBe(3);
+  });
+
+  it('wraps a NodeList', () => {
+    const col = queryAll(document.querySelectorAll('.text'));
+    expect(col).toBeInstanceOf(ZQueryCollection);
+    expect(col.length).toBe(3);
+  });
+
+  it('wraps an Array of elements', () => {
+    const arr = [document.getElementById('main'), document.getElementById('sidebar')];
+    const col = queryAll(arr);
+    expect(col.length).toBe(2);
+    expect(col.first().id).toBe('main');
+  });
+
+  it('query() wraps ZQueryCollection (returns as-is)', () => {
+    const original = queryAll('.text');
+    const wrapped = query(original);
+    expect(wrapped).toBe(original);
+  });
+
+  it('creates multiple elements from HTML', () => {
+    const col = queryAll('<p>a</p><p>b</p><p>c</p>');
+    expect(col.length).toBe(3);
+    expect(col.first().textContent).toBe('a');
+    expect(col.last().textContent).toBe('c');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// html() morphing advanced
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — html() morphing advanced', () => {
+  it('morphs complex nested structure', () => {
+    document.body.innerHTML = '<div id="m"><ul><li id="i1">old1</li><li id="i2">old2</li></ul></div>';
+    const li1 = document.getElementById('i1');
+    queryAll('#m').html('<ul><li id="i1">new1</li><li id="i2">new2</li><li id="i3">new3</li></ul>');
+    // li1 should be preserved (same id → morph)
+    expect(document.getElementById('i1')).toBe(li1);
+    expect(li1.textContent).toBe('new1');
+    expect(document.querySelectorAll('#m li').length).toBe(3);
+  });
+
+  it('morph() handles tag change at root', () => {
+    document.body.innerHTML = '<div id="m"><p>old</p></div>';
+    queryAll('#m').morph('<span>new</span>');
+    expect(document.querySelector('#m span')).not.toBeNull();
+    expect(document.querySelector('#m p')).toBeNull();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Event delegation
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — event delegation', () => {
+  it('on() with selector delegates to matching children', () => {
+    let clicked = null;
+    queryAll('#nav').on('click', '.nav-item', function() { clicked = this.textContent; });
+    document.querySelector('.nav-item.active').click();
+    expect(clicked).toBe('Home');
+  });
+
+  it('delegated event does not fire for non-matching elements', () => {
+    let fired = false;
+    queryAll('#main').on('click', '.nonexistent', () => { fired = true; });
+    document.querySelector('.text').click();
+    expect(fired).toBe(false);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Multiple class operations
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — multiple class operations', () => {
+  it('addClass with space-separated classes', () => {
+    const col = queryAll('#main');
+    col.addClass('a', 'b', 'c');
+    expect(col.first().classList.contains('a')).toBe(true);
+    expect(col.first().classList.contains('b')).toBe(true);
+    expect(col.first().classList.contains('c')).toBe(true);
+  });
+
+  it('removeClass with multiple classes', () => {
+    const col = queryAll('#main');
+    col.addClass('x', 'y', 'z');
+    col.removeClass('x', 'z');
+    expect(col.first().classList.contains('x')).toBe(false);
+    expect(col.first().classList.contains('y')).toBe(true);
+    expect(col.first().classList.contains('z')).toBe(false);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Traversal edge cases
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — traversal edge cases', () => {
+  it('find() returns empty when no descendants match', () => {
+    expect(queryAll('#main').find('.nonexistent').length).toBe(0);
+  });
+
+  it('parent() on body returns html', () => {
+    const parents = queryAll('body').parent();
+    expect(parents.first().tagName).toBe('HTML');
+  });
+
+  it('children() with selector filters', () => {
+    const col = queryAll('#main').children('.text');
+    expect(col.length).toBe(3);
+  });
+
+  it('closest() returns self if it matches', () => {
+    const col = queryAll('#main');
+    expect(col.closest('#main').first()).toBe(document.getElementById('main'));
+  });
+
+  it('closest() returns empty when no match', () => {
+    expect(queryAll('.text').closest('.nonexistent').length).toBe(0);
+  });
+
+  it('siblings() returns all siblings', () => {
+    const sibs = queryAll('.first-p').siblings();
+    // siblings() returns all sibling elements except self
+    expect(sibs.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('next() at end returns empty', () => {
+    const col = queryAll('.third-p');
+    expect(col.next().length).toBe(0);
+  });
+
+  it('prev() at start returns empty', () => {
+    const col = queryAll('.first-p');
+    expect(col.prev().length).toBe(0);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// DOM manipulation edge cases
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — DOM manipulation edge cases', () => {
+  it('append with element node', () => {
+    const newEl = document.createElement('div');
+    newEl.id = 'appended-el';
+    queryAll('#main').append(newEl);
+    expect(document.getElementById('appended-el')).not.toBeNull();
+    expect(document.getElementById('appended-el').parentElement.id).toBe('main');
+  });
+
+  it('prepend with element node', () => {
+    const newEl = document.createElement('div');
+    newEl.id = 'prepended-el';
+    queryAll('#main').prepend(newEl);
+    expect(document.getElementById('main').firstElementChild.id).toBe('prepended-el');
+  });
+
+  it('remove on already-removed element does not throw', () => {
+    const col = queryAll('.text').eq(0);
+    col.remove();
+    expect(() => col.remove()).not.toThrow();
+  });
+
+  it('clone produces independent copy', () => {
+    const original = queryAll('.first-p');
+    const cloned = original.clone();
+    cloned.addClass('cloned-class');
+    expect(original.hasClass('cloned-class')).toBe(false);
+    expect(cloned.hasClass('cloned-class')).toBe(true);
+  });
+
+  it('empty() on already empty element', () => {
+    document.body.innerHTML = '<div id="empty"></div>';
+    expect(() => queryAll('#empty').empty()).not.toThrow();
+    expect(document.getElementById('empty').children.length).toBe(0);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Attribute edge cases
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — attribute edge cases', () => {
+  it('attr() set with sequential calls sets multiple attributes', () => {
+    document.body.innerHTML = '<div id="a"></div>';
+    queryAll('#a').attr('data-x', '1').attr('data-y', '2').attr('title', 'test');
+    const el = document.getElementById('a');
+    expect(el.getAttribute('data-x')).toBe('1');
+    expect(el.getAttribute('data-y')).toBe('2');
+    expect(el.getAttribute('title')).toBe('test');
+  });
+
+  it('data() returns undefined for missing key', () => {
+    expect(queryAll('#main').data('nonexistent')).toBeUndefined();
+  });
+
+  it('removeAttr on nonexistent attribute does not throw', () => {
+    expect(() => queryAll('#main').removeAttr('data-nope')).not.toThrow();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// css() advanced
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — css() advanced', () => {
+  it('sets a single style property via object', () => {
+    document.body.innerHTML = '<div id="s">test</div>';
+    queryAll('#s').css({ color: 'green' });
+    expect(document.getElementById('s').style.color).toBe('green');
+  });
+
+  it('sets multiple CSS properties', () => {
+    document.body.innerHTML = '<div id="s2">test</div>';
+    queryAll('#s2').css({ color: 'red', 'font-weight': 'bold', display: 'flex' });
+    const el = document.getElementById('s2');
+    expect(el.style.color).toBe('red');
+    expect(el.style.display).toBe('flex');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// $.create advanced
+// ---------------------------------------------------------------------------
+
+describe('query.create — advanced', () => {
+  it('creates element with no attributes', () => {
+    const col = query.create('span');
+    expect(col.length).toBe(1);
+    expect(col[0].tagName).toBe('SPAN');
+  });
+
+  it('creates element with multiple children', () => {
+    const child1 = document.createElement('span');
+    child1.textContent = 'span child';
+    const col = query.create('div', {}, 'text', child1);
+    expect(col[0].childNodes.length).toBe(2);
+    expect(col[0].childNodes[0].textContent).toBe('text');
+    expect(col[0].querySelector('span').textContent).toBe('span child');
+  });
+
+  it('creates element with boolean attributes', () => {
+    const col = query.create('input', { type: 'text', disabled: '' });
+    expect(col[0].tagName).toBe('INPUT');
+    expect(col[0].getAttribute('type')).toBe('text');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Prop edge cases
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — prop() edge cases', () => {
+  it('gets defaultValue property', () => {
+    document.body.innerHTML = '<input value="initial">';
+    const col = queryAll('input');
+    expect(col.prop('defaultValue')).toBe('initial');
+  });
+
+  it('gets tagName property', () => {
+    const col = queryAll('#main');
+    expect(col.prop('tagName')).toBe('DIV');
+  });
+
+  it('prop on empty collection returns undefined', () => {
+    expect(queryAll('.nonexistent').prop('checked')).toBeUndefined();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// BUG FIX: siblings() with selector filtering + null parent guard
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — siblings() fixes', () => {
+  it('filters siblings by selector', () => {
+    document.body.innerHTML = '<div><p class="a">1</p><p class="b">2</p><p class="a">3</p></div>';
+    const sibs = queryAll('.b').siblings('.a');
+    expect(sibs.length).toBe(2);
+  });
+
+  it('returns all siblings when no selector given', () => {
+    document.body.innerHTML = '<div><p>1</p><p id="mid">2</p><p>3</p></div>';
+    const sibs = queryAll('#mid').siblings();
+    expect(sibs.length).toBe(2);
+  });
+
+  it('does not crash on detached element (no parentElement)', () => {
+    const detached = document.createElement('div');
+    const col = new ZQueryCollection([detached]);
+    expect(() => col.siblings()).not.toThrow();
+    expect(col.siblings().length).toBe(0);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// BUG FIX: ZQueryCollection constructor null safety
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — constructor null/undefined safety', () => {
+  it('creates empty collection from null', () => {
+    const col = new ZQueryCollection(null);
+    expect(col.length).toBe(0);
+  });
+
+  it('creates empty collection from undefined', () => {
+    const col = new ZQueryCollection(undefined);
+    expect(col.length).toBe(0);
+  });
+
+  it('wraps a single element', () => {
+    const el = document.createElement('div');
+    const col = new ZQueryCollection(el);
+    expect(col.length).toBe(1);
+    expect(col[0]).toBe(el);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// BUG FIX: attr() with object syntax
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — attr() object set', () => {
+  it('sets multiple attributes with object', () => {
+    document.body.innerHTML = '<div id="at"></div>';
+    queryAll('#at').attr({ 'data-x': '1', 'data-y': '2', title: 'hello' });
+    const el = document.getElementById('at');
+    expect(el.getAttribute('data-x')).toBe('1');
+    expect(el.getAttribute('data-y')).toBe('2');
+    expect(el.getAttribute('title')).toBe('hello');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// BUG FIX: css() two-argument setter
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — css() two-argument setter', () => {
+  it('sets a CSS property with key-value arguments', () => {
+    document.body.innerHTML = '<div id="cs">text</div>';
+    queryAll('#cs').css('color', 'green');
+    expect(document.getElementById('cs').style.color).toBe('green');
+  });
+
+  it('still works as getter with single string arg', () => {
+    document.body.innerHTML = '<div id="cs2" style="color: red;">text</div>';
+    const val = queryAll('#cs2').css('color');
+    expect(val).toBeDefined();
+  });
+
+  it('still works as setter with object arg', () => {
+    document.body.innerHTML = '<div id="cs3">text</div>';
+    queryAll('#cs3').css({ color: 'blue', display: 'flex' });
+    const el = document.getElementById('cs3');
+    expect(el.style.color).toBe('blue');
+    expect(el.style.display).toBe('flex');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// BUG FIX: wrap() does not crash on empty/invalid wrapper
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — wrap() safety', () => {
+  it('does not crash if wrapper string is empty', () => {
+    document.body.innerHTML = '<div id="w"><p>inside</p></div>';
+    expect(() => queryAll('#w p').wrap('')).not.toThrow();
+  });
+
+  it('does not crash on detached element (no parentNode)', () => {
+    const detached = document.createElement('span');
+    const col = new ZQueryCollection([detached]);
+    expect(() => col.wrap('<div></div>')).not.toThrow();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// BUG FIX: index() does not crash on detached element
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — index() null parent safety', () => {
+  it('returns -1 for detached element', () => {
+    const detached = document.createElement('div');
+    const col = new ZQueryCollection([detached]);
+    expect(col.index()).toBe(-1);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// BUG FIX: delegated on() / off() handler removal
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — delegated on/off', () => {
+  it('off() removes delegated event handlers', () => {
+    document.body.innerHTML = '<div id="parent"><button class="btn">click</button></div>';
+    const parent = new ZQueryCollection([document.getElementById('parent')]);
+    const handler = vi.fn();
+
+    parent.on('click', '.btn', handler);
+    document.querySelector('.btn').click();
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    parent.off('click', handler);
+    document.querySelector('.btn').click();
+    // Should not fire again after off()
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// BUG FIX: animate() resolves immediately on empty collection
+// ---------------------------------------------------------------------------
+
+describe('ZQueryCollection — animate() empty collection', () => {
+  it('resolves immediately when collection is empty', async () => {
+    const col = new ZQueryCollection([]);
+    const result = await col.animate({ opacity: '0' }, 50);
+    expect(result).toBe(col);
+  });
+});
+
+
+// ===========================================================================
+// one() — single-fire event listener
+// ===========================================================================
+
+describe('ZQueryCollection — one()', () => {
+  it('fires handler only once', () => {
+    const handler = vi.fn();
+    document.body.innerHTML = '<button id="one-btn">click</button>';
+    const col = query('#one-btn');
+    col.one('click', handler);
+    document.querySelector('#one-btn').click();
+    document.querySelector('#one-btn').click();
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+// ===========================================================================
+// toggle() — show/hide toggle
+// ===========================================================================
+
+describe('ZQueryCollection — toggle()', () => {
+  it('hides a visible element', () => {
+    const el = document.querySelector('#main');
+    el.style.display = '';
+    const col = query('#main');
+    col.toggle();
+    expect(el.style.display).toBe('none');
+  });
+
+  it('shows a hidden element', () => {
+    const el = document.querySelector('#main');
+    el.style.display = 'none';
+    const col = query('#main');
+    col.toggle();
+    expect(el.style.display).toBe('');
+  });
+
+  it('uses custom display value when showing', () => {
+    const el = document.querySelector('#main');
+    el.style.display = 'none';
+    const col = query('#main');
+    col.toggle('flex');
+    expect(el.style.display).toBe('flex');
+  });
+});
+
+
+// ===========================================================================
+// serialize() and serializeObject()
+// ===========================================================================
+
+describe('ZQueryCollection — serialize()', () => {
+  it('serializes form inputs to URL-encoded string', () => {
+    document.body.innerHTML = '<form id="f"><input name="user" value="Alice"><input name="age" value="30"></form>';
+    const result = query('#f').serialize();
+    expect(result).toContain('user=Alice');
+    expect(result).toContain('age=30');
+  });
+
+  it('returns empty string for non-form element', () => {
+    expect(query('#main').serialize()).toBe('');
+  });
+});
+
+describe('ZQueryCollection — serializeObject()', () => {
+  it('builds an object from form fields', () => {
+    document.body.innerHTML = '<form id="f"><input name="user" value="Alice"><input name="age" value="30"></form>';
+    expect(query('#f').serializeObject()).toEqual({ user: 'Alice', age: '30' });
+  });
+
+  it('groups duplicate keys into arrays', () => {
+    document.body.innerHTML = `<form id="f">
+      <input name="tags" value="a">
+      <input name="tags" value="b">
+      <input name="tags" value="c">
+    </form>`;
+    expect(query('#f').serializeObject()).toEqual({ tags: ['a', 'b', 'c'] });
+  });
+
+  it('returns empty object for non-form element', () => {
+    expect(query('#main').serializeObject()).toEqual({});
+  });
+});
+
+
+// ===========================================================================
+// $.ready
+// ===========================================================================
+
+describe('$.ready', () => {
+  it('calls function immediately when document is not loading', () => {
+    const fn = vi.fn();
+    query.ready(fn);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+// ===========================================================================
+// $.name
+// ===========================================================================
+
+describe('$.name', () => {
+  it('selects elements by name attribute', () => {
+    document.body.innerHTML = '<input name="email" value="a@b.com"><input name="email" value="x@y.com"><input name="other">';
+    const result = query.name('email');
+    expect(result.length).toBe(2);
+  });
+});
+
+
+// ===========================================================================
+// $.create
+// ===========================================================================
+
+describe('$.create', () => {
+  it('creates an element with attributes', () => {
+    const col = query.create('div', { id: 'test', class: 'box' }, 'hello');
+    const el = col.first();
+    expect(el.tagName).toBe('DIV');
+    expect(el.id).toBe('test');
+    expect(el.className).toBe('box');
+    expect(el.textContent).toBe('hello');
+  });
+
+  it('applies style object', () => {
+    const col = query.create('span', { style: { color: 'red', fontSize: '20px' } });
+    const el = col.first();
+    expect(el.style.color).toBe('red');
+    expect(el.style.fontSize).toBe('20px');
+  });
+
+  it('binds event handlers via on* attributes', () => {
+    const handler = vi.fn();
+    const col = query.create('button', { onclick: handler }, 'click me');
+    col.first().click();
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('sets data attributes from data object', () => {
+    const col = query.create('div', { data: { userId: '42', role: 'admin' } });
+    const el = col.first();
+    expect(el.dataset.userId).toBe('42');
+    expect(el.dataset.role).toBe('admin');
+  });
+
+  it('appends child Node elements', () => {
+    const child = document.createElement('span');
+    child.textContent = 'child';
+    const col = query.create('div', {}, child);
+    const el = col.first();
+    expect(el.children.length).toBe(1);
+    expect(el.querySelector('span').textContent).toBe('child');
+  });
+});
+
+
+// ===========================================================================
+// data() — no key returns full dataset
+// ===========================================================================
+
+describe('ZQueryCollection — data() full dataset', () => {
+  it('returns the full dataset when no key is given', () => {
+    document.body.innerHTML = '<div id="d" data-x="1" data-y="2"></div>';
+    const ds = query('#d').data();
+    expect(ds.x).toBe('1');
+    expect(ds.y).toBe('2');
+  });
+});
+
+
+// ===========================================================================
+// css() getter on empty collection
+// ===========================================================================
+
+describe('ZQueryCollection — css() empty collection', () => {
+  it('returns undefined when collection is empty', () => {
+    const col = new ZQueryCollection([]);
+    expect(col.css('color')).toBeUndefined();
+  });
+});
+
+
+// ===========================================================================
+// append/prepend/after/before with Node
+// ===========================================================================
+
+describe('ZQueryCollection — append/prepend with Node', () => {
+  it('appends a Node element', () => {
+    document.body.innerHTML = '<div id="container"><p>existing</p></div>';
+    const newNode = document.createElement('span');
+    newNode.textContent = 'appended';
+    query('#container').append(newNode);
+    expect(document.querySelector('#container span').textContent).toBe('appended');
+    expect(document.querySelector('#container').lastElementChild.tagName).toBe('SPAN');
+  });
+
+  it('prepends a Node element', () => {
+    document.body.innerHTML = '<div id="container"><p>existing</p></div>';
+    const newNode = document.createElement('span');
+    newNode.textContent = 'prepended';
+    query('#container').prepend(newNode);
+    expect(document.querySelector('#container').firstElementChild.tagName).toBe('SPAN');
+  });
+
+  it('appends a ZQueryCollection', () => {
+    document.body.innerHTML = '<div id="container"></div><span class="source">item</span>';
+    const source = queryAll('.source');
+    query('#container').append(source);
+    expect(document.querySelector('#container span').textContent).toBe('item');
+  });
+});
+
+describe('ZQueryCollection — after/before with Node', () => {
+  it('inserts Node after element', () => {
+    document.body.innerHTML = '<div id="anchor"></div>';
+    const newNode = document.createElement('span');
+    newNode.id = 'after';
+    query('#anchor').after(newNode);
+    expect(document.querySelector('#anchor').nextElementSibling.id).toBe('after');
+  });
+
+  it('inserts Node before element', () => {
+    document.body.innerHTML = '<div id="anchor"></div>';
+    const newNode = document.createElement('span');
+    newNode.id = 'before';
+    query('#anchor').before(newNode);
+    expect(document.querySelector('#anchor').previousElementSibling.id).toBe('before');
+  });
+});
+
+
+// ===========================================================================
+// replaceWith using Node
+// ===========================================================================
+
+describe('ZQueryCollection — replaceWith(Node)', () => {
+  it('replaces element with a Node', () => {
+    document.body.innerHTML = '<div id="old">old</div>';
+    const newNode = document.createElement('span');
+    newNode.id = 'new';
+    newNode.textContent = 'replaced';
+    query('#old').replaceWith(newNode);
+    expect(document.querySelector('#old')).toBeNull();
+    expect(document.querySelector('#new').textContent).toBe('replaced');
+  });
+});
+
+
+// ===========================================================================
+// nextUntil/prevUntil/parentsUntil with filter
+// ===========================================================================
+
+describe('ZQueryCollection — nextUntil with filter', () => {
+  it('collects siblings until stop selector, applying filter', () => {
+    document.body.innerHTML = '<div id="start"></div><span class="a">A</span><p>P</p><span class="a">A2</span><div id="stop"></div>';
+    const result = query('#start').nextUntil('#stop', 'span');
+    expect(result.length).toBe(2); // only <span> siblings
+  });
+});
+
+describe('ZQueryCollection — prevUntil with filter', () => {
+  it('collects previous siblings until stop selector, applying filter', () => {
+    document.body.innerHTML = '<div id="stop"></div><span>A</span><p>P</p><span>B</span><div id="end"></div>';
+    const result = query('#end').prevUntil('#stop', 'span');
+    expect(result.length).toBe(2);
+  });
+});
+
+describe('ZQueryCollection — parentsUntil with filter', () => {
+  it('collects parent elements until stop selector, applying filter', () => {
+    document.body.innerHTML = '<section><article><div><span id="target"></span></div></article></section>';
+    const result = query('#target').parentsUntil('section', 'div');
+    expect(result.length).toBe(1);
+    expect(result.first().tagName).toBe('DIV');
+  });
+});
+
+
+// ===========================================================================
+// delegated on() at document level
+// ===========================================================================
+
+describe('ZQueryCollection — delegated on()', () => {
+  it('delegates event to matching child selector', () => {
+    document.body.innerHTML = '<div id="container"><button class="action">click</button></div>';
+    const handler = vi.fn();
+    query('#container').on('click', '.action', handler);
+    document.querySelector('.action').click();
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not fire for non-matching elements', () => {
+    document.body.innerHTML = '<div id="container"><span class="other">x</span></div>';
+    const handler = vi.fn();
+    query('#container').on('click', '.action', handler);
+    document.querySelector('.other').click();
+    expect(handler).not.toHaveBeenCalled();
+  });
+});
+
+
+// ===========================================================================
+// Multi-event on/off
+// ===========================================================================
+
+describe('ZQueryCollection — multi-event on()', () => {
+  it('binds handler to multiple space-separated events', () => {
+    document.body.innerHTML = '<input id="inp" type="text">';
+    const handler = vi.fn();
+    query('#inp').on('focus blur', handler);
+    document.querySelector('#inp').dispatchEvent(new Event('focus'));
+    document.querySelector('#inp').dispatchEvent(new Event('blur'));
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+});
+
+
+// ===========================================================================
+// scrollTop/scrollLeft getters
+// ===========================================================================
+
+describe('ZQueryCollection — scrollTop/scrollLeft', () => {
+  it('gets and sets scrollTop', () => {
+    document.body.innerHTML = '<div id="scr" style="overflow:auto; height: 50px;"><div style="height:200px;">x</div></div>';
+    const el = document.querySelector('#scr');
+    query('#scr').scrollTop(100);
+    expect(el.scrollTop).toBe(100);
+  });
+
+  it('gets scrollTop value', () => {
+    document.body.innerHTML = '<div id="scr" style="overflow:auto; height: 50px;"><div style="height:200px;">x</div></div>';
+    document.querySelector('#scr').scrollTop = 50;
+    expect(query('#scr').scrollTop()).toBe(50);
+  });
+});
+
+
+// ===========================================================================
+// slideDown/slideUp set styles
+// ===========================================================================
+
+describe('ZQueryCollection — slideDown/slideUp', () => {
+  it('slideDown sets overflow hidden and maxHeight initially', () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '<div id="slide" style="display:none;">content</div>';
+    query('#slide').slideDown(100);
+    const el = document.querySelector('#slide');
+    expect(el.style.overflow).toBe('hidden');
+    // maxHeight could be '0' or '0px' depending on jsdom normalization
+    expect(el.style.maxHeight).toMatch(/^0(px)?$/);
+    vi.advanceTimersByTime(100);
+    vi.useRealTimers();
+  });
+
+  it('slideUp hides element after duration', () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '<div id="slide">content</div>';
+    query('#slide').slideUp(100);
+    vi.advanceTimersByTime(100);
+    expect(document.querySelector('#slide').style.display).toBe('none');
+    vi.useRealTimers();
+  });
+});
+
+
+// ===========================================================================
+// fadeIn/fadeOut set opacity
+// ===========================================================================
+
+describe('ZQueryCollection — fadeIn/fadeOut', () => {
+  it('fadeIn sets initial opacity to 0', () => {
+    document.body.innerHTML = '<div id="fade" style="display:none;">content</div>';
+    query('#fade').fadeIn(100);
+    const el = document.querySelector('#fade');
+    expect(el.style.opacity).toBe('0');
+  });
+
+  it('fadeTo animates to specified opacity', () => {
+    document.body.innerHTML = '<div id="fade">content</div>';
+    query('#fade').fadeTo(100, 0.5);
+    // Animation starts — just verify no throw
+    expect(document.querySelector('#fade')).not.toBeNull();
   });
 });

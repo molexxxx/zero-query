@@ -377,3 +377,213 @@ describe('Store — complex getters', () => {
     expect(store.getters.doubled).toBe(20);
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// PERF: history trim uses splice (in-place) instead of slice (copy)
+// ---------------------------------------------------------------------------
+
+describe('Store — history trim in-place', () => {
+  it('trims history to maxHistory without exceeding', () => {
+    const store = createStore('hist-trim', {
+      state: { n: 0 },
+      actions: { inc(s) { s.n++; } },
+      maxHistory: 5,
+    });
+    for (let i = 0; i < 10; i++) store.dispatch('inc');
+    expect(store.history.length).toBe(5);
+    // Newest actions should survive
+    expect(store.state.n).toBe(10);
+  });
+
+  it('maintains same array identity (splice, not slice)', () => {
+    const store = createStore('hist-identity', {
+      state: { n: 0 },
+      actions: { inc(s) { s.n++; } },
+      maxHistory: 3,
+    });
+    const ref = store._history;
+    for (let i = 0; i < 10; i++) store.dispatch('inc');
+    // splice modifies in-place so the array reference stays the same
+    expect(store._history).toBe(ref);
+    expect(store._history.length).toBe(3);
+  });
+});
+
+
+// ===========================================================================
+// use() — middleware chaining
+// ===========================================================================
+
+describe('Store — use() chaining', () => {
+  it('returns the store for chaining', () => {
+    const store = createStore({
+      state: { x: 0 },
+      actions: { inc(state) { state.x++; } }
+    });
+    const result = store.use(() => {}).use(() => {});
+    expect(result).toBe(store);
+  });
+
+  it('multiple middleware run in order', () => {
+    const order = [];
+    const store = createStore({
+      state: { x: 0 },
+      actions: { inc(state) { state.x++; } }
+    });
+    store.use(() => { order.push('a'); });
+    store.use(() => { order.push('b'); });
+    store.dispatch('inc');
+    expect(order).toEqual(['a', 'b']);
+  });
+
+  it('middleware returning false blocks action', () => {
+    const store = createStore({
+      state: { x: 0 },
+      actions: { inc(state) { state.x++; } }
+    });
+    store.use(() => false);
+    store.dispatch('inc');
+    expect(store.state.x).toBe(0);
+  });
+});
+
+
+// ===========================================================================
+// debug mode
+// ===========================================================================
+
+describe('Store — debug mode', () => {
+  it('logs when debug is true', () => {
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const store = createStore({
+      state: { x: 0 },
+      actions: { inc(state) { state.x++; } },
+      debug: true
+    });
+    store.dispatch('inc');
+    expect(spy).toHaveBeenCalled();
+    const logStr = spy.mock.calls[0].join(' ');
+    expect(logStr).toContain('inc');
+    spy.mockRestore();
+  });
+});
+
+
+// ===========================================================================
+// replaceState
+// ===========================================================================
+
+describe('Store — replaceState', () => {
+  it('replaces all keys', () => {
+    const store = createStore({
+      state: { a: 1, b: 2 }
+    });
+    store.replaceState({ c: 3 });
+    const snap = store.snapshot();
+    expect(snap).not.toHaveProperty('a');
+    expect(snap).not.toHaveProperty('b');
+    expect(snap.c).toBe(3);
+  });
+});
+
+
+// ===========================================================================
+// wildcard subscription
+// ===========================================================================
+
+describe('Store — wildcard subscription', () => {
+  it('fires on any state change', () => {
+    const store = createStore({
+      state: { a: 1, b: 2 },
+      actions: {
+        setA(state, v) { state.a = v; },
+        setB(state, v) { state.b = v; }
+      }
+    });
+    const calls = [];
+    store.subscribe((key, val, old) => calls.push([key, val, old]));
+    store.dispatch('setA', 10);
+    store.dispatch('setB', 20);
+    expect(calls).toEqual([['a', 10, 1], ['b', 20, 2]]);
+  });
+
+  it('unsubscribes wildcard', () => {
+    const store = createStore({
+      state: { a: 1 },
+      actions: { setA(state, v) { state.a = v; } }
+    });
+    const fn = vi.fn();
+    const unsub = store.subscribe(fn);
+    store.dispatch('setA', 2);
+    expect(fn).toHaveBeenCalledTimes(1);
+    unsub();
+    store.dispatch('setA', 3);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+// ===========================================================================
+// state as factory function
+// ===========================================================================
+
+describe('Store — state factory', () => {
+  it('calls state function for initial state', () => {
+    const store = createStore({
+      state: () => ({ count: 0 })
+    });
+    expect(store.state.count).toBe(0);
+  });
+});
+
+
+// ===========================================================================
+// createStore — named stores
+// ===========================================================================
+
+describe('createStore — named stores', () => {
+  it('creates default store when no name given', () => {
+    const store = createStore({ state: { x: 1 } });
+    expect(store.state.x).toBe(1);
+  });
+
+  it('dispatch unknown action does not throw', () => {
+    const store = createStore({ state: { x: 1 }, actions: {} });
+    expect(() => store.dispatch('nope')).not.toThrow();
+  });
+});
+
+
+// ===========================================================================
+// reset
+// ===========================================================================
+
+describe('Store — reset', () => {
+  it('resets state and clears history', () => {
+    const store = createStore({
+      state: { x: 0 },
+      actions: { inc(state) { state.x++; } }
+    });
+    store.dispatch('inc');
+    store.dispatch('inc');
+    expect(store.state.x).toBe(2);
+    expect(store.history.length).toBe(2);
+    store.reset({ x: 0 });
+    expect(store.state.x).toBe(0);
+    expect(store.history.length).toBe(0);
+  });
+});
+
+
+// ===========================================================================
+// empty config
+// ===========================================================================
+
+describe('Store — empty config', () => {
+  it('creates store with no config', () => {
+    const store = createStore({});
+    expect(store.snapshot()).toEqual({});
+    expect(store.history).toEqual([]);
+  });
+});

@@ -192,7 +192,7 @@ class SSRApp {
     ${meta}
     ${styleLinks}
   </head>
-  <body ${bodyAttrs}>
+  <body ${bodyAttrs.replace(/on\w+\s*=/gi, '').replace(/javascript\s*:/gi, '')}>
     <div id="app">${content}</div>
     ${scriptTags}
   </body>

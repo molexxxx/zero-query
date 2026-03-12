@@ -265,6 +265,35 @@ describe('isEqual', () => {
     expect(isEqual(null, {})).toBe(false);
     expect(isEqual({}, null)).toBe(false);
   });
+
+  it('distinguishes arrays from plain objects with same indices', () => {
+    expect(isEqual([1, 2], { 0: 1, 1: 2 })).toBe(false);
+    expect(isEqual({ 0: 'a' }, ['a'])).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// deepMerge — circular reference safety
+// ---------------------------------------------------------------------------
+
+describe('deepMerge — circular reference safety', () => {
+  it('does not infinite-loop on circular source', () => {
+    const a = { x: 1 };
+    const b = { y: 2 };
+    b.self = b; // circular
+    const result = deepMerge(a, b);
+    expect(result.x).toBe(1);
+    expect(result.y).toBe(2);
+    // circular ref is simply not followed again
+  });
+
+  it('does not infinite-loop on circular target', () => {
+    const a = { x: 1 };
+    a.self = a;
+    const b = { y: 2 };
+    const result = deepMerge(a, b);
+    expect(result.y).toBe(2);
+  });
 });
 
 
@@ -508,5 +537,162 @@ describe('bus (EventBus)', () => {
 
   it('emit with no handlers does not throw', () => {
     expect(() => bus.emit('nonexistent')).not.toThrow();
+  });
+});
+
+
+// ===========================================================================
+// throttle — window reset
+// ===========================================================================
+
+describe('throttle — edge cases', () => {
+  it('fires trailing call after wait period', async () => {
+    vi.useFakeTimers();
+    const fn = vi.fn();
+    const throttled = throttle(fn, 100);
+
+    throttled('a');             // immediate
+    throttled('b');             // queued
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(100);
+    expect(fn).toHaveBeenCalledTimes(2);
+    expect(fn).toHaveBeenLastCalledWith('b');
+    vi.useRealTimers();
+  });
+});
+
+
+// ===========================================================================
+// deepClone — edge cases
+// ===========================================================================
+
+describe('deepClone — edge cases', () => {
+  it('clones nested arrays', () => {
+    const arr = [[1, 2], [3, 4]];
+    const clone = deepClone(arr);
+    expect(clone).toEqual(arr);
+    clone[0][0] = 99;
+    expect(arr[0][0]).toBe(1);
+  });
+
+  it('handles null values', () => {
+    expect(deepClone({ a: null })).toEqual({ a: null });
+  });
+});
+
+
+// ===========================================================================
+// deepMerge — multiple sources
+// ===========================================================================
+
+describe('deepMerge — edge cases', () => {
+  it('merges from multiple sources', () => {
+    const result = deepMerge({}, { a: 1 }, { b: 2 }, { c: 3 });
+    expect(result).toEqual({ a: 1, b: 2, c: 3 });
+  });
+
+  it('later sources override earlier', () => {
+    const result = deepMerge({}, { a: 1 }, { a: 2 });
+    expect(result).toEqual({ a: 2 });
+  });
+
+  it('handles arrays (replaces, not merges)', () => {
+    const result = deepMerge({}, { arr: [1, 2] }, { arr: [3] });
+    expect(result.arr).toEqual([3]);
+  });
+});
+
+
+// ===========================================================================
+// isEqual — deeply nested
+// ===========================================================================
+
+describe('isEqual — edge cases', () => {
+  it('deeply nested equal objects', () => {
+    expect(isEqual({ a: { b: { c: 1 } } }, { a: { b: { c: 1 } } })).toBe(true);
+  });
+
+  it('arrays of objects', () => {
+    expect(isEqual([{ a: 1 }], [{ a: 1 }])).toBe(true);
+    expect(isEqual([{ a: 1 }], [{ a: 2 }])).toBe(false);
+  });
+
+  it('empty arrays equal', () => {
+    expect(isEqual([], [])).toBe(true);
+  });
+
+  it('null vs object', () => {
+    expect(isEqual(null, { a: 1 })).toBe(false);
+    expect(isEqual({ a: 1 }, null)).toBe(false);
+  });
+
+  it('different types', () => {
+    expect(isEqual('1', 1)).toBe(false);
+  });
+
+  it('array vs object', () => {
+    expect(isEqual([], {})).toBe(false);
+  });
+});
+
+
+// ===========================================================================
+// camelCase / kebabCase — edge cases
+// ===========================================================================
+
+describe('camelCase / kebabCase — edge cases', () => {
+  it('camelCase single word', () => {
+    expect(camelCase('hello')).toBe('hello');
+  });
+
+  it('camelCase already camel', () => {
+    expect(camelCase('helloWorld')).toBe('helloWorld');
+  });
+
+  it('kebabCase single word lowercase', () => {
+    expect(kebabCase('hello')).toBe('hello');
+  });
+
+  it('kebabCase multiple humps', () => {
+    expect(kebabCase('myComponentName')).toBe('my-component-name');
+  });
+});
+
+
+// ===========================================================================
+// html tag — escaping
+// ===========================================================================
+
+describe('html tag — edge cases', () => {
+  it('handles null interp value', () => {
+    const result = html`<div>${null}</div>`;
+    expect(result).toBe('<div></div>');
+  });
+
+  it('handles undefined interp value', () => {
+    const result = html`<div>${undefined}</div>`;
+    expect(result).toBe('<div></div>');
+  });
+
+  it('escapes multiple interpolations', () => {
+    const a = '<b>';
+    const b = '&';
+    const result = html`${a} and ${b}`;
+    expect(result).toContain('&lt;b&gt;');
+    expect(result).toContain('&amp;');
+  });
+});
+
+
+// ===========================================================================
+// storage — error handling
+// ===========================================================================
+
+describe('storage — parse error fallback', () => {
+  it('returns fallback when JSON.parse fails', () => {
+    localStorage.setItem('bad', '{invalid json');
+    expect(storage.get('bad', 'default')).toBe('default');
+    localStorage.removeItem('bad');
   });
 });

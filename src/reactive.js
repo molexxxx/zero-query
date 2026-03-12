@@ -134,7 +134,13 @@ export function signal(initial) {
  */
 export function computed(fn) {
   const s = new Signal(undefined);
-  effect(() => { s._value = fn(); s._notify(); });
+  effect(() => {
+    const v = fn();
+    if (v !== s._value) {
+      s._value = v;
+      s._notify();
+    }
+  });
   return s;
 }
 
@@ -177,6 +183,6 @@ export function effect(fn) {
       }
       execute._deps.clear();
     }
-    Signal._activeEffect = null;
+    // Don't clobber _activeEffect — another effect may be running
   };
 }

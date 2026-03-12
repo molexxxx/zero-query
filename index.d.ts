@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.9.0
+ * @version 0.9.1
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -126,7 +126,7 @@ import type {
   deepClone, deepMerge, isEqual, param, parseQuery,
   StorageWrapper, EventBus,
 } from './types/utils';
-import type { onError, ZQueryError, ErrorCode } from './types/errors';
+import type { onError, ZQueryError, ErrorCode, guardCallback, validate } from './types/errors';
 import type { morph, morphElement, safeEval } from './types/misc';
 
 /**
@@ -245,6 +245,10 @@ interface ZQueryStatic {
   ZQueryError: typeof ZQueryError;
   /** Frozen map of all error code constants. */
   ErrorCode: typeof ErrorCode;
+  /** Wrap a callback so thrown errors are caught and reported via the global handler. */
+  guardCallback: typeof guardCallback;
+  /** Validate a required value is defined and of the expected type. */
+  validate: typeof validate;
 
   // -- Utilities -----------------------------------------------------------
   debounce: typeof debounce;

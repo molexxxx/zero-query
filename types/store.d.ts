@@ -23,6 +23,9 @@ export interface StoreConfig<
 
   /** Log dispatched actions to the console. */
   debug?: boolean;
+
+  /** Maximum number of action history entries to keep (default `1000`). */
+  maxHistory?: number;
 }
 
 /** A store action history entry. */

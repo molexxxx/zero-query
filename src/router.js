@@ -24,6 +24,23 @@ import { reportError, ErrorCode } from './errors.js';
 // Unique marker on history.state to identify zQuery-managed entries
 const _ZQ_STATE_KEY = '__zq';
 
+/**
+ * Shallow-compare two flat objects (for params / query comparison).
+ * Avoids JSON.stringify overhead on every navigation.
+ */
+function _shallowEqual(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  for (let i = 0; i < keysA.length; i++) {
+    const k = keysA[i];
+    if (a[k] !== b[k]) return false;
+  }
+  return true;
+}
+
 class Router {
   constructor(config = {}) {
     this._el = null;
@@ -71,11 +88,12 @@ class Router {
       config.routes.forEach(r => this.add(r));
     }
 
-    // Listen for navigation
+    // Listen for navigation — store handler references for cleanup in destroy()
     if (this._mode === 'hash') {
-      window.addEventListener('hashchange', () => this._resolve());
+      this._onNavEvent = () => this._resolve();
+      window.addEventListener('hashchange', this._onNavEvent);
     } else {
-      window.addEventListener('popstate', (e) => {
+      this._onNavEvent = (e) => {
         // Check for substate pop first — if a listener handles it, don't route
         const st = e.state;
         if (st && st[_ZQ_STATE_KEY] === 'substate') {
@@ -89,11 +107,12 @@ class Router {
           this._fireSubstate(null, null, 'reset');
         }
         this._resolve();
-      });
+      };
+      window.addEventListener('popstate', this._onNavEvent);
     }
 
     // Intercept link clicks for SPA navigation
-    document.addEventListener('click', (e) => {
+    this._onLinkClick = (e) => {
       // Don't intercept modified clicks (Ctrl/Cmd+click = new tab)
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const link = e.target.closest('[z-link]');
@@ -115,7 +134,8 @@ class Router {
         const scrollBehavior = link.getAttribute('z-to-top') || 'instant';
         window.scrollTo({ top: 0, behavior: scrollBehavior });
       }
-    });
+    };
+    document.addEventListener('click', this._onLinkClick);
 
     // Initial resolve
     if (this._el) {
@@ -487,8 +507,8 @@ class Router {
     // with the same params, skip the full destroy/mount cycle and just
     // update props. This prevents flashing and unnecessary DOM churn.
     if (from && this._instance && matched.component === from.route.component) {
-      const sameParams = JSON.stringify(params) === JSON.stringify(from.params);
-      const sameQuery = JSON.stringify(query) === JSON.stringify(from.query);
+      const sameParams = _shallowEqual(params, from.params);
+      const sameQuery = _shallowEqual(query, from.query);
       if (sameParams && sameQuery) {
         // Identical navigation — nothing to do
         return;
@@ -585,6 +605,15 @@ class Router {
   // --- Destroy -------------------------------------------------------------
 
   destroy() {
+    // Remove window/document event listeners to prevent memory leaks
+    if (this._onNavEvent) {
+      window.removeEventListener(this._mode === 'hash' ? 'hashchange' : 'popstate', this._onNavEvent);
+      this._onNavEvent = null;
+    }
+    if (this._onLinkClick) {
+      document.removeEventListener('click', this._onLinkClick);
+      this._onLinkClick = null;
+    }
     if (this._instance) this._instance.destroy();
     this._listeners.clear();
     this._substateListeners = [];
