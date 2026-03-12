@@ -617,6 +617,7 @@ const OVERLAY_SCRIPT = `<script>
   // =====================================================================
   var devBar;
   var __zqBarExpanded = false;
+  try { __zqBarExpanded = localStorage.getItem('__zq_bar_expanded') === '1'; } catch(e) {}
   var __zqRouteColors = {
     navigate:     { bg: 'rgba(63,185,80,0.12)',  fg: '#3fb950' },
     replace:      { bg: 'rgba(210,153,34,0.12)', fg: '#d29922' },
@@ -671,7 +672,25 @@ const OVERLAY_SCRIPT = `<script>
       '">&times;</button>';
 
     document.body.appendChild(devBar);
+
+    // If previously expanded, restore that state immediately
+    if (__zqBarExpanded) {
+      var items = devBar.querySelectorAll('.__zq_ex');
+      var btn = document.getElementById('__zq_bar_toggle');
+      if (btn) {
+        btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
+        btn.title = 'Collapse toolbar';
+      }
+      for (var i = 0; i < items.length; i++) {
+        items[i].style.display = 'inline';
+        items[i].style.transform = 'scale(1)';
+        items[i].style.opacity = '1';
+      }
+    }
     updateDevBar();
+
+    // Live-poll stats so numbers stay current without waiting for events
+    setInterval(updateDevBar, 1000);
 
     // Check if we're inside a devtools split-view iframe
     function isInSplitFrame() {
@@ -717,6 +736,7 @@ const OVERLAY_SCRIPT = `<script>
     // Expand / collapse toggle
     document.getElementById('__zq_bar_toggle').addEventListener('click', function() {
       __zqBarExpanded = !__zqBarExpanded;
+      try { localStorage.setItem('__zq_bar_expanded', __zqBarExpanded ? '1' : '0'); } catch(e) {}
       var items = devBar.querySelectorAll('.__zq_ex');
       var btn = this;
       if (__zqBarExpanded) {
