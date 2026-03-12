@@ -359,6 +359,9 @@ function startObserver() {
       if (!target) continue;
       // Skip mutations caused by the devtools highlight overlay
       if (target.id === '__zq_highlight' || target.id === '__zq_error_overlay' || target.id === '__zq_devbar') continue;
+      // Skip virtual-scroll hydration/dehydration churn (docs lazy chunks)
+      if (target.classList && target.classList.contains('docs-lazy-chunk')) continue;
+      if (target.closest && target.closest('.docs-lazy-chunk:not(.hydrated)')) continue;
       var isHighlightMutation = false;
       if (m.addedNodes) { for (var k = 0; k < m.addedNodes.length; k++) { if (m.addedNodes[k].id === '__zq_highlight') { isHighlightMutation = true; break; } } }
       if (!isHighlightMutation && m.removedNodes) { for (var k = 0; k < m.removedNodes.length; k++) { if (m.removedNodes[k].id === '__zq_highlight') { isHighlightMutation = true; break; } } }
@@ -402,7 +405,7 @@ function startObserver() {
       // Clear changed paths after applying
       changedPaths = {};
       mutatedPaths = {};
-    }, 150);
+    }, 300);
   });
   observer.observe(targetDoc.documentElement, {
     childList: true,

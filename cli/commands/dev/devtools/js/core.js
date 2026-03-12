@@ -372,8 +372,22 @@ function connectToTarget() {
   // Periodic refresh for components + perf (fast when tab is visible)
   setInterval(function() {
     if (!isConnected()) {
-      document.getElementById('disconnected').style.display = 'flex';
-      return;
+      // Retry connection — opener may be mid-mutation, not truly gone
+      try {
+        if (mode === 'popup' && window.opener && !window.opener.closed) {
+          targetWin = window.opener;
+          targetDoc = targetWin.document;
+          document.getElementById('disconnected').style.display = 'none';
+        } else if (iframe && iframe.contentWindow) {
+          targetWin = iframe.contentWindow;
+          targetDoc = targetWin.document;
+          document.getElementById('disconnected').style.display = 'none';
+        }
+      } catch(e) {}
+      if (!isConnected()) {
+        document.getElementById('disconnected').style.display = 'flex';
+        return;
+      }
     }
     // Keep targetDoc fresh — the opener may have reloaded (live-reload)
     try {

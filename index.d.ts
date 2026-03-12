@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.8.9
+ * @version 0.9.0
  * @license MIT
  * @see https://z-query.com/docs
  */
