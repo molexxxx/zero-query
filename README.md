@@ -65,7 +65,7 @@ The dev server includes a **full-screen error overlay** that surfaces errors dir
 
 #### Floating Toolbar & Inspector
 
-A compact toolbar appears in the bottom-right corner showing live request/render counters and a DOM button. Click any counter to open a **dark-themed DevTools inspector** as a popup — or visit `http://localhost:<port>/_devtools` for a standalone split-view panel with four tabs: **Elements** (live DOM tree with component badges, source viewer, expand/collapse), **Network** (fetch log with JSON viewer), **Components** (live state cards), and **Performance** (render timeline with timing metrics).
+A compact expandable toolbar appears in the bottom-right corner. In its **collapsed** state it shows live render and request counters. Click the chevron to **expand** and reveal the route indicator (color-coded by the last navigation event — navigate, pop, replace, hashchange, substate), registered component count, and DOM element count. Click any stat to open a **dark-themed DevTools inspector** as a popup — or visit `http://localhost:<port>/_devtools` for a standalone split-view panel with five tabs: **Router** (live route state, guards, history timeline), **Components** (live state cards), **Performance** (render timeline with timing metrics), **Network** (fetch log with JSON viewer), and **Elements** (live DOM tree with component badges, source viewer, expand/collapse).
 
 ### Alternative: Manual Setup (No npm)
 
@@ -276,7 +276,7 @@ location / {
 | CLI Command | Description |
 | --- | --- |
 | `zquery create [dir]` | Scaffold a new project (index.html, components, store, styles) |
-| `zquery dev [root]` | Dev server with live-reload, CSS hot-swap, error overlay, floating toolbar &amp; inspector panel (port 3100). Visit `/_devtools` for the standalone panel. `--index` for custom HTML, `--bundle` for bundled mode, `--no-intercept` to skip CDN intercept. |
+| `zquery dev [root]` | Dev server with live-reload, CSS hot-swap, error overlay, expandable floating toolbar &amp; five-tab inspector panel (port 3100). Visit `/_devtools` for the standalone panel. `--index` for custom HTML, `--bundle` for bundled mode, `--no-intercept` to skip CDN intercept. |
 | `zquery bundle [dir\|file]` | Bundle app into a single IIFE file. Accepts dir or direct entry file. |
 | `zquery build` | Build the zQuery library (`dist/zquery.min.js`) |
 | `zquery --help` | Show CLI usage |
