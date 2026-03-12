@@ -12,6 +12,43 @@ const fs   = require('fs');
 const path = require('path');
 
 // ---------------------------------------------------------------------------
+// _copyTemplateLiteral — copy a template literal verbatim, tracking ${…}
+//   nesting so that `//` inside template text isn't mistaken for a comment.
+// ---------------------------------------------------------------------------
+
+function _copyTemplateLiteral(code, start) {
+  let out = '`';
+  let i = start + 1; // skip opening backtick
+  let depth = 0;
+  while (i < code.length) {
+    if (code[i] === '\\') { out += code[i] + (code[i + 1] || ''); i += 2; continue; }
+    if (code[i] === '$' && code[i + 1] === '{') { depth++; out += '${'; i += 2; continue; }
+    if (depth > 0) {
+      if (code[i] === '{') { depth++; out += code[i]; i++; continue; }
+      if (code[i] === '}') { depth--; out += code[i]; i++; continue; }
+      if (code[i] === '`') {
+        const nested = _copyTemplateLiteral(code, i);
+        out += nested.text; i = nested.end; continue;
+      }
+      if (code[i] === '"' || code[i] === "'") {
+        const q = code[i]; out += code[i]; i++;
+        while (i < code.length) {
+          if (code[i] === '\\') { out += code[i] + (code[i + 1] || ''); i += 2; continue; }
+          out += code[i];
+          if (code[i] === q) { i++; break; }
+          i++;
+        }
+        continue;
+      }
+      out += code[i]; i++; continue;
+    }
+    if (code[i] === '`') { out += '`'; i++; return { text: out, end: i }; }
+    out += code[i]; i++;
+  }
+  return { text: out, end: i };
+}
+
+// ---------------------------------------------------------------------------
 // stripComments — context-aware, skips strings / templates / regex
 // ---------------------------------------------------------------------------
 
@@ -22,8 +59,8 @@ function stripComments(code) {
     const ch = code[i];
     const next = code[i + 1];
 
-    // String literals
-    if (ch === '"' || ch === "'" || ch === '`') {
+    // Regular string literals: copy verbatim
+    if (ch === '"' || ch === "'") {
       const quote = ch;
       out += ch; i++;
       while (i < code.length) {
@@ -32,6 +69,13 @@ function stripComments(code) {
         if (code[i] === quote) { i++; break; }
         i++;
       }
+      continue;
+    }
+
+    // Template literal: copy verbatim with ${…} nesting support
+    if (ch === '`') {
+      const tpl = _copyTemplateLiteral(code, i);
+      out += tpl.text; i = tpl.end;
       continue;
     }
 
@@ -105,8 +149,8 @@ function _minifyBody(code) {
     const ch = code[i];
     const nx = code[i + 1];
 
-    // ── String / template literal: copy verbatim ────────────────
-    if (ch === '"' || ch === "'" || ch === '`') {
+    // ── Regular string literal: copy verbatim ─────────────────
+    if (ch === '"' || ch === "'") {
       const q = ch;
       out += ch; i++;
       while (i < code.length) {
@@ -115,6 +159,13 @@ function _minifyBody(code) {
         if (code[i] === q) { i++; break; }
         i++;
       }
+      continue;
+    }
+
+    // ── Template literal: copy verbatim with ${…} nesting ───────
+    if (ch === '`') {
+      const tpl = _copyTemplateLiteral(code, i);
+      out += tpl.text; i = tpl.end;
       continue;
     }
 
