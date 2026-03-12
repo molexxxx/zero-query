@@ -337,3 +337,323 @@ describe('Signal — multiple subscribers', () => {
     expect(log).toHaveBeenCalledTimes(10);
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// BUG FIX: effect() dispose must not corrupt _activeEffect
+// ---------------------------------------------------------------------------
+
+describe('effect — dispose safety', () => {
+  it('disposing inside another effect does not break tracking', () => {
+    const a = signal(1);
+    const b = signal(2);
+
+    // Create an inner effect that tracks `a`
+    const disposeInner = effect(() => { a.value; });
+
+    const log = vi.fn();
+    // Outer effect tracks `b`, then disposes inner, then reads `a`
+    effect(() => {
+      b.value;       // should be tracked
+      disposeInner();
+      log(a.value);  // should also be tracked
+    });
+
+    log.mockClear();
+    // Changing `a` should re-run outer effect since it reads a.value
+    a.value = 10;
+    expect(log).toHaveBeenCalledWith(10);
+
+    log.mockClear();
+    // Changing `b` should also re-run outer effect
+    b.value = 20;
+    expect(log).toHaveBeenCalled();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// PERF FIX: computed() should not notify when value unchanged
+// ---------------------------------------------------------------------------
+
+describe('computed — skip notification on same value', () => {
+  it('does not notify subscribers when computed result is the same', () => {
+    const s = signal(5);
+    // Computed that clamps to a range — returns same value if within bounds
+    const clamped = computed(() => Math.min(Math.max(s.value, 0), 10));
+    expect(clamped.value).toBe(5);
+
+    const subscriber = vi.fn();
+    clamped.subscribe(subscriber);
+
+    // Changing s from 5 to 7 changes clamped: 5→7, should notify
+    s.value = 7;
+    expect(clamped.value).toBe(7);
+    expect(subscriber).toHaveBeenCalledTimes(1);
+
+    subscriber.mockClear();
+    // Changing s from 7 to 15 — clamped stays at 10
+    s.value = 15;
+    expect(clamped.value).toBe(10);
+    s.value = 20; // clamped still 10 — should NOT notify again
+    expect(subscriber).toHaveBeenCalledTimes(1); // only the 7→10 change
+  });
+});
+
+// ===========================================================================
+// reactive() — advanced edge cases
+// ===========================================================================
+
+describe('reactive — edge cases', () => {
+  it('returns primitive as-is', () => {
+    expect(reactive(42, () => {})).toBe(42);
+    expect(reactive('hello', () => {})).toBe('hello');
+    expect(reactive(null, () => {})).toBeNull();
+  });
+
+  it('__isReactive flag returns true', () => {
+    const r = reactive({ a: 1 }, () => {});
+    expect(r.__isReactive).toBe(true);
+  });
+
+  it('__raw returns underlying target', () => {
+    const original = { a: 1 };
+    const r = reactive(original, () => {});
+    expect(r.__raw).toBe(original);
+  });
+
+  it('proxy cache returns same child proxy', () => {
+    const child = { x: 1 };
+    const r = reactive({ child }, () => {});
+    const first = r.child;
+    const second = r.child;
+    expect(first).toBe(second);
+  });
+
+  it('proxy cache invalidated on set', () => {
+    const onChange = vi.fn();
+    const r = reactive({ nested: { x: 1 } }, onChange);
+    const old = r.nested;
+    r.nested = { x: 2 };
+    const fresh = r.nested;
+    expect(fresh).not.toBe(old);
+  });
+
+  it('deleteProperty triggers onChange', () => {
+    const onChange = vi.fn();
+    const r = reactive({ a: 1, b: 2 }, onChange);
+    delete r.b;
+    expect(onChange).toHaveBeenCalledWith('b', undefined, 2);
+    expect(r.__raw).not.toHaveProperty('b');
+  });
+
+  it('deleteProperty invalidates proxy cache for object value', () => {
+    const onChange = vi.fn();
+    const nested = { x: 1 };
+    const r = reactive({ nested }, onChange);
+    r.nested; // populate cache
+    delete r.nested;
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it('same-value set is ignored', () => {
+    const onChange = vi.fn();
+    const r = reactive({ a: 5 }, onChange);
+    r.a = 5;
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('reactive with array target', () => {
+    const onChange = vi.fn();
+    const r = reactive([1, 2, 3], onChange);
+    r.push(4);
+    expect(onChange).toHaveBeenCalled();
+    expect(r.__raw).toContain(4);
+  });
+
+  it('onChange throwing does not prevent set', () => {
+    const r = reactive({ a: 1 }, () => { throw new Error('boom'); });
+    // Should not throw externally — error is reported via reportError
+    r.a = 2;
+    expect(r.__raw.a).toBe(2);
+  });
+
+  it('non-function onChange gets replaced with noop', () => {
+    const r = reactive({ a: 1 }, 'not a function');
+    // Should not throw on set
+    r.a = 2;
+    expect(r.__raw.a).toBe(2);
+  });
+});
+
+
+// ===========================================================================
+// Signal — advanced
+// ===========================================================================
+
+describe('Signal — advanced', () => {
+  it('peek() does not trigger tracking', () => {
+    const s = signal(1);
+    const fn = vi.fn(() => { s.peek(); });
+    effect(fn);
+    fn.mockClear();
+    s.value = 2;
+    // fn should NOT re-run because peek() didn't track
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('toString() returns string representation', () => {
+    const s = signal(42);
+    expect(s.toString()).toBe('42');
+    expect(`${s}`).toBe('42');
+  });
+
+  it('subscribe returns unsubscribe function', () => {
+    const s = signal(0);
+    const fn = vi.fn();
+    const unsub = s.subscribe(fn);
+    s.value = 1;
+    expect(fn).toHaveBeenCalledTimes(1);
+    unsub();
+    s.value = 2;
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('same-value write is a no-op', () => {
+    const s = signal(10);
+    const fn = vi.fn();
+    s.subscribe(fn);
+    s.value = 10;
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('signal with object value notifies on reference change', () => {
+    const s = signal({ x: 1 });
+    const fn = vi.fn();
+    s.subscribe(fn);
+    s.value = { x: 2 };
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('subscriber error does not stop others', () => {
+    const s = signal(0);
+    const first = vi.fn(() => { throw new Error('oops'); });
+    const second = vi.fn();
+    s.subscribe(first);
+    s.subscribe(second);
+    s.value = 1;
+    expect(first).toHaveBeenCalled();
+    expect(second).toHaveBeenCalled();
+  });
+});
+
+
+// ===========================================================================
+// effect() — advanced
+// ===========================================================================
+
+describe('effect — advanced', () => {
+  it('returns dispose function', () => {
+    const s = signal(0);
+    const fn = vi.fn(() => s.value);
+    const dispose = effect(fn);
+    expect(typeof dispose).toBe('function');
+    fn.mockClear();
+    dispose();
+    s.value = 1;
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('cleans up stale dependencies on re-run', () => {
+    const a = signal(true);
+    const b = signal('B');
+    const c = signal('C');
+    const results = [];
+
+    effect(() => {
+      if (a.value) {
+        results.push(b.value);
+      } else {
+        results.push(c.value);
+      }
+    });
+
+    expect(results).toEqual(['B']);
+
+    a.value = false;
+    expect(results).toEqual(['B', 'C']);
+
+    // Changing b should NOT trigger the effect now (stale dep)
+    b.value = 'B2';
+    expect(results).toEqual(['B', 'C']);
+  });
+
+  it('effect that throws still cleans up', () => {
+    const s = signal(0);
+    let callCount = 0;
+    effect(() => {
+      s.value; // track
+      callCount++;
+      if (callCount > 1) throw new Error('boom');
+    });
+    expect(callCount).toBe(1);
+    s.value = 1; // triggers re-run which throws
+    expect(callCount).toBe(2);
+    // Should still be reactive
+    s.value = 2;
+    expect(callCount).toBe(3);
+  });
+
+  it('nested effects work independently', () => {
+    const a = signal(0);
+    const b = signal(0);
+    const outerFn = vi.fn();
+    const innerFn = vi.fn();
+
+    effect(() => {
+      outerFn(a.value);
+      effect(() => { innerFn(b.value); });
+    });
+
+    expect(outerFn).toHaveBeenCalledWith(0);
+    expect(innerFn).toHaveBeenCalledWith(0);
+
+    b.value = 1;
+    expect(innerFn).toHaveBeenCalledWith(1);
+  });
+});
+
+
+// ===========================================================================
+// computed() — advanced
+// ===========================================================================
+
+describe('computed — advanced', () => {
+  it('computed does not notify when value unchanged', () => {
+    const s = signal(5);
+    const c = computed(() => s.value > 3);
+    const fn = vi.fn();
+    c.subscribe(fn);
+
+    s.value = 10; // c still true — no change
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('computed chains', () => {
+    const a = signal(2);
+    const doubled = computed(() => a.value * 2);
+    const quadrupled = computed(() => doubled.value * 2);
+    expect(quadrupled.value).toBe(8);
+    a.value = 3;
+    expect(quadrupled.value).toBe(12);
+  });
+
+  it('computed with multiple signals', () => {
+    const first = signal('John');
+    const last = signal('Doe');
+    const full = computed(() => `${first.value} ${last.value}`);
+    expect(full.value).toBe('John Doe');
+    first.value = 'Jane';
+    expect(full.value).toBe('Jane Doe');
+  });
+});

@@ -647,3 +647,1190 @@ describe('Router — edge cases', () => {
     expect(r).toBeDefined();
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// Route matching priority (first match wins)
+// ---------------------------------------------------------------------------
+
+describe('Router — route matching priority', () => {
+  it('first matching route wins', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [
+        { path: '/test', component: 'home-page' },
+        { path: '/test', component: 'about-page' },
+      ],
+    });
+    // The first route with path '/test' should be matched
+    const matched = router._routes[0];
+    expect(matched._regex.test('/test')).toBe(true);
+    expect(matched.component).toBe('home-page');
+  });
+
+  it('specific route takes priority over wildcard', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [
+        { path: '/about', component: 'about-page' },
+        { path: '*', component: 'home-page' },
+      ],
+    });
+    // /about should match the first route, not wildcard
+    expect(router._routes[0]._regex.test('/about')).toBe(true);
+    expect(router._routes[0].component).toBe('about-page');
+  });
+
+  it('parameterized routes match correctly', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [
+        { path: '/user/:id', component: 'user-page' },
+        { path: '/user/settings', component: 'about-page' },
+      ],
+    });
+    // /user/42 should match parameterized route
+    expect(router._routes[0]._regex.test('/user/42')).toBe(true);
+    // /user/settings matches first (since :id catches "settings")
+    expect(router._routes[0]._regex.test('/user/settings')).toBe(true);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Route removal
+// ---------------------------------------------------------------------------
+
+describe('Router — route removal', () => {
+  it('remove() deletes the matching route', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+      ],
+    });
+    expect(router._routes.length).toBe(2);
+    router.remove('/about');
+    expect(router._routes.length).toBe(1);
+    expect(router._routes.find(r => r.path === '/about')).toBeUndefined();
+  });
+
+  it('remove() on non-existent path is a no-op', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    router.remove('/nonexistent');
+    expect(router._routes.length).toBe(1);
+  });
+
+  it('remove() returns the router for chaining', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    const result = router.remove('/');
+    expect(result).toBe(router);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Dynamic route addition
+// ---------------------------------------------------------------------------
+
+describe('Router — dynamic route addition', () => {
+  it('add() returns the router for chaining', () => {
+    const router = createRouter({ mode: 'hash', routes: [] });
+    const result = router.add({ path: '/new', component: 'home-page' });
+    expect(result).toBe(router);
+    expect(router._routes.length).toBe(1);
+  });
+
+  it('add() compiles regex for parameterized routes', () => {
+    const router = createRouter({ mode: 'hash', routes: [] });
+    router.add({ path: '/item/:id/detail/:section', component: 'home-page' });
+    const route = router._routes[0];
+    expect(route._regex.test('/item/42/detail/overview')).toBe(true);
+    expect(route._keys).toEqual(['id', 'section']);
+  });
+
+  it('add() with fallback creates two routes', () => {
+    const router = createRouter({ mode: 'hash', routes: [] });
+    router.add({ path: '/docs/:page', fallback: '/docs', component: 'docs-page' });
+    expect(router._routes.length).toBe(2);
+    expect(router._routes[0]._regex.test('/docs/intro')).toBe(true);
+    expect(router._routes[1]._regex.test('/docs')).toBe(true);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Navigation chaining
+// ---------------------------------------------------------------------------
+
+describe('Router — navigation chaining', () => {
+  let router;
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="app"></div>';
+    window.location.hash = '#/';
+    router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+      ],
+    });
+  });
+
+  it('navigate returns the router for chaining', () => {
+    const result = router.navigate('/about');
+    expect(result).toBe(router);
+  });
+
+  it('replace returns the router for chaining', () => {
+    const result = router.replace('/about');
+    expect(result).toBe(router);
+  });
+
+  it('back() returns the router', () => {
+    expect(router.back()).toBe(router);
+  });
+
+  it('forward() returns the router', () => {
+    expect(router.forward()).toBe(router);
+  });
+
+  it('go() returns the router', () => {
+    expect(router.go(0)).toBe(router);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Hash mode path parsing
+// ---------------------------------------------------------------------------
+
+describe('Router — hash mode path parsing', () => {
+  let router;
+  beforeEach(() => {
+    router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+  });
+
+  it('path returns / when hash is empty', () => {
+    window.location.hash = '';
+    expect(router.path).toBe('/');
+  });
+
+  it('path returns correct value from hash', () => {
+    window.location.hash = '#/about';
+    expect(router.path).toBe('/about');
+  });
+
+  it('path returns / when hash is just #/', () => {
+    window.location.hash = '#/';
+    expect(router.path).toBe('/');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// History mode path handling with base
+// ---------------------------------------------------------------------------
+
+describe('Router — history mode with base path', () => {
+  it('resolve includes base prefix', () => {
+    const router = createRouter({
+      mode: 'history',
+      base: '/myapp',
+      routes: [],
+    });
+    expect(router.resolve('/page')).toBe('/myapp/page');
+    expect(router.resolve('/')).toBe('/myapp/');
+  });
+
+  it('_normalizePath strips double base prefix', () => {
+    const router = createRouter({
+      mode: 'history',
+      base: '/myapp',
+      routes: [],
+    });
+    // If someone accidentally includes the base
+    expect(router._normalizePath('/myapp/page')).toBe('/page');
+  });
+
+  it('base without leading slash gets normalized', () => {
+    const router = createRouter({
+      mode: 'history',
+      base: 'app',
+      routes: [],
+    });
+    expect(router.base).toBe('/app');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Navigate with query strings in hash mode
+// ---------------------------------------------------------------------------
+
+describe('Router — query string in hash mode', () => {
+  let router;
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="app"></div>';
+    window.location.hash = '#/';
+    router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/search', component: 'about-page' },
+      ],
+    });
+  });
+
+  it('navigate preserves path for query routing', () => {
+    router.navigate('/search');
+    expect(window.location.hash).toBe('#/search');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Guard edge cases
+// ---------------------------------------------------------------------------
+
+describe('Router — guard edge cases', () => {
+  it('beforeEach returns the router for chaining', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    const result = router.beforeEach(() => {});
+    expect(result).toBe(router);
+  });
+
+  it('afterEach returns the router for chaining', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    const result = router.afterEach(() => {});
+    expect(result).toBe(router);
+  });
+
+  it('guard cancels navigation when returning false', async () => {
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/blocked', component: 'about-page' },
+      ],
+    });
+    document.body.innerHTML = '<div id="app"></div>';
+    router.beforeEach(() => false);
+    // Manually trigger resolve for /blocked
+    window.location.hash = '#/blocked';
+    await router._resolve();
+    // current should not be updated to /blocked
+    expect(router._current === null || router._current.path !== '/blocked').toBe(true);
+  });
+
+  it('guard redirects to a different route', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/login', component: 'about-page' },
+        { path: '/dashboard', component: 'docs-page' },
+      ],
+    });
+    router.beforeEach((to) => {
+      if (to.path === '/dashboard') return '/login';
+    });
+    window.location.hash = '#/dashboard';
+    await router._resolve();
+    expect(window.location.hash).toBe('#/login');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// onChange with navigation
+// ---------------------------------------------------------------------------
+
+describe('Router — onChange fires on resolve', () => {
+  it('fires onChange listener after route resolution', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const listener = vi.fn();
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+      ],
+    });
+    router.onChange(listener);
+    // Wait for initial resolve
+    await new Promise(r => setTimeout(r, 10));
+    listener.mockClear();
+
+    window.location.hash = '#/about';
+    await router._resolve();
+    expect(listener).toHaveBeenCalled();
+    const [to, from] = listener.mock.calls[0];
+    expect(to.path).toBe('/about');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Multi-param extraction
+// ---------------------------------------------------------------------------
+
+describe('Router — multi-param extraction', () => {
+  it('extracts multiple params from URL', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [
+        { path: '/org/:orgId/team/:teamId/member/:memberId', component: 'user-page' },
+      ],
+    });
+    const route = router._routes[0];
+    const match = '/org/acme/team/dev/member/42'.match(route._regex);
+    expect(match).not.toBeNull();
+    const params = {};
+    route._keys.forEach((key, i) => { params[key] = match[i + 1]; });
+    expect(params).toEqual({ orgId: 'acme', teamId: 'dev', memberId: '42' });
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Substate in hash mode
+// ---------------------------------------------------------------------------
+
+describe('Router — substates hash mode', () => {
+  let router, pushSpy;
+
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="app"></div>';
+    window.location.hash = '#/';
+    pushSpy = vi.spyOn(window.history, 'pushState');
+    router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    pushSpy.mockClear();
+  });
+
+  afterEach(() => {
+    pushSpy.mockRestore();
+  });
+
+  it('pushSubstate works in hash mode', () => {
+    router.pushSubstate('drawer', { side: 'left' });
+    expect(pushSpy).toHaveBeenCalledTimes(1);
+    const state = pushSpy.mock.calls[0][0];
+    expect(state.__zq).toBe('substate');
+    expect(state.key).toBe('drawer');
+  });
+
+  it('multiple substates can be pushed', () => {
+    router.pushSubstate('modal', { id: 'a' });
+    router.pushSubstate('modal', { id: 'b' });
+    expect(pushSpy).toHaveBeenCalledTimes(2);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// _interpolateParams edge cases
+// ---------------------------------------------------------------------------
+
+describe('Router — _interpolateParams edge cases', () => {
+  let router;
+  beforeEach(() => {
+    router = createRouter({ mode: 'hash', routes: [] });
+  });
+
+  it('handles special characters in param values', () => {
+    expect(router._interpolateParams('/tag/:name', { name: 'c++' })).toBe('/tag/c%2B%2B');
+  });
+
+  it('handles empty string param value', () => {
+    expect(router._interpolateParams('/user/:id', { id: '' })).toBe('/user/');
+  });
+
+  it('handles zero as param value', () => {
+    expect(router._interpolateParams('/page/:num', { num: 0 })).toBe('/page/0');
+  });
+
+  it('handles boolean param values', () => {
+    expect(router._interpolateParams('/flag/:val', { val: true })).toBe('/flag/true');
+  });
+
+  it('returns path unchanged when params is non-object', () => {
+    expect(router._interpolateParams('/about', 'string')).toBe('/about');
+  });
+
+  it('handles path with no placeholders', () => {
+    expect(router._interpolateParams('/about', { id: 42 })).toBe('/about');
+  });
+
+  it('handles adjacent params', () => {
+    // This is a weird URL but should still work
+    expect(router._interpolateParams('/:a/:b', { a: 'x', b: 'y' })).toBe('/x/y');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Router.destroy cleans up everything
+// ---------------------------------------------------------------------------
+
+describe('Router — destroy completeness', () => {
+  it('clears instance, routes, guards, listeners, and substates', () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    router.beforeEach(() => {});
+    router.afterEach(() => {});
+    router.onChange(() => {});
+    router.onSubstate(() => {});
+
+    router.destroy();
+
+    expect(router._routes.length).toBe(0);
+    expect(router._guards.before.length).toBe(0);
+    expect(router._guards.after.length).toBe(0);
+    expect(router._listeners.size).toBe(0);
+    expect(router._substateListeners.length).toBe(0);
+    expect(router._inSubstate).toBe(false);
+  });
+
+  it('removes window event listeners on destroy (no leak)', () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    // Store the handler reference before destroy
+    const navHandler = router._onNavEvent;
+    const clickHandler = router._onLinkClick;
+    expect(navHandler).toBeDefined();
+    expect(clickHandler).toBeDefined();
+
+    router.destroy();
+
+    expect(removeSpy).toHaveBeenCalledWith('hashchange', navHandler);
+    expect(router._onNavEvent).toBeNull();
+    expect(router._onLinkClick).toBeNull();
+    removeSpy.mockRestore();
+  });
+
+  it('removes popstate listener in history mode on destroy', () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const removeSpy = vi.spyOn(window, 'removeEventListener');
+    const router = createRouter({
+      el: '#app',
+      mode: 'history',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    const navHandler = router._onNavEvent;
+    router.destroy();
+    expect(removeSpy).toHaveBeenCalledWith('popstate', navHandler);
+    removeSpy.mockRestore();
+  });
+
+  it('removes document click listener on destroy', () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const removeSpy = vi.spyOn(document, 'removeEventListener');
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [],
+    });
+    const clickHandler = router._onLinkClick;
+    router.destroy();
+    expect(removeSpy).toHaveBeenCalledWith('click', clickHandler);
+    removeSpy.mockRestore();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// PERF: same-route comparison uses shallow equality (no JSON.stringify)
+// ---------------------------------------------------------------------------
+
+describe('Router — same-route shallow equality', () => {
+  it('skips re-render when navigating to same route with same params', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    let renderCount = 0;
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/user/:id', render: () => '<div>user</div>' },
+      ],
+    });
+    // Mock component mount counting
+    router.afterEach(() => { renderCount++; });
+
+    router.navigate('/user/42');
+    await new Promise(r => setTimeout(r, 50));
+    const firstCount = renderCount;
+
+    // Navigate to the same route — should skip
+    router.navigate('/user/42');
+    await new Promise(r => setTimeout(r, 50));
+    // Hash mode prevents same-hash navigation at URL level,
+    // so renderCount should not increase
+    expect(renderCount).toBe(firstCount);
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Guard — cancel navigation
+// ===========================================================================
+
+describe('Router — guard returning false cancels navigation', () => {
+  it('does not resolve route when guard returns false', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/blocked', component: 'about-page' },
+      ],
+    });
+    router.beforeEach(() => false);
+    await new Promise(r => setTimeout(r, 10));
+    router.navigate('/blocked');
+    await router._resolve();
+    // Should NOT have navigated to /blocked because guard cancelled
+    expect(router.current?.path).not.toBe('/blocked');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Guard — redirect loop detection
+// ===========================================================================
+
+describe('Router — guard redirect loop protection', () => {
+  it('stops after more than 10 redirects', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/a', component: 'about-page' },
+        { path: '/b', component: 'docs-page' },
+      ],
+    });
+    // Guard that keeps bouncing between /a and /b
+    router.beforeEach((to) => {
+      if (to.path === '/a') return '/b';
+      if (to.path === '/b') return '/a';
+    });
+    await new Promise(r => setTimeout(r, 10));
+    // Navigate to /a — should not infinite loop
+    window.location.hash = '#/a';
+    await router._resolve();
+    // Just verify it doesn't hang — the guard count > 10 stops it
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Guard — afterEach fires after resolve
+// ===========================================================================
+
+describe('Router — afterEach hook', () => {
+  it('fires afterEach with to and from after route resolves', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const afterFn = vi.fn();
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+      ],
+    });
+    router.afterEach(afterFn);
+    await new Promise(r => setTimeout(r, 10));
+    afterFn.mockClear();
+
+    window.location.hash = '#/about';
+    await router._resolve();
+    expect(afterFn).toHaveBeenCalledTimes(1);
+    expect(afterFn.mock.calls[0][0].path).toBe('/about');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Guard — before guard that throws
+// ===========================================================================
+
+describe('Router — before guard that throws', () => {
+  it('catches the error and does not crash', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/err', component: 'about-page' },
+      ],
+    });
+    router.beforeEach(() => { throw new Error('guard boom'); });
+    await new Promise(r => setTimeout(r, 10));
+    window.location.hash = '#/err';
+    await expect(router._resolve()).resolves.not.toThrow();
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Lazy loading via route.load
+// ===========================================================================
+
+describe('Router — lazy loading with route.load', () => {
+  it('calls load() before mounting component', async () => {
+    const loadFn = vi.fn().mockResolvedValue(undefined);
+    document.body.innerHTML = '<div id="app"></div>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/lazy', load: loadFn, component: 'about-page' },
+      ],
+    });
+    await new Promise(r => setTimeout(r, 10));
+    window.location.hash = '#/lazy';
+    await router._resolve();
+    expect(loadFn).toHaveBeenCalledTimes(1);
+    router.destroy();
+  });
+
+  it('does not mount if load() rejects', async () => {
+    const loadFn = vi.fn().mockRejectedValue(new Error('load fail'));
+    document.body.innerHTML = '<div id="app"></div>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/fail', load: loadFn, component: 'about-page' },
+      ],
+    });
+    await new Promise(r => setTimeout(r, 10));
+    window.location.hash = '#/fail';
+    await router._resolve();
+    // Route should not have resolved to /fail since load() threw
+    expect(router.current?.path).not.toBe('/fail');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Fallback / 404 route
+// ===========================================================================
+
+describe('Router — fallback 404 route', () => {
+  it('resolves to fallback component for unknown paths', async () => {
+    component('notfound-page', { render: () => '<p>404</p>' });
+    document.body.innerHTML = '<div id="app"></div>';
+    window.location.hash = '#/';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+      fallback: 'notfound-page',
+    });
+    await new Promise(r => setTimeout(r, 10));
+    window.location.hash = '#/nonexistent';
+    await router._resolve();
+    expect(router.current.path).toBe('/nonexistent');
+    expect(router.current.route.component).toBe('notfound-page');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// replace()
+// ===========================================================================
+
+describe('Router — replace()', () => {
+  it('returns router for chaining in hash mode', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    window.location.hash = '#/';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/replaced', component: 'about-page' },
+      ],
+    });
+    await new Promise(r => setTimeout(r, 10));
+    const result = router.replace('/replaced');
+    expect(result).toBe(router);
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// query getter
+// ===========================================================================
+
+describe('Router — query getter', () => {
+  it('returns parsed query params from hash', () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [{ path: '/search', component: 'home-page' }],
+    });
+    window.location.hash = '#/search?q=hello&page=2';
+    expect(router.query).toEqual({ q: 'hello', page: '2' });
+    router.destroy();
+  });
+
+  it('returns empty object for no query params', () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    window.location.hash = '#/';
+    expect(router.query).toEqual({});
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// resolve() — programmatic link generation
+// ===========================================================================
+
+describe('Router — resolve()', () => {
+  it('returns full URL path with base prefix', () => {
+    const router = createRouter({
+      mode: 'hash',
+      base: '/app',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    expect(router.resolve('/about')).toBe('/app/about');
+    router.destroy();
+  });
+
+  it('returns path as-is when no base', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    expect(router.resolve('/about')).toBe('/about');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// back/forward/go wrappers
+// ===========================================================================
+
+describe('Router — back/forward/go wrappers', () => {
+  it('calls window.history.back', () => {
+    const spy = vi.spyOn(window.history, 'back').mockImplementation(() => {});
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    router.back();
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+    router.destroy();
+  });
+
+  it('calls window.history.forward', () => {
+    const spy = vi.spyOn(window.history, 'forward').mockImplementation(() => {});
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    router.forward();
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+    router.destroy();
+  });
+
+  it('calls window.history.go with argument', () => {
+    const spy = vi.spyOn(window.history, 'go').mockImplementation(() => {});
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    router.go(-2);
+    expect(spy).toHaveBeenCalledWith(-2);
+    spy.mockRestore();
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Link click interception — modified clicks bypass
+// ===========================================================================
+
+describe('Router — link click interception', () => {
+  it('intercepts normal clicks on z-link elements', async () => {
+    document.body.innerHTML = '<div id="app"></div><a z-link="/about">About</a>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+      ],
+    });
+    await new Promise(r => setTimeout(r, 10));
+
+    const link = document.querySelector('[z-link]');
+    const e = new Event('click', { bubbles: true, cancelable: true });
+    link.dispatchEvent(e);
+    // Should have navigated
+    await new Promise(r => setTimeout(r, 10));
+    expect(window.location.hash).toBe('#/about');
+    router.destroy();
+  });
+
+  it('ignores clicks with meta key (does not navigate)', async () => {
+    document.body.innerHTML = '<div id="app"></div><a z-link="/about">About</a>';
+    window.location.hash = '#/';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+      ],
+    });
+    await new Promise(r => setTimeout(r, 50));
+    // Record current route before meta click
+    const currentBefore = router.current?.path;
+
+    const link = document.querySelector('[z-link]');
+    const e = new MouseEvent('click', { bubbles: true, metaKey: true });
+    link.dispatchEvent(e);
+    await new Promise(r => setTimeout(r, 10));
+    // Route should remain unchanged — meta key bypasses SPA navigation
+    expect(router.current?.path).toBe(currentBefore);
+    router.destroy();
+  });
+
+  it('ignores clicks with ctrl key', async () => {
+    document.body.innerHTML = '<div id="app"></div><a z-link="/about2">About</a>';
+    window.location.hash = '#/';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about2', component: 'about-page' },
+      ],
+    });
+    await new Promise(r => setTimeout(r, 50));
+    const link = document.querySelector('[z-link]');
+    const e = new MouseEvent('click', { bubbles: true, ctrlKey: true });
+    link.dispatchEvent(e);
+    await new Promise(r => setTimeout(r, 10));
+    expect(router.current?.path).not.toBe('/about2');
+    router.destroy();
+  });
+
+  it('ignores links with target=_blank', async () => {
+    document.body.innerHTML = '<div id="app"></div><a z-link="/about" target="_blank">About</a>';
+    window.location.hash = '#/';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+      ],
+    });
+    await new Promise(r => setTimeout(r, 10));
+    const link = document.querySelector('[z-link]');
+    link.click();
+    await new Promise(r => setTimeout(r, 10));
+    expect(window.location.hash).toBe('#/');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Router — remove() route
+// ===========================================================================
+
+describe('Router — remove()', () => {
+  it('removes route by path', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/temp', component: 'about-page' },
+      ],
+    });
+    expect(router._routes.length).toBe(2);
+    router.remove('/temp');
+    expect(router._routes.length).toBe(1);
+    expect(router._routes[0].path).toBe('/');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Router — add() chaining
+// ===========================================================================
+
+describe('Router — add() chaining', () => {
+  it('supports fluent chaining of add calls', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [],
+    });
+    const result = router.add({ path: '/', component: 'home-page' })
+                          .add({ path: '/about', component: 'about-page' });
+    expect(result).toBe(router);
+    expect(router._routes.length).toBe(2);
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Router — onChange unsubscribe
+// ===========================================================================
+
+describe('Router — onChange unsubscribe', () => {
+  it('stops calling listener after unsubscribe', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const listener = vi.fn();
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+      ],
+    });
+    const unsub = router.onChange(listener);
+    await new Promise(r => setTimeout(r, 10));
+    listener.mockClear();
+
+    unsub();
+    window.location.hash = '#/about';
+    await router._resolve();
+    expect(listener).not.toHaveBeenCalled();
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Router — destroy cleans up
+// ===========================================================================
+
+describe('Router — destroy cleans up', () => {
+  it('clears listeners, guards, and routes on destroy', () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    router.beforeEach(() => {});
+    router.afterEach(() => {});
+    router.onChange(() => {});
+    router.onSubstate(() => {});
+    router.destroy();
+    expect(router._routes.length).toBe(0);
+    expect(router._guards.before.length).toBe(0);
+    expect(router._guards.after.length).toBe(0);
+    expect(router._listeners.size).toBe(0);
+    expect(router._substateListeners.length).toBe(0);
+  });
+});
+
+
+// ===========================================================================
+// Router — _interpolateParams
+// ===========================================================================
+
+describe('Router — _interpolateParams', () => {
+  it('replaces :param with provided values', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/user/:id', component: 'user-page' }],
+    });
+    const result = router._interpolateParams('/user/:id/post/:pid', { id: 42, pid: 7 });
+    expect(result).toBe('/user/42/post/7');
+    router.destroy();
+  });
+
+  it('keeps :param when value not provided', () => {
+    const router = createRouter({
+      mode: 'hash',
+      routes: [],
+    });
+    const result = router._interpolateParams('/user/:id', {});
+    expect(result).toBe('/user/:id');
+    router.destroy();
+  });
+
+  it('returns path unchanged when params is null', () => {
+    const router = createRouter({ mode: 'hash', routes: [] });
+    expect(router._interpolateParams('/test', null)).toBe('/test');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Router — _normalizePath with base stripping
+// ===========================================================================
+
+describe('Router — _normalizePath', () => {
+  it('strips base prefix if accidentally included', () => {
+    const router = createRouter({
+      mode: 'hash',
+      base: '/app',
+      routes: [],
+    });
+    expect(router._normalizePath('/app/about')).toBe('/about');
+    router.destroy();
+  });
+
+  it('returns / when path matches base exactly', () => {
+    const router = createRouter({
+      mode: 'hash',
+      base: '/app',
+      routes: [],
+    });
+    expect(router._normalizePath('/app')).toBe('/');
+    router.destroy();
+  });
+
+  it('adds leading slash to bare paths', () => {
+    const router = createRouter({ mode: 'hash', routes: [] });
+    expect(router._normalizePath('about')).toBe('/about');
+    router.destroy();
+  });
+
+  it('returns / for empty/null path', () => {
+    const router = createRouter({ mode: 'hash', routes: [] });
+    expect(router._normalizePath('')).toBe('/');
+    expect(router._normalizePath(null)).toBe('/');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Router — navigate with options.params
+// ===========================================================================
+
+describe('Router — navigate with options.params', () => {
+  it('interpolates params in path', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/user/:id', component: 'user-page' },
+      ],
+    });
+    await new Promise(r => setTimeout(r, 10));
+    router.navigate('/user/:id', { params: { id: '99' } });
+    await router._resolve();
+    expect(window.location.hash).toBe('#/user/99');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Router — render function components
+// ===========================================================================
+
+describe('Router — render function component', () => {
+  it('renders HTML from a function component', async () => {
+    document.body.innerHTML = '<div id="app"></div>';
+    window.location.hash = '#/';
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: (route) => `<p>fn: ${route.path}</p>` },
+      ],
+    });
+    // Wait for initial resolve (queueMicrotask + rendering)
+    await new Promise(r => setTimeout(r, 100));
+    const p = document.querySelector('#app p');
+    expect(p).not.toBeNull();
+    expect(p.textContent).toBe('fn: /');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Router — substate onSubstate unsubscribe
+// ===========================================================================
+
+describe('Router — onSubstate unsubscribe', () => {
+  it('removes listener after unsubscribe', () => {
+    const router = createRouter({ mode: 'hash', routes: [] });
+    const fn = vi.fn();
+    const unsub = router.onSubstate(fn);
+    expect(router._substateListeners.length).toBe(1);
+    unsub();
+    expect(router._substateListeners.length).toBe(0);
+    router.destroy();
+  });
+});

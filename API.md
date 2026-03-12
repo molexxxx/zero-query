@@ -1730,6 +1730,7 @@ Create a new global reactive store.
 | `actions` | `{ [name]: (state, ...args) => void }` | `{}` | Named functions that mutate state. First arg is always reactive `state`. |
 | `getters` | `{ [name]: (state) => any }` | `{}` | Computed properties derived from state. Accessed as `store.getters.name`. |
 | `debug` | `boolean` | `false` | Log dispatched actions to console. |
+| `maxHistory` | `number` | `1000` | Maximum number of action history entries to keep. |
 
 ```js
 const store = $.store({
@@ -2268,7 +2269,7 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
 | `$.libSize` | Minified library size string (e.g. `'~91 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'0.9.0'`). |
+| `$.version` | Library version string (e.g. `'0.9.1'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |
@@ -2366,7 +2367,7 @@ When used as an ES module (not the built bundle), the library exports:
 ```js
 import {
   $, zQuery, ZQueryCollection, queryAll,
-  reactive, signal, computed, effect,
+  reactive, Signal, signal, computed, effect,
   component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style,
   morph, morphElement, safeEval,
   createRouter, getRouter,

@@ -36,6 +36,7 @@ class Store {
     this._getters = config.getters || {};
     this._middleware = [];
     this._history = [];              // action log
+    this._maxHistory = config.maxHistory || 1000;
     this._debug = config.debug || false;
 
     // Create reactive state
@@ -95,6 +96,10 @@ class Store {
     try {
       const result = action(this.state, ...args);
       this._history.push({ action: name, args, timestamp: Date.now() });
+      // Cap history to prevent unbounded memory growth
+      if (this._history.length > this._maxHistory) {
+        this._history.splice(0, this._history.length - this._maxHistory);
+      }
       return result;
     } catch (err) {
       reportError(ErrorCode.STORE_ACTION, `Action "${name}" threw`, { action: name, args }, err);

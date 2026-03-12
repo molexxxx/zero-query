@@ -144,16 +144,21 @@ export function deepClone(obj) {
  * Deep merge objects
  */
 export function deepMerge(target, ...sources) {
-  for (const source of sources) {
-    for (const key of Object.keys(source)) {
-      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-        if (!target[key] || typeof target[key] !== 'object') target[key] = {};
-        deepMerge(target[key], source[key]);
+  const seen = new WeakSet();
+  function merge(tgt, src) {
+    if (seen.has(src)) return tgt;
+    seen.add(src);
+    for (const key of Object.keys(src)) {
+      if (src[key] && typeof src[key] === 'object' && !Array.isArray(src[key])) {
+        if (!tgt[key] || typeof tgt[key] !== 'object') tgt[key] = {};
+        merge(tgt[key], src[key]);
       } else {
-        target[key] = source[key];
+        tgt[key] = src[key];
       }
     }
+    return tgt;
   }
+  for (const source of sources) merge(target, source);
   return target;
 }
 
@@ -164,6 +169,7 @@ export function isEqual(a, b) {
   if (a === b) return true;
   if (typeof a !== typeof b) return false;
   if (typeof a !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
   const keysA = Object.keys(a);
   const keysB = Object.keys(b);
   if (keysA.length !== keysB.length) return false;

@@ -65,9 +65,25 @@ async function request(method, url, data, options = {}) {
 
   // Timeout via AbortController
   const controller = new AbortController();
-  fetchOpts.signal = options.signal || controller.signal;
   const timeout = options.timeout ?? _config.timeout;
   let timer;
+  // Combine user signal with internal controller for proper timeout support
+  if (options.signal) {
+    // If AbortSignal.any is available, combine both signals
+    if (typeof AbortSignal.any === 'function') {
+      fetchOpts.signal = AbortSignal.any([options.signal, controller.signal]);
+    } else {
+      // Fallback: forward user signal's abort to our controller
+      fetchOpts.signal = controller.signal;
+      if (options.signal.aborted) {
+        controller.abort(options.signal.reason);
+      } else {
+        options.signal.addEventListener('abort', () => controller.abort(options.signal.reason), { once: true });
+      }
+    }
+  } else {
+    fetchOpts.signal = controller.signal;
+  }
   if (timeout > 0) {
     timer = setTimeout(() => controller.abort(), timeout);
   }

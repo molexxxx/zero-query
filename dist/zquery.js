@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.9.0
+ * zQuery (zeroQuery) v0.9.1
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -300,7 +300,13 @@ function signal(initial) {
  */
 function computed(fn) {
   const s = new Signal(undefined);
-  effect(() => { s._value = fn(); s._notify(); });
+  effect(() => {
+    const v = fn();
+    if (v !== s._value) {
+      s._value = v;
+      s._notify();
+    }
+  });
   return s;
 }
 
@@ -343,7 +349,7 @@ function effect(fn) {
       }
       execute._deps.clear();
     }
-    Signal._activeEffect = null;
+    // Don't clobber _activeEffect — another effect may be running
   };
 }
 
@@ -361,7 +367,7 @@ function effect(fn) {
 // ---------------------------------------------------------------------------
 class ZQueryCollection {
   constructor(elements) {
-    this.elements = Array.isArray(elements) ? elements : [elements];
+    this.elements = Array.isArray(elements) ? elements : (elements ? [elements] : []);
     this.length = this.elements.length;
     this.elements.forEach((el, i) => { this[i] = el; });
   }
@@ -418,10 +424,12 @@ class ZQueryCollection {
     return new ZQueryCollection([...kids]);
   }
 
-  siblings() {
+  siblings(selector) {
     const sibs = [];
     this.elements.forEach(el => {
-      sibs.push(...[...el.parentElement.children].filter(c => c !== el));
+      if (!el.parentElement) return;
+      const all = [...el.parentElement.children].filter(c => c !== el);
+      sibs.push(...(selector ? all.filter(c => c.matches(selector)) : all));
     });
     return new ZQueryCollection(sibs);
   }
@@ -563,7 +571,8 @@ class ZQueryCollection {
   index(selector) {
     if (selector === undefined) {
       const el = this.first();
-      return el ? Array.from(el.parentElement.children).indexOf(el) : -1;
+      if (!el || !el.parentElement) return -1;
+      return Array.from(el.parentElement.children).indexOf(el);
     }
     const target = (typeof selector === 'string')
       ? document.querySelector(selector)
@@ -623,6 +632,11 @@ class ZQueryCollection {
   // --- Attributes ----------------------------------------------------------
 
   attr(name, value) {
+    if (typeof name === 'object' && name !== null) {
+      return this.each((_, el) => {
+        for (const [k, v] of Object.entries(name)) el.setAttribute(k, v);
+      });
+    }
     if (value === undefined) return this.first()?.getAttribute(name);
     return this.each((_, el) => el.setAttribute(name, value));
   }
@@ -647,7 +661,10 @@ class ZQueryCollection {
 
   // --- CSS / Dimensions ----------------------------------------------------
 
-  css(props) {
+  css(props, value) {
+    if (typeof props === 'string' && value !== undefined) {
+      return this.each((_, el) => { el.style[props] = value; });
+    }
     if (typeof props === 'string') {
       const el = this.first();
       return el ? getComputedStyle(el)[props] : undefined;
@@ -787,6 +804,7 @@ class ZQueryCollection {
   wrap(wrapper) {
     return this.each((_, el) => {
       const w = typeof wrapper === 'string' ? createFragment(wrapper).firstElementChild : wrapper.cloneNode(true);
+      if (!w || !el.parentNode) return;
       el.parentNode.insertBefore(w, el);
       w.appendChild(el);
     });
@@ -912,12 +930,18 @@ class ZQueryCollection {
         if (typeof selectorOrHandler === 'function') {
           el.addEventListener(evt, selectorOrHandler);
         } else if (typeof selectorOrHandler === 'string') {
-          // Delegated event — only works on elements that support closest()
-          el.addEventListener(evt, (e) => {
+          // Delegated event — store wrapper so off() can remove it
+          const wrapper = (e) => {
             if (!e.target || typeof e.target.closest !== 'function') return;
             const target = e.target.closest(selectorOrHandler);
             if (target && el.contains(target)) handler.call(target, e);
-          });
+          };
+          wrapper._zqOriginal = handler;
+          wrapper._zqSelector = selectorOrHandler;
+          el.addEventListener(evt, wrapper);
+          // Track delegated handlers for removal
+          if (!el._zqDelegated) el._zqDelegated = [];
+          el._zqDelegated.push({ evt, wrapper });
         }
       });
     });
@@ -926,7 +950,20 @@ class ZQueryCollection {
   off(event, handler) {
     const events = event.split(/\s+/);
     return this.each((_, el) => {
-      events.forEach(evt => el.removeEventListener(evt, handler));
+      events.forEach(evt => {
+        // Try direct removal first
+        el.removeEventListener(evt, handler);
+        // Also check delegated handlers
+        if (el._zqDelegated) {
+          el._zqDelegated = el._zqDelegated.filter(d => {
+            if (d.evt === evt && d.wrapper._zqOriginal === handler) {
+              el.removeEventListener(evt, d.wrapper);
+              return false;
+            }
+            return true;
+          });
+        }
+      });
     });
   }
 
@@ -955,8 +992,12 @@ class ZQueryCollection {
   // --- Animation -----------------------------------------------------------
 
   animate(props, duration = 300, easing = 'ease') {
+    // Empty collection — resolve immediately
+    if (this.length === 0) return Promise.resolve(this);
     return new Promise(resolve => {
+      let resolved = false;
       const count = { done: 0 };
+      const listeners = [];
       this.each((_, el) => {
         el.style.transition = `all ${duration}ms ${easing}`;
         requestAnimationFrame(() => {
@@ -964,13 +1005,27 @@ class ZQueryCollection {
           const onEnd = () => {
             el.removeEventListener('transitionend', onEnd);
             el.style.transition = '';
-            if (++count.done >= this.length) resolve(this);
+            if (!resolved && ++count.done >= this.length) {
+              resolved = true;
+              resolve(this);
+            }
           };
           el.addEventListener('transitionend', onEnd);
+          listeners.push({ el, onEnd });
         });
       });
       // Fallback in case transitionend doesn't fire
-      setTimeout(() => resolve(this), duration + 50);
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          // Clean up any remaining transitionend listeners
+          for (const { el, onEnd } of listeners) {
+            el.removeEventListener('transitionend', onEnd);
+            el.style.transition = '';
+          }
+          resolve(this);
+        }
+      }, duration + 50);
     });
   }
 
@@ -984,7 +1039,8 @@ class ZQueryCollection {
 
   fadeToggle(duration = 300) {
     return Promise.all(this.elements.map(el => {
-      const visible = getComputedStyle(el).opacity !== '0' && getComputedStyle(el).display !== 'none';
+      const cs = getComputedStyle(el);
+      const visible = cs.opacity !== '0' && cs.display !== 'none';
       const col = new ZQueryCollection([el]);
       return visible ? col.fadeOut(duration) : col.fadeIn(duration);
     })).then(() => this);
@@ -1780,6 +1836,7 @@ function _isSafeAccess(obj, prop) {
   const BLOCKED = new Set([
     'constructor', '__proto__', 'prototype', '__defineGetter__',
     '__defineSetter__', '__lookupGetter__', '__lookupSetter__',
+    'call', 'apply', 'bind',
   ]);
   if (typeof prop === 'string' && BLOCKED.has(prop)) return false;
 
@@ -2297,8 +2354,11 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
       if (!lisSet.has(i)) {
         oldParent.insertBefore(oldNode, cursor);
       }
+      // Capture next sibling BEFORE _morphNode — if _morphNode calls
+      // replaceChild, oldNode is removed and nextSibling becomes stale.
+      const nextSib = oldNode.nextSibling;
       _morphNode(oldParent, oldNode, newNode);
-      cursor = oldNode.nextSibling;
+      cursor = nextSib;
     } else {
       // Insert new node
       const clone = newNode.cloneNode(true);
@@ -2476,10 +2536,13 @@ function _morphAttributes(oldEl, newEl) {
     }
   }
 
-  // Remove stale attributes
-  for (let i = oldLen - 1; i >= 0; i--) {
-    if (!newNames.has(oldAttrs[i].name)) {
-      oldEl.removeAttribute(oldAttrs[i].name);
+  // Remove stale attributes — snapshot names first because oldAttrs
+  // is a live NamedNodeMap that mutates on removeAttribute().
+  const oldNames = new Array(oldLen);
+  for (let i = 0; i < oldLen; i++) oldNames[i] = oldAttrs[i].name;
+  for (let i = oldNames.length - 1; i >= 0; i--) {
+    if (!newNames.has(oldNames[i])) {
+      oldEl.removeAttribute(oldNames[i]);
     }
   }
 }
@@ -2801,7 +2864,7 @@ class Component {
     if (!watchers) return;
     for (const [key, handler] of Object.entries(watchers)) {
       // Match exact key or parent key (e.g. watcher on 'user' fires when 'user.name' changes)
-      if (changedKey === key || key.startsWith(changedKey + '.') || changedKey.startsWith(key + '.') || changedKey === key) {
+      if (changedKey === key || key.startsWith(changedKey + '.') || changedKey.startsWith(key + '.')) {
         const currentVal = _getPath(this.state.__raw || this.state, key);
         const prevVal = this._prevWatchValues?.[key];
         if (currentVal !== prevVal) {
@@ -2950,20 +3013,26 @@ class Component {
     if (!this._mounted && combinedStyles) {
       const scopeAttr = `z-s${this._uid}`;
       this._el.setAttribute(scopeAttr, '');
-      let inAtBlock = 0;
+      let noScopeDepth = 0;   // brace depth at which a no-scope @-rule started (0 = none active)
+      let braceDepth = 0;     // overall brace depth
       const scoped = combinedStyles.replace(/([^{}]+)\{|\}/g, (match, selector) => {
         if (match === '}') {
-          if (inAtBlock > 0) inAtBlock--;
+          if (noScopeDepth > 0 && braceDepth <= noScopeDepth) noScopeDepth = 0;
+          braceDepth--;
           return match;
         }
+        braceDepth++;
         const trimmed = selector.trim();
-        // Don't scope @-rules (@media, @keyframes, @supports, @container, @layer, @font-face, etc.)
+        // Don't scope @-rules themselves
         if (trimmed.startsWith('@')) {
-          inAtBlock++;
+          // @keyframes and @font-face contain non-selector content — skip scoping inside them
+          if (/^@(keyframes|font-face)\b/.test(trimmed)) {
+            noScopeDepth = braceDepth;
+          }
           return match;
         }
-        // Don't scope keyframe stops (from, to, 0%, 50%, etc.)
-        if (inAtBlock > 0 && /^[\d%\s,fromto]+$/.test(trimmed.replace(/\s/g, ''))) {
+        // Inside @keyframes or @font-face — don't scope inner rules
+        if (noScopeDepth > 0 && braceDepth > noScopeDepth) {
           return match;
         }
         return selector.split(',').map(s => `[${scopeAttr}] ${s.trim()}`).join(', ') + ' {';
@@ -3591,6 +3660,21 @@ class Component {
     this._listeners = [];
     this._delegatedEvents = null;
     this._eventBindings = null;
+    // Clear any pending debounce/throttle timers to prevent stale closures.
+    // Timers are keyed by individual child elements, so iterate all descendants.
+    const allEls = this._el.querySelectorAll('*');
+    allEls.forEach(child => {
+      const dTimers = _debounceTimers.get(child);
+      if (dTimers) {
+        for (const key in dTimers) clearTimeout(dTimers[key]);
+        _debounceTimers.delete(child);
+      }
+      const tTimers = _throttleTimers.get(child);
+      if (tTimers) {
+        for (const key in tTimers) clearTimeout(tTimers[key]);
+        _throttleTimers.delete(child);
+      }
+    });
     if (this._styleEl) this._styleEl.remove();
     _instances.delete(this._el);
     this._el.innerHTML = '';
@@ -3886,6 +3970,23 @@ function style(urls, opts = {}) {
 // Unique marker on history.state to identify zQuery-managed entries
 const _ZQ_STATE_KEY = '__zq';
 
+/**
+ * Shallow-compare two flat objects (for params / query comparison).
+ * Avoids JSON.stringify overhead on every navigation.
+ */
+function _shallowEqual(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+  for (let i = 0; i < keysA.length; i++) {
+    const k = keysA[i];
+    if (a[k] !== b[k]) return false;
+  }
+  return true;
+}
+
 class Router {
   constructor(config = {}) {
     this._el = null;
@@ -3933,11 +4034,12 @@ class Router {
       config.routes.forEach(r => this.add(r));
     }
 
-    // Listen for navigation
+    // Listen for navigation — store handler references for cleanup in destroy()
     if (this._mode === 'hash') {
-      window.addEventListener('hashchange', () => this._resolve());
+      this._onNavEvent = () => this._resolve();
+      window.addEventListener('hashchange', this._onNavEvent);
     } else {
-      window.addEventListener('popstate', (e) => {
+      this._onNavEvent = (e) => {
         // Check for substate pop first — if a listener handles it, don't route
         const st = e.state;
         if (st && st[_ZQ_STATE_KEY] === 'substate') {
@@ -3951,11 +4053,12 @@ class Router {
           this._fireSubstate(null, null, 'reset');
         }
         this._resolve();
-      });
+      };
+      window.addEventListener('popstate', this._onNavEvent);
     }
 
     // Intercept link clicks for SPA navigation
-    document.addEventListener('click', (e) => {
+    this._onLinkClick = (e) => {
       // Don't intercept modified clicks (Ctrl/Cmd+click = new tab)
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const link = e.target.closest('[z-link]');
@@ -3977,7 +4080,8 @@ class Router {
         const scrollBehavior = link.getAttribute('z-to-top') || 'instant';
         window.scrollTo({ top: 0, behavior: scrollBehavior });
       }
-    });
+    };
+    document.addEventListener('click', this._onLinkClick);
 
     // Initial resolve
     if (this._el) {
@@ -4349,8 +4453,8 @@ class Router {
     // with the same params, skip the full destroy/mount cycle and just
     // update props. This prevents flashing and unnecessary DOM churn.
     if (from && this._instance && matched.component === from.route.component) {
-      const sameParams = JSON.stringify(params) === JSON.stringify(from.params);
-      const sameQuery = JSON.stringify(query) === JSON.stringify(from.query);
+      const sameParams = _shallowEqual(params, from.params);
+      const sameQuery = _shallowEqual(query, from.query);
       if (sameParams && sameQuery) {
         // Identical navigation — nothing to do
         return;
@@ -4447,6 +4551,15 @@ class Router {
   // --- Destroy -------------------------------------------------------------
 
   destroy() {
+    // Remove window/document event listeners to prevent memory leaks
+    if (this._onNavEvent) {
+      window.removeEventListener(this._mode === 'hash' ? 'hashchange' : 'popstate', this._onNavEvent);
+      this._onNavEvent = null;
+    }
+    if (this._onLinkClick) {
+      document.removeEventListener('click', this._onLinkClick);
+      this._onLinkClick = null;
+    }
     if (this._instance) this._instance.destroy();
     this._listeners.clear();
     this._substateListeners = [];
@@ -4509,6 +4622,7 @@ class Store {
     this._getters = config.getters || {};
     this._middleware = [];
     this._history = [];              // action log
+    this._maxHistory = config.maxHistory || 1000;
     this._debug = config.debug || false;
 
     // Create reactive state
@@ -4568,6 +4682,10 @@ class Store {
     try {
       const result = action(this.state, ...args);
       this._history.push({ action: name, args, timestamp: Date.now() });
+      // Cap history to prevent unbounded memory growth
+      if (this._history.length > this._maxHistory) {
+        this._history.splice(0, this._history.length - this._maxHistory);
+      }
       return result;
     } catch (err) {
       reportError(ErrorCode.STORE_ACTION, `Action "${name}" threw`, { action: name, args }, err);
@@ -4725,9 +4843,25 @@ async function request(method, url, data, options = {}) {
 
   // Timeout via AbortController
   const controller = new AbortController();
-  fetchOpts.signal = options.signal || controller.signal;
   const timeout = options.timeout ?? _config.timeout;
   let timer;
+  // Combine user signal with internal controller for proper timeout support
+  if (options.signal) {
+    // If AbortSignal.any is available, combine both signals
+    if (typeof AbortSignal.any === 'function') {
+      fetchOpts.signal = AbortSignal.any([options.signal, controller.signal]);
+    } else {
+      // Fallback: forward user signal's abort to our controller
+      fetchOpts.signal = controller.signal;
+      if (options.signal.aborted) {
+        controller.abort(options.signal.reason);
+      } else {
+        options.signal.addEventListener('abort', () => controller.abort(options.signal.reason), { once: true });
+      }
+    }
+  } else {
+    fetchOpts.signal = controller.signal;
+  }
   if (timeout > 0) {
     timer = setTimeout(() => controller.abort(), timeout);
   }
@@ -4991,16 +5125,21 @@ function deepClone(obj) {
  * Deep merge objects
  */
 function deepMerge(target, ...sources) {
-  for (const source of sources) {
-    for (const key of Object.keys(source)) {
-      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-        if (!target[key] || typeof target[key] !== 'object') target[key] = {};
-        deepMerge(target[key], source[key]);
+  const seen = new WeakSet();
+  function merge(tgt, src) {
+    if (seen.has(src)) return tgt;
+    seen.add(src);
+    for (const key of Object.keys(src)) {
+      if (src[key] && typeof src[key] === 'object' && !Array.isArray(src[key])) {
+        if (!tgt[key] || typeof tgt[key] !== 'object') tgt[key] = {};
+        merge(tgt[key], src[key]);
       } else {
-        target[key] = source[key];
+        tgt[key] = src[key];
       }
     }
+    return tgt;
   }
+  for (const source of sources) merge(target, source);
   return target;
 }
 
@@ -5011,6 +5150,7 @@ function isEqual(a, b) {
   if (a === b) return true;
   if (typeof a !== typeof b) return false;
   if (typeof a !== 'object' || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
   const keysA = Object.keys(a);
   const keysB = Object.keys(b);
   if (keysA.length !== keysB.length) return false;
@@ -5264,8 +5404,8 @@ $.guardCallback  = guardCallback;
 $.validate       = validate;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.9.0';
-$.libSize = '~89 KB';
+$.version = '0.9.1';
+$.libSize = '~92 KB';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

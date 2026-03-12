@@ -560,6 +560,7 @@ function _isSafeAccess(obj, prop) {
   const BLOCKED = new Set([
     'constructor', '__proto__', 'prototype', '__defineGetter__',
     '__defineSetter__', '__lookupGetter__', '__lookupSetter__',
+    'call', 'apply', 'bind',
   ]);
   if (typeof prop === 'string' && BLOCKED.has(prop)) return false;
 

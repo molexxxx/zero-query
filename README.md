@@ -262,14 +262,13 @@ location / {
 | `$.router` `$.getRouter` | SPA router |
 | `$.store` `$.getStore` | State management |
 | `$.http` `$.get` `$.post` `$.put` `$.patch` `$.delete` | HTTP client |
-| `$.reactive` `$.signal` `$.computed` `$.effect` | Reactive primitives |
+| `$.reactive` `$.Signal` `$.signal` `$.computed` `$.effect` | Reactive primitives |
 | `$.debounce` `$.throttle` `$.pipe` `$.once` `$.sleep` | Function utils |
 | `$.escapeHtml` `$.html` `$.trust` `$.uuid` `$.camelCase` `$.kebabCase` | String utils |
 | `$.deepClone` `$.deepMerge` `$.isEqual` | Object utils |
 | `$.param` `$.parseQuery` | URL utils |
 | `$.storage` `$.session` | Storage wrappers |
-| `$.bus` | Event bus |
-| `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~91 KB\"`) |
+| `$.bus` | Event bus || `$.onError` `$.ZQueryError` `$.ErrorCode` `$.guardCallback` `$.validate` | Error handling || `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~91 KB\"`) |
 | `$.meta` | Build metadata (populated by CLI bundler) |
 | `$.noConflict` | Release `$` global |
 

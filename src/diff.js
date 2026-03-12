@@ -239,8 +239,11 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
       if (!lisSet.has(i)) {
         oldParent.insertBefore(oldNode, cursor);
       }
+      // Capture next sibling BEFORE _morphNode — if _morphNode calls
+      // replaceChild, oldNode is removed and nextSibling becomes stale.
+      const nextSib = oldNode.nextSibling;
       _morphNode(oldParent, oldNode, newNode);
-      cursor = oldNode.nextSibling;
+      cursor = nextSib;
     } else {
       // Insert new node
       const clone = newNode.cloneNode(true);
@@ -418,10 +421,13 @@ function _morphAttributes(oldEl, newEl) {
     }
   }
 
-  // Remove stale attributes
-  for (let i = oldLen - 1; i >= 0; i--) {
-    if (!newNames.has(oldAttrs[i].name)) {
-      oldEl.removeAttribute(oldAttrs[i].name);
+  // Remove stale attributes — snapshot names first because oldAttrs
+  // is a live NamedNodeMap that mutates on removeAttribute().
+  const oldNames = new Array(oldLen);
+  for (let i = 0; i < oldLen; i++) oldNames[i] = oldAttrs[i].name;
+  for (let i = oldNames.length - 1; i >= 0; i--) {
+    if (!newNames.has(oldNames[i])) {
+      oldEl.removeAttribute(oldNames[i]);
     }
   }
 }
