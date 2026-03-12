@@ -35,12 +35,25 @@ function resolveImport(specifier, fromFile) {
 
 /** Extract import specifiers from a source file. */
 function extractImports(code) {
+  // Only scan the import preamble (before the first top-level `export`)
+  // so that code examples inside exported template strings are not
+  // mistaken for real imports.
+  const exportStart = code.search(/^export\b/m);
+  const preamble = exportStart > -1 ? code.slice(0, exportStart) : code;
+
   const specifiers = [];
   let m;
   const fromRe = /\bfrom\s+['"]([^'"]+)['"]/g;
-  while ((m = fromRe.exec(code)) !== null) specifiers.push(m[1]);
+  while ((m = fromRe.exec(preamble)) !== null) specifiers.push(m[1]);
   const sideRe = /^\s*import\s+['"]([^'"]+)['"]\s*;?\s*$/gm;
-  while ((m = sideRe.exec(code)) !== null) {
+  while ((m = sideRe.exec(preamble)) !== null) {
+    if (!specifiers.includes(m[1])) specifiers.push(m[1]);
+  }
+
+  // Also capture re-exports anywhere in the file:
+  //   export { x } from '...'   export * from '...'
+  const reExportRe = /^\s*export\s+(?:\{[^}]*\}|\*)\s*from\s+['"]([^'"]+)['"]/gm;
+  while ((m = reExportRe.exec(code)) !== null) {
     if (!specifiers.includes(m[1])) specifiers.push(m[1]);
   }
   return specifiers;
