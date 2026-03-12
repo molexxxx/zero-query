@@ -558,6 +558,7 @@ const OVERLAY_SCRIPT = `<script>
     if (__zqChannel) {
       try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
     }
+    updateDevBar();
   };
 
   var _origReplaceState = history.replaceState;
@@ -576,6 +577,7 @@ const OVERLAY_SCRIPT = `<script>
     if (__zqChannel) {
       try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
     }
+    updateDevBar();
   };
 
   window.addEventListener('popstate', function(e) {
@@ -593,6 +595,7 @@ const OVERLAY_SCRIPT = `<script>
     if (__zqChannel) {
       try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
     }
+    updateDevBar();
   });
 
   window.addEventListener('hashchange', function() {
@@ -606,36 +609,62 @@ const OVERLAY_SCRIPT = `<script>
     if (__zqChannel) {
       try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
     }
+    updateDevBar();
   });
 
   // =====================================================================
-  // Dev Toolbar — floating bar with DOM viewer button & request counter
+  // Dev Toolbar — expandable floating bar with stats
   // =====================================================================
   var devBar;
+  var __zqBarExpanded = false;
+  var __zqRouteColors = {
+    navigate:     { bg: 'rgba(63,185,80,0.12)',  fg: '#3fb950' },
+    replace:      { bg: 'rgba(210,153,34,0.12)', fg: '#d29922' },
+    pop:          { bg: 'rgba(248,81,73,0.12)',  fg: '#f85149' },
+    'pop-substate':{ bg: 'rgba(248,81,73,0.12)', fg: '#f85149' },
+    substate:     { bg: 'rgba(168,130,255,0.12)', fg: '#a882ff' },
+    hashchange:   { bg: 'rgba(88,166,255,0.12)', fg: '#58a6ff' }
+  };
+  var __zqRouteDefault = { bg: 'rgba(227,155,55,0.12)', fg: '#e39b37' };
+  var __zqRouteFadeTimer = null;
 
   function createDevBar() {
     devBar = document.createElement('div');
     devBar.id = '__zq_devbar';
     devBar.setAttribute('style',
       'position:fixed;bottom:12px;right:12px;z-index:2147483646;' +
-      'display:flex;align-items:center;gap:6px;' +
+      'display:flex;align-items:center;gap:4px;' +
       'background:rgba(22,27,34,0.92);border:1px solid rgba(48,54,61,0.8);' +
       'border-radius:8px;padding:4px 6px;backdrop-filter:blur(8px);' +
       'font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;' +
       'font-size:11px;color:#8b949e;user-select:none;cursor:default;' +
-      'box-shadow:0 4px 12px rgba(0,0,0,0.4);'
+      'box-shadow:0 4px 12px rgba(0,0,0,0.4);transition:all .25s cubic-bezier(.22,1,.36,1);'
     );
+
+    var statStyle = 'padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;';
+    var expandedStyle = statStyle + 'display:none;transform:scale(0);opacity:0;transform-origin:left center;will-change:transform,opacity;transition:transform .25s cubic-bezier(.22,1,.36,1),opacity .2s ease;';
+
     devBar.innerHTML =
       '<span style="color:#58a6ff;font-weight:700;padding:0 4px;font-size:10px;letter-spacing:.5px">zQ</span>' +
-      '<span id="__zq_bar_reqs" title="Network requests" style="padding:2px 6px;border-radius:4px;' +
-        'background:rgba(88,166,255,0.1);color:#58a6ff;cursor:pointer;font-size:10px;font-weight:600;">0 req</span>' +
-      '<span id="__zq_bar_morphs" title="Render operations" style="padding:2px 6px;border-radius:4px;' +
-        'background:rgba(188,140,255,0.1);color:#bc8cff;cursor:pointer;font-size:10px;font-weight:600;">0 render</span>' +
-      '<button id="__zq_bar_dom" title="Open DevTools (/_devtools)" style="' +
-        'padding:3px 8px;border-radius:4px;font-size:10px;font-weight:700;' +
-        'background:rgba(63,185,80,0.15);color:#3fb950;border:1px solid rgba(63,185,80,0.3);' +
-        'cursor:pointer;font-family:inherit;transition:all .15s;' +
-      '">DOM</button>' +
+      // Expanded-only stats
+      '<span id="__zq_bar_route" class="__zq_ex" title="Current route" style="' + expandedStyle +
+        'background:rgba(227,155,55,0.12);color:#e39b37;outline-offset:1px;transition:transform .25s cubic-bezier(.22,1,.36,1),opacity .2s ease,background .3s ease,color .3s ease,outline-color .6s ease;">/</span>' +
+      '<span id="__zq_bar_comps" class="__zq_ex" title="Registered components" style="' + expandedStyle +
+        'background:rgba(168,130,255,0.1);color:#a882ff;">0 comps</span>' +
+      // Always-visible stats
+      '<span id="__zq_bar_morphs" title="Render operations" style="' + statStyle +
+        'background:rgba(188,140,255,0.1);color:#bc8cff;">0 render</span>' +
+      '<span id="__zq_bar_reqs" title="Network requests" style="' + statStyle +
+        'background:rgba(88,166,255,0.1);color:#58a6ff;">0 req</span>' +
+      // Expanded-only stats
+      '<span id="__zq_bar_els" class="__zq_ex" title="DOM elements" style="' + expandedStyle +
+        'background:rgba(63,185,80,0.1);color:#3fb950;">0 els</span>' +
+      // Toggle expand/collapse
+      '<button id="__zq_bar_toggle" title="Expand toolbar" style="' +
+        'padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;' +
+        'background:rgba(88,166,255,0.08);color:#58a6ff;border:1px solid rgba(88,166,255,0.2);' +
+        'cursor:pointer;font-family:inherit;transition:all .15s;line-height:1;' +
+      '"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg></button>' +
       '<button id="__zq_bar_close" title="Close toolbar" style="' +
         'padding:0 4px;color:#484f58;cursor:pointer;font-size:14px;border:none;' +
         'background:none;font-family:inherit;line-height:1;' +
@@ -657,28 +686,9 @@ const OVERLAY_SCRIPT = `<script>
       }
     }
 
-    // Req counter → Network tab
-    document.getElementById('__zq_bar_reqs').addEventListener('click', function() {
-      if (isInSplitFrame()) {
-        switchDevTab('network');
-      } else {
-        openDevToolsPopup('network');
-      }
-    });
-
-    // Render counter → Performance tab
-    document.getElementById('__zq_bar_morphs').addEventListener('click', function() {
-      if (isInSplitFrame()) {
-        switchDevTab('perf');
-      } else {
-        openDevToolsPopup('perf');
-      }
-    });
-
-    // DOM button → Elements tab (in split) or open popup
+    // Open devtools popup
     var __zqPopup = null;
     function openDevToolsPopup(tab) {
-      // If popup is already open, just switch the tab via BroadcastChannel
       if (__zqPopup && !__zqPopup.closed) {
         switchDevTab(tab);
         __zqPopup.focus();
@@ -693,25 +703,59 @@ const OVERLAY_SCRIPT = `<script>
         ',resizable=yes,scrollbars=yes');
     }
 
-    document.getElementById('__zq_bar_dom').addEventListener('click', function() {
-      if (isInSplitFrame()) {
-        switchDevTab('dom');
+    function openTab(tab) {
+      if (isInSplitFrame()) { switchDevTab(tab); } else { openDevToolsPopup(tab); }
+    }
+
+    // Stat click handlers → open relevant devtools tab
+    document.getElementById('__zq_bar_route').addEventListener('click', function() { openTab('router'); });
+    document.getElementById('__zq_bar_comps').addEventListener('click', function() { openTab('components'); });
+    document.getElementById('__zq_bar_morphs').addEventListener('click', function() { openTab('perf'); });
+    document.getElementById('__zq_bar_reqs').addEventListener('click', function() { openTab('network'); });
+    document.getElementById('__zq_bar_els').addEventListener('click', function() { openTab('dom'); });
+
+    // Expand / collapse toggle
+    document.getElementById('__zq_bar_toggle').addEventListener('click', function() {
+      __zqBarExpanded = !__zqBarExpanded;
+      var items = devBar.querySelectorAll('.__zq_ex');
+      var btn = this;
+      if (__zqBarExpanded) {
+        btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
+        btn.title = 'Collapse toolbar';
+        for (var i = 0; i < items.length; i++) {
+          items[i].style.display = 'inline';
+          items[i].offsetWidth; // reflow
+          items[i].style.transform = 'scale(1)';
+          items[i].style.opacity = '1';
+        }
+        updateDevBar();
       } else {
-        openDevToolsPopup('dom');
+        btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg>';
+        btn.title = 'Expand toolbar';
+        for (var i = 0; i < items.length; i++) {
+          items[i].style.transform = 'scale(0)';
+          items[i].style.opacity = '0';
+        }
+        setTimeout(function() {
+          if (!__zqBarExpanded) {
+            var items = devBar.querySelectorAll('.__zq_ex');
+            for (var i = 0; i < items.length; i++) items[i].style.display = 'none';
+          }
+        }, 250);
       }
+    });
+
+    // Toggle hover
+    document.getElementById('__zq_bar_toggle').addEventListener('mouseover', function() {
+      this.style.background = 'rgba(88,166,255,0.18)';
+    });
+    document.getElementById('__zq_bar_toggle').addEventListener('mouseout', function() {
+      this.style.background = 'rgba(88,166,255,0.08)';
     });
 
     // Close button
     document.getElementById('__zq_bar_close').addEventListener('click', function() {
       devBar.style.display = 'none';
-    });
-
-    // Hover effects
-    document.getElementById('__zq_bar_dom').addEventListener('mouseover', function() {
-      this.style.background = 'rgba(63,185,80,0.3)';
-    });
-    document.getElementById('__zq_bar_dom').addEventListener('mouseout', function() {
-      this.style.background = 'rgba(63,185,80,0.15)';
     });
   }
 
@@ -721,6 +765,50 @@ const OVERLAY_SCRIPT = `<script>
     var morphEl = document.getElementById('__zq_bar_morphs');
     if (reqEl) reqEl.textContent = __zqRequests.length + ' req';
     if (morphEl) morphEl.textContent = __zqMorphCount + ' render';
+
+    if (__zqBarExpanded) {
+      var routeEl = document.getElementById('__zq_bar_route');
+      var compsEl = document.getElementById('__zq_bar_comps');
+      var elsEl = document.getElementById('__zq_bar_els');
+      if (routeEl) {
+        var lastEvt = __zqRouterEvents.length ? __zqRouterEvents[__zqRouterEvents.length - 1] : null;
+        var action = lastEvt ? lastEvt.action : '';
+        var path = location.pathname + location.hash;
+        if (path.length > 16) path = path.substring(0, 14) + '…';
+        var colors = __zqRouteColors[action] || __zqRouteDefault;
+        routeEl.style.background = colors.bg;
+        routeEl.style.color = colors.fg;
+        if (action) {
+          var label = action === 'pop-substate' ? 'pop' : action;
+          routeEl.textContent = label + ' ' + path;
+          routeEl.title = action + ' → ' + location.pathname + location.hash;
+        } else {
+          routeEl.textContent = path;
+        }
+        // Flash brightness on fresh events
+        if (lastEvt && (Date.now() - lastEvt.timestamp) < 2000) {
+          routeEl.style.outline = '1px solid ' + colors.fg;
+          clearTimeout(__zqRouteFadeTimer);
+          __zqRouteFadeTimer = setTimeout(function() {
+            var el = document.getElementById('__zq_bar_route');
+            if (el) el.style.outline = 'none';
+          }, 1800);
+        } else {
+          routeEl.style.outline = 'none';
+        }
+      }
+      if (compsEl) {
+        var count = 0;
+        try {
+          if (window.$ && $.components) count = Object.keys($.components()).length;
+          else if (window.$ && $._components) count = Object.keys($._components).length;
+        } catch(e) {}
+        compsEl.textContent = count + ' comps';
+      }
+      if (elsEl) {
+        elsEl.textContent = document.querySelectorAll('*').length + ' els';
+      }
+    }
   }
 
   // Expose for devtools popup
