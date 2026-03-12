@@ -2268,7 +2268,7 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
 | `$.libSize` | Minified library size string (e.g. `'~91 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'0.8.7'`). |
+| `$.version` | Library version string (e.g. `'0.8.8'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |

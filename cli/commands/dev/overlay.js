@@ -558,6 +558,7 @@ const OVERLAY_SCRIPT = `<script>
     if (__zqChannel) {
       try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
     }
+    updateDevBar();
   };
 
   var _origReplaceState = history.replaceState;
@@ -576,6 +577,7 @@ const OVERLAY_SCRIPT = `<script>
     if (__zqChannel) {
       try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
     }
+    updateDevBar();
   };
 
   window.addEventListener('popstate', function(e) {
@@ -593,6 +595,7 @@ const OVERLAY_SCRIPT = `<script>
     if (__zqChannel) {
       try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
     }
+    updateDevBar();
   });
 
   window.addEventListener('hashchange', function() {
@@ -606,6 +609,7 @@ const OVERLAY_SCRIPT = `<script>
     if (__zqChannel) {
       try { __zqChannel.postMessage({ type: 'router', data: evt }); } catch(e) {}
     }
+    updateDevBar();
   });
 
   // =====================================================================
@@ -613,6 +617,16 @@ const OVERLAY_SCRIPT = `<script>
   // =====================================================================
   var devBar;
   var __zqBarExpanded = false;
+  var __zqRouteColors = {
+    navigate:     { bg: 'rgba(63,185,80,0.12)',  fg: '#3fb950' },
+    replace:      { bg: 'rgba(210,153,34,0.12)', fg: '#d29922' },
+    pop:          { bg: 'rgba(248,81,73,0.12)',  fg: '#f85149' },
+    'pop-substate':{ bg: 'rgba(248,81,73,0.12)', fg: '#f85149' },
+    substate:     { bg: 'rgba(168,130,255,0.12)', fg: '#a882ff' },
+    hashchange:   { bg: 'rgba(88,166,255,0.12)', fg: '#58a6ff' }
+  };
+  var __zqRouteDefault = { bg: 'rgba(227,155,55,0.12)', fg: '#e39b37' };
+  var __zqRouteFadeTimer = null;
 
   function createDevBar() {
     devBar = document.createElement('div');
@@ -628,13 +642,13 @@ const OVERLAY_SCRIPT = `<script>
     );
 
     var statStyle = 'padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;';
-    var expandedStyle = statStyle + 'display:none;overflow:hidden;max-width:0;opacity:0;transition:max-width .3s cubic-bezier(.22,1,.36,1),opacity .2s ease,padding .3s ease,margin .3s ease;';
+    var expandedStyle = statStyle + 'display:none;transform:scale(0);opacity:0;transform-origin:left center;will-change:transform,opacity;transition:transform .25s cubic-bezier(.22,1,.36,1),opacity .2s ease;';
 
     devBar.innerHTML =
       '<span style="color:#58a6ff;font-weight:700;padding:0 4px;font-size:10px;letter-spacing:.5px">zQ</span>' +
       // Expanded-only stats
       '<span id="__zq_bar_route" class="__zq_ex" title="Current route" style="' + expandedStyle +
-        'background:rgba(227,155,55,0.12);color:#e39b37;">/</span>' +
+        'background:rgba(227,155,55,0.12);color:#e39b37;outline-offset:1px;transition:transform .25s cubic-bezier(.22,1,.36,1),opacity .2s ease,background .3s ease,color .3s ease,outline-color .6s ease;">/</span>' +
       '<span id="__zq_bar_comps" class="__zq_ex" title="Registered components" style="' + expandedStyle +
         'background:rgba(168,130,255,0.1);color:#a882ff;">0 comps</span>' +
       // Always-visible stats
@@ -710,27 +724,24 @@ const OVERLAY_SCRIPT = `<script>
         btn.title = 'Collapse toolbar';
         for (var i = 0; i < items.length; i++) {
           items[i].style.display = 'inline';
-          // Force reflow then animate
-          items[i].offsetWidth;
-          items[i].style.maxWidth = '140px';
+          items[i].offsetWidth; // reflow
+          items[i].style.transform = 'scale(1)';
           items[i].style.opacity = '1';
-          items[i].style.padding = '2px 6px';
         }
         updateDevBar();
       } else {
         btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg>';
         btn.title = 'Expand toolbar';
         for (var i = 0; i < items.length; i++) {
-          items[i].style.maxWidth = '0';
+          items[i].style.transform = 'scale(0)';
           items[i].style.opacity = '0';
-          items[i].style.padding = '0';
         }
         setTimeout(function() {
           if (!__zqBarExpanded) {
             var items = devBar.querySelectorAll('.__zq_ex');
             for (var i = 0; i < items.length; i++) items[i].style.display = 'none';
           }
-        }, 300);
+        }, 250);
       }
     });
 
@@ -760,9 +771,31 @@ const OVERLAY_SCRIPT = `<script>
       var compsEl = document.getElementById('__zq_bar_comps');
       var elsEl = document.getElementById('__zq_bar_els');
       if (routeEl) {
+        var lastEvt = __zqRouterEvents.length ? __zqRouterEvents[__zqRouterEvents.length - 1] : null;
+        var action = lastEvt ? lastEvt.action : '';
         var path = location.pathname + location.hash;
-        if (path.length > 20) path = path.substring(0, 18) + '…';
-        routeEl.textContent = path;
+        if (path.length > 16) path = path.substring(0, 14) + '…';
+        var colors = __zqRouteColors[action] || __zqRouteDefault;
+        routeEl.style.background = colors.bg;
+        routeEl.style.color = colors.fg;
+        if (action) {
+          var label = action === 'pop-substate' ? 'pop' : action;
+          routeEl.textContent = label + ' ' + path;
+          routeEl.title = action + ' → ' + location.pathname + location.hash;
+        } else {
+          routeEl.textContent = path;
+        }
+        // Flash brightness on fresh events
+        if (lastEvt && (Date.now() - lastEvt.timestamp) < 2000) {
+          routeEl.style.outline = '1px solid ' + colors.fg;
+          clearTimeout(__zqRouteFadeTimer);
+          __zqRouteFadeTimer = setTimeout(function() {
+            var el = document.getElementById('__zq_bar_route');
+            if (el) el.style.outline = 'none';
+          }, 1800);
+        } else {
+          routeEl.style.outline = 'none';
+        }
       }
       if (compsEl) {
         var count = 0;
