@@ -863,6 +863,8 @@ query.children = (parentId) => {
   const p = document.getElementById(parentId);
   return new ZQueryCollection(p ? Array.from(p.children) : []);
 };
+query.qs  = (sel, ctx = document) => ctx.querySelector(sel);
+query.qsa = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
 // Create element shorthand — returns ZQueryCollection for chaining
 query.create = (tag, attrs = {}, ...children) => {

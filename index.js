@@ -19,9 +19,13 @@ import { morph, morphElement } from './src/diff.js';
 import { safeEval } from './src/expression.js';
 import {
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
+  escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, EventBus, bus,
+  range, unique, chunk, groupBy,
+  pick, omit, getPath, setPath, isEmpty,
+  capitalize, truncate, clamp,
+  memoize, retry, timeout,
 } from './src/utils.js';
 import { ZQueryError, ErrorCode, onError, reportError, guardCallback, validate } from './src/errors.js';
 
@@ -61,6 +65,8 @@ Object.defineProperty($, 'name', {
   value: query.name, writable: true, configurable: true
 });
 $.children = query.children;
+$.qs       = query.qs;
+$.qsa      = query.qsa;
 
 // --- Collection selector ---------------------------------------------------
 /**
@@ -129,6 +135,7 @@ $.pipe       = pipe;
 $.once       = once;
 $.sleep      = sleep;
 $.escapeHtml = escapeHtml;
+$.stripHtml  = stripHtml;
 $.html       = html;
 $.trust      = trust;
 $.TrustedHTML = TrustedHTML;
@@ -144,6 +151,21 @@ $.storage    = storage;
 $.session    = session;
 $.EventBus   = EventBus;
 $.bus        = bus;
+$.range      = range;
+$.unique     = unique;
+$.chunk      = chunk;
+$.groupBy    = groupBy;
+$.pick       = pick;
+$.omit       = omit;
+$.getPath    = getPath;
+$.setPath    = setPath;
+$.isEmpty    = isEmpty;
+$.capitalize = capitalize;
+$.truncate   = truncate;
+$.clamp      = clamp;
+$.memoize    = memoize;
+$.retry      = retry;
+$.timeout    = timeout;
 
 // --- Error handling --------------------------------------------------------
 $.onError        = onError;
@@ -191,9 +213,13 @@ export {
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, validate,
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
+  escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, EventBus, bus,
+  range, unique, chunk, groupBy,
+  pick, omit, getPath, setPath, isEmpty,
+  capitalize, truncate, clamp,
+  memoize, retry, timeout,
 };
 
 export default $;

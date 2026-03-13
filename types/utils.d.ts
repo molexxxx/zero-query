@@ -48,6 +48,9 @@ export function sleep(ms: number): Promise<void>;
 /** Escape HTML entities: `&`, `<`, `>`, `"`, `'`. */
 export function escapeHtml(str: string): string;
 
+/** Strip all HTML tags from a string, returning only text content. */
+export function stripHtml(str: string): string;
+
 /**
  * Tagged template literal that auto-escapes interpolated values.
  * Use `$.trust()` to mark values as safe.
@@ -140,3 +143,103 @@ export interface EventBus {
 
 /** Global event bus instance. */
 export declare const bus: EventBus;
+
+// ---------------------------------------------------------------------------
+// Array Utilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a range of numbers.
+ * - `range(n)` → `[0, 1, ..., n-1]`
+ * - `range(start, end)` → `[start, start+1, ..., end-1]`
+ * - `range(start, end, step)` → stepped range
+ */
+export function range(end: number): number[];
+export function range(start: number, end: number, step?: number): number[];
+
+/** Deduplicate an array. Optional `keyFn` for object identity. */
+export function unique<T>(arr: T[], keyFn?: (item: T) => any): T[];
+
+/** Split an array into chunks of `size`. */
+export function chunk<T>(arr: T[], size: number): T[][];
+
+/** Group array elements by a key function. */
+export function groupBy<T>(arr: T[], keyFn: (item: T) => string): Record<string, T[]>;
+
+// ---------------------------------------------------------------------------
+// Object Utilities (extended)
+// ---------------------------------------------------------------------------
+
+/** Pick specified keys from an object. */
+export function pick<T extends object, K extends keyof T>(obj: T, keys: K[]): Pick<T, K>;
+
+/** Omit specified keys from an object. */
+export function omit<T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K>;
+
+/** Get a deeply nested value by dot-path string. */
+export function getPath<T = any>(obj: any, path: string, fallback?: T): T;
+
+/** Set a deeply nested value by dot-path string. Returns the object. */
+export function setPath<T extends object>(obj: T, path: string, value: any): T;
+
+/** Check if a value is empty (null, undefined, '', [], {}, empty Map/Set). */
+export function isEmpty(val: any): boolean;
+
+// ---------------------------------------------------------------------------
+// String Utilities (extended)
+// ---------------------------------------------------------------------------
+
+/** Capitalize the first letter and lowercase the rest. */
+export function capitalize(str: string): string;
+
+/** Truncate a string to `maxLen`, appending `suffix` (default `'…'`). */
+export function truncate(str: string, maxLen: number, suffix?: string): string;
+
+// ---------------------------------------------------------------------------
+// Number Utilities
+// ---------------------------------------------------------------------------
+
+/** Clamp a number between `min` and `max` (inclusive). */
+export function clamp(val: number, min: number, max: number): number;
+
+// ---------------------------------------------------------------------------
+// Function Utilities (extended)
+// ---------------------------------------------------------------------------
+
+/** Memoized function with `.clear()` to reset cache. */
+export interface MemoizedFunction<T extends (...args: any[]) => any> {
+  (...args: Parameters<T>): ReturnType<T>;
+  clear(): void;
+}
+
+/**
+ * Memoize a function. Supports custom key function or `{ maxSize }` option.
+ */
+export function memoize<T extends (...args: any[]) => any>(fn: T, keyFn?: (...args: Parameters<T>) => any): MemoizedFunction<T>;
+export function memoize<T extends (...args: any[]) => any>(fn: T, opts?: { maxSize?: number }): MemoizedFunction<T>;
+
+// ---------------------------------------------------------------------------
+// Async Utilities
+// ---------------------------------------------------------------------------
+
+/** Options for `retry`. */
+export interface RetryOptions {
+  /** Max attempts (default `3`). */
+  attempts?: number;
+  /** Initial delay in ms (default `1000`). */
+  delay?: number;
+  /** Backoff multiplier (default `1`). */
+  backoff?: number;
+}
+
+/**
+ * Retry an async function with configurable backoff.
+ * The function receives the current attempt number (1-based).
+ */
+export function retry<T>(fn: (attempt: number) => Promise<T>, opts?: RetryOptions): Promise<T>;
+
+/**
+ * Race a promise against a timeout.
+ * Rejects with an Error if the timeout is reached first.
+ */
+export function timeout<T>(promise: Promise<T>, ms: number, message?: string): Promise<T>;

@@ -103,6 +103,8 @@ zQuery gives you a full set of selectors for every common lookup pattern — by 
 | --- | --- | --- |
 | `$.id(id)` | `Element \| null` | `document.getElementById` |
 | `$.class(name)` | `Element \| null` | First element with the class — `querySelector('.name')` |
+| `$.qs(selector, ctx?)` | `Element \| null` | `querySelector` — any CSS selector, optional context element |
+| `$.qsa(selector, ctx?)` | `Element[]` | `querySelectorAll` — returns a real `Array` of raw elements |
 
 **Multi-element shortcuts** — return a `ZQueryCollection`:
 
@@ -115,7 +117,7 @@ zQuery gives you a full set of selectors for every common lookup pattern — by 
 
 > `queryAll` is the ES module export name for `$.all()` — they are identical. Use `queryAll` in `import { queryAll } from '...'` contexts.
 
-> **Which one should I use?** `$()` is the go-to — it returns a chainable collection for any CSS selector, HTML string, or element. Use `$.id()` / `$.class()` when you need a raw DOM element for the native API. Use `$.classes()` / `$.tag()` / `$.name()` / `$.children()` as convenient shortcuts for common multi-element lookups.
+> **Which one should I use?** `$()` is the go-to — it returns a chainable collection for any CSS selector, HTML string, or element. Use `$.id()` / `$.class()` / `$.qs()` when you need a raw DOM element for the native API. Use `$.qsa()` when you need an array of raw elements with full Array methods. Use `$.classes()` / `$.tag()` / `$.name()` / `$.children()` as convenient shortcuts for common multi-element lookups.
 
 ### Selecting Elements
 
@@ -134,6 +136,8 @@ $('.card').addClass('loaded').css({ opacity: '1' });
 // Raw-element shortcuts for native DOM API
 const app      = $.id('app');         // raw Element
 const hero     = $.class('hero');     // raw Element
+const active   = $.qs('.nav-item.active');  // any CSS selector → raw Element
+const items    = $.qsa('li', navEl);        // scoped querySelectorAll → Element[]
 
 // Multi-element shortcuts (also return ZQueryCollection)
 const errors   = $.classes('field-error');
@@ -143,7 +147,7 @@ const navItems = $.children('main-nav');
 
 ### Working with Single Elements
 
-`$.id()` and `$.class()` return **raw DOM elements** — use the native API directly:
+`$.id()`, `$.class()`, `$.qs()`, and `$.qsa()` return **raw DOM elements** — use the native API directly:
 
 ```js
 // Native DOM API on raw elements
@@ -151,6 +155,10 @@ $.id('sidebar').classList.toggle('collapsed');
 $.id('confirm-dialog').style.display = 'flex';
 $.id('cart-count').textContent = '3';
 $.class('avatar').setAttribute('src', user.photoUrl);
+
+// $.qs() — use any CSS selector for raw elements
+$.qs('[data-active]').dataset.active = 'false';
+$.qsa('.card').forEach(el => el.classList.add('loaded'));
 
 // Or chain via $() for the same element
 $('#sidebar').toggleClass('collapsed');
@@ -2024,6 +2032,18 @@ $.escapeHtml('<script>alert("xss")</script>');
 // '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
 ```
 
+#### `$.stripHtml(str)`
+
+Strip all HTML tags from a string, returning only the text content.
+
+```js
+$.stripHtml('<p>Hello <b>World</b></p>');
+// 'Hello World'
+
+$.stripHtml('<a href="#">click here</a>');
+// 'click here'
+```
+
 #### `` $.html`template` ``
 
 Tagged template literal that auto-escapes interpolated values:
@@ -2161,6 +2181,185 @@ $.bus.on('cart:updated', (data) => {
 
 ---
 
+### Array Utilities
+
+#### `$.range(startOrEnd, end?, step?)`
+
+Generate a numeric range.
+
+```js
+$.range(5);            // [0, 1, 2, 3, 4]
+$.range(2, 6);         // [2, 3, 4, 5]
+$.range(0, 10, 3);     // [0, 3, 6, 9]
+$.range(5, 0, -1);     // [5, 4, 3, 2, 1]
+```
+
+#### `$.unique(arr, keyFn?)`
+
+Deduplicate an array. Optional key function for object identity.
+
+```js
+$.unique([1, 2, 2, 3, 1]);                         // [1, 2, 3]
+$.unique(users, u => u.id);                         // dedupe by id
+```
+
+#### `$.chunk(arr, size)`
+
+Split an array into chunks.
+
+```js
+$.chunk([1, 2, 3, 4, 5], 2);   // [[1, 2], [3, 4], [5]]
+```
+
+#### `$.groupBy(arr, keyFn)`
+
+Group array elements by a key function.
+
+```js
+$.groupBy(items, i => i.type);
+// { fruit: [...], veg: [...] }
+```
+
+---
+
+### Object Utilities (extended)
+
+#### `$.pick(obj, keys)`
+
+Pick specified keys from an object.
+
+```js
+$.pick({ a: 1, b: 2, c: 3 }, ['a', 'c']);   // { a: 1, c: 3 }
+```
+
+#### `$.omit(obj, keys)`
+
+Omit specified keys from an object.
+
+```js
+$.omit({ a: 1, b: 2, c: 3 }, ['b']);   // { a: 1, c: 3 }
+```
+
+#### `$.getPath(obj, path, fallback?)`
+
+Get a deeply nested value by dot-path string. Returns `fallback` (default `undefined`) if any key along the path is missing.
+
+```js
+$.getPath(config, 'server.db.host');             // 'localhost'
+$.getPath(config, 'server.db.port', 5432);       // fallback
+```
+
+#### `$.setPath(obj, path, value)`
+
+Set a deeply nested value by dot-path string. Creates intermediate objects as needed. Returns the object.
+
+```js
+const cfg = {};
+$.setPath(cfg, 'server.db.host', 'localhost');
+// cfg → { server: { db: { host: 'localhost' } } }
+```
+
+#### `$.isEmpty(val)`
+
+Check if a value is "empty" — `null`, `undefined`, `''`, `[]`, `{}`, or empty `Map`/`Set`.
+
+```js
+$.isEmpty(null);       // true
+$.isEmpty('');         // true
+$.isEmpty([]);         // true
+$.isEmpty({});         // true
+$.isEmpty(0);          // false
+$.isEmpty(false);      // false
+```
+
+---
+
+### String Utilities (extended)
+
+#### `$.capitalize(str)`
+
+Capitalize the first letter and lowercase the rest.
+
+```js
+$.capitalize('hello');   // 'Hello'
+$.capitalize('hELLO');   // 'Hello'
+```
+
+#### `$.truncate(str, maxLen, suffix?)`
+
+Truncate a string with a suffix (default `'…'`).
+
+```js
+$.truncate('Hello, World!', 8);           // 'Hello, …'
+$.truncate('Hello, World!', 8, '---');    // 'Hello---'
+```
+
+---
+
+### Number Utilities
+
+#### `$.clamp(val, min, max)`
+
+Clamp a number between min and max (inclusive).
+
+```js
+$.clamp(-5, 0, 100);    // 0
+$.clamp(150, 0, 100);   // 100
+$.clamp(50, 0, 100);    // 50
+```
+
+---
+
+### Function Utilities (extended)
+
+#### `$.memoize(fn, keyFnOrOpts?)`
+
+Memoize a function. Accepts an optional key function or `{ maxSize }` for LRU eviction. Returns a function with a `.clear()` method.
+
+```js
+const expensive = $.memoize(computeLayout);
+expensive(1024);  // computes
+expensive(1024);  // cache hit
+
+// Custom key
+const add = $.memoize((a, b) => a + b, (a, b) => `${a}:${b}`);
+
+// LRU with maxSize
+const cached = $.memoize(fetchData, { maxSize: 100 });
+cached.clear();   // reset cache
+```
+
+---
+
+### Async Utilities
+
+#### `$.retry(fn, opts?)`
+
+Retry an async function with configurable backoff. The function receives the attempt number (1-based).
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `attempts` | `3` | Max attempts |
+| `delay` | `1000` | Initial delay (ms) |
+| `backoff` | `1` | Delay multiplier between attempts |
+
+```js
+const data = await $.retry(async (attempt) => {
+  return await $.http.get('/api/data');
+}, { attempts: 3, delay: 500, backoff: 2 });
+```
+
+#### `$.timeout(promise, ms, message?)`
+
+Race a promise against a timeout. Rejects with an Error if the timeout is reached first.
+
+```js
+const data = await $.timeout(fetch('/api/slow'), 5000);
+const data = await $.timeout(fetch('/api'), 3000, 'API timed out');
+```
+
+---
+
 ## Error Handling
 
 zQuery includes a structured error-handling system so that runtime errors across every subsystem (reactive, component, router, store, HTTP, expression parser) are reported consistently. All internal errors are wrapped in a `ZQueryError` with a machine-readable code, a human-readable message, optional context, and the original cause.
@@ -2278,6 +2477,23 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.TrustedHTML` | `TrustedHTML` constructor class — wrap strings to bypass `$.html` escaping. Create instances via `$.trust()` or `new $.TrustedHTML(str)`. |
 | `$.EventBus` | `EventBus` constructor class — create additional event bus instances beyond the default `$.bus` singleton. |
+| `$.qs(sel, ctx?)` | Raw `querySelector` — any CSS selector, optional context element. Returns `Element \| null`. |
+| `$.qsa(sel, ctx?)` | Raw `querySelectorAll` — returns a real `Array<Element>` with full Array methods. |
+| `$.range(...)` | Generate a numeric range array. `range(5)` → `[0..4]`. |
+| `$.unique(arr, keyFn?)` | Deduplicate an array. Optional key function for objects. |
+| `$.chunk(arr, size)` | Split an array into chunks of `size`. |
+| `$.groupBy(arr, keyFn)` | Group array elements by a key function. |
+| `$.pick(obj, keys)` | Pick specified keys from an object. |
+| `$.omit(obj, keys)` | Omit specified keys from an object. |
+| `$.getPath(obj, path, fallback?)` | Safe deep access by dot-path string. |
+| `$.setPath(obj, path, value)` | Deep set by dot-path string. Creates intermediates. |
+| `$.isEmpty(val)` | Check if `null`/`undefined`/`''`/`[]`/`{}`/empty Map or Set. |
+| `$.capitalize(str)` | Capitalize first letter, lowercase rest. |
+| `$.truncate(str, maxLen, suffix?)` | Truncate with suffix (default `'…'`). |
+| `$.clamp(val, min, max)` | Clamp a number between min and max. |
+| `$.memoize(fn, keyFnOrOpts?)` | Memoize with optional key function or `{ maxSize }` LRU. Has `.clear()`. |
+| `$.retry(fn, opts?)` | Retry async function with configurable backoff. |
+| `$.timeout(promise, ms, msg?)` | Race a promise against a timeout. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |
 | `window.zQuery` | Global alias (auto-set in browser). |
@@ -2382,9 +2598,13 @@ import {
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, validate,
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
+  escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, EventBus, bus,
+  range, unique, chunk, groupBy,
+  pick, omit, getPath, setPath, isEmpty,
+  capitalize, truncate, clamp,
+  memoize, retry, timeout,
 } from '@tonywied17/zero-query';
 ```
 

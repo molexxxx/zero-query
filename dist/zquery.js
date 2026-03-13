@@ -1218,6 +1218,8 @@ query.children = (parentId) => {
   const p = document.getElementById(parentId);
   return new ZQueryCollection(p ? Array.from(p.children) : []);
 };
+query.qs  = (sel, ctx = document) => ctx.querySelector(sel);
+query.qsa = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
 // Create element shorthand — returns ZQueryCollection for chaining
 query.create = (tag, attrs = {}, ...children) => {
@@ -5185,6 +5187,10 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => map[c]);
 }
 
+function stripHtml(str) {
+  return String(str).replace(/<[^>]*>/g, '');
+}
+
 /**
  * Template tag for auto-escaping interpolated values
  * Usage: $.html`<div>${userInput}</div>`
@@ -5389,6 +5395,181 @@ class EventBus {
 
 const bus = new EventBus();
 
+
+// ---------------------------------------------------------------------------
+// Array utilities
+// ---------------------------------------------------------------------------
+
+function range(startOrEnd, end, step) {
+  let s, e, st;
+  if (end === undefined) { s = 0; e = startOrEnd; st = 1; }
+  else { s = startOrEnd; e = end; st = step !== undefined ? step : 1; }
+  if (st === 0) return [];
+  const result = [];
+  if (st > 0) { for (let i = s; i < e; i += st) result.push(i); }
+  else        { for (let i = s; i > e; i += st) result.push(i); }
+  return result;
+}
+
+function unique(arr, keyFn) {
+  if (!keyFn) return [...new Set(arr)];
+  const seen = new Set();
+  return arr.filter(item => {
+    const k = keyFn(item);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function chunk(arr, size) {
+  const result = [];
+  for (let i = 0; i < arr.length; i += size) result.push(arr.slice(i, i + size));
+  return result;
+}
+
+function groupBy(arr, keyFn) {
+  const result = {};
+  for (const item of arr) {
+    const k = keyFn(item);
+    (result[k] ??= []).push(item);
+  }
+  return result;
+}
+
+
+// ---------------------------------------------------------------------------
+// Object utilities
+// ---------------------------------------------------------------------------
+
+function pick(obj, keys) {
+  const result = {};
+  for (const k of keys) { if (k in obj) result[k] = obj[k]; }
+  return result;
+}
+
+function omit(obj, keys) {
+  const exclude = new Set(keys);
+  const result = {};
+  for (const k of Object.keys(obj)) { if (!exclude.has(k)) result[k] = obj[k]; }
+  return result;
+}
+
+function getPath(obj, path, fallback) {
+  const keys = path.split('.');
+  let cur = obj;
+  for (const k of keys) {
+    if (cur == null || typeof cur !== 'object') return fallback;
+    cur = cur[k];
+  }
+  return cur === undefined ? fallback : cur;
+}
+
+function setPath(obj, path, value) {
+  const keys = path.split('.');
+  let cur = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const k = keys[i];
+    if (cur[k] == null || typeof cur[k] !== 'object') cur[k] = {};
+    cur = cur[k];
+  }
+  cur[keys[keys.length - 1]] = value;
+  return obj;
+}
+
+function isEmpty(val) {
+  if (val == null) return true;
+  if (typeof val === 'string' || Array.isArray(val)) return val.length === 0;
+  if (val instanceof Map || val instanceof Set) return val.size === 0;
+  if (typeof val === 'object') return Object.keys(val).length === 0;
+  return false;
+}
+
+
+// ---------------------------------------------------------------------------
+// String utilities
+// ---------------------------------------------------------------------------
+
+function capitalize(str) {
+  if (!str) return '';
+  return str[0].toUpperCase() + str.slice(1).toLowerCase();
+}
+
+function truncate(str, maxLen, suffix = '…') {
+  if (str.length <= maxLen) return str;
+  const end = Math.max(0, maxLen - suffix.length);
+  return str.slice(0, end) + suffix;
+}
+
+
+// ---------------------------------------------------------------------------
+// Number utilities
+// ---------------------------------------------------------------------------
+
+function clamp(val, min, max) {
+  return val < min ? min : val > max ? max : val;
+}
+
+
+// ---------------------------------------------------------------------------
+// Function utilities
+// ---------------------------------------------------------------------------
+
+function memoize(fn, keyFnOrOpts) {
+  let keyFn, maxSize = 0;
+  if (typeof keyFnOrOpts === 'function') keyFn = keyFnOrOpts;
+  else if (keyFnOrOpts && typeof keyFnOrOpts === 'object') maxSize = keyFnOrOpts.maxSize || 0;
+
+  const cache = new Map();
+
+  const memoized = (...args) => {
+    const key = keyFn ? keyFn(...args) : args[0];
+    if (cache.has(key)) return cache.get(key);
+    const result = fn(...args);
+    cache.set(key, result);
+    if (maxSize > 0 && cache.size > maxSize) {
+      cache.delete(cache.keys().next().value);
+    }
+    return result;
+  };
+
+  memoized.clear = () => cache.clear();
+  return memoized;
+}
+
+
+// ---------------------------------------------------------------------------
+// Async utilities
+// ---------------------------------------------------------------------------
+
+function retry(fn, opts = {}) {
+  const { attempts = 3, delay = 1000, backoff = 1 } = opts;
+  return new Promise((resolve, reject) => {
+    let attempt = 0, currentDelay = delay;
+    const tryOnce = () => {
+      attempt++;
+      fn(attempt).then(resolve, (err) => {
+        if (attempt >= attempts) return reject(err);
+        const d = currentDelay;
+        currentDelay *= backoff;
+        setTimeout(tryOnce, d);
+      });
+    };
+    tryOnce();
+  });
+}
+
+function timeout(promise, ms, message) {
+  let timer;
+  const race = Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message || `Timed out after ${ms}ms`)), ms);
+    })
+  ]);
+  return race.finally(() => clearTimeout(timer));
+}
+
 // --- index.js (assembly) ------------------------------------------
 /**
  * ┌---------------------------------------------------------┐
@@ -5446,6 +5627,8 @@ Object.defineProperty($, 'name', {
   value: query.name, writable: true, configurable: true
 });
 $.children = query.children;
+$.qs       = query.qs;
+$.qsa      = query.qsa;
 
 // --- Collection selector ---------------------------------------------------
 /**
@@ -5514,6 +5697,7 @@ $.pipe       = pipe;
 $.once       = once;
 $.sleep      = sleep;
 $.escapeHtml = escapeHtml;
+$.stripHtml  = stripHtml;
 $.html       = html;
 $.trust      = trust;
 $.TrustedHTML = TrustedHTML;
@@ -5529,6 +5713,21 @@ $.storage    = storage;
 $.session    = session;
 $.EventBus   = EventBus;
 $.bus        = bus;
+$.range      = range;
+$.unique     = unique;
+$.chunk      = chunk;
+$.groupBy    = groupBy;
+$.pick       = pick;
+$.omit       = omit;
+$.getPath    = getPath;
+$.setPath    = setPath;
+$.isEmpty    = isEmpty;
+$.capitalize = capitalize;
+$.truncate   = truncate;
+$.clamp      = clamp;
+$.memoize    = memoize;
+$.retry      = retry;
+$.timeout    = timeout;
 
 // --- Error handling --------------------------------------------------------
 $.onError        = onError;
@@ -5539,7 +5738,7 @@ $.validate       = validate;
 
 // --- Meta ------------------------------------------------------------------
 $.version = '0.9.5';
-$.libSize = '~95 KB';
+$.libSize = '~98 KB';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

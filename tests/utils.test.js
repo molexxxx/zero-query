@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, uuid, camelCase, kebabCase,
+  escapeHtml, stripHtml, html, trust, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, bus,
+  // New utilities
+  range, unique, chunk, groupBy,
+  pick, omit, getPath, setPath, isEmpty,
+  capitalize, truncate,
+  clamp,
+  memoize,
+  retry, timeout,
 } from '../src/utils.js';
 
 
@@ -143,6 +150,47 @@ describe('escapeHtml', () => {
 
   it('handles empty string', () => {
     expect(escapeHtml('')).toBe('');
+  });
+});
+
+
+describe('stripHtml', () => {
+  it('removes HTML tags from a string', () => {
+    expect(stripHtml('<p>Hello <b>World</b></p>')).toBe('Hello World');
+  });
+
+  it('handles self-closing tags', () => {
+    expect(stripHtml('Line one<br/>Line two')).toBe('Line oneLine two');
+  });
+
+  it('handles attributes inside tags', () => {
+    expect(stripHtml('<a href="https://example.com" class="link">click</a>')).toBe('click');
+  });
+
+  it('strips nested tags', () => {
+    expect(stripHtml('<div><p><span>deep</span></p></div>')).toBe('deep');
+  });
+
+  it('handles string with no tags', () => {
+    expect(stripHtml('no tags here')).toBe('no tags here');
+  });
+
+  it('handles empty string', () => {
+    expect(stripHtml('')).toBe('');
+  });
+
+  it('converts non-strings to string first', () => {
+    expect(stripHtml(42)).toBe('42');
+    expect(stripHtml(null)).toBe('null');
+  });
+
+  it('preserves text content between multiple tags', () => {
+    expect(stripHtml('<li>one</li><li>two</li><li>three</li>')).toBe('onetwothree');
+  });
+
+  it('strips angle-bracket patterns that look like tags', () => {
+    expect(stripHtml('a < b > c')).toBe('a  c');
+    expect(stripHtml('5 > 3 and 2 < 4')).toBe('5 > 3 and 2 < 4');
   });
 });
 
@@ -694,5 +742,499 @@ describe('storage — parse error fallback', () => {
     localStorage.setItem('bad', '{invalid json');
     expect(storage.get('bad', 'default')).toBe('default');
     localStorage.removeItem('bad');
+  });
+});
+
+
+// ===========================================================================
+// NEW UTILITIES — Array
+// ===========================================================================
+
+describe('range', () => {
+  it('generates range from 0 to n-1 with single arg', () => {
+    expect(range(5)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it('generates range from start to end-1', () => {
+    expect(range(2, 6)).toEqual([2, 3, 4, 5]);
+  });
+
+  it('generates range with custom step', () => {
+    expect(range(0, 10, 3)).toEqual([0, 3, 6, 9]);
+  });
+
+  it('handles negative step (descending)', () => {
+    expect(range(5, 0, -1)).toEqual([5, 4, 3, 2, 1]);
+  });
+
+  it('returns empty array for zero or negative count', () => {
+    expect(range(0)).toEqual([]);
+    expect(range(-3)).toEqual([]);
+  });
+
+  it('returns empty array when step goes wrong direction', () => {
+    expect(range(0, 5, -1)).toEqual([]);
+    expect(range(5, 0, 1)).toEqual([]);
+  });
+
+  it('handles step of 1 as default', () => {
+    expect(range(1, 4)).toEqual([1, 2, 3]);
+  });
+
+  it('handles float steps', () => {
+    const r = range(0, 1, 0.25);
+    expect(r.length).toBe(4);
+    expect(r[0]).toBeCloseTo(0);
+    expect(r[3]).toBeCloseTo(0.75);
+  });
+});
+
+
+describe('unique', () => {
+  it('deduplicates primitive arrays', () => {
+    expect(unique([1, 2, 2, 3, 1, 3])).toEqual([1, 2, 3]);
+  });
+
+  it('preserves order (first occurrence)', () => {
+    expect(unique([3, 1, 2, 1, 3])).toEqual([3, 1, 2]);
+  });
+
+  it('handles strings', () => {
+    expect(unique(['a', 'b', 'a', 'c'])).toEqual(['a', 'b', 'c']);
+  });
+
+  it('deduplicates by key function', () => {
+    const items = [{ id: 1, n: 'a' }, { id: 2, n: 'b' }, { id: 1, n: 'c' }];
+    const result = unique(items, item => item.id);
+    expect(result).toEqual([{ id: 1, n: 'a' }, { id: 2, n: 'b' }]);
+  });
+
+  it('handles empty array', () => {
+    expect(unique([])).toEqual([]);
+  });
+});
+
+
+describe('chunk', () => {
+  it('splits array into chunks of given size', () => {
+    expect(chunk([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
+  });
+
+  it('returns single chunk when size >= length', () => {
+    expect(chunk([1, 2, 3], 5)).toEqual([[1, 2, 3]]);
+  });
+
+  it('handles exact division', () => {
+    expect(chunk([1, 2, 3, 4], 2)).toEqual([[1, 2], [3, 4]]);
+  });
+
+  it('handles chunk size of 1', () => {
+    expect(chunk([1, 2, 3], 1)).toEqual([[1], [2], [3]]);
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(chunk([], 3)).toEqual([]);
+  });
+});
+
+
+describe('groupBy', () => {
+  it('groups by string key function', () => {
+    const items = [
+      { type: 'fruit', name: 'apple' },
+      { type: 'veg', name: 'carrot' },
+      { type: 'fruit', name: 'banana' },
+    ];
+    const result = groupBy(items, item => item.type);
+    expect(result).toEqual({
+      fruit: [{ type: 'fruit', name: 'apple' }, { type: 'fruit', name: 'banana' }],
+      veg: [{ type: 'veg', name: 'carrot' }],
+    });
+  });
+
+  it('groups by computed value', () => {
+    const nums = [1, 2, 3, 4, 5, 6];
+    const result = groupBy(nums, n => n % 2 === 0 ? 'even' : 'odd');
+    expect(result.even).toEqual([2, 4, 6]);
+    expect(result.odd).toEqual([1, 3, 5]);
+  });
+
+  it('handles empty array', () => {
+    expect(groupBy([], () => 'key')).toEqual({});
+  });
+});
+
+
+// ===========================================================================
+// NEW UTILITIES — Object
+// ===========================================================================
+
+describe('pick', () => {
+  it('picks specified keys from object', () => {
+    const obj = { a: 1, b: 2, c: 3, d: 4 };
+    expect(pick(obj, ['a', 'c'])).toEqual({ a: 1, c: 3 });
+  });
+
+  it('ignores keys that do not exist', () => {
+    expect(pick({ a: 1 }, ['a', 'z'])).toEqual({ a: 1 });
+  });
+
+  it('returns empty object for empty keys', () => {
+    expect(pick({ a: 1 }, [])).toEqual({});
+  });
+
+  it('handles undefined/null values in picked keys', () => {
+    expect(pick({ a: null, b: undefined, c: 0 }, ['a', 'b', 'c'])).toEqual({ a: null, b: undefined, c: 0 });
+  });
+});
+
+
+describe('omit', () => {
+  it('omits specified keys from object', () => {
+    const obj = { a: 1, b: 2, c: 3, d: 4 };
+    expect(omit(obj, ['b', 'd'])).toEqual({ a: 1, c: 3 });
+  });
+
+  it('returns full object when no keys match', () => {
+    expect(omit({ a: 1, b: 2 }, ['z'])).toEqual({ a: 1, b: 2 });
+  });
+
+  it('returns empty object when all keys omitted', () => {
+    expect(omit({ a: 1, b: 2 }, ['a', 'b'])).toEqual({});
+  });
+});
+
+
+describe('getPath', () => {
+  it('gets nested value by dot path', () => {
+    const obj = { a: { b: { c: 42 } } };
+    expect(getPath(obj, 'a.b.c')).toBe(42);
+  });
+
+  it('gets top-level value', () => {
+    expect(getPath({ x: 10 }, 'x')).toBe(10);
+  });
+
+  it('returns fallback for missing path', () => {
+    expect(getPath({ a: 1 }, 'b.c', 'default')).toBe('default');
+  });
+
+  it('returns undefined by default for missing path', () => {
+    expect(getPath({}, 'a.b')).toBeUndefined();
+  });
+
+  it('handles null intermediate values', () => {
+    expect(getPath({ a: null }, 'a.b', 'nope')).toBe('nope');
+  });
+
+  it('works with array indices', () => {
+    const obj = { items: ['zero', 'one', 'two'] };
+    expect(getPath(obj, 'items.1')).toBe('one');
+  });
+});
+
+
+describe('setPath', () => {
+  it('sets nested value by dot path', () => {
+    const obj = { a: { b: { c: 1 } } };
+    setPath(obj, 'a.b.c', 99);
+    expect(obj.a.b.c).toBe(99);
+  });
+
+  it('creates intermediate objects when missing', () => {
+    const obj = {};
+    setPath(obj, 'a.b.c', 42);
+    expect(obj.a.b.c).toBe(42);
+  });
+
+  it('sets top-level value', () => {
+    const obj = {};
+    setPath(obj, 'x', 10);
+    expect(obj.x).toBe(10);
+  });
+
+  it('overwrites existing intermediate non-object', () => {
+    const obj = { a: 5 };
+    setPath(obj, 'a.b', 10);
+    expect(obj.a.b).toBe(10);
+  });
+});
+
+
+describe('isEmpty', () => {
+  it('returns true for null and undefined', () => {
+    expect(isEmpty(null)).toBe(true);
+    expect(isEmpty(undefined)).toBe(true);
+  });
+
+  it('returns true for empty string', () => {
+    expect(isEmpty('')).toBe(true);
+  });
+
+  it('returns true for empty array', () => {
+    expect(isEmpty([])).toBe(true);
+  });
+
+  it('returns true for empty object', () => {
+    expect(isEmpty({})).toBe(true);
+  });
+
+  it('returns false for non-empty string', () => {
+    expect(isEmpty('hello')).toBe(false);
+  });
+
+  it('returns false for non-empty array', () => {
+    expect(isEmpty([1])).toBe(false);
+  });
+
+  it('returns false for non-empty object', () => {
+    expect(isEmpty({ a: 1 })).toBe(false);
+  });
+
+  it('returns false for number zero', () => {
+    expect(isEmpty(0)).toBe(false);
+  });
+
+  it('returns false for boolean false', () => {
+    expect(isEmpty(false)).toBe(false);
+  });
+
+  it('returns true for empty Map and Set', () => {
+    expect(isEmpty(new Map())).toBe(true);
+    expect(isEmpty(new Set())).toBe(true);
+  });
+
+  it('returns false for non-empty Map and Set', () => {
+    expect(isEmpty(new Map([['a', 1]]))).toBe(false);
+    expect(isEmpty(new Set([1]))).toBe(false);
+  });
+});
+
+
+// ===========================================================================
+// NEW UTILITIES — String
+// ===========================================================================
+
+describe('capitalize', () => {
+  it('capitalizes first letter', () => {
+    expect(capitalize('hello')).toBe('Hello');
+  });
+
+  it('handles single character', () => {
+    expect(capitalize('a')).toBe('A');
+  });
+
+  it('handles empty string', () => {
+    expect(capitalize('')).toBe('');
+  });
+
+  it('lowercases the rest', () => {
+    expect(capitalize('hELLO')).toBe('Hello');
+  });
+
+  it('handles already capitalized', () => {
+    expect(capitalize('Hello')).toBe('Hello');
+  });
+});
+
+
+describe('truncate', () => {
+  it('truncates long strings with ellipsis', () => {
+    expect(truncate('Hello, World!', 8)).toBe('Hello, \u2026');
+  });
+
+  it('does not truncate short strings', () => {
+    expect(truncate('Hi', 10)).toBe('Hi');
+  });
+
+  it('uses custom suffix', () => {
+    expect(truncate('Hello, World!', 8, '---')).toBe('Hello---');
+  });
+
+  it('handles exact length (no truncation needed)', () => {
+    expect(truncate('Hello', 5)).toBe('Hello');
+  });
+
+  it('handles empty string', () => {
+    expect(truncate('', 5)).toBe('');
+  });
+
+  it('handles suffix longer than maxLen gracefully', () => {
+    expect(truncate('Hello, World!', 2)).toBe('H\u2026');
+  });
+});
+
+
+// ===========================================================================
+// NEW UTILITIES — Number
+// ===========================================================================
+
+describe('clamp', () => {
+  it('clamps value below min to min', () => {
+    expect(clamp(-5, 0, 100)).toBe(0);
+  });
+
+  it('clamps value above max to max', () => {
+    expect(clamp(150, 0, 100)).toBe(100);
+  });
+
+  it('returns value when within range', () => {
+    expect(clamp(50, 0, 100)).toBe(50);
+  });
+
+  it('handles min === max', () => {
+    expect(clamp(50, 10, 10)).toBe(10);
+  });
+
+  it('handles negative ranges', () => {
+    expect(clamp(-50, -100, -10)).toBe(-50);
+    expect(clamp(-200, -100, -10)).toBe(-100);
+  });
+
+  it('clamps at boundaries', () => {
+    expect(clamp(0, 0, 100)).toBe(0);
+    expect(clamp(100, 0, 100)).toBe(100);
+  });
+});
+
+
+// ===========================================================================
+// NEW UTILITIES — Function
+// ===========================================================================
+
+describe('memoize', () => {
+  it('caches results for same arguments', () => {
+    const fn = vi.fn(x => x * 2);
+    const memoized = memoize(fn);
+    expect(memoized(5)).toBe(10);
+    expect(memoized(5)).toBe(10);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('recomputes for different arguments', () => {
+    const fn = vi.fn(x => x * 2);
+    const memoized = memoize(fn);
+    expect(memoized(5)).toBe(10);
+    expect(memoized(3)).toBe(6);
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('uses custom key function', () => {
+    const fn = vi.fn((a, b) => a + b);
+    const memoized = memoize(fn, (a, b) => `${a}:${b}`);
+    expect(memoized(1, 2)).toBe(3);
+    expect(memoized(1, 2)).toBe(3);
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(memoized(2, 1)).toBe(3);
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('has .clear() to reset cache', () => {
+    const fn = vi.fn(x => x * 2);
+    const memoized = memoize(fn);
+    memoized(5);
+    memoized.clear();
+    memoized(5);
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('respects maxSize option', () => {
+    const fn = vi.fn(x => x * 2);
+    const memoized = memoize(fn, { maxSize: 2 });
+    memoized(1);
+    memoized(2);
+    memoized(3); // evicts 1
+    expect(fn).toHaveBeenCalledTimes(3);
+    memoized(2); // still cached
+    expect(fn).toHaveBeenCalledTimes(3);
+    memoized(1); // evicted, recomputes
+    expect(fn).toHaveBeenCalledTimes(4);
+  });
+});
+
+
+// ===========================================================================
+// NEW UTILITIES — Async
+// ===========================================================================
+
+describe('retry', () => {
+  it('resolves on first success', async () => {
+    const fn = vi.fn(async () => 42);
+    const result = await retry(fn);
+    expect(result).toBe(42);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries on failure and succeeds', async () => {
+    let calls = 0;
+    const fn = async () => {
+      calls++;
+      if (calls < 3) throw new Error('fail');
+      return 'ok';
+    };
+    const result = await retry(fn, { attempts: 3, delay: 0 });
+    expect(result).toBe('ok');
+    expect(calls).toBe(3);
+  });
+
+  it('throws after exhausting all attempts', async () => {
+    const fn = async () => { throw new Error('always fails'); };
+    await expect(retry(fn, { attempts: 3, delay: 0 })).rejects.toThrow('always fails');
+  });
+
+  it('passes attempt number to function', async () => {
+    const fn = vi.fn(async (attempt) => attempt);
+    await retry(fn, { attempts: 1, delay: 0 });
+    expect(fn).toHaveBeenCalledWith(1);
+  });
+
+  it('uses exponential backoff when configured', async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const fn = async () => { calls++; if (calls < 3) throw new Error('fail'); return 'done'; };
+    const p = retry(fn, { attempts: 3, delay: 100, backoff: 2 });
+    // First call happens immediately, fails
+    await vi.advanceTimersByTimeAsync(0);
+    // Second call after 100ms delay, fails
+    await vi.advanceTimersByTimeAsync(100);
+    // Third call after 200ms delay (100 * 2), succeeds
+    await vi.advanceTimersByTimeAsync(200);
+    const result = await p;
+    expect(result).toBe('done');
+    vi.useRealTimers();
+  });
+});
+
+
+describe('timeout', () => {
+  it('resolves if promise completes before timeout', async () => {
+    const p = Promise.resolve(42);
+    const result = await timeout(p, 1000);
+    expect(result).toBe(42);
+  });
+
+  it('rejects if promise exceeds timeout', async () => {
+    vi.useFakeTimers();
+    const p = new Promise(() => {}); // never resolves
+    const tp = timeout(p, 100);
+    vi.advanceTimersByTime(100);
+    await expect(tp).rejects.toThrow('Timed out');
+    vi.useRealTimers();
+  });
+
+  it('uses custom error message', async () => {
+    vi.useFakeTimers();
+    const p = new Promise(() => {});
+    const tp = timeout(p, 100, 'Custom timeout');
+    vi.advanceTimersByTime(100);
+    await expect(tp).rejects.toThrow('Custom timeout');
+    vi.useRealTimers();
+  });
+
+  it('clears timer on successful resolution', async () => {
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+    await timeout(Promise.resolve('ok'), 5000);
+    expect(clearSpy).toHaveBeenCalled();
+    clearSpy.mockRestore();
   });
 });
