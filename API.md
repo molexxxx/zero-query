@@ -1569,10 +1569,10 @@ $.safeEval('price * qty + tax', { price: 9.99, qty: 2, tax: 1.50 });
 
 | Detail | Description |
 | --- | --- |
-| Supported | Property access, arithmetic, comparisons, logical ops, ternary, optional chaining (`?.`), nullish coalescing (`??`), template literals, array/object literals, method calls, `typeof`. |
+| Supported | Property access, arithmetic, comparisons, logical ops, ternary, optional chaining (`?.`), nullish coalescing (`??`), template literals, array/object literals, method calls, arrow functions, `typeof`, `new` (whitelisted constructors: `Date`, `Map`, `Set`, `RegExp`, `Error`, `URL`, `URLSearchParams`), spread syntax (`...arr`, `{...obj}`, `fn(...args)`). |
 | Blocked | `constructor`, `__proto__`, `prototype` access is blocked. |
 | Safe methods | Whitelisted Array/String/Number/Object methods only (e.g. `.map()`, `.filter()`, `.trim()`, `.toFixed()`). |
-| AST cache | Parsed ASTs are cached (up to 512 entries) so repeated expressions skip the parse step entirely. Simple identifiers use a fast path that bypasses the full parser. |
+| AST cache | Parsed ASTs are LRU-cached (up to 512 entries) so repeated expressions skip the parse step entirely. Hot expressions stay cached even under eviction pressure. Simple identifiers use a fast path that bypasses the full parser. |
 
 ### `mount(target, name, props?)`
 
@@ -2079,11 +2079,16 @@ const config = $.deepMerge({}, defaults, userConfig);
 
 #### `$.isEqual(a, b)`
 
-Deep equality comparison.
+Deep equality comparison. Handles circular references safely (no stack overflow).
 
 ```js
 $.isEqual({ a: 1, b: { c: 2 } }, { a: 1, b: { c: 2 } });  // true
 $.isEqual([1, 2], [1, 2]);  // true
+
+// Circular references are safe
+const obj = { x: 1 };
+obj.self = obj;
+$.isEqual(obj, obj);  // true (no infinite recursion)
 ```
 
 ### URL Utilities
@@ -2269,8 +2274,10 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
 | `$.libSize` | Minified library size string (e.g. `'~91 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'0.9.1'`). |
+| `$.version` | Library version string (e.g. `'0.9.5'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
+| `$.TrustedHTML` | `TrustedHTML` constructor class — wrap strings to bypass `$.html` escaping. Create instances via `$.trust()` or `new $.TrustedHTML(str)`. |
+| `$.EventBus` | `EventBus` constructor class — create additional event bus instances beyond the default `$.bus` singleton. |
 | `$.noConflict()` | Remove `$` from `window`, return the library object. |
 | `window.$` | Global reference (auto-set in browser). |
 | `window.zQuery` | Global alias (auto-set in browser). |
@@ -2375,9 +2382,9 @@ import {
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, validate,
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, uuid, camelCase, kebabCase,
+  escapeHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
-  storage, session, bus,
+  storage, session, EventBus, bus,
 } from '@tonywied17/zero-query';
 ```
 

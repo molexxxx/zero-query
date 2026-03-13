@@ -84,8 +84,9 @@ async function request(method, url, data, options = {}) {
   } else {
     fetchOpts.signal = controller.signal;
   }
+  let _timedOut = false;
   if (timeout > 0) {
-    timer = setTimeout(() => controller.abort(), timeout);
+    timer = setTimeout(() => { _timedOut = true; controller.abort(); }, timeout);
   }
 
   // Run request interceptors
@@ -145,7 +146,10 @@ async function request(method, url, data, options = {}) {
   } catch (err) {
     if (timer) clearTimeout(timer);
     if (err.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeout}ms: ${method} ${fullURL}`);
+      if (_timedOut) {
+        throw new Error(`Request timeout after ${timeout}ms: ${method} ${fullURL}`);
+      }
+      throw new Error(`Request aborted: ${method} ${fullURL}`);
     }
     throw err;
   }

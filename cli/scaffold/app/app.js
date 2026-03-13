@@ -18,7 +18,7 @@ import { routes } from './routes.js';
 // Router — SPA navigation with history mode
 // ---------------------------------------------------------------------------
 const router = $.router({
-  el: '#app',
+  el: '#app',   //@ Mount point (Set in index.html)
   routes,
   fallback: 'not-found',
   mode: 'history'

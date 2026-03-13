@@ -620,15 +620,44 @@ class Component {
       const handler = (e) => {
         // Read bindings from live map — always up to date after re-renders
         const currentBindings = this._eventBindings?.get(event) || [];
-        for (const { selector, methodExpr, modifiers, el } of currentBindings) {
-          if (!e.target.closest(selector)) continue;
+
+        // Collect matching bindings with their matched elements, then sort
+        // deepest-first so .stop correctly prevents ancestor handlers
+        // (mimics real DOM bubbling order within delegated events).
+        const hits = [];
+        for (const binding of currentBindings) {
+          const matched = e.target.closest(binding.selector);
+          if (!matched) continue;
+          hits.push({ ...binding, matched });
+        }
+        hits.sort((a, b) => {
+          if (a.matched === b.matched) return 0;
+          return a.matched.contains(b.matched) ? 1 : -1;
+        });
+
+        let stoppedAt = null; // Track elements that called .stop
+        for (const { selector, methodExpr, modifiers, el, matched } of hits) {
+
+          // In delegated events, .stop should prevent ancestor bindings from
+          // firing — stopPropagation alone only stops real DOM bubbling.
+          if (stoppedAt) {
+            let blocked = false;
+            for (const stopped of stoppedAt) {
+              if (matched.contains(stopped) && matched !== stopped) { blocked = true; break; }
+            }
+            if (blocked) continue;
+          }
 
           // .self — only fire if target is the element itself
           if (modifiers.includes('self') && e.target !== el) continue;
 
           // Handle modifiers
           if (modifiers.includes('prevent')) e.preventDefault();
-          if (modifiers.includes('stop')) e.stopPropagation();
+          if (modifiers.includes('stop')) {
+            e.stopPropagation();
+            if (!stoppedAt) stoppedAt = [];
+            stoppedAt.push(matched);
+          }
 
           // Build the invocation function
           const invoke = (evt) => {

@@ -169,6 +169,11 @@ function tokenize(expr) {
       tokens.push({ t: T.OP, v: ch });
       i++; continue;
     }
+    // Spread operator: ...
+    if (ch === '.' && i + 2 < len && expr[i + 1] === '.' && expr[i + 2] === '.') {
+      tokens.push({ t: T.OP, v: '...' });
+      i += 3; continue;
+    }
     if ('()[]{},.?:'.includes(ch)) {
       tokens.push({ t: T.PUNC, v: ch });
       i++; continue;
@@ -232,7 +237,7 @@ class Parser {
           this.next(); // consume ?
           const truthy = this.parseExpression(0);
           this.expect(T.PUNC, ':');
-          const falsy = this.parseExpression(1);
+          const falsy = this.parseExpression(0);
           left = { type: 'ternary', cond: left, truthy, falsy };
           continue;
         }
@@ -373,7 +378,12 @@ class Parser {
     this.expect(T.PUNC, '(');
     const args = [];
     while (!(this.peek().t === T.PUNC && this.peek().v === ')') && this.peek().t !== T.EOF) {
-      args.push(this.parseExpression(0));
+      if (this.peek().t === T.OP && this.peek().v === '...') {
+        this.next();
+        args.push({ type: 'spread', arg: this.parseExpression(0) });
+      } else {
+        args.push(this.parseExpression(0));
+      }
       if (this.peek().t === T.PUNC && this.peek().v === ',') this.next();
     }
     this.expect(T.PUNC, ')');
@@ -449,7 +459,12 @@ class Parser {
       this.next();
       const elements = [];
       while (!(this.peek().t === T.PUNC && this.peek().v === ']') && this.peek().t !== T.EOF) {
-        elements.push(this.parseExpression(0));
+        if (this.peek().t === T.OP && this.peek().v === '...') {
+          this.next();
+          elements.push({ type: 'spread', arg: this.parseExpression(0) });
+        } else {
+          elements.push(this.parseExpression(0));
+        }
         if (this.peek().t === T.PUNC && this.peek().v === ',') this.next();
       }
       this.expect(T.PUNC, ']');
@@ -461,6 +476,14 @@ class Parser {
       this.next();
       const properties = [];
       while (!(this.peek().t === T.PUNC && this.peek().v === '}') && this.peek().t !== T.EOF) {
+        // Spread in object: { ...obj }
+        if (this.peek().t === T.OP && this.peek().v === '...') {
+          this.next();
+          properties.push({ spread: true, value: this.parseExpression(0) });
+          if (this.peek().t === T.PUNC && this.peek().v === ',') this.next();
+          continue;
+        }
+
         const keyTok = this.next();
         let key;
         if (keyTok.t === T.IDENT || keyTok.t === T.STR) key = keyTok.v;
@@ -492,7 +515,13 @@ class Parser {
 
       // new keyword
       if (tok.v === 'new') {
-        const classExpr = this.parsePostfix();
+        let classExpr = this.parsePrimary();
+        // Handle member access (e.g. ns.MyClass) without consuming call args
+        while (this.peek().t === T.PUNC && this.peek().v === '.') {
+          this.next();
+          const prop = this.next();
+          classExpr = { type: 'member', obj: classExpr, prop: prop.v, computed: false };
+        }
         let args = [];
         if (this.peek().t === T.PUNC && this.peek().v === '(') {
           args = this._parseArgs();
@@ -604,6 +633,12 @@ function evaluate(node, scope) {
       if (name === 'encodeURIComponent') return encodeURIComponent;
       if (name === 'decodeURIComponent') return decodeURIComponent;
       if (name === 'console') return console;
+      if (name === 'Map') return Map;
+      if (name === 'Set') return Set;
+      if (name === 'RegExp') return RegExp;
+      if (name === 'Error') return Error;
+      if (name === 'URL') return URL;
+      if (name === 'URLSearchParams') return URLSearchParams;
       return undefined;
     }
 
@@ -642,10 +677,21 @@ function evaluate(node, scope) {
     }
 
     case 'optional_call': {
-      const callee = evaluate(node.callee, scope);
+      const calleeNode = node.callee;
+      const args = _evalArgs(node.args, scope);
+      // Method call: obj?.method() — bind `this` to obj
+      if (calleeNode.type === 'member' || calleeNode.type === 'optional_member') {
+        const obj = evaluate(calleeNode.obj, scope);
+        if (obj == null) return undefined;
+        const prop = calleeNode.computed ? evaluate(calleeNode.prop, scope) : calleeNode.prop;
+        if (!_isSafeAccess(obj, prop)) return undefined;
+        const fn = obj[prop];
+        if (typeof fn !== 'function') return undefined;
+        return fn.apply(obj, args);
+      }
+      const callee = evaluate(calleeNode, scope);
       if (callee == null) return undefined;
       if (typeof callee !== 'function') return undefined;
-      const args = node.args.map(a => evaluate(a, scope));
       return callee(...args);
     }
 
@@ -655,7 +701,7 @@ function evaluate(node, scope) {
       // Only allow safe constructors
       if (Ctor === Date || Ctor === Array || Ctor === Map || Ctor === Set ||
           Ctor === RegExp || Ctor === Error || Ctor === URL || Ctor === URLSearchParams) {
-        const args = node.args.map(a => evaluate(a, scope));
+        const args = _evalArgs(node.args, scope);
         return new Ctor(...args);
       }
       return undefined;
@@ -685,13 +731,32 @@ function evaluate(node, scope) {
       return cond ? evaluate(node.truthy, scope) : evaluate(node.falsy, scope);
     }
 
-    case 'array':
-      return node.elements.map(e => evaluate(e, scope));
+    case 'array': {
+      const arr = [];
+      for (const e of node.elements) {
+        if (e.type === 'spread') {
+          const iterable = evaluate(e.arg, scope);
+          if (iterable != null && typeof iterable[Symbol.iterator] === 'function') {
+            for (const v of iterable) arr.push(v);
+          }
+        } else {
+          arr.push(evaluate(e, scope));
+        }
+      }
+      return arr;
+    }
 
     case 'object': {
       const obj = {};
-      for (const { key, value } of node.properties) {
-        obj[key] = evaluate(value, scope);
+      for (const prop of node.properties) {
+        if (prop.spread) {
+          const source = evaluate(prop.value, scope);
+          if (source != null && typeof source === 'object') {
+            Object.assign(obj, source);
+          }
+        } else {
+          obj[prop.key] = evaluate(prop.value, scope);
+        }
       }
       return obj;
     }
@@ -713,11 +778,29 @@ function evaluate(node, scope) {
 }
 
 /**
+ * Evaluate a list of argument AST nodes, flattening any spread elements.
+ */
+function _evalArgs(argNodes, scope) {
+  const result = [];
+  for (const a of argNodes) {
+    if (a.type === 'spread') {
+      const iterable = evaluate(a.arg, scope);
+      if (iterable != null && typeof iterable[Symbol.iterator] === 'function') {
+        for (const v of iterable) result.push(v);
+      }
+    } else {
+      result.push(evaluate(a, scope));
+    }
+  }
+  return result;
+}
+
+/**
  * Resolve and execute a function call safely.
  */
 function _resolveCall(node, scope) {
   const callee = node.callee;
-  const args = node.args.map(a => evaluate(a, scope));
+  const args = _evalArgs(node.args, scope);
 
   // Method call: obj.method() — bind `this` to obj
   if (callee.type === 'member' || callee.type === 'optional_member') {
@@ -791,8 +874,9 @@ function _evalBinary(node, scope) {
  * @returns {*} — evaluation result, or undefined on error
  */
 
-// AST cache — avoids re-tokenizing and re-parsing the same expression string.
-// Bounded to prevent unbounded memory growth in long-lived apps.
+// AST cache (LRU) — avoids re-tokenizing and re-parsing the same expression.
+// Uses Map insertion-order: on hit, delete + re-set moves entry to the end.
+// Eviction removes the least-recently-used (first) entry when at capacity.
 const _astCache = new Map();
 const _AST_CACHE_MAX = 512;
 
@@ -812,9 +896,12 @@ export function safeEval(expr, scope) {
       // Fall through to full parser for built-in globals (Math, JSON, etc.)
     }
 
-    // Check AST cache
+    // Check AST cache (LRU: move to end on hit)
     let ast = _astCache.get(trimmed);
-    if (!ast) {
+    if (ast) {
+      _astCache.delete(trimmed);
+      _astCache.set(trimmed, ast);
+    } else {
       const tokens = tokenize(trimmed);
       const parser = new Parser(tokens, scope);
       ast = parser.parse();

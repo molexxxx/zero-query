@@ -1,8 +1,7 @@
 /* global.css — responsive scaffold styles
  *
- * Uses CSS custom properties for easy theming.
+ * Uses CSS custom properties for easy theming. Feel free to modify.
  * Dark theme by default, light theme via [data-theme="light"].
- * Mobile-first: sidebar collapses to a hamburger nav below 768px.
  */
 
 /* -- Theme Variables -- */

@@ -94,7 +94,7 @@ export function html(strings, ...values) {
 /**
  * Mark HTML as trusted (skip escaping in $.html template)
  */
-class TrustedHTML {
+export class TrustedHTML {
   constructor(html) { this._html = html; }
   toString() { return this._html; }
 }
@@ -124,7 +124,10 @@ export function camelCase(str) {
  * CamelCase to kebab-case
  */
 export function kebabCase(str) {
-  return str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+  return str
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+    .replace(/([a-z\d])([A-Z])/g, '$1-$2')
+    .toLowerCase();
 }
 
 
@@ -165,15 +168,19 @@ export function deepMerge(target, ...sources) {
 /**
  * Simple object equality check
  */
-export function isEqual(a, b) {
+export function isEqual(a, b, _seen) {
   if (a === b) return true;
   if (typeof a !== typeof b) return false;
   if (typeof a !== 'object' || a === null || b === null) return false;
   if (Array.isArray(a) !== Array.isArray(b)) return false;
+  // Guard against circular references
+  if (!_seen) _seen = new Set();
+  if (_seen.has(a)) return true;
+  _seen.add(a);
   const keysA = Object.keys(a);
   const keysB = Object.keys(b);
   if (keysA.length !== keysB.length) return false;
-  return keysA.every(k => isEqual(a[k], b[k]));
+  return keysA.every(k => isEqual(a[k], b[k], _seen));
 }
 
 
@@ -249,7 +256,7 @@ export const session = {
 // ---------------------------------------------------------------------------
 // Event bus (pub/sub)
 // ---------------------------------------------------------------------------
-class EventBus {
+export class EventBus {
   constructor() { this._handlers = new Map(); }
 
   on(event, fn) {

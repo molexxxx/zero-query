@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.9.1
+ * zQuery (zeroQuery) v0.9.5
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -1225,7 +1225,7 @@ query.create = (tag, attrs = {}, ...children) => {
   for (const [k, v] of Object.entries(attrs)) {
     if (k === 'class') el.className = v;
     else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
-    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
+    else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
     else if (k === 'data' && typeof v === 'object') Object.entries(v).forEach(([dk, dv]) => { el.dataset[dk] = dv; });
     else el.setAttribute(k, v);
   }
@@ -1445,6 +1445,11 @@ function tokenize(expr) {
       tokens.push({ t: T.OP, v: ch });
       i++; continue;
     }
+    // Spread operator: ...
+    if (ch === '.' && i + 2 < len && expr[i + 1] === '.' && expr[i + 2] === '.') {
+      tokens.push({ t: T.OP, v: '...' });
+      i += 3; continue;
+    }
     if ('()[]{},.?:'.includes(ch)) {
       tokens.push({ t: T.PUNC, v: ch });
       i++; continue;
@@ -1508,7 +1513,7 @@ class Parser {
           this.next(); // consume ?
           const truthy = this.parseExpression(0);
           this.expect(T.PUNC, ':');
-          const falsy = this.parseExpression(1);
+          const falsy = this.parseExpression(0);
           left = { type: 'ternary', cond: left, truthy, falsy };
           continue;
         }
@@ -1649,7 +1654,12 @@ class Parser {
     this.expect(T.PUNC, '(');
     const args = [];
     while (!(this.peek().t === T.PUNC && this.peek().v === ')') && this.peek().t !== T.EOF) {
-      args.push(this.parseExpression(0));
+      if (this.peek().t === T.OP && this.peek().v === '...') {
+        this.next();
+        args.push({ type: 'spread', arg: this.parseExpression(0) });
+      } else {
+        args.push(this.parseExpression(0));
+      }
       if (this.peek().t === T.PUNC && this.peek().v === ',') this.next();
     }
     this.expect(T.PUNC, ')');
@@ -1725,7 +1735,12 @@ class Parser {
       this.next();
       const elements = [];
       while (!(this.peek().t === T.PUNC && this.peek().v === ']') && this.peek().t !== T.EOF) {
-        elements.push(this.parseExpression(0));
+        if (this.peek().t === T.OP && this.peek().v === '...') {
+          this.next();
+          elements.push({ type: 'spread', arg: this.parseExpression(0) });
+        } else {
+          elements.push(this.parseExpression(0));
+        }
         if (this.peek().t === T.PUNC && this.peek().v === ',') this.next();
       }
       this.expect(T.PUNC, ']');
@@ -1737,6 +1752,14 @@ class Parser {
       this.next();
       const properties = [];
       while (!(this.peek().t === T.PUNC && this.peek().v === '}') && this.peek().t !== T.EOF) {
+        // Spread in object: { ...obj }
+        if (this.peek().t === T.OP && this.peek().v === '...') {
+          this.next();
+          properties.push({ spread: true, value: this.parseExpression(0) });
+          if (this.peek().t === T.PUNC && this.peek().v === ',') this.next();
+          continue;
+        }
+
         const keyTok = this.next();
         let key;
         if (keyTok.t === T.IDENT || keyTok.t === T.STR) key = keyTok.v;
@@ -1768,7 +1791,13 @@ class Parser {
 
       // new keyword
       if (tok.v === 'new') {
-        const classExpr = this.parsePostfix();
+        let classExpr = this.parsePrimary();
+        // Handle member access (e.g. ns.MyClass) without consuming call args
+        while (this.peek().t === T.PUNC && this.peek().v === '.') {
+          this.next();
+          const prop = this.next();
+          classExpr = { type: 'member', obj: classExpr, prop: prop.v, computed: false };
+        }
         let args = [];
         if (this.peek().t === T.PUNC && this.peek().v === '(') {
           args = this._parseArgs();
@@ -1880,6 +1909,12 @@ function evaluate(node, scope) {
       if (name === 'encodeURIComponent') return encodeURIComponent;
       if (name === 'decodeURIComponent') return decodeURIComponent;
       if (name === 'console') return console;
+      if (name === 'Map') return Map;
+      if (name === 'Set') return Set;
+      if (name === 'RegExp') return RegExp;
+      if (name === 'Error') return Error;
+      if (name === 'URL') return URL;
+      if (name === 'URLSearchParams') return URLSearchParams;
       return undefined;
     }
 
@@ -1918,10 +1953,21 @@ function evaluate(node, scope) {
     }
 
     case 'optional_call': {
-      const callee = evaluate(node.callee, scope);
+      const calleeNode = node.callee;
+      const args = _evalArgs(node.args, scope);
+      // Method call: obj?.method() — bind `this` to obj
+      if (calleeNode.type === 'member' || calleeNode.type === 'optional_member') {
+        const obj = evaluate(calleeNode.obj, scope);
+        if (obj == null) return undefined;
+        const prop = calleeNode.computed ? evaluate(calleeNode.prop, scope) : calleeNode.prop;
+        if (!_isSafeAccess(obj, prop)) return undefined;
+        const fn = obj[prop];
+        if (typeof fn !== 'function') return undefined;
+        return fn.apply(obj, args);
+      }
+      const callee = evaluate(calleeNode, scope);
       if (callee == null) return undefined;
       if (typeof callee !== 'function') return undefined;
-      const args = node.args.map(a => evaluate(a, scope));
       return callee(...args);
     }
 
@@ -1931,7 +1977,7 @@ function evaluate(node, scope) {
       // Only allow safe constructors
       if (Ctor === Date || Ctor === Array || Ctor === Map || Ctor === Set ||
           Ctor === RegExp || Ctor === Error || Ctor === URL || Ctor === URLSearchParams) {
-        const args = node.args.map(a => evaluate(a, scope));
+        const args = _evalArgs(node.args, scope);
         return new Ctor(...args);
       }
       return undefined;
@@ -1961,13 +2007,32 @@ function evaluate(node, scope) {
       return cond ? evaluate(node.truthy, scope) : evaluate(node.falsy, scope);
     }
 
-    case 'array':
-      return node.elements.map(e => evaluate(e, scope));
+    case 'array': {
+      const arr = [];
+      for (const e of node.elements) {
+        if (e.type === 'spread') {
+          const iterable = evaluate(e.arg, scope);
+          if (iterable != null && typeof iterable[Symbol.iterator] === 'function') {
+            for (const v of iterable) arr.push(v);
+          }
+        } else {
+          arr.push(evaluate(e, scope));
+        }
+      }
+      return arr;
+    }
 
     case 'object': {
       const obj = {};
-      for (const { key, value } of node.properties) {
-        obj[key] = evaluate(value, scope);
+      for (const prop of node.properties) {
+        if (prop.spread) {
+          const source = evaluate(prop.value, scope);
+          if (source != null && typeof source === 'object') {
+            Object.assign(obj, source);
+          }
+        } else {
+          obj[prop.key] = evaluate(prop.value, scope);
+        }
       }
       return obj;
     }
@@ -1989,11 +2054,29 @@ function evaluate(node, scope) {
 }
 
 /**
+ * Evaluate a list of argument AST nodes, flattening any spread elements.
+ */
+function _evalArgs(argNodes, scope) {
+  const result = [];
+  for (const a of argNodes) {
+    if (a.type === 'spread') {
+      const iterable = evaluate(a.arg, scope);
+      if (iterable != null && typeof iterable[Symbol.iterator] === 'function') {
+        for (const v of iterable) result.push(v);
+      }
+    } else {
+      result.push(evaluate(a, scope));
+    }
+  }
+  return result;
+}
+
+/**
  * Resolve and execute a function call safely.
  */
 function _resolveCall(node, scope) {
   const callee = node.callee;
-  const args = node.args.map(a => evaluate(a, scope));
+  const args = _evalArgs(node.args, scope);
 
   // Method call: obj.method() — bind `this` to obj
   if (callee.type === 'member' || callee.type === 'optional_member') {
@@ -2067,8 +2150,9 @@ function _evalBinary(node, scope) {
  * @returns {*} — evaluation result, or undefined on error
  */
 
-// AST cache — avoids re-tokenizing and re-parsing the same expression string.
-// Bounded to prevent unbounded memory growth in long-lived apps.
+// AST cache (LRU) — avoids re-tokenizing and re-parsing the same expression.
+// Uses Map insertion-order: on hit, delete + re-set moves entry to the end.
+// Eviction removes the least-recently-used (first) entry when at capacity.
 const _astCache = new Map();
 const _AST_CACHE_MAX = 512;
 
@@ -2088,9 +2172,12 @@ function safeEval(expr, scope) {
       // Fall through to full parser for built-in globals (Math, JSON, etc.)
     }
 
-    // Check AST cache
+    // Check AST cache (LRU: move to end on hit)
     let ast = _astCache.get(trimmed);
-    if (!ast) {
+    if (ast) {
+      _astCache.delete(trimmed);
+      _astCache.set(trimmed, ast);
+    } else {
       const tokens = tokenize(trimmed);
       const parser = new Parser(tokens, scope);
       ast = parser.parse();
@@ -3220,15 +3307,44 @@ class Component {
       const handler = (e) => {
         // Read bindings from live map — always up to date after re-renders
         const currentBindings = this._eventBindings?.get(event) || [];
-        for (const { selector, methodExpr, modifiers, el } of currentBindings) {
-          if (!e.target.closest(selector)) continue;
+
+        // Collect matching bindings with their matched elements, then sort
+        // deepest-first so .stop correctly prevents ancestor handlers
+        // (mimics real DOM bubbling order within delegated events).
+        const hits = [];
+        for (const binding of currentBindings) {
+          const matched = e.target.closest(binding.selector);
+          if (!matched) continue;
+          hits.push({ ...binding, matched });
+        }
+        hits.sort((a, b) => {
+          if (a.matched === b.matched) return 0;
+          return a.matched.contains(b.matched) ? 1 : -1;
+        });
+
+        let stoppedAt = null; // Track elements that called .stop
+        for (const { selector, methodExpr, modifiers, el, matched } of hits) {
+
+          // In delegated events, .stop should prevent ancestor bindings from
+          // firing — stopPropagation alone only stops real DOM bubbling.
+          if (stoppedAt) {
+            let blocked = false;
+            for (const stopped of stoppedAt) {
+              if (matched.contains(stopped) && matched !== stopped) { blocked = true; break; }
+            }
+            if (blocked) continue;
+          }
 
           // .self — only fire if target is the element itself
           if (modifiers.includes('self') && e.target !== el) continue;
 
           // Handle modifiers
           if (modifiers.includes('prevent')) e.preventDefault();
-          if (modifiers.includes('stop')) e.stopPropagation();
+          if (modifiers.includes('stop')) {
+            e.stopPropagation();
+            if (!stoppedAt) stoppedAt = [];
+            stoppedAt.push(matched);
+          }
 
           // Build the invocation function
           const invoke = (evt) => {
@@ -4529,7 +4645,12 @@ class Router {
       if (typeof matched.component === 'string') {
         const container = document.createElement(matched.component);
         this._el.appendChild(container);
-        this._instance = mount(container, matched.component, props);
+        try {
+          this._instance = mount(container, matched.component, props);
+        } catch (err) {
+          reportError(ErrorCode.COMP_NOT_FOUND, `Failed to mount component for route "${matched.path}"`, { component: matched.component, path: matched.path }, err);
+          return;
+        }
         if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', matched.component);
       }
       // If component is a render function
@@ -4862,8 +4983,9 @@ async function request(method, url, data, options = {}) {
   } else {
     fetchOpts.signal = controller.signal;
   }
+  let _timedOut = false;
   if (timeout > 0) {
-    timer = setTimeout(() => controller.abort(), timeout);
+    timer = setTimeout(() => { _timedOut = true; controller.abort(); }, timeout);
   }
 
   // Run request interceptors
@@ -4923,7 +5045,10 @@ async function request(method, url, data, options = {}) {
   } catch (err) {
     if (timer) clearTimeout(timer);
     if (err.name === 'AbortError') {
-      throw new Error(`Request timeout after ${timeout}ms: ${method} ${fullURL}`);
+      if (_timedOut) {
+        throw new Error(`Request timeout after ${timeout}ms: ${method} ${fullURL}`);
+      }
+      throw new Error(`Request aborted: ${method} ${fullURL}`);
     }
     throw err;
   }
@@ -5105,7 +5230,10 @@ function camelCase(str) {
  * CamelCase to kebab-case
  */
 function kebabCase(str) {
-  return str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+  return str
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1-$2')
+    .replace(/([a-z\d])([A-Z])/g, '$1-$2')
+    .toLowerCase();
 }
 
 
@@ -5146,15 +5274,19 @@ function deepMerge(target, ...sources) {
 /**
  * Simple object equality check
  */
-function isEqual(a, b) {
+function isEqual(a, b, _seen) {
   if (a === b) return true;
   if (typeof a !== typeof b) return false;
   if (typeof a !== 'object' || a === null || b === null) return false;
   if (Array.isArray(a) !== Array.isArray(b)) return false;
+  // Guard against circular references
+  if (!_seen) _seen = new Set();
+  if (_seen.has(a)) return true;
+  _seen.add(a);
   const keysA = Object.keys(a);
   const keysB = Object.keys(b);
   if (keysA.length !== keysB.length) return false;
-  return keysA.every(k => isEqual(a[k], b[k]));
+  return keysA.every(k => isEqual(a[k], b[k], _seen));
 }
 
 
@@ -5384,6 +5516,7 @@ $.sleep      = sleep;
 $.escapeHtml = escapeHtml;
 $.html       = html;
 $.trust      = trust;
+$.TrustedHTML = TrustedHTML;
 $.uuid       = uuid;
 $.camelCase  = camelCase;
 $.kebabCase  = kebabCase;
@@ -5394,6 +5527,7 @@ $.param      = param;
 $.parseQuery = parseQuery;
 $.storage    = storage;
 $.session    = session;
+$.EventBus   = EventBus;
 $.bus        = bus;
 
 // --- Error handling --------------------------------------------------------
@@ -5404,8 +5538,8 @@ $.guardCallback  = guardCallback;
 $.validate       = validate;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.9.1';
-$.libSize = '~92 KB';
+$.version = '0.9.5';
+$.libSize = '~95 KB';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

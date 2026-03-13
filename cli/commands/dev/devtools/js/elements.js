@@ -220,12 +220,17 @@ function buildNode(node, depth) {
       if (level >= maxDepth) return;
       var children = container.children;
       for (var j = 0; j < children.length; j++) {
+        var rowEl = children[j].querySelector(':scope > .tree-row');
         var nested = children[j].querySelector(':scope > .tree-children');
         if (nested) {
           if (opening) nested.classList.add('open');
           else nested.classList.remove('open');
           var arrow = nested.previousElementSibling ? nested.previousElementSibling.querySelector('.tree-toggle') : null;
           if (arrow) { if (opening) arrow.classList.add('open'); else arrow.classList.remove('open'); }
+          // Persist state so it survives tree rebuilds from live DOM mutations
+          if (rowEl && rowEl.__targetNode) {
+            expandedPaths[getNodePath(rowEl.__targetNode)] = opening;
+          }
           toggleNested(nested, level + 1);
         }
       }
