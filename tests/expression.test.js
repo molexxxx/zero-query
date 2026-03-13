@@ -871,19 +871,19 @@ describe('safeEval — new keyword', () => {
     expect(result).toBeInstanceOf(Array);
   });
 
-  it('Map/Set/RegExp not in globals — new returns undefined', () => {
-    // Map, Set, RegExp are listed as safe constructors but not as globals,
-    // so the ident resolves to undefined and new fails
-    expect(eval_('new Map')).toBeUndefined();
-    expect(eval_('new Set')).toBeUndefined();
-    expect(eval_('new RegExp')).toBeUndefined();
+  it('Map/Set/RegExp in globals — new creates instances', () => {
+    // Map, Set, RegExp are now exposed as globals and whitelisted as safe constructors
+    expect(eval_('new Map')).toBeInstanceOf(Map);
+    expect(eval_('new Set')).toBeInstanceOf(Set);
+    expect(eval_('new RegExp')).toBeInstanceOf(RegExp);
   });
 
-  it('new with args — parser treats as new (call(...))', () => {
-    // Parser's parsePostfix consumes (args) as a call expression, so
-    // new Date(2024,0,1) becomes new(Date(2024,0,1)) — returns undefined
+  it('new with args — parser correctly passes args to constructor', () => {
     const result = eval_('new Date(2024, 0, 1)');
-    expect(result).toBeUndefined();
+    expect(result).toBeInstanceOf(Date);
+    expect(result.getFullYear()).toBe(2024);
+    expect(result.getMonth()).toBe(0);
+    expect(result.getDate()).toBe(1);
   });
 
   it('blocks unsafe constructors', () => {

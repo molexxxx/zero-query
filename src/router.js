@@ -583,7 +583,12 @@ class Router {
       if (typeof matched.component === 'string') {
         const container = document.createElement(matched.component);
         this._el.appendChild(container);
-        this._instance = mount(container, matched.component, props);
+        try {
+          this._instance = mount(container, matched.component, props);
+        } catch (err) {
+          reportError(ErrorCode.COMP_NOT_FOUND, `Failed to mount component for route "${matched.path}"`, { component: matched.component, path: matched.path }, err);
+          return;
+        }
         if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', matched.component);
       }
       // If component is a render function

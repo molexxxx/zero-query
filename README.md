@@ -25,7 +25,7 @@
 | **Router** | History & hash mode, route params (`:id`), wildcards, guards (`beforeEach`/`afterEach`), lazy loading, `z-link` navigation, `z-to-top` scroll modifier (`instant`/`smooth`), sub-route history substates (`pushSubstate`/`onSubstate`) |
 | **Directives** | `z-if`, `z-for`, `z-model`, `z-show`, `z-bind`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip` &mdash; 17 built-in template directives |
 | **Reactive** | Deep proxy reactivity, Signals (`.value`, `.peek()`), computed values, effects (auto-tracked with dispose) |
-| **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions, time-travel (undo/redo/history) |
+| **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions, action history, snapshots |
 | **Selectors & DOM** | jQuery-like chainable selectors, traversal, DOM manipulation, events, animation |
 | **HTTP** | Fetch wrapper with auto-JSON, interceptors, timeout/abort, base URL |
 | **Utils** | debounce, throttle, pipe, once, sleep, escapeHtml, uuid, deepClone, deepMerge, storage/session wrappers, event bus |
@@ -264,11 +264,11 @@ location / {
 | `$.http` `$.get` `$.post` `$.put` `$.patch` `$.delete` | HTTP client |
 | `$.reactive` `$.Signal` `$.signal` `$.computed` `$.effect` | Reactive primitives |
 | `$.debounce` `$.throttle` `$.pipe` `$.once` `$.sleep` | Function utils |
-| `$.escapeHtml` `$.html` `$.trust` `$.uuid` `$.camelCase` `$.kebabCase` | String utils |
+| `$.escapeHtml` `$.html` `$.trust` `$.TrustedHTML` `$.uuid` `$.camelCase` `$.kebabCase` | String utils |
 | `$.deepClone` `$.deepMerge` `$.isEqual` | Object utils |
 | `$.param` `$.parseQuery` | URL utils |
 | `$.storage` `$.session` | Storage wrappers |
-| `$.bus` | Event bus || `$.onError` `$.ZQueryError` `$.ErrorCode` `$.guardCallback` `$.validate` | Error handling || `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~91 KB\"`) |
+| `$.EventBus` `$.bus` | Event bus || `$.onError` `$.ZQueryError` `$.ErrorCode` `$.guardCallback` `$.validate` | Error handling || `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~91 KB\"`) |
 | `$.meta` | Build metadata (populated by CLI bundler) |
 | `$.noConflict` | Release `$` global |
 

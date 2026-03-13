@@ -19,9 +19,9 @@ import { morph, morphElement } from './src/diff.js';
 import { safeEval } from './src/expression.js';
 import {
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, uuid, camelCase, kebabCase,
+  escapeHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
-  storage, session, bus,
+  storage, session, EventBus, bus,
 } from './src/utils.js';
 import { ZQueryError, ErrorCode, onError, reportError, guardCallback, validate } from './src/errors.js';
 
@@ -131,6 +131,7 @@ $.sleep      = sleep;
 $.escapeHtml = escapeHtml;
 $.html       = html;
 $.trust      = trust;
+$.TrustedHTML = TrustedHTML;
 $.uuid       = uuid;
 $.camelCase  = camelCase;
 $.kebabCase  = kebabCase;
@@ -141,6 +142,7 @@ $.param      = param;
 $.parseQuery = parseQuery;
 $.storage    = storage;
 $.session    = session;
+$.EventBus   = EventBus;
 $.bus        = bus;
 
 // --- Error handling --------------------------------------------------------
@@ -189,9 +191,9 @@ export {
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, validate,
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, uuid, camelCase, kebabCase,
+  escapeHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
-  storage, session, bus,
+  storage, session, EventBus, bus,
 };
 
 export default $;
