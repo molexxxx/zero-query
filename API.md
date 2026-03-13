@@ -1081,11 +1081,18 @@ $.component('page-layout', {
 
 | Detail | Description |
 | --- | --- |
-| Capture | Inner HTML is captured from the host element before the first render. |
+| Capture | Inner HTML is captured from the host element **once** before the first render. |
 | Named | Children with `slot="name"` go to the matching `<slot name="name">`. |
-| Default | Everything else goes to the unnamed `<slot>` (the default slot). |
-| Fallback | Content between `<slot>...</slot>` is used when no projected content is provided. |
-| Timing | Slots are captured once at mount time — ideal for static content projection. |
+| Default | Everything else (elements without `slot` attr + non-whitespace text nodes) goes to the unnamed `<slot>`. |
+| Fallback | Content between `<slot>...</slot>` is used when no projected content is provided. Supports rich HTML. |
+| Self-closing | `<slot />` and `<slot name="x" />` are supported — no fallback content for self-closing tags. |
+| Multiple sites | If two `<slot>` tags exist in one template, both receive the same projected content. |
+| Accumulation | Multiple children with the same `slot="name"` are concatenated into the named slot. |
+| Preservation | Attributes, classes, inline styles, and nested HTML on projected content are preserved. |
+| Static snapshot | Projected content is an outerHTML snapshot — not re-evaluated as template expressions. |
+| Re-renders | Slot content survives state-change re-renders (captured once, replayed on every render). |
+| Comment nodes | HTML comments in projected content are silently ignored. |
+| Empty `slot=""` | An empty `slot` attribute (`slot=""` or bare `slot`) maps to the default slot. |
 
 ### External Templates & Styles
 
@@ -1130,6 +1137,7 @@ Template file uses `{{expression}}` interpolation:
 | Caching | Resources are fetched once per URL and shared across all instances of the definition. |
 | URL resolution | Relative paths resolve relative to the component file automatically. Absolute paths and full URLs are used as-is. If a `base` string is provided, it overrides the auto-detected path. |
 | `{{expression}}` context | Expressions run inside `with(state) { ... }` giving direct access to all state properties. `props` and `$` are also available. |
+| `${}` vs `{{}}` | `${}` is JavaScript template literal syntax — it only works inside `render()`. External `templateUrl` files have no JS context, so `{{}}` is the interpolation syntax here. Inside `render()`, use `${}` for state and logic, and `{{}}` only inside `z-for` loop bodies for iteration variables. |
 
 #### Multiple Templates — `templateUrl` as object or array
 
@@ -1185,6 +1193,42 @@ $.component('my-widget', {
 Directives are special attributes used inside component `render()` HTML templates. They're processed automatically on each render, giving you declarative control over the DOM without manual queries.
 
 **Processing order:** `z-for` → `z-pre` → `z-if`/`z-else-if`/`z-else` → `z-show` → `z-bind`/`:attr` → `z-class` → `z-style` → `z-html` → `z-text` → `z-cloak` → `@event`/`z-on` → `z-ref` → `z-model` → `z-key` (morph engine) • `z-skip` (morph engine — opt out of diffing)
+
+#### `${}` vs `{{}}` — Template Interpolation
+
+zQuery has two interpolation syntaxes that run at different times:
+
+| Syntax | Evaluated When | Scope | Use In |
+| --- | --- | --- | --- |
+| `${}` | At JS execution time (when `render()` runs) | Full JS scope — `this.state`, methods, imports | `render()` only |
+| `{{}}` | After render, at the string level (pre-morph) | Loop variables + `state` + `computed` + `props` | `z-for` bodies in `render()`; everywhere in `templateUrl` HTML |
+
+**Rule of thumb:** In `render()`, use `${}` for everything *except* inside `z-for` template bodies, where you need `{{}}` to access loop variables like `item` or `i`. In external `templateUrl` HTML files, `{{}}` is the only syntax — there's no JS template literal context.
+
+```js
+// ✅ render() — mix both syntaxes
+render() {
+  return `
+    <h1>${this.state.title}</h1>
+    <ul>
+      <li z-for="item in items" z-key="{{item.id}}">
+        {{item.name}} — {{item.role}}
+      </li>
+    </ul>
+    ${this.state.showFooter ? '<footer>Done</footer>' : ''}
+  `;
+}
+```
+
+```html
+<!-- ✅ templateUrl — {{}} only -->
+<h1>{{title}}</h1>
+<ul>
+  <li z-for="item in items" z-key="{{item.id}}">{{item.name}}</li>
+</ul>
+```
+
+> **Why does `z-key` need `{{}}`?** The `z-key` attribute is read by the morph engine as a raw string. Inside a `z-for`, the `{{}}` interpolation expands *before* the HTML reaches the DOM, so `z-key="{{item.id}}"` becomes `z-key="42"` by the time the differ sees it. Writing `z-key="item.id"` would give every element the literal key `"item.id"`.
 
 #### `z-for` — List Rendering
 
@@ -1347,10 +1391,26 @@ If no parentheses are used (e.g. `@click="handler"`), the native event is automa
 | `.stop` | Calls `e.stopPropagation()` |
 | `.self` | Only fires if `e.target` is the element itself (not a child) |
 | `.once` | Handler fires only once, then is ignored |
+| `.outside` | Fires only when the event occurs *outside* the element (document-level listener) |
 | `.capture` | Registers listener in capture phase |
 | `.passive` | Registers listener as passive |
 | `.debounce.{ms}` | Delays invocation until idle for `{ms}` ms (default 250). E.g. `@input.debounce.300="search"` |
 | `.throttle.{ms}` | Fires at most once per `{ms}` ms (default 250). E.g. `@scroll.throttle.100="onScroll"` |
+| `.enter` | Key filter — requires `Enter` key |
+| `.escape` | Key filter — requires `Escape` key |
+| `.tab` | Key filter — requires `Tab` key |
+| `.space` | Key filter — requires `Space` key |
+| `.delete` | Key filter — requires `Delete` or `Backspace` |
+| `.up` | Key filter — requires `ArrowUp` |
+| `.down` | Key filter — requires `ArrowDown` |
+| `.left` | Key filter — requires `ArrowLeft` |
+| `.right` | Key filter — requires `ArrowRight` |
+| `.ctrl` | System key — requires `Ctrl` held |
+| `.shift` | System key — requires `Shift` held |
+| `.alt` | System key — requires `Alt` held |
+| `.meta` | System key — requires `Meta` (⌘/⊞) held |
+
+Key and system modifiers are combinable: `@keyup.ctrl.enter="save"` requires Ctrl + Enter.
 
 ```html
 <form @submit.prevent="save">...</form>
@@ -1358,6 +1418,10 @@ If no parentheses are used (e.g. `@click="handler"`), the native event is automa
 <input @input.debounce.300="search">
 <div @scroll.throttle.100="onScroll">...</div>
 <button @click.once="initialize">Init</button>
+<input @keyup.enter="submit">
+<div @keydown.escape="close">...</div>
+<textarea @keyup.ctrl.enter="send">...</textarea>
+<div @click.outside="closeDropdown">...</div>
 ```
 
 #### `z-model` — Two-Way Binding
@@ -1390,11 +1454,20 @@ Creates a reactive two-way sync between a form element and a state property. Whe
 | `z-lazy` | Listen on `change` instead of `input` (update on blur, not every keystroke) |
 | `z-trim` | Trim whitespace from string values before writing to state |
 | `z-number` | Force `Number()` conversion regardless of input type |
+| `z-uppercase` | Convert string to uppercase before writing to state |
+| `z-lowercase` | Convert string to lowercase before writing to state |
+| `z-debounce` | Debounce state writes (default 250ms). Set `z-debounce="500"` for custom delay |
+
+Modifier pipeline order: raw value → `z-trim` → `z-uppercase`/`z-lowercase` → `z-number`. `z-debounce` wraps the entire pipeline.
 
 ```html
 <input z-model="search" z-lazy placeholder="Search...">
 <input z-model="username" z-trim>
 <input z-model="price" z-lazy z-number z-trim>
+<input z-model="code" z-uppercase z-trim>
+<input z-model="email" z-lowercase z-trim>
+<input z-model="query" z-debounce placeholder="Search...">
+<input z-model="query" z-debounce="500" z-trim>
 ```
 
 **Full example:**
@@ -2473,7 +2546,7 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
 | `$.libSize` | Minified library size string (e.g. `'~91 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'0.9.5'`). |
+| `$.version` | Library version string (e.g. `'0.9.6'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.TrustedHTML` | `TrustedHTML` constructor class — wrap strings to bypass `$.html` escaping. Create instances via `$.trust()` or `new $.TrustedHTML(str)`. |
 | `$.EventBus` | `EventBus` constructor class — create additional event bus instances beyond the default `$.bus` singleton. |
