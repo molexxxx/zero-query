@@ -82,7 +82,7 @@ out
 .nuxt
 # dist
 zquery-website/
-AUDIT-FINDINGS.md   
+.myshit/
 
 # Gatsby files
 .cache/

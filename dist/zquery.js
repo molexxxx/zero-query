@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.9.5
+ * zQuery (zeroQuery) v0.9.6
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -2887,7 +2887,7 @@ class Component {
     const defaultSlotNodes = [];
     [...el.childNodes].forEach(node => {
       if (node.nodeType === 1 && node.hasAttribute('slot')) {
-        const slotName = node.getAttribute('slot');
+        const slotName = node.getAttribute('slot') || 'default';
         if (!this._slotContent[slotName]) this._slotContent[slotName] = '';
         this._slotContent[slotName] += node.outerHTML;
       } else if (node.nodeType === 1 || (node.nodeType === 3 && node.textContent.trim())) {
@@ -3296,6 +3296,24 @@ class Component {
     for (const [event, bindings] of eventMap) {
       this._attachDelegatedEvent(event, bindings);
     }
+
+    // .outside — attach a document-level listener for bindings that need
+    // to detect clicks/events outside their element.
+    this._outsideListeners = this._outsideListeners || [];
+    for (const [event, bindings] of eventMap) {
+      for (const binding of bindings) {
+        if (!binding.modifiers.includes('outside')) continue;
+        const outsideHandler = (e) => {
+          if (binding.el.contains(e.target)) return;
+          const match = binding.methodExpr.match(/^(\w+)(?:\(([^)]*)\))?$/);
+          if (!match) return;
+          const fn = this[match[1]];
+          if (typeof fn === 'function') fn.call(this, e);
+        };
+        document.addEventListener(event, outsideHandler, true);
+        this._outsideListeners.push({ event, handler: outsideHandler });
+      }
+    }
   }
 
   // Attach a single delegated listener for an event type
@@ -3339,6 +3357,28 @@ class Component {
 
           // .self — only fire if target is the element itself
           if (modifiers.includes('self') && e.target !== el) continue;
+
+          // .outside — only fire if event target is OUTSIDE the element
+          if (modifiers.includes('outside')) {
+            if (el.contains(e.target)) continue;
+          }
+
+          // Key modifiers — filter keyboard events by key
+          const _keyMap = { enter: 'Enter', escape: 'Escape', tab: 'Tab', space: ' ', delete: 'Delete|Backspace', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+          let keyFiltered = false;
+          for (const mod of modifiers) {
+            if (_keyMap[mod]) {
+              const keys = _keyMap[mod].split('|');
+              if (!e.key || !keys.includes(e.key)) { keyFiltered = true; break; }
+            }
+          }
+          if (keyFiltered) continue;
+
+          // System key modifiers — require modifier keys to be held
+          if (modifiers.includes('ctrl') && !e.ctrlKey) continue;
+          if (modifiers.includes('shift') && !e.shiftKey) continue;
+          if (modifiers.includes('alt') && !e.altKey) continue;
+          if (modifiers.includes('meta') && !e.metaKey) continue;
 
           // Handle modifiers
           if (modifiers.includes('prevent')) e.preventDefault();
@@ -3425,9 +3465,12 @@ class Component {
   //                       textarea, select (single & multiple), contenteditable
   //  Nested state keys:   z-model="user.name"  →  this.state.user.name
   //  Modifiers (boolean attributes on the same element):
-  //    z-lazy    — listen on 'change' instead of 'input' (update on blur / commit)
-  //    z-trim    — trim whitespace before writing to state
-  //    z-number  — force Number() conversion regardless of input type
+  //    z-lazy      — listen on 'change' instead of 'input' (update on blur / commit)
+  //    z-trim      — trim whitespace before writing to state
+  //    z-number    — force Number() conversion regardless of input type
+  //    z-debounce  — debounce state writes (default 250ms, or z-debounce="300")
+  //    z-uppercase — convert string to uppercase before writing to state
+  //    z-lowercase — convert string to lowercase before writing to state
   //
   //  Writes to reactive state so the rest of the UI stays in sync.
   //  Focus and cursor position are preserved in _render() via focusInfo.
@@ -3443,6 +3486,10 @@ class Component {
       const isLazy   = el.hasAttribute('z-lazy');
       const isTrim   = el.hasAttribute('z-trim');
       const isNum    = el.hasAttribute('z-number');
+      const isUpper  = el.hasAttribute('z-uppercase');
+      const isLower  = el.hasAttribute('z-lowercase');
+      const hasDebounce = el.hasAttribute('z-debounce');
+      const debounceMs  = hasDebounce ? (parseInt(el.getAttribute('z-debounce'), 10) || 250) : 0;
 
       // Read current state value (supports dot-path keys)
       const currentVal = _getPath(this.state, key);
@@ -3483,6 +3530,8 @@ class Component {
 
         // Apply modifiers
         if (isTrim && typeof val === 'string') val = val.trim();
+        if (isUpper && typeof val === 'string') val = val.toUpperCase();
+        if (isLower && typeof val === 'string') val = val.toLowerCase();
         if (isNum || type === 'number' || type === 'range') val = Number(val);
 
         // Write through the reactive proxy (triggers re-render).
@@ -3490,7 +3539,15 @@ class Component {
         _setPath(this.state, key, val);
       };
 
-      el.addEventListener(event, handler);
+      if (hasDebounce) {
+        let timer = null;
+        el.addEventListener(event, () => {
+          clearTimeout(timer);
+          timer = setTimeout(handler, debounceMs);
+        });
+      } else {
+        el.addEventListener(event, handler);
+      }
     });
   }
 
@@ -3776,6 +3833,10 @@ class Component {
     }
     this._listeners.forEach(({ event, handler }) => this._el.removeEventListener(event, handler));
     this._listeners = [];
+    if (this._outsideListeners) {
+      this._outsideListeners.forEach(({ event, handler }) => document.removeEventListener(event, handler, true));
+      this._outsideListeners = [];
+    }
     this._delegatedEvents = null;
     this._eventBindings = null;
     // Clear any pending debounce/throttle timers to prevent stale closures.
@@ -5737,8 +5798,8 @@ $.guardCallback  = guardCallback;
 $.validate       = validate;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.9.5';
-$.libSize = '~98 KB';
+$.version = '0.9.6';
+$.libSize = '~100 KB';
 $.meta    = {};                // populated at build time by CLI bundler
 
 $.noConflict = () => {

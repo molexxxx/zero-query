@@ -864,6 +864,437 @@ describe('component — slots', () => {
     expect(document.querySelector('#sn header').textContent).toBe('My Header');
     expect(document.querySelector('#sn main').textContent).toBe('Body');
   });
+
+  // --- Edge cases: self-closing and whitespace ---
+
+  it('handles self-closing <slot /> syntax', () => {
+    component('slot-selfclose', {
+      render() { return '<div><slot /></div>'; },
+    });
+    document.body.innerHTML = '<slot-selfclose id="ssc"><p>content</p></slot-selfclose>';
+    mount('#ssc', 'slot-selfclose');
+    expect(document.querySelector('#ssc p').textContent).toBe('content');
+  });
+
+  it('handles self-closing named <slot name="x" />', () => {
+    component('slot-selfclose-named', {
+      render() { return '<div><slot name="top" /></div>'; },
+    });
+    document.body.innerHTML = '<slot-selfclose-named id="sscn"><span slot="top">Top!</span></slot-selfclose-named>';
+    mount('#sscn', 'slot-selfclose-named');
+    expect(document.querySelector('#sscn span').textContent).toBe('Top!');
+  });
+
+  it('uses fallback for self-closing slot when no content', () => {
+    component('slot-selfclose-fb', {
+      render() { return '<div><slot />empty</div>'; },
+    });
+    document.body.innerHTML = '<slot-selfclose-fb id="sscfb"></slot-selfclose-fb>';
+    mount('#sscfb', 'slot-selfclose-fb');
+    // self-closing slot has no fallback content, so it's replaced with ''
+    expect(document.querySelector('#sscfb div').textContent).toBe('empty');
+  });
+
+  // --- Text-only slot content ---
+
+  it('projects plain text (no wrapper element) into default slot', () => {
+    component('slot-textonly', {
+      render() { return '<div><slot>fallback</slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-textonly id="sto">Hello World</slot-textonly>';
+    mount('#sto', 'slot-textonly');
+    expect(document.querySelector('#sto div').textContent).toBe('Hello World');
+  });
+
+  it('ignores whitespace-only text nodes', () => {
+    component('slot-whitespace', {
+      render() { return '<div><slot>fallback</slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-whitespace id="sw">   \n\t  </slot-whitespace>';
+    mount('#sw', 'slot-whitespace');
+    expect(document.querySelector('#sw div').textContent).toBe('fallback');
+  });
+
+  // --- Multiple elements in default slot ---
+
+  it('projects multiple elements into default slot', () => {
+    component('slot-multi', {
+      render() { return '<div><slot></slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-multi id="sm"><p>One</p><p>Two</p><p>Three</p></slot-multi>';
+    mount('#sm', 'slot-multi');
+    const paras = document.querySelectorAll('#sm div p');
+    expect(paras.length).toBe(3);
+    expect(paras[0].textContent).toBe('One');
+    expect(paras[2].textContent).toBe('Three');
+  });
+
+  // --- Mixed named + default slot content ---
+
+  it('separates named and default content correctly', () => {
+    component('slot-mixed', {
+      render() {
+        return '<header><slot name="title">default title</slot></header><section><slot>default body</slot></section>';
+      },
+    });
+    document.body.innerHTML = `
+      <slot-mixed id="smx">
+        <h1 slot="title">Custom Title</h1>
+        <p>Paragraph 1</p>
+        <p>Paragraph 2</p>
+      </slot-mixed>`;
+    mount('#smx', 'slot-mixed');
+    expect(document.querySelector('#smx header').textContent).toBe('Custom Title');
+    const section = document.querySelector('#smx section');
+    expect(section.querySelectorAll('p').length).toBe(2);
+  });
+
+  // --- Multiple named slots ---
+
+  it('distributes multiple named slots', () => {
+    component('slot-multinamed', {
+      render() {
+        return '<header><slot name="header">H</slot></header><footer><slot name="footer">F</slot></footer><main><slot>M</slot></main>';
+      },
+    });
+    document.body.innerHTML = `
+      <slot-multinamed id="smn">
+        <div slot="header">My Header</div>
+        <div slot="footer">My Footer</div>
+        <p>Body content</p>
+      </slot-multinamed>`;
+    mount('#smn', 'slot-multinamed');
+    expect(document.querySelector('#smn header').textContent).toBe('My Header');
+    expect(document.querySelector('#smn footer').textContent).toBe('My Footer');
+    expect(document.querySelector('#smn main p').textContent).toBe('Body content');
+  });
+
+  // --- Named slot with multiple elements ---
+
+  it('accumulates multiple elements for the same named slot', () => {
+    component('slot-accumulate', {
+      render() { return '<div><slot name="items">none</slot></div>'; },
+    });
+    document.body.innerHTML = `
+      <slot-accumulate id="sac">
+        <li slot="items">A</li>
+        <li slot="items">B</li>
+        <li slot="items">C</li>
+      </slot-accumulate>`;
+    mount('#sac', 'slot-accumulate');
+    const lis = document.querySelectorAll('#sac li');
+    expect(lis.length).toBe(3);
+  });
+
+  // --- Fallback for named slots ---
+
+  it('uses fallback for unmatched named slot', () => {
+    component('slot-namedfb', {
+      render() {
+        return '<header><slot name="header">Default Header</slot></header><footer><slot name="footer">Default Footer</slot></footer>';
+      },
+    });
+    // Only provide header, not footer
+    document.body.innerHTML = '<slot-namedfb id="snfb"><span slot="header">Custom H</span></slot-namedfb>';
+    mount('#snfb', 'slot-namedfb');
+    expect(document.querySelector('#snfb header').textContent).toBe('Custom H');
+    expect(document.querySelector('#snfb footer').textContent).toBe('Default Footer');
+  });
+
+  // --- Empty element in default slot ---
+
+  it('projects empty elements into default slot', () => {
+    component('slot-emptyel', {
+      render() { return '<div><slot>fallback</slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-emptyel id="see"><br></slot-emptyel>';
+    mount('#see', 'slot-emptyel');
+    expect(document.querySelector('#see div br')).not.toBeNull();
+  });
+
+  // --- Slot content with HTML attributes and classes ---
+
+  it('preserves attributes and classes on slotted content', () => {
+    component('slot-attrs', {
+      render() { return '<div><slot></slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-attrs id="sa"><p class="highlight" data-id="42">Styled</p></slot-attrs>';
+    mount('#sa', 'slot-attrs');
+    const p = document.querySelector('#sa p');
+    expect(p.classList.contains('highlight')).toBe(true);
+    expect(p.getAttribute('data-id')).toBe('42');
+  });
+
+  // --- Slot content with nested HTML ---
+
+  it('projects deeply nested HTML into slot', () => {
+    component('slot-nested', {
+      render() { return '<div><slot></slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-nested id="sne"><div><ul><li><strong>Deep</strong></li></ul></div></slot-nested>';
+    mount('#sne', 'slot-nested');
+    expect(document.querySelector('#sne strong').textContent).toBe('Deep');
+  });
+
+  // --- Slot content persists across re-renders ---
+
+  it('preserves slot content after state change re-render', async () => {
+    component('slot-rerender', {
+      state: () => ({ count: 0 }),
+      render() {
+        return `<p>Count: ${this.state.count}</p><div class="slotted"><slot>fallback</slot></div>`;
+      },
+    });
+    document.body.innerHTML = '<slot-rerender id="srr"><span>Projected!</span></slot-rerender>';
+    const inst = mount('#srr', 'slot-rerender');
+    expect(document.querySelector('#srr .slotted span').textContent).toBe('Projected!');
+
+    // Trigger re-render via state change (batched — need microtask flush)
+    inst.state.count = 5;
+    await new Promise(r => queueMicrotask(r));
+    expect(document.querySelector('#srr p').textContent).toBe('Count: 5');
+    expect(document.querySelector('#srr .slotted span').textContent).toBe('Projected!');
+  });
+
+  // --- Slot with special characters ---
+
+  it('handles slot content with special characters', () => {
+    component('slot-special', {
+      render() { return '<div><slot></slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-special id="ssp"><p>&amp; &lt;tag&gt; "quotes"</p></slot-special>';
+    mount('#ssp', 'slot-special');
+    const p = document.querySelector('#ssp p');
+    expect(p.textContent).toContain('& <tag> "quotes"');
+  });
+
+  // --- No slot tag in template — content is replaced entirely ---
+
+  it('discards projected content when template has no slot', () => {
+    component('slot-nosite', {
+      render() { return '<div>No slot here</div>'; },
+    });
+    document.body.innerHTML = '<slot-nosite id="sns"><p>Orphan</p></slot-nosite>';
+    mount('#sns', 'slot-nosite');
+    expect(document.querySelector('#sns div').textContent).toBe('No slot here');
+    expect(document.querySelector('#sns p')).toBeNull();
+  });
+
+  // --- Multiple default slots in template (both should be filled) ---
+
+  it('fills multiple default slot sites with the same content', () => {
+    component('slot-dupdefault', {
+      render() {
+        return '<div class="a"><slot>fb1</slot></div><div class="b"><slot>fb2</slot></div>';
+      },
+    });
+    document.body.innerHTML = '<slot-dupdefault id="sdd"><p>Content</p></slot-dupdefault>';
+    mount('#sdd', 'slot-dupdefault');
+    expect(document.querySelector('#sdd .a p').textContent).toBe('Content');
+    expect(document.querySelector('#sdd .b p').textContent).toBe('Content');
+  });
+
+  // --- Named slot content with inline styles ---
+
+  it('preserves inline styles on slotted elements', () => {
+    component('slot-style', {
+      render() { return '<div><slot name="styled">default</slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-style id="sst"><span slot="styled" style="color: red;">Red</span></slot-style>';
+    mount('#sst', 'slot-style');
+    const span = document.querySelector('#sst span');
+    expect(span.style.color).toBe('red');
+  });
+
+  // --- Mixed text and elements in default slot ---
+
+  it('projects mixed text and element nodes', () => {
+    component('slot-mixedcontent', {
+      render() { return '<div><slot></slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-mixedcontent id="smc">Text before <strong>bold</strong> text after</slot-mixedcontent>';
+    mount('#smc', 'slot-mixedcontent');
+    const div = document.querySelector('#smc div');
+    expect(div.textContent).toContain('Text before');
+    expect(div.textContent).toContain('bold');
+    expect(div.textContent).toContain('text after');
+  });
+
+  // --- Comment nodes should be ignored ---
+
+  it('ignores comment nodes in slot content', () => {
+    component('slot-comments', {
+      render() { return '<div><slot>fallback</slot></div>'; },
+    });
+    const el = document.createElement('slot-comments');
+    el.id = 'scm';
+    el.appendChild(document.createComment('this is a comment'));
+    document.body.appendChild(el);
+    mount('#scm', 'slot-comments');
+    // Only a comment — should use fallback
+    expect(document.querySelector('#scm div').textContent).toBe('fallback');
+  });
+
+  it('ignores comments but still captures sibling elements', () => {
+    component('slot-comments-mix', {
+      render() { return '<div><slot>fallback</slot></div>'; },
+    });
+    const el = document.createElement('slot-comments-mix');
+    el.id = 'scmm';
+    el.appendChild(document.createComment('comment'));
+    const p = document.createElement('p');
+    p.textContent = 'Real content';
+    el.appendChild(p);
+    document.body.appendChild(el);
+    mount('#scmm', 'slot-comments-mix');
+    expect(document.querySelector('#scmm p').textContent).toBe('Real content');
+  });
+
+  // --- Slot with fallback containing HTML ---
+
+  it('renders rich HTML fallback when no content provided', () => {
+    component('slot-richfb', {
+      render() { return '<div><slot><em>No content</em> provided</slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-richfb id="srf"></slot-richfb>';
+    mount('#srf', 'slot-richfb');
+    expect(document.querySelector('#srf em').textContent).toBe('No content');
+    expect(document.querySelector('#srf div').textContent).toContain('provided');
+  });
+
+  it('replaces rich fallback when content is provided', () => {
+    component('slot-richfb-replace', {
+      render() { return '<div><slot><em>Fallback</em></slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-richfb-replace id="srfr"><p>Real</p></slot-richfb-replace>';
+    mount('#srfr', 'slot-richfb-replace');
+    expect(document.querySelector('#srfr em')).toBeNull();
+    expect(document.querySelector('#srfr p').textContent).toBe('Real');
+  });
+
+  // --- Named slot fallback with HTML ---
+
+  it('uses rich fallback for named slot when unmatched', () => {
+    component('slot-namedfb-rich', {
+      render() { return '<div><slot name="info"><span class="default">Default Info</span></slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-namedfb-rich id="snfbr"></slot-namedfb-rich>';
+    mount('#snfbr', 'slot-namedfb-rich');
+    expect(document.querySelector('#snfbr .default').textContent).toBe('Default Info');
+  });
+
+  // --- Slot content with z- attributes should not be processed as directives ---
+
+  it('slot projected content is static (outerHTML snapshot)', () => {
+    component('slot-static', {
+      state: () => ({ label: 'Label' }),
+      render() { return '<div><slot></slot><p>State: ${this.state.label}</p></div>'; },
+    });
+    document.body.innerHTML = '<slot-static id="ssta"><span data-info="test">Static span</span></slot-static>';
+    mount('#ssta', 'slot-static');
+    expect(document.querySelector('#ssta span').textContent).toBe('Static span');
+    expect(document.querySelector('#ssta span').getAttribute('data-info')).toBe('test');
+  });
+
+  // --- Default slot with only named content (no default → fallback) ---
+
+  it('uses default slot fallback when all child content is named', () => {
+    component('slot-allnamed', {
+      render() {
+        return '<header><slot name="header">H</slot></header><main><slot>Default body</slot></main>';
+      },
+    });
+    document.body.innerHTML = '<slot-allnamed id="san"><div slot="header">Title</div></slot-allnamed>';
+    mount('#san', 'slot-allnamed');
+    expect(document.querySelector('#san header').textContent).toBe('Title');
+    expect(document.querySelector('#san main').textContent).toBe('Default body');
+  });
+
+  // --- Empty component (no children at all) ---
+
+  it('uses all fallbacks when component has no children', () => {
+    component('slot-empty', {
+      render() {
+        return '<header><slot name="h">FH</slot></header><main><slot>FM</slot></main><footer><slot name="f">FF</slot></footer>';
+      },
+    });
+    document.body.innerHTML = '<slot-empty id="sem"></slot-empty>';
+    mount('#sem', 'slot-empty');
+    expect(document.querySelector('#sem header').textContent).toBe('FH');
+    expect(document.querySelector('#sem main').textContent).toBe('FM');
+    expect(document.querySelector('#sem footer').textContent).toBe('FF');
+  });
+
+  // --- BUG: slot="" (empty string) should map to default slot ---
+
+  it('treats slot="" as the default slot', () => {
+    component('slot-emptyattr', {
+      render() { return '<div><slot>fallback</slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-emptyattr id="sea"><p slot="">Empty attr</p></slot-emptyattr>';
+    mount('#sea', 'slot-emptyattr');
+    expect(document.querySelector('#sea p').textContent).toBe('Empty attr');
+  });
+
+  it('treats bare slot attribute (no value) as default slot', () => {
+    component('slot-bareattr', {
+      render() { return '<div><slot>fallback</slot></div>'; },
+    });
+    const el = document.createElement('slot-bareattr');
+    el.id = 'sba';
+    const p = document.createElement('p');
+    p.textContent = 'Bare attr';
+    p.setAttribute('slot', '');
+    el.appendChild(p);
+    document.body.appendChild(el);
+    mount('#sba', 'slot-bareattr');
+    expect(document.querySelector('#sba p').textContent).toBe('Bare attr');
+  });
+
+  // --- Slot content with template literal expressions should be static ---
+
+  it('does not evaluate expressions in projected slot content', () => {
+    component('slot-noeval', {
+      state: () => ({ x: 'STATE' }),
+      render() { return '<div><slot></slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-noeval id="sne2"><p>${this.state.x}</p></slot-noeval>';
+    mount('#sne2', 'slot-noeval');
+    // The projected content is raw HTML, not evaluated as a template expression
+    expect(document.querySelector('#sne2 p').textContent).toBe('${this.state.x}');
+  });
+
+  // --- Multiple re-renders preserve slots ---
+
+  it('preserves slot content after multiple state changes', async () => {
+    component('slot-multirerender', {
+      state: () => ({ n: 0 }),
+      render() {
+        return `<span>${this.state.n}</span><div class="slot"><slot>fb</slot></div>`;
+      },
+    });
+    document.body.innerHTML = '<slot-multirerender id="smrr"><b>Slot!</b></slot-multirerender>';
+    const inst = mount('#smrr', 'slot-multirerender');
+    expect(document.querySelector('#smrr .slot b').textContent).toBe('Slot!');
+
+    for (let i = 1; i <= 5; i++) {
+      inst.state.n = i;
+      await new Promise(r => queueMicrotask(r));
+      expect(document.querySelector('#smrr span').textContent).toBe(String(i));
+      expect(document.querySelector('#smrr .slot b').textContent).toBe('Slot!');
+    }
+  });
+
+  // --- Named slot with extra whitespace in template ---
+
+  it('handles extra whitespace around slot name attribute', () => {
+    component('slot-wsname', {
+      render() { return '<div><slot  name="hd"  >fallback</slot></div>'; },
+    });
+    document.body.innerHTML = '<slot-wsname id="swn"><span slot="hd">HdContent</span></slot-wsname>';
+    mount('#swn', 'slot-wsname');
+    expect(document.querySelector('#swn span').textContent).toBe('HdContent');
+  });
 });
 
 
@@ -1587,6 +2018,145 @@ describe('component — z-model contenteditable', () => {
   });
 });
 
+
+// ===========================================================================
+// z-model z-debounce modifier
+// ===========================================================================
+
+describe('component — z-model z-debounce modifier', () => {
+  it('delays state update by the specified ms', () => {
+    vi.useFakeTimers();
+    component('zmodel-debounce', {
+      state: () => ({ search: '' }),
+      render() { return '<input z-model="search" z-debounce="200">'; },
+    });
+    document.body.innerHTML = '<zmodel-debounce id="zmd"></zmodel-debounce>';
+    const inst = mount('#zmd', 'zmodel-debounce');
+    const input = document.querySelector('#zmd input');
+
+    input.value = 'hel';
+    input.dispatchEvent(new Event('input'));
+    expect(inst.state.search).toBe(''); // Not yet
+
+    vi.advanceTimersByTime(100);
+    input.value = 'hello';
+    input.dispatchEvent(new Event('input'));
+    expect(inst.state.search).toBe(''); // Timer restarted
+
+    vi.advanceTimersByTime(200);
+    expect(inst.state.search).toBe('hello'); // Now fires
+
+    vi.useRealTimers();
+  });
+
+  it('defaults to 250ms when no value is specified', () => {
+    vi.useFakeTimers();
+    component('zmodel-debounce-def', {
+      state: () => ({ q: '' }),
+      render() { return '<input z-model="q" z-debounce>'; },
+    });
+    document.body.innerHTML = '<zmodel-debounce-def id="zmdd"></zmodel-debounce-def>';
+    const inst = mount('#zmdd', 'zmodel-debounce-def');
+    const input = document.querySelector('#zmdd input');
+
+    input.value = 'test';
+    input.dispatchEvent(new Event('input'));
+    expect(inst.state.q).toBe('');
+
+    vi.advanceTimersByTime(249);
+    expect(inst.state.q).toBe('');
+
+    vi.advanceTimersByTime(1);
+    expect(inst.state.q).toBe('test');
+
+    vi.useRealTimers();
+  });
+
+  it('works alongside z-trim', () => {
+    vi.useFakeTimers();
+    component('zmodel-debounce-trim', {
+      state: () => ({ val: '' }),
+      render() { return '<input z-model="val" z-debounce="100" z-trim>'; },
+    });
+    document.body.innerHTML = '<zmodel-debounce-trim id="zmdt"></zmodel-debounce-trim>';
+    const inst = mount('#zmdt', 'zmodel-debounce-trim');
+    const input = document.querySelector('#zmdt input');
+
+    input.value = '  hello  ';
+    input.dispatchEvent(new Event('input'));
+    vi.advanceTimersByTime(100);
+    expect(inst.state.val).toBe('hello');
+
+    vi.useRealTimers();
+  });
+});
+
+
+// ===========================================================================
+// z-model z-uppercase / z-lowercase modifiers
+// ===========================================================================
+
+describe('component — z-model z-uppercase modifier', () => {
+  it('converts input value to uppercase before writing to state', () => {
+    component('zmodel-upper', {
+      state: () => ({ val: '' }),
+      render() { return '<input z-model="val" z-uppercase>'; },
+    });
+    document.body.innerHTML = '<zmodel-upper id="zmu"></zmodel-upper>';
+    const inst = mount('#zmu', 'zmodel-upper');
+    const input = document.querySelector('#zmu input');
+
+    input.value = 'hello world';
+    input.dispatchEvent(new Event('input'));
+    expect(inst.state.val).toBe('HELLO WORLD');
+  });
+
+  it('works with z-trim', () => {
+    component('zmodel-upper-trim', {
+      state: () => ({ val: '' }),
+      render() { return '<input z-model="val" z-uppercase z-trim>'; },
+    });
+    document.body.innerHTML = '<zmodel-upper-trim id="zmut"></zmodel-upper-trim>';
+    const inst = mount('#zmut', 'zmodel-upper-trim');
+    const input = document.querySelector('#zmut input');
+
+    input.value = '  hello  ';
+    input.dispatchEvent(new Event('input'));
+    expect(inst.state.val).toBe('HELLO');
+  });
+});
+
+describe('component — z-model z-lowercase modifier', () => {
+  it('converts input value to lowercase before writing to state', () => {
+    component('zmodel-lower', {
+      state: () => ({ val: '' }),
+      render() { return '<input z-model="val" z-lowercase>'; },
+    });
+    document.body.innerHTML = '<zmodel-lower id="zmlw"></zmodel-lower>';
+    const inst = mount('#zmlw', 'zmodel-lower');
+    const input = document.querySelector('#zmlw input');
+
+    input.value = 'HELLO World';
+    input.dispatchEvent(new Event('input'));
+    expect(inst.state.val).toBe('hello world');
+  });
+
+  it('works on textarea', () => {
+    component('zmodel-lower-ta', {
+      state: () => ({ val: '' }),
+      render() { return '<textarea z-model="val" z-lowercase></textarea>'; },
+    });
+    document.body.innerHTML = '<zmodel-lower-ta id="zmlt"></zmodel-lower-ta>';
+    const inst = mount('#zmlt', 'zmodel-lower-ta');
+    const ta = document.querySelector('#zmlt textarea');
+
+    ta.value = 'MiXeD CaSe';
+    ta.dispatchEvent(new Event('input'));
+    expect(inst.state.val).toBe('mixed case');
+  });
+});
+
+
 describe('component — z-model radio', () => {
   it('checks the radio matching state value and writes back on change', () => {
     component('zmodel-radio', {
@@ -1858,6 +2428,376 @@ describe('component — combined event modifiers', () => {
 
 
 // ===========================================================================
+// Key modifiers — .enter, .escape, .tab, .space, .delete, .up, .down, .left, .right
+// ===========================================================================
+
+describe('component — key modifier .enter', () => {
+  it('fires handler only on Enter key', () => {
+    let count = 0;
+    component('key-enter', {
+      handler() { count++; },
+      render() { return '<input @keydown.enter="handler">'; },
+    });
+    document.body.innerHTML = '<key-enter id="ke"></key-enter>';
+    mount('#ke', 'key-enter');
+    const input = document.querySelector('#ke input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(count).toBe(1);
+
+    // Other keys should NOT fire
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component — key modifier .escape', () => {
+  it('fires handler only on Escape key', () => {
+    let count = 0;
+    component('key-esc', {
+      handler() { count++; },
+      render() { return '<input @keydown.escape="handler">'; },
+    });
+    document.body.innerHTML = '<key-esc id="kesc"></key-esc>';
+    mount('#kesc', 'key-esc');
+    const input = document.querySelector('#kesc input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(count).toBe(1);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component — key modifier .tab', () => {
+  it('fires handler only on Tab key', () => {
+    let count = 0;
+    component('key-tab', {
+      handler() { count++; },
+      render() { return '<input @keydown.tab="handler">'; },
+    });
+    document.body.innerHTML = '<key-tab id="ktab"></key-tab>';
+    mount('#ktab', 'key-tab');
+    const input = document.querySelector('#ktab input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    expect(count).toBe(1);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component — key modifier .space', () => {
+  it('fires handler only on Space key', () => {
+    let count = 0;
+    component('key-space', {
+      handler() { count++; },
+      render() { return '<button @keydown.space="handler">btn</button>'; },
+    });
+    document.body.innerHTML = '<key-space id="kspc"></key-space>';
+    mount('#kspc', 'key-space');
+    const btn = document.querySelector('#kspc button');
+
+    btn.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    expect(count).toBe(1);
+
+    btn.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component — key modifier .delete', () => {
+  it('fires handler on Delete and Backspace keys', () => {
+    let count = 0;
+    component('key-del', {
+      handler() { count++; },
+      render() { return '<input @keydown.delete="handler">'; },
+    });
+    document.body.innerHTML = '<key-del id="kdel"></key-del>';
+    mount('#kdel', 'key-del');
+    const input = document.querySelector('#kdel input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+    expect(count).toBe(1);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+    expect(count).toBe(2);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    expect(count).toBe(2);
+  });
+});
+
+describe('component — key modifier arrow keys', () => {
+  it('.up fires only on ArrowUp', () => {
+    let count = 0;
+    component('key-up', {
+      handler() { count++; },
+      render() { return '<input @keydown.up="handler">'; },
+    });
+    document.body.innerHTML = '<key-up id="kup"></key-up>';
+    mount('#kup', 'key-up');
+    const input = document.querySelector('#kup input');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    expect(count).toBe(1);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(count).toBe(1);
+  });
+
+  it('.down fires only on ArrowDown', () => {
+    let count = 0;
+    component('key-down', {
+      handler() { count++; },
+      render() { return '<input @keydown.down="handler">'; },
+    });
+    document.body.innerHTML = '<key-down id="kdn"></key-down>';
+    mount('#kdn', 'key-down');
+    const input = document.querySelector('#kdn input');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(count).toBe(1);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    expect(count).toBe(1);
+  });
+
+  it('.left fires only on ArrowLeft', () => {
+    let count = 0;
+    component('key-left', {
+      handler() { count++; },
+      render() { return '<input @keydown.left="handler">'; },
+    });
+    document.body.innerHTML = '<key-left id="klf"></key-left>';
+    mount('#klf', 'key-left');
+    const input = document.querySelector('#klf input');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(count).toBe(1);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(count).toBe(1);
+  });
+
+  it('.right fires only on ArrowRight', () => {
+    let count = 0;
+    component('key-right', {
+      handler() { count++; },
+      render() { return '<input @keydown.right="handler">'; },
+    });
+    document.body.innerHTML = '<key-right id="krt"></key-right>';
+    mount('#krt', 'key-right');
+    const input = document.querySelector('#krt input');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    expect(count).toBe(1);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component — key modifiers combined with other modifiers', () => {
+  it('.enter.prevent prevents default only on Enter', () => {
+    component('key-enter-prev', {
+      handler() {},
+      render() { return '<input @keydown.enter.prevent="handler">'; },
+    });
+    document.body.innerHTML = '<key-enter-prev id="kep"></key-enter-prev>';
+    mount('#kep', 'key-enter-prev');
+    const input = document.querySelector('#kep input');
+
+    const enterEvt = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    vi.spyOn(enterEvt, 'preventDefault');
+    input.dispatchEvent(enterEvt);
+    expect(enterEvt.preventDefault).toHaveBeenCalled();
+
+    // Other key should not trigger handler or preventDefault
+    const tabEvt = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    vi.spyOn(tabEvt, 'preventDefault');
+    input.dispatchEvent(tabEvt);
+    expect(tabEvt.preventDefault).not.toHaveBeenCalled();
+  });
+});
+
+
+// ===========================================================================
+// System key modifiers — .ctrl, .shift, .alt, .meta
+// ===========================================================================
+
+describe('component — system key modifier .ctrl', () => {
+  it('fires only when Ctrl is held', () => {
+    let count = 0;
+    component('sys-ctrl', {
+      handler() { count++; },
+      render() { return '<input @keydown.ctrl="handler">'; },
+    });
+    document.body.innerHTML = '<sys-ctrl id="sc"></sys-ctrl>';
+    mount('#sc', 'sys-ctrl');
+    const input = document.querySelector('#sc input');
+
+    // Without Ctrl — should NOT fire
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, ctrlKey: false }));
+    expect(count).toBe(0);
+
+    // With Ctrl — should fire
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, ctrlKey: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component — system key modifier .shift', () => {
+  it('fires only when Shift is held', () => {
+    let count = 0;
+    component('sys-shift', {
+      handler() { count++; },
+      render() { return '<input @keydown.shift="handler">'; },
+    });
+    document.body.innerHTML = '<sys-shift id="ss"></sys-shift>';
+    mount('#ss', 'sys-shift');
+    const input = document.querySelector('#ss input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, shiftKey: false }));
+    expect(count).toBe(0);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, shiftKey: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component — system key modifier .alt', () => {
+  it('fires only when Alt is held', () => {
+    let count = 0;
+    component('sys-alt', {
+      handler() { count++; },
+      render() { return '<input @keydown.alt="handler">'; },
+    });
+    document.body.innerHTML = '<sys-alt id="sa"></sys-alt>';
+    mount('#sa', 'sys-alt');
+    const input = document.querySelector('#sa input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, altKey: false }));
+    expect(count).toBe(0);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, altKey: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component — system key modifier .meta', () => {
+  it('fires only when Meta (Cmd/Win) is held', () => {
+    let count = 0;
+    component('sys-meta', {
+      handler() { count++; },
+      render() { return '<input @keydown.meta="handler">'; },
+    });
+    document.body.innerHTML = '<sys-meta id="sm"></sys-meta>';
+    mount('#sm', 'sys-meta');
+    const input = document.querySelector('#sm input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, metaKey: false }));
+    expect(count).toBe(0);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, metaKey: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component — combined key + system modifiers', () => {
+  it('.ctrl.enter fires only on Ctrl+Enter', () => {
+    let count = 0;
+    component('sys-ctrl-enter', {
+      handler() { count++; },
+      render() { return '<textarea @keydown.ctrl.enter="handler"></textarea>'; },
+    });
+    document.body.innerHTML = '<sys-ctrl-enter id="sce"></sys-ctrl-enter>';
+    mount('#sce', 'sys-ctrl-enter');
+    const ta = document.querySelector('#sce textarea');
+
+    // Enter without Ctrl
+    ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, ctrlKey: false }));
+    expect(count).toBe(0);
+
+    // Ctrl without Enter
+    ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, ctrlKey: true }));
+    expect(count).toBe(0);
+
+    // Ctrl+Enter
+    ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, ctrlKey: true }));
+    expect(count).toBe(1);
+  });
+
+  it('.shift.enter fires only on Shift+Enter', () => {
+    let count = 0;
+    component('sys-shift-enter', {
+      handler() { count++; },
+      render() { return '<textarea @keydown.shift.enter="handler"></textarea>'; },
+    });
+    document.body.innerHTML = '<sys-shift-enter id="sse"></sys-shift-enter>';
+    mount('#sse', 'sys-shift-enter');
+    const ta = document.querySelector('#sse textarea');
+
+    ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, shiftKey: false }));
+    expect(count).toBe(0);
+
+    ta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, shiftKey: true }));
+    expect(count).toBe(1);
+  });
+});
+
+
+// ===========================================================================
+// .outside modifier — fire when event target is outside the element
+// ===========================================================================
+
+describe('component — .outside event modifier', () => {
+  it('fires handler when clicking outside the element', () => {
+    let count = 0;
+    component('evt-outside', {
+      close() { count++; },
+      render() { return '<div class="dropdown" @click.outside="close"><span>menu</span></div>'; },
+    });
+    document.body.innerHTML = '<evt-outside id="eo"></evt-outside>';
+    mount('#eo', 'evt-outside');
+
+    // Click inside the dropdown — should NOT fire
+    document.querySelector('#eo .dropdown').click();
+    expect(count).toBe(0);
+
+    // Click inside a child — should NOT fire
+    document.querySelector('#eo span').click();
+    expect(count).toBe(0);
+
+    // Click on the component root (outside the dropdown) — should fire
+    document.querySelector('#eo').dispatchEvent(new Event('click', { bubbles: true }));
+    expect(count).toBe(1);
+  });
+
+  it('fires handler when clicking on document body (outside component)', () => {
+    let count = 0;
+    component('evt-outside2', {
+      close() { count++; },
+      render() { return '<div class="modal" @click.outside="close">modal content</div>'; },
+    });
+    document.body.innerHTML = '<div id="other">other</div><evt-outside2 id="eo2"></evt-outside2>';
+    mount('#eo2', 'evt-outside2');
+
+    // Click on unrelated element
+    document.querySelector('#other').dispatchEvent(new Event('click', { bubbles: true }));
+    expect(count).toBe(1);
+  });
+
+  it('does not fire on click inside the element', () => {
+    let count = 0;
+    component('evt-outside3', {
+      close() { count++; },
+      render() { return '<div class="panel" @click.outside="close"><button>inside</button></div>'; },
+    });
+    document.body.innerHTML = '<evt-outside3 id="eo3"></evt-outside3>';
+    mount('#eo3', 'evt-outside3');
+
+    document.querySelector('#eo3 button').click();
+    expect(count).toBe(0);
+    document.querySelector('#eo3 .panel').click();
+    expect(count).toBe(0);
+  });
+});
 // z-for advanced — object, iterable, range, null
 // ===========================================================================
 
@@ -2269,5 +3209,250 @@ describe('component — multiple instances of same component', () => {
     const inst2 = mount('#mi2', 'multi-inst');
     inst1.state.val = 42;
     expect(inst2.state.val).toBe(0);
+  });
+});
+
+
+// ===========================================================================
+// Custom HTML tag — "drop it anywhere" behavior
+// ===========================================================================
+
+describe('custom HTML tag — drop-in component mounting', () => {
+
+  // -- Basic rendering -------------------------------------------------------
+
+  it('renders a component when its custom tag appears in the DOM', () => {
+    component('drop-basic', {
+      render() { return '<p class="drop-basic-out">Hello from drop-in</p>'; },
+    });
+    document.body.innerHTML = '<drop-basic></drop-basic>';
+    mountAll();
+    expect(document.querySelector('.drop-basic-out').textContent).toBe('Hello from drop-in');
+  });
+
+  it('renders initial state into the template', () => {
+    component('drop-state', {
+      state: () => ({ name: 'World' }),
+      render() { return `<span class="drop-state-out">Hello ${this.state.name}</span>`; },
+    });
+    document.body.innerHTML = '<drop-state></drop-state>';
+    mountAll();
+    expect(document.querySelector('.drop-state-out').textContent).toBe('Hello World');
+  });
+
+  // -- State reactivity ------------------------------------------------------
+
+  it('re-renders when state changes', async () => {
+    component('drop-reactive', {
+      state: () => ({ count: 0 }),
+      render() { return `<span class="drop-r">${this.state.count}</span>`; },
+    });
+    document.body.innerHTML = '<drop-reactive></drop-reactive>';
+    mountAll();
+    expect(document.querySelector('.drop-r').textContent).toBe('0');
+
+    const inst = getInstance(document.querySelector('drop-reactive'));
+    inst.state.count = 5;
+    await new Promise(r => setTimeout(r, 50));
+    expect(document.querySelector('.drop-r').textContent).toBe('5');
+  });
+
+  // -- Event handling --------------------------------------------------------
+
+  it('handles @click on a button inside the component', async () => {
+    component('drop-click', {
+      state: () => ({ count: 0 }),
+      increment() { this.state.count++; },
+      render() {
+        return `
+          <div>
+            <span class="drop-click-val">${this.state.count}</span>
+            <button class="drop-click-btn" @click="increment">+1</button>
+          </div>
+        `;
+      },
+    });
+    document.body.innerHTML = '<drop-click></drop-click>';
+    mountAll();
+    expect(document.querySelector('.drop-click-val').textContent).toBe('0');
+
+    document.querySelector('.drop-click-btn').click();
+    await new Promise(r => setTimeout(r, 50));
+    expect(document.querySelector('.drop-click-val').textContent).toBe('1');
+
+    document.querySelector('.drop-click-btn').click();
+    document.querySelector('.drop-click-btn').click();
+    await new Promise(r => setTimeout(r, 50));
+    expect(document.querySelector('.drop-click-val').textContent).toBe('3');
+  });
+
+  // -- Multiple instances (independent state) --------------------------------
+
+  it('mounts multiple instances with independent state', async () => {
+    component('drop-multi', {
+      state: () => ({ n: 0 }),
+      bump() { this.state.n++; },
+      render() {
+        return `<div><span class="dm-val">${this.state.n}</span><button class="dm-btn" @click="bump">+</button></div>`;
+      },
+    });
+    document.body.innerHTML = `
+      <drop-multi id="dm1"></drop-multi>
+      <drop-multi id="dm2"></drop-multi>
+    `;
+    mountAll();
+
+    const vals = () => [...document.querySelectorAll('.dm-val')].map(el => el.textContent);
+    expect(vals()).toEqual(['0', '0']);
+
+    // Click only the first one's button
+    document.querySelector('#dm1 .dm-btn').click();
+    await new Promise(r => setTimeout(r, 50));
+    expect(vals()).toEqual(['1', '0']);
+  });
+
+  // -- Static props from attributes ------------------------------------------
+
+  it('passes static attributes as props', () => {
+    component('drop-props', {
+      render() { return `<span class="dp-out">${this.props.label}</span>`; },
+    });
+    document.body.innerHTML = '<drop-props label="Click me"></drop-props>';
+    mountAll();
+    expect(document.querySelector('.dp-out').textContent).toBe('Click me');
+  });
+
+  it('JSON-parses numeric and boolean attribute values', () => {
+    component('drop-json-props', {
+      render() {
+        return `<span class="djp-type">${typeof this.props.count}-${typeof this.props.active}</span>`;
+      },
+    });
+    document.body.innerHTML = '<drop-json-props count="5" active="true"></drop-json-props>';
+    mountAll();
+    expect(document.querySelector('.djp-type').textContent).toBe('number-boolean');
+  });
+
+  // -- Lifecycle hooks -------------------------------------------------------
+
+  it('calls init and mounted hooks', () => {
+    const order = [];
+    component('drop-lifecycle', {
+      init() { order.push('init'); },
+      mounted() { order.push('mounted'); },
+      render() { return '<div>lifecycle</div>'; },
+    });
+    document.body.innerHTML = '<drop-lifecycle></drop-lifecycle>';
+    mountAll();
+    expect(order).toEqual(['init', 'mounted']);
+  });
+
+  it('calls destroyed hook when instance is destroyed', () => {
+    let destroyed = false;
+    component('drop-destroy', {
+      destroyed() { destroyed = true; },
+      render() { return '<div>destroyable</div>'; },
+    });
+    document.body.innerHTML = '<drop-destroy></drop-destroy>';
+    mountAll();
+    const inst = getInstance(document.querySelector('drop-destroy'));
+    inst.destroy();
+    expect(destroyed).toBe(true);
+  });
+
+  // -- Nested components (child tags inside parent render) -------------------
+
+  it('auto-mounts child components rendered inside a parent', () => {
+    component('drop-child', {
+      render() { return '<em class="dc-child">child</em>'; },
+    });
+    component('drop-parent', {
+      render() { return '<div class="dc-parent"><drop-child></drop-child></div>'; },
+    });
+    document.body.innerHTML = '<drop-parent></drop-parent>';
+    mountAll();
+    expect(document.querySelector('.dc-parent')).not.toBeNull();
+    expect(document.querySelector('.dc-child').textContent).toBe('child');
+  });
+
+  // -- Idempotency -----------------------------------------------------------
+
+  it('does not re-mount an already-mounted tag on repeated mountAll calls', () => {
+    let initCount = 0;
+    component('drop-idempotent', {
+      init() { initCount++; },
+      render() { return '<div>idem</div>'; },
+    });
+    document.body.innerHTML = '<drop-idempotent></drop-idempotent>';
+    mountAll();
+    mountAll();
+    mountAll();
+    expect(initCount).toBe(1);
+  });
+
+  // -- Scattered placement ---------------------------------------------------
+
+  it('mounts tags scattered among regular HTML', () => {
+    component('drop-scattered', {
+      render() { return '<b class="ds-out">found</b>'; },
+    });
+    document.body.innerHTML = `
+      <header><h1>Page Title</h1></header>
+      <main>
+        <p>Some content</p>
+        <drop-scattered></drop-scattered>
+        <p>More content</p>
+      </main>
+      <footer>
+        <drop-scattered></drop-scattered>
+      </footer>
+    `;
+    mountAll();
+    const tags = document.querySelectorAll('.ds-out');
+    expect(tags.length).toBe(2);
+    tags.forEach(el => expect(el.textContent).toBe('found'));
+  });
+
+  // -- Full click-counter example from docs ----------------------------------
+
+  it('click-counter from docs works end-to-end', async () => {
+    component('click-counter', {
+      state: () => ({ count: 0 }),
+      increment() { this.state.count++; },
+      render() {
+        return `
+          <div class="counter">
+            <span class="cc-count">Count: ${this.state.count}</span>
+            <button class="cc-btn" @click="increment">+1</button>
+          </div>
+        `;
+      },
+    });
+
+    // Drop it anywhere — just like the docs say
+    document.body.innerHTML = `
+      <h1>My Page</h1>
+      <click-counter></click-counter>
+      <p>Some other content</p>
+      <click-counter></click-counter>
+    `;
+    mountAll();
+
+    const counts = () => [...document.querySelectorAll('.cc-count')].map(el => el.textContent);
+    const buttons = document.querySelectorAll('.cc-btn');
+
+    expect(counts()).toEqual(['Count: 0', 'Count: 0']);
+
+    // Click the first counter 3 times
+    buttons[0].click();
+    buttons[0].click();
+    buttons[0].click();
+    await new Promise(r => setTimeout(r, 50));
+    expect(counts()).toEqual(['Count: 3', 'Count: 0']);
+
+    // Click the second counter once
+    buttons[1].click();
+    await new Promise(r => setTimeout(r, 50));
+    expect(counts()).toEqual(['Count: 3', 'Count: 1']);
   });
 });
