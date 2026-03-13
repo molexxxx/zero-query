@@ -90,6 +90,23 @@ export {
   session,
   EventBus,
   bus,
+  range,
+  unique,
+  chunk,
+  groupBy,
+  pick,
+  omit,
+  getPath,
+  setPath,
+  isEmpty,
+  capitalize,
+  truncate,
+  clamp,
+  MemoizedFunction,
+  memoize,
+  RetryOptions,
+  retry,
+  timeout,
 } from './types/utils';
 
 export {
@@ -125,6 +142,10 @@ import type {
   escapeHtml, html, trust, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   StorageWrapper, EventBus,
+  range, unique, chunk, groupBy,
+  pick, omit, getPath, setPath, isEmpty,
+  capitalize, truncate, clamp,
+  MemoizedFunction, memoize, RetryOptions, retry, timeout,
 } from './types/utils';
 import type { onError, ZQueryError, ErrorCode, guardCallback, validate } from './types/errors';
 import type { morph, morphElement, safeEval } from './types/misc';
@@ -169,6 +190,10 @@ interface ZQueryStatic {
   name(name: string): ZQueryCollection;
   /** Children of `#parentId` as `ZQueryCollection`. */
   children(parentId: string): ZQueryCollection;
+  /** `document.querySelector(selector)` — raw Element or null. */
+  qs(selector: string, context?: Element | Document): Element | null;
+  /** `document.querySelectorAll(selector)` — as a real `Array<Element>`. */
+  qsa(selector: string, context?: Element | Document): Element[];
 
   // -- Static helpers ------------------------------------------------------
   /**
@@ -273,7 +298,24 @@ interface ZQueryStatic {
 
   storage: StorageWrapper;
   session: StorageWrapper;
+  EventBus: typeof EventBus;
   bus: EventBus;
+
+  range: typeof range;
+  unique: typeof unique;
+  chunk: typeof chunk;
+  groupBy: typeof groupBy;
+  pick: typeof pick;
+  omit: typeof omit;
+  getPath: typeof getPath;
+  setPath: typeof setPath;
+  isEmpty: typeof isEmpty;
+  capitalize: typeof capitalize;
+  truncate: typeof truncate;
+  clamp: typeof clamp;
+  memoize: typeof memoize;
+  retry: typeof retry;
+  timeout: typeof timeout;
 
   // -- Meta ----------------------------------------------------------------
   /** Library version string. */

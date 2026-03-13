@@ -546,6 +546,47 @@ describe('query quick refs', () => {
     expect(el.id).toBe('created');
     expect(el.textContent).toBe('text');
   });
+
+  // qs / qsa — raw DOM shortcuts
+  it('$.qs() returns raw element by CSS selector', () => {
+    const el = query.qs('#main');
+    expect(el).toBe(document.getElementById('main'));
+    expect(el).toBeInstanceOf(HTMLElement);
+  });
+
+  it('$.qs() returns null for non-matching selector', () => {
+    expect(query.qs('#nonexistent')).toBeNull();
+  });
+
+  it('$.qs() scopes to context element', () => {
+    const sidebar = document.getElementById('sidebar');
+    const el = query.qs('.nav-item', sidebar);
+    expect(el.textContent).toBe('Home');
+  });
+
+  it('$.qsa() returns array of raw elements', () => {
+    const els = query.qsa('.text');
+    expect(Array.isArray(els)).toBe(true);
+    expect(els.length).toBe(3);
+    expect(els[0]).toBeInstanceOf(HTMLElement);
+  });
+
+  it('$.qsa() returns empty array for non-matching selector', () => {
+    const els = query.qsa('.nonexistent');
+    expect(els).toEqual([]);
+  });
+
+  it('$.qsa() scopes to context element', () => {
+    const nav = document.getElementById('nav');
+    const els = query.qsa('.nav-item', nav);
+    expect(els.length).toBe(3);
+    expect(els[0].textContent).toBe('Home');
+  });
+
+  it('$.qsa() result supports Array methods', () => {
+    const names = query.qsa('.nav-item').map(el => el.textContent);
+    expect(names).toEqual(['Home', 'About', 'Contact']);
+  });
 });
 
 

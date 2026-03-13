@@ -28,7 +28,7 @@
 | **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions, action history, snapshots |
 | **Selectors & DOM** | jQuery-like chainable selectors, traversal, DOM manipulation, events, animation |
 | **HTTP** | Fetch wrapper with auto-JSON, interceptors, timeout/abort, base URL |
-| **Utils** | debounce, throttle, pipe, once, sleep, escapeHtml, uuid, deepClone, deepMerge, storage/session wrappers, event bus |
+| **Utils** | debounce, throttle, pipe, once, sleep, memoize, escapeHtml, uuid, capitalize, truncate, range, chunk, groupBy, unique, pick, omit, getPath/setPath, isEmpty, clamp, retry, timeout, deepClone, deepMerge, storage/session wrappers, event bus |
 | **Dev Tools** | CLI dev server with live-reload, CSS hot-swap, full-screen error overlay, floating toolbar, dark-themed inspector panel (Router view, DOM tree, network log, component viewer, performance dashboard), fetch interceptor, render instrumentation, CLI bundler for single-file production builds |
 
 ---
@@ -251,7 +251,7 @@ location / {
 | --- | --- |
 | `$()` | Chainable selector → `ZQueryCollection` (CSS selectors, elements, NodeLists, HTML strings) |
 | `$.all()` | Alias for `$()` — identical behavior |
-| `$.id` `$.class` `$.classes` `$.tag` `$.name` `$.children` | Quick DOM refs |
+| `$.id` `$.class` `$.classes` `$.tag` `$.name` `$.children` `$.qs` `$.qsa` | Quick DOM refs |
 | `$.create` | Element factory |
 | `$.ready` `$.on` `$.off` | DOM ready, global event delegation & direct listeners |
 | `$.fn` | Collection prototype (extend it) |
@@ -263,9 +263,12 @@ location / {
 | `$.store` `$.getStore` | State management |
 | `$.http` `$.get` `$.post` `$.put` `$.patch` `$.delete` | HTTP client |
 | `$.reactive` `$.Signal` `$.signal` `$.computed` `$.effect` | Reactive primitives |
-| `$.debounce` `$.throttle` `$.pipe` `$.once` `$.sleep` | Function utils |
-| `$.escapeHtml` `$.html` `$.trust` `$.TrustedHTML` `$.uuid` `$.camelCase` `$.kebabCase` | String utils |
-| `$.deepClone` `$.deepMerge` `$.isEqual` | Object utils |
+| `$.debounce` `$.throttle` `$.pipe` `$.once` `$.sleep` `$.memoize` | Function utils |
+| `$.escapeHtml` `$.html` `$.trust` `$.TrustedHTML` `$.uuid` `$.camelCase` `$.kebabCase` `$.capitalize` `$.truncate` | String utils |
+| `$.deepClone` `$.deepMerge` `$.isEqual` `$.pick` `$.omit` `$.getPath` `$.setPath` `$.isEmpty` | Object utils |
+| `$.range` `$.unique` `$.chunk` `$.groupBy` | Array utils |
+| `$.clamp` | Number utils |
+| `$.retry` `$.timeout` | Async utils |
 | `$.param` `$.parseQuery` | URL utils |
 | `$.storage` `$.session` | Storage wrappers |
 | `$.EventBus` `$.bus` | Event bus || `$.onError` `$.ZQueryError` `$.ErrorCode` `$.guardCallback` `$.validate` | Error handling || `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~91 KB\"`) |
