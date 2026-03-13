@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.9.1
+ * zQuery (zeroQuery) v0.9.2
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -5404,7 +5404,7 @@ $.guardCallback  = guardCallback;
 $.validate       = validate;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.9.1';
+$.version = '0.9.2';
 $.libSize = '~92 KB';
 $.meta    = {};                // populated at build time by CLI bundler
 
