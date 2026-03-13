@@ -79,6 +79,10 @@ export function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => map[c]);
 }
 
+export function stripHtml(str) {
+  return String(str).replace(/<[^>]*>/g, '');
+}
+
 /**
  * Template tag for auto-escaping interpolated values
  * Usage: $.html`<div>${userInput}</div>`

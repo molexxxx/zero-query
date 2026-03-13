@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, uuid, camelCase, kebabCase,
+  escapeHtml, stripHtml, html, trust, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, bus,
   // New utilities
@@ -150,6 +150,47 @@ describe('escapeHtml', () => {
 
   it('handles empty string', () => {
     expect(escapeHtml('')).toBe('');
+  });
+});
+
+
+describe('stripHtml', () => {
+  it('removes HTML tags from a string', () => {
+    expect(stripHtml('<p>Hello <b>World</b></p>')).toBe('Hello World');
+  });
+
+  it('handles self-closing tags', () => {
+    expect(stripHtml('Line one<br/>Line two')).toBe('Line oneLine two');
+  });
+
+  it('handles attributes inside tags', () => {
+    expect(stripHtml('<a href="https://example.com" class="link">click</a>')).toBe('click');
+  });
+
+  it('strips nested tags', () => {
+    expect(stripHtml('<div><p><span>deep</span></p></div>')).toBe('deep');
+  });
+
+  it('handles string with no tags', () => {
+    expect(stripHtml('no tags here')).toBe('no tags here');
+  });
+
+  it('handles empty string', () => {
+    expect(stripHtml('')).toBe('');
+  });
+
+  it('converts non-strings to string first', () => {
+    expect(stripHtml(42)).toBe('42');
+    expect(stripHtml(null)).toBe('null');
+  });
+
+  it('preserves text content between multiple tags', () => {
+    expect(stripHtml('<li>one</li><li>two</li><li>three</li>')).toBe('onetwothree');
+  });
+
+  it('strips angle-bracket patterns that look like tags', () => {
+    expect(stripHtml('a < b > c')).toBe('a  c');
+    expect(stripHtml('5 > 3 and 2 < 4')).toBe('5 > 3 and 2 < 4');
   });
 });
 

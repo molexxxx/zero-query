@@ -5187,6 +5187,10 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => map[c]);
 }
 
+function stripHtml(str) {
+  return String(str).replace(/<[^>]*>/g, '');
+}
+
 /**
  * Template tag for auto-escaping interpolated values
  * Usage: $.html`<div>${userInput}</div>`
@@ -5693,6 +5697,7 @@ $.pipe       = pipe;
 $.once       = once;
 $.sleep      = sleep;
 $.escapeHtml = escapeHtml;
+$.stripHtml  = stripHtml;
 $.html       = html;
 $.trust      = trust;
 $.TrustedHTML = TrustedHTML;

@@ -48,6 +48,9 @@ export function sleep(ms: number): Promise<void>;
 /** Escape HTML entities: `&`, `<`, `>`, `"`, `'`. */
 export function escapeHtml(str: string): string;
 
+/** Strip all HTML tags from a string, returning only text content. */
+export function stripHtml(str: string): string;
+
 /**
  * Tagged template literal that auto-escapes interpolated values.
  * Use `$.trust()` to mark values as safe.

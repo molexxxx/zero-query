@@ -74,6 +74,7 @@ export {
   once,
   sleep,
   escapeHtml,
+  stripHtml,
   html,
   TrustedHTML,
   trust,
@@ -139,7 +140,7 @@ import type { createStore, getStore } from './types/store';
 import type { HttpClient } from './types/http';
 import type {
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, uuid, camelCase, kebabCase,
+  escapeHtml, stripHtml, html, trust, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   StorageWrapper, EventBus,
   range, unique, chunk, groupBy,
@@ -283,6 +284,7 @@ interface ZQueryStatic {
   sleep: typeof sleep;
 
   escapeHtml: typeof escapeHtml;
+  stripHtml: typeof stripHtml;
   html: typeof html;
   trust: typeof trust;
   uuid: typeof uuid;

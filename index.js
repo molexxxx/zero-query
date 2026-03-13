@@ -19,7 +19,7 @@ import { morph, morphElement } from './src/diff.js';
 import { safeEval } from './src/expression.js';
 import {
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
+  escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, EventBus, bus,
   range, unique, chunk, groupBy,
@@ -135,6 +135,7 @@ $.pipe       = pipe;
 $.once       = once;
 $.sleep      = sleep;
 $.escapeHtml = escapeHtml;
+$.stripHtml  = stripHtml;
 $.html       = html;
 $.trust      = trust;
 $.TrustedHTML = TrustedHTML;
@@ -212,7 +213,7 @@ export {
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, validate,
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
+  escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, EventBus, bus,
   range, unique, chunk, groupBy,

@@ -2032,6 +2032,18 @@ $.escapeHtml('<script>alert("xss")</script>');
 // '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
 ```
 
+#### `$.stripHtml(str)`
+
+Strip all HTML tags from a string, returning only the text content.
+
+```js
+$.stripHtml('<p>Hello <b>World</b></p>');
+// 'Hello World'
+
+$.stripHtml('<a href="#">click here</a>');
+// 'click here'
+```
+
 #### `` $.html`template` ``
 
 Tagged template literal that auto-escapes interpolated values:
@@ -2586,7 +2598,7 @@ import {
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, validate,
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
+  escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, EventBus, bus,
   range, unique, chunk, groupBy,
