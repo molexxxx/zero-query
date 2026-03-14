@@ -43,7 +43,10 @@ Complete API documentation for every module, method, option, and type in zQuery.
 - [HTTP Client](#http-client)
   - [Request Methods](#request-methods)
   - [$.http.configure()](#httpconfigureoptions)
+  - [$.http.getConfig()](#httpgetconfig)
   - [Interceptors](#interceptors)
+  - [$.http.clearInterceptors()](#httpclearinterceptorstype)
+  - [$.http.all()](#httpallrequests)
   - [$.http.createAbort()](#httpcreateabort)
   - [$.http.raw()](#httprawurl-opts)
   - [Response Object](#response-object)
@@ -1886,8 +1889,9 @@ All request methods return `Promise<ResponseObject>`.
 | `$.put` | `$.put(url, data?, opts?)` | PUT request. |
 | `$.patch` | `$.patch(url, data?, opts?)` | PATCH request. |
 | `$.delete` | `$.delete(url, data?, opts?)` | DELETE request. |
+| `$.head` | `$.head(url, opts?)` | HEAD request — no body. Useful for resource existence checks, content-length, caching headers. |
 
-Also available as `$.http.get(...)`, `$.http.post(...)`, etc.
+Also available as `$.http.get(...)`, `$.http.post(...)`, `$.http.head(...)`, etc.
 
 **`opts` (per-request options):**
 
@@ -1939,14 +1943,25 @@ $.http.configure({
 });
 ```
 
-### Interceptors
+### `http.getConfig()`
 
-#### `http.onRequest(fn)`
-
-Add a request interceptor. Called before every request.
+Returns a safe (shallow) copy of the current configuration. Mutations to the returned object do not affect internal state.
 
 ```js
-$.http.onRequest(async (fetchOpts, url) => {
+const cfg = $.http.getConfig();
+console.log(cfg.baseURL);  // 'https://api.example.com/v2'
+console.log(cfg.timeout);  // 10000
+console.log(cfg.headers);  // { 'Content-Type': 'application/json', Authorization: 'Bearer abc123' }
+```
+
+### Interceptors
+
+#### `http.onRequest(fn)` → `() => void`
+
+Add a request interceptor. Called before every request. **Returns an unsubscribe function.**
+
+```js
+const unsub = $.http.onRequest(async (fetchOpts, url) => {
   // Add auth header
   fetchOpts.headers['Authorization'] = 'Bearer ' + getToken();
 
@@ -1959,19 +1974,41 @@ $.http.onRequest(async (fetchOpts, url) => {
     options: fetchOpts,
   };
 });
+
+// Later — remove this specific interceptor
+unsub();
 ```
 
-#### `http.onResponse(fn)`
+#### `http.onResponse(fn)` → `() => void`
 
-Add a response interceptor. Called after every successful response (before error check).
+Add a response interceptor. Called after every successful response (before error check). **Returns an unsubscribe function.**
 
 ```js
-$.http.onResponse(async (result) => {
+const unsub = $.http.onResponse(async (result) => {
   // result: { ok, status, statusText, headers, data, response }
   if (result.status === 401) {
     await refreshToken();
   }
 });
+
+// Later — remove this specific interceptor
+unsub();
+```
+
+#### `http.clearInterceptors(type?)`
+
+Remove all interceptors, or just one type.
+
+| Argument | Effect |
+| --- | --- |
+| *(none)* | Clear all interceptors (both request and response) |
+| `'request'` | Clear only request interceptors |
+| `'response'` | Clear only response interceptors |
+
+```js
+$.http.clearInterceptors();           // remove all
+$.http.clearInterceptors('request');  // remove request interceptors only
+$.http.clearInterceptors('response'); // remove response interceptors only
 ```
 
 ### `http.createAbort()`
@@ -1982,6 +2019,20 @@ Create a new `AbortController` for manual request cancellation.
 const controller = $.http.createAbort();
 $.get('/api/slow', null, { signal: controller.signal });
 controller.abort();  // cancels the request
+```
+
+### `http.all(requests)`
+
+Run multiple requests in parallel and wait for all to resolve. A convenience wrapper around `Promise.all` that keeps HTTP operations in a single namespace. Rejects if any request fails.
+
+```js
+const [users, posts, comments] = await $.http.all([
+  $.http.get('/api/users'),
+  $.http.get('/api/posts'),
+  $.http.get('/api/comments'),
+]);
+
+console.log(users.data, posts.data, comments.data);
 ```
 
 ### `http.raw(url, opts)`
@@ -2545,8 +2596,8 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.morphElement(el, html)` | Morph a single element in place — diffs attributes and children without replacing the node reference. If the tag name matches, the element is patched; if the tag differs, the element is replaced. Returns the resulting element. |
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
-| `$.libSize` | Minified library size string (e.g. `'~91 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'0.9.6'`). |
+| `$.libSize` | Minified library size string (e.g. `'~100 KB'`), injected at build time. |
+| `$.version` | Library version string (e.g. `'0.9.7'`). |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.TrustedHTML` | `TrustedHTML` constructor class — wrap strings to bypass `$.html` escaping. Create instances via `$.trust()` or `new $.TrustedHTML(str)`. |
 | `$.EventBus` | `EventBus` constructor class — create additional event bus instances beyond the default `$.bus` singleton. |

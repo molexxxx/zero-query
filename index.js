@@ -127,6 +127,7 @@ $.post   = http.post;
 $.put    = http.put;
 $.patch  = http.patch;
 $.delete = http.delete;
+$.head   = http.head;
 
 // --- Utilities -------------------------------------------------------------
 $.debounce   = debounce;

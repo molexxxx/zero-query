@@ -15,7 +15,7 @@
 
 </p>
 
-> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~91 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
+> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~100 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
 
 ## Features
 
@@ -27,7 +27,7 @@
 | **Reactive** | Deep proxy reactivity, Signals (`.value`, `.peek()`), computed values, effects (auto-tracked with dispose) |
 | **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions, action history, snapshots |
 | **Selectors & DOM** | jQuery-like chainable selectors, traversal, DOM manipulation, events, animation |
-| **HTTP** | Fetch wrapper with auto-JSON, interceptors, timeout/abort, base URL |
+| **HTTP** | Fetch wrapper with auto-JSON, interceptors (with unsubscribe & clear), HEAD requests, parallel requests (`http.all`), config inspection (`getConfig`), timeout/abort, base URL |
 | **Utils** | debounce, throttle, pipe, once, sleep, memoize, escapeHtml, stripHtml, uuid, capitalize, truncate, range, chunk, groupBy, unique, pick, omit, getPath/setPath, isEmpty, clamp, retry, timeout, deepClone, deepMerge, storage/session wrappers, event bus |
 | **Dev Tools** | CLI dev server with live-reload, CSS hot-swap, full-screen error overlay, floating toolbar, dark-themed inspector panel (Router view, DOM tree, network log, component viewer, performance dashboard), fetch interceptor, render instrumentation, CLI bundler for single-file production builds |
 
@@ -75,7 +75,7 @@ If you prefer **zero tooling**, download `dist/zquery.min.js` from the [dist/ fo
 git clone https://github.com/tonywied17/zero-query.git
 cd zero-query
 npx zquery build
-# → dist/zquery.min.js  (~91 KB)
+# → dist/zquery.min.js  (~100 KB)
 ```
 
 ### Include in HTML
@@ -261,7 +261,7 @@ location / {
 | `$.style` | Dynamically load global stylesheet file(s) at runtime |
 | `$.router` `$.getRouter` | SPA router |
 | `$.store` `$.getStore` | State management |
-| `$.http` `$.get` `$.post` `$.put` `$.patch` `$.delete` | HTTP client |
+| `$.http` `$.get` `$.post` `$.put` `$.patch` `$.delete` `$.head` | HTTP client |
 | `$.reactive` `$.Signal` `$.signal` `$.computed` `$.effect` | Reactive primitives |
 | `$.debounce` `$.throttle` `$.pipe` `$.once` `$.sleep` `$.memoize` | Function utils |
 | `$.escapeHtml` `$.stripHtml` `$.html` `$.trust` `$.TrustedHTML` `$.uuid` `$.camelCase` `$.kebabCase` `$.capitalize` `$.truncate` | String utils |
@@ -271,7 +271,7 @@ location / {
 | `$.retry` `$.timeout` | Async utils |
 | `$.param` `$.parseQuery` | URL utils |
 | `$.storage` `$.session` | Storage wrappers |
-| `$.EventBus` `$.bus` | Event bus || `$.onError` `$.ZQueryError` `$.ErrorCode` `$.guardCallback` `$.validate` | Error handling || `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~91 KB\"`) |
+| `$.EventBus` `$.bus` | Event bus || `$.onError` `$.ZQueryError` `$.ErrorCode` `$.guardCallback` `$.validate` | Error handling || `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~100 KB\"`) |
 | `$.meta` | Build metadata (populated by CLI bundler) |
 | `$.noConflict` | Release `$` global |
 

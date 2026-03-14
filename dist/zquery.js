@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.9.6
+ * zQuery (zeroQuery) v0.9.7
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -5127,6 +5127,7 @@ const http = {
   put:     (url, data, opts)    => request('PUT', url, data, opts),
   patch:   (url, data, opts)    => request('PATCH', url, data, opts),
   delete:  (url, data, opts)    => request('DELETE', url, data, opts),
+  head:    (url, opts)          => request('HEAD', url, undefined, opts),
 
   /**
    * Configure defaults
@@ -5138,19 +5139,55 @@ const http = {
   },
 
   /**
+   * Read-only snapshot of current configuration
+   */
+  getConfig() {
+    return {
+      baseURL: _config.baseURL,
+      headers: { ..._config.headers },
+      timeout: _config.timeout,
+    };
+  },
+
+  /**
    * Add request interceptor
    * @param {Function} fn — (fetchOpts, url) → void | false | { url, options }
+   * @returns {Function} unsubscribe function
    */
   onRequest(fn) {
     _interceptors.request.push(fn);
+    return () => {
+      const idx = _interceptors.request.indexOf(fn);
+      if (idx !== -1) _interceptors.request.splice(idx, 1);
+    };
   },
 
   /**
    * Add response interceptor
    * @param {Function} fn — (result) → void
+   * @returns {Function} unsubscribe function
    */
   onResponse(fn) {
     _interceptors.response.push(fn);
+    return () => {
+      const idx = _interceptors.response.indexOf(fn);
+      if (idx !== -1) _interceptors.response.splice(idx, 1);
+    };
+  },
+
+  /**
+   * Clear interceptors — all, or just 'request' / 'response'
+   */
+  clearInterceptors(type) {
+    if (!type || type === 'request') _interceptors.request.length = 0;
+    if (!type || type === 'response') _interceptors.response.length = 0;
+  },
+
+  /**
+   * Run multiple requests in parallel
+   */
+  all(requests) {
+    return Promise.all(requests);
   },
 
   /**
@@ -5750,6 +5787,7 @@ $.post   = http.post;
 $.put    = http.put;
 $.patch  = http.patch;
 $.delete = http.delete;
+$.head   = http.head;
 
 // --- Utilities -------------------------------------------------------------
 $.debounce   = debounce;
@@ -5798,7 +5836,7 @@ $.guardCallback  = guardCallback;
 $.validate       = validate;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '0.9.6';
+$.version = '0.9.7';
 $.libSize = '~100 KB';
 $.meta    = {};                // populated at build time by CLI bundler
 

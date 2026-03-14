@@ -446,3 +446,203 @@ describe('http — AbortController integration', () => {
     expect(fetchSpy).toHaveBeenCalled();
   });
 });
+
+
+// ===========================================================================
+// HEAD requests
+// ===========================================================================
+
+describe('http.head', () => {
+  it('sends a HEAD request', async () => {
+    mockFetch({});
+    const result = await http.head('https://api.test.com/resource');
+    expect(fetchSpy.mock.calls[0][1].method).toBe('HEAD');
+    expect(result.ok).toBe(true);
+    expect(result.status).toBe(200);
+  });
+
+  it('does not send a body', async () => {
+    mockFetch({});
+    await http.head('https://api.test.com/resource');
+    const opts = fetchSpy.mock.calls[0][1];
+    expect(opts.body).toBeUndefined();
+  });
+
+  it('accepts per-request options', async () => {
+    mockFetch({});
+    await http.head('https://api.test.com/resource', {
+      headers: { 'X-Check': 'exists' },
+    });
+    const opts = fetchSpy.mock.calls[0][1];
+    expect(opts.headers['X-Check']).toBe('exists');
+  });
+
+  it('returns response headers', async () => {
+    mockFetch({});
+    const result = await http.head('https://api.test.com/resource');
+    expect(result.headers).toBeDefined();
+    expect(typeof result.headers).toBe('object');
+  });
+});
+
+
+// ===========================================================================
+// Interceptor unsubscribe
+// ===========================================================================
+
+describe('http — interceptor unsubscribe', () => {
+  it('onRequest returns an unsubscribe function', async () => {
+    http.clearInterceptors();
+    const spy = vi.fn();
+    const unsub = http.onRequest(spy);
+    expect(typeof unsub).toBe('function');
+
+    mockFetch({});
+    await http.get('https://api.test.com/a');
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    unsub();
+    await http.get('https://api.test.com/b');
+    expect(spy).toHaveBeenCalledTimes(1); // not called again
+  });
+
+  it('onResponse returns an unsubscribe function', async () => {
+    http.clearInterceptors();
+    const spy = vi.fn();
+    const unsub = http.onResponse(spy);
+    expect(typeof unsub).toBe('function');
+
+    mockFetch({});
+    await http.get('https://api.test.com/a');
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    unsub();
+    await http.get('https://api.test.com/b');
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('double-unsubscribe is safe', async () => {
+    http.clearInterceptors();
+    const spy = vi.fn();
+    const unsub = http.onRequest(spy);
+    unsub();
+    unsub(); // should not throw
+    mockFetch({});
+    await http.get('https://api.test.com/data');
+    expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+
+// ===========================================================================
+// clearInterceptors
+// ===========================================================================
+
+describe('http.clearInterceptors', () => {
+  it('clears all interceptors when called with no args', async () => {
+    http.clearInterceptors();
+    const reqSpy = vi.fn();
+    const resSpy = vi.fn();
+    http.onRequest(reqSpy);
+    http.onResponse(resSpy);
+
+    http.clearInterceptors();
+    mockFetch({});
+    await http.get('https://api.test.com/data');
+    expect(reqSpy).not.toHaveBeenCalled();
+    expect(resSpy).not.toHaveBeenCalled();
+  });
+
+  it('clears only request interceptors with "request"', async () => {
+    http.clearInterceptors();
+    const reqSpy = vi.fn();
+    const resSpy = vi.fn();
+    http.onRequest(reqSpy);
+    http.onResponse(resSpy);
+
+    http.clearInterceptors('request');
+    mockFetch({});
+    await http.get('https://api.test.com/data');
+    expect(reqSpy).not.toHaveBeenCalled();
+    expect(resSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears only response interceptors with "response"', async () => {
+    http.clearInterceptors();
+    const reqSpy = vi.fn();
+    const resSpy = vi.fn();
+    http.onRequest(reqSpy);
+    http.onResponse(resSpy);
+
+    http.clearInterceptors('response');
+    mockFetch({});
+    await http.get('https://api.test.com/data');
+    expect(reqSpy).toHaveBeenCalledTimes(1);
+    expect(resSpy).not.toHaveBeenCalled();
+  });
+});
+
+
+// ===========================================================================
+// http.all — parallel requests
+// ===========================================================================
+
+describe('http.all', () => {
+  it('resolves all parallel requests', async () => {
+    mockFetch({ ok: true });
+    const results = await http.all([
+      http.get('https://api.test.com/a'),
+      http.get('https://api.test.com/b'),
+      http.get('https://api.test.com/c'),
+    ]);
+    expect(results).toHaveLength(3);
+    expect(results.every(r => r.ok)).toBe(true);
+  });
+
+  it('rejects if any request fails', async () => {
+    http.clearInterceptors();
+    mockFetch({ error: 'fail' }, false, 500);
+    await expect(
+      http.all([
+        http.get('https://api.test.com/a'),
+        http.get('https://api.test.com/b'),
+      ])
+    ).rejects.toThrow();
+  });
+
+  it('handles empty array', async () => {
+    const results = await http.all([]);
+    expect(results).toEqual([]);
+  });
+});
+
+
+// ===========================================================================
+// http.getConfig
+// ===========================================================================
+
+describe('http.getConfig', () => {
+  it('returns current config', () => {
+    http.configure({ baseURL: 'https://myapi.com', timeout: 5000 });
+    const config = http.getConfig();
+    expect(config.baseURL).toBe('https://myapi.com');
+    expect(config.timeout).toBe(5000);
+    expect(config.headers).toBeDefined();
+  });
+
+  it('returns a copy (not the internal reference)', () => {
+    const config = http.getConfig();
+    config.baseURL = 'https://mutated.com';
+    config.headers['X-Evil'] = 'injected';
+    const fresh = http.getConfig();
+    expect(fresh.baseURL).not.toBe('https://mutated.com');
+    expect(fresh.headers['X-Evil']).toBeUndefined();
+  });
+
+  it('reflects updates after configure', () => {
+    http.configure({ baseURL: '' });
+    expect(http.getConfig().baseURL).toBe('');
+    http.configure({ baseURL: 'https://updated.com' });
+    expect(http.getConfig().baseURL).toBe('https://updated.com');
+  });
+});

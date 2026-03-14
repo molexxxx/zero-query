@@ -61,15 +61,26 @@ export interface HttpClient {
   patch<T = any>(url: string, data?: any, opts?: HttpRequestOptions): Promise<HttpResponse<T>>;
   /** DELETE request. */
   delete<T = any>(url: string, data?: any, opts?: HttpRequestOptions): Promise<HttpResponse<T>>;
+  /** HEAD request — no body, useful for checking resource existence or headers. */
+  head<T = any>(url: string, opts?: HttpRequestOptions): Promise<HttpResponse<T>>;
 
   /** Update default configuration for all subsequent requests. */
   configure(options: HttpConfigureOptions): void;
 
-  /** Add a request interceptor (called before every request). */
-  onRequest(fn: HttpRequestInterceptor): void;
+  /** Read-only snapshot of the current configuration. Returns a shallow copy. */
+  getConfig(): { baseURL: string; headers: Record<string, string>; timeout: number };
 
-  /** Add a response interceptor (called after every response, before error check). */
-  onResponse(fn: HttpResponseInterceptor): void;
+  /** Add a request interceptor (called before every request). Returns an unsubscribe function. */
+  onRequest(fn: HttpRequestInterceptor): () => void;
+
+  /** Add a response interceptor (called after every response, before error check). Returns an unsubscribe function. */
+  onResponse(fn: HttpResponseInterceptor): () => void;
+
+  /** Clear interceptors. No args = all; `'request'` or `'response'` for one type. */
+  clearInterceptors(type?: 'request' | 'response'): void;
+
+  /** Run multiple request promises in parallel via `Promise.all`. */
+  all<T extends readonly Promise<HttpResponse<any>>[]>(requests: T): Promise<{ -readonly [K in keyof T]: Awaited<T[K]> }>;
 
   /** Create a new `AbortController` for manual request cancellation. */
   createAbort(): AbortController;
