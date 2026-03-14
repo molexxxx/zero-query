@@ -89,6 +89,11 @@ export function morphElement(oldEl, newHTML) {
   return clone;
 }
 
+// Aliases for the concat build — core.js imports these as _morph / _morphElement,
+// but the build strips `import … as` lines, so the aliases must exist at runtime.
+const _morph = morph;
+const _morphElement = morphElement;
+
 /**
  * Reconcile children of `oldParent` to match `newParent`.
  *
@@ -434,6 +439,13 @@ function _morphAttributes(oldEl, newEl) {
 
 /**
  * Sync input element value, checked, disabled states.
+ *
+ * Only updates the value when the new HTML explicitly carries a `value`
+ * attribute.  Templates that use z-model manage values through reactive
+ * state + _bindModels — the morph engine should not interfere by wiping
+ * a live input's content to '' just because the template has no `value`
+ * attr.  This prevents the wipe-then-restore cycle that resets cursor
+ * position on every keystroke.
  */
 function _syncInputValue(oldEl, newEl) {
   const type = (oldEl.type || '').toLowerCase();
@@ -441,8 +453,9 @@ function _syncInputValue(oldEl, newEl) {
   if (type === 'checkbox' || type === 'radio') {
     if (oldEl.checked !== newEl.checked) oldEl.checked = newEl.checked;
   } else {
-    if (oldEl.value !== (newEl.getAttribute('value') || '')) {
-      oldEl.value = newEl.getAttribute('value') || '';
+    const newVal = newEl.getAttribute('value');
+    if (newVal !== null && oldEl.value !== newVal) {
+      oldEl.value = newVal;
     }
   }
 

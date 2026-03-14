@@ -1,8 +1,8 @@
-// app/store.js — global state management
+// store.js — Global state management
 //
-// $.store() creates a centralized store with state, actions, and getters.
-// Components can dispatch actions and subscribe to changes.
-// The store is accessible anywhere via $.getStore('main').
+// Defines a centralized store with state, actions, and getters.
+// Any component can access it via $.getStore('main').
+// Dispatch actions to update state; subscribe to react to changes.
 
 export const store = $.store('main', {
   state: {
@@ -11,11 +11,11 @@ export const store = $.store('main', {
 
     // Contacts
     contacts: [
-      { id: 1, name: 'Tony Wiedman',     email: 'tony@z-query.com',     role: 'Developer', status: 'online',  favorite: true  },
-      { id: 2, name: 'Robert Baratheon', email: 'robert@stormlands.io', role: 'Manager',   status: 'offline', favorite: false },
-      { id: 3, name: 'Terry A. Davis',   email: 'terry@templeos.net',   role: 'Developer', status: 'online',  favorite: true  },
-      { id: 4, name: 'Trevor Moore',     email: 'trevor@wkuk.tv',       role: 'Designer',  status: 'away',    favorite: false },
-      { id: 5, name: 'Carlo Acutis',     email: 'carlo@vatican.va',     role: 'Developer', status: 'online',  favorite: false },
+      { id: 1, name: 'Tony Wiedman',     email: 'tony@z-query.com',     role: 'Developer', status: 'online',  favorite: true,  phone: '+1 (555) 201-0017', location: 'Philadelphia, PA', joined: '2024-01-15', bio: 'Full-stack developer & creator of zQuery.' },
+      { id: 2, name: 'Robert Baratheon', email: 'robert@stormlands.io', role: 'Manager',   status: 'offline', favorite: false, phone: '+1 (555) 783-1042', location: "Storm's End, Westeros", joined: '2024-03-22', bio: 'Former king turned project manager.' },
+      { id: 3, name: 'Terry A. Davis',   email: 'terry@templeos.net',   role: 'Developer', status: 'online',  favorite: true,  phone: '+1 (555) 640-8086', location: 'Las Vegas, NV', joined: '2024-02-10', bio: 'Built an entire OS from scratch. Legendary.' },
+      { id: 4, name: 'Trevor Moore',     email: 'trevor@wkuk.tv',       role: 'Designer',  status: 'away',    favorite: false, phone: '+1 (555) 994-2287', location: 'Los Angeles, CA', joined: '2024-05-08', bio: 'Comedian, writer, and creative visionary.' },
+      { id: 5, name: 'Carlo Acutis',     email: 'carlo@vatican.va',     role: 'Developer', status: 'online',  favorite: false, phone: '+39 (02) 555-1430', location: 'Milan, Italy', joined: '2024-04-01', bio: 'Patron saint of the internet.' },
     ],
     contactsAdded: 0,
   },
@@ -54,7 +54,8 @@ export const store = $.store('main', {
 
     // -- Contact actions --
 
-    addContact(state, { name, email, role }) {
+    addContact(state, { name, email, role, phone, location, bio }) {
+      const cities = ['New York, NY', 'San Francisco, CA', 'Austin, TX', 'Seattle, WA', 'Chicago, IL', 'Denver, CO', 'Portland, OR', 'Boston, MA'];
       state.contacts.push({
         id:       Date.now(),
         name,
@@ -62,6 +63,10 @@ export const store = $.store('main', {
         role,
         status:   'offline',
         favorite: false,
+        phone:    phone || '',
+        location: location || cities[Math.floor(Math.random() * cities.length)],
+        joined:   new Date().toISOString().slice(0, 10),
+        bio:      bio || '',
       });
       state.contactsAdded++;
     },

@@ -1,0 +1,200 @@
+<!--
+  contacts.html — external template for contacts-page component
+
+  This template is fetched via templateUrl and uses {{expression}} syntax
+  for data binding. All zQuery directives work here: z-if, z-else,
+  z-for, z-show, z-bind, z-class, z-text, z-model, z-ref,
+  z-cloak, @click, @submit.prevent, @click.outside, @keydown.escape, etc.
+-->
+<div class="page-header" z-cloak>
+  <h1>Contacts</h1>
+  <p class="subtitle">
+    External template &amp; styles via <code>templateUrl</code> / <code>styleUrl</code>.
+    Click a contact card to open the detail modal — dismiss with <code>Esc</code> or <code>@click.outside</code>.
+  </p>
+</div>
+
+<!-- Toolbar -->
+<div class="ct-bar">
+  <div class="ct-bar-left">
+    <div class="ct-badges" z-if="contacts.length > 0">
+      <span class="ct-badge"><strong z-text="contacts.length"></strong> total</span>
+      <span class="ct-badge ct-badge-accent"><strong z-text="favoriteCount"></strong> ★</span>
+    </div>
+  </div>
+  <div class="ct-bar-right">
+    <input type="text" z-model="filterText" z-debounce="200" placeholder="Search…" class="ct-search" @keydown.escape="filterText = ''" />
+    <button class="ct-btn ct-btn-accent ct-btn-add" @click="openAddModal">+ Add Contact</button>
+  </div>
+</div>
+
+<!-- Role filter chips -->
+<div class="ct-chips" z-show="contacts.length > 0">
+  <button class="ct-chip {{filterRole === '' ? 'active' : ''}}" @click="setFilter('')">All</button>
+  <button class="ct-chip {{filterRole === 'Developer' ? 'active' : ''}}" @click="setFilter('Developer')">Developer</button>
+  <button class="ct-chip {{filterRole === 'Designer' ? 'active' : ''}}" @click="setFilter('Designer')">Designer</button>
+  <button class="ct-chip {{filterRole === 'Manager' ? 'active' : ''}}" @click="setFilter('Manager')">Manager</button>
+  <button class="ct-chip {{filterRole === 'QA' ? 'active' : ''}}" @click="setFilter('QA')">QA</button>
+</div>
+
+<!-- Contact grid -->
+<div class="ct-grid" z-show="filteredContacts.length > 0">
+  <div
+    z-for="contact in filteredContacts"
+    z-key="{{contact.id}}"
+    class="ct-card {{contact.favorite ? 'ct-card-fav' : ''}}"
+    @click="openModal({{contact.id}})"
+  >
+    <!-- Status bar -->
+    <div class="ct-card-status ct-card-status-{{contact.status}}"></div>
+
+    <!-- Avatar -->
+    <div class="ct-card-avatar" :style="'background: hsl(' + (contact.name.charCodeAt(0) * 7 % 360) + ', 55%, 42%)'">
+      {{contact.name.charAt(0).toUpperCase()}}
+    </div>
+
+    <!-- Info -->
+    <div class="ct-card-info">
+      <div class="ct-card-name">{{contact.name}}</div>
+      <div class="ct-card-email">{{contact.email}}</div>
+      <span class="ct-card-role ct-role-{{contact.role.toLowerCase()}}">{{contact.role}}</span>
+    </div>
+
+    <!-- Fav -->
+    <button
+      class="ct-card-fav-btn {{contact.favorite ? 'is-fav' : ''}}"
+      @click.stop="toggleFavorite({{contact.id}})"
+    >{{contact.favorite ? '★' : '☆'}}</button>
+  </div>
+</div>
+
+<!-- Empty -->
+<div class="ct-empty-card" z-show="filteredContacts.length === 0">
+  <div class="ct-empty-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" style="width:48px;height:48px;opacity:.3;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z"/></svg>
+  </div>
+  <p z-if="filterText || filterRole">No contacts match your filter.</p>
+  <p z-else>No contacts yet — hit <strong>+ Add Contact</strong> to create one!</p>
+</div>
+
+<!-- ═══ Add Contact Modal ═══ -->
+<div class="ct-overlay" z-show="showAddModal" @click.self="closeAddModal">
+  <div class="ct-modal ct-modal-form" z-show="showAddModal">
+    <div class="ct-modal-strip ct-modal-strip-accent"></div>
+    <button class="ct-modal-close" @click="closeAddModal">✕</button>
+
+    <div class="ct-modal-heading">
+      <h2>New Contact</h2>
+      <p class="muted">Fill in the required fields to add a contact.</p>
+    </div>
+
+    <form class="ct-form" @submit.prevent="addContact">
+      <div class="ct-form-row">
+        <div class="ct-form-field ct-form-grow">
+          <label>Name <span class="ct-req">*</span></label>
+          <input type="text" z-model="newName" z-trim placeholder="Full name" class="ct-input" @blur="validateName" />
+          <small class="ct-err" z-show="nameError" z-text="nameError"></small>
+        </div>
+        <div class="ct-form-field ct-form-grow">
+          <label>Email <span class="ct-req">*</span></label>
+          <input type="email" z-model="newEmail" z-trim z-lowercase placeholder="Email address" class="ct-input" @blur="validateEmail" />
+          <small class="ct-err" z-show="emailError" z-text="emailError"></small>
+        </div>
+      </div>
+      <div class="ct-form-row">
+        <div class="ct-form-field">
+          <label>Role</label>
+          <select z-model="newRole" class="ct-input">
+            <option value="Developer">Developer</option>
+            <option value="Designer">Designer</option>
+            <option value="Manager">Manager</option>
+            <option value="QA">QA</option>
+          </select>
+        </div>
+        <div class="ct-form-field ct-form-grow">
+          <label>Phone <span class="ct-opt">optional</span></label>
+          <input type="text" z-model="newPhone" z-trim placeholder="+1 (555) 000-0000" class="ct-input" />
+        </div>
+      </div>
+      <div class="ct-form-field">
+        <label>Bio <span class="ct-opt">optional</span></label>
+        <input type="text" z-model="newBio" z-trim placeholder="A short bio…" class="ct-input" />
+      </div>
+      <div class="ct-form-actions">
+        <button type="button" class="ct-btn ct-btn-ghost" @click="closeAddModal">Cancel</button>
+        <button type="submit" class="ct-btn ct-btn-accent">Save Contact</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ Contact Detail Modal ═══ -->
+<div class="ct-overlay" z-show="modalId !== null" @click.self="closeModal">
+  <div class="ct-modal" z-show="modalContact">
+    <!-- Status strip -->
+    <div class="ct-modal-strip ct-modal-strip-{{modalContact.status}}"></div>
+
+    <button class="ct-modal-close" @click="closeModal">✕</button>
+
+    <!-- Profile header -->
+    <div class="ct-modal-profile">
+      <div class="ct-modal-avatar" :style="'background: hsl(' + (modalContact.name.charCodeAt(0) * 7 % 360) + ', 55%, 42%)'">
+        {{modalContact.name.charAt(0).toUpperCase()}}
+      </div>
+      <div class="ct-modal-status-dot ct-dot-{{modalContact.status}}"></div>
+      <h2>{{modalContact.name}}</h2>
+      <span class="ct-modal-role ct-role-{{modalContact.role.toLowerCase()}}">{{modalContact.role}}</span>
+    </div>
+
+    <!-- Details grid -->
+    <div class="ct-modal-details">
+      <div class="ct-modal-field">
+        <span class="ct-modal-label">Email</span>
+        <span class="ct-modal-value">{{modalContact.email}}</span>
+      </div>
+      <div class="ct-modal-field" z-if="modalContact.phone">
+        <span class="ct-modal-label">Phone</span>
+        <span class="ct-modal-value">{{modalContact.phone}}</span>
+      </div>
+      <div class="ct-modal-field" z-if="modalContact.location">
+        <span class="ct-modal-label">Location</span>
+        <span class="ct-modal-value">{{modalContact.location}}</span>
+      </div>
+      <div class="ct-modal-field" z-if="modalContact.joined">
+        <span class="ct-modal-label">Joined</span>
+        <span class="ct-modal-value">{{modalContact.joined}}</span>
+      </div>
+      <div class="ct-modal-field" z-if="modalContact.status">
+        <span class="ct-modal-label">Status</span>
+        <span class="ct-modal-value ct-modal-status-text">{{modalContact.status}}</span>
+      </div>
+    </div>
+
+    <div class="ct-modal-bio" z-if="modalContact.bio">
+      <span class="ct-modal-label">Bio</span>
+      <p>{{modalContact.bio}}</p>
+    </div>
+
+    <!-- Actions -->
+    <div class="ct-modal-actions">
+      <button class="ct-btn ct-btn-ghost ct-btn-sm" @click="toggleFavorite({{modalContact.id}})">
+        {{modalContact.favorite ? '★ Favorited' : '☆ Favorite'}}
+      </button>
+      <button class="ct-btn ct-btn-ghost ct-btn-sm" @click="cycleStatus({{modalContact.id}})">
+        Cycle Status
+      </button>
+
+      <button
+        class="ct-btn ct-btn-danger ct-btn-sm"
+        z-if="confirmDeleteId !== modalContact.id"
+        @click.stop="confirmDelete({{modalContact.id}})"
+      >Delete</button>
+
+      <span z-else class="ct-confirm-group">
+        <span class="ct-confirm-text">Sure?</span>
+        <button class="ct-btn ct-btn-danger ct-btn-sm" @click.stop="deleteContact({{modalContact.id}})">Yes</button>
+        <button class="ct-btn ct-btn-ghost ct-btn-sm" @click.stop="cancelDelete">No</button>
+      </span>
+    </div>
+  </div>
+</div>

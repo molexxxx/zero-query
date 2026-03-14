@@ -33,10 +33,42 @@
       <a z-link="/api" class="nav-link">
         <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418"/></svg></span> API Demo
       </a>
+      <a z-link="/playground" class="nav-link">
+        <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg></span> Playground
+      </a>
+      <a z-link="/toolkit" class="nav-link">
+        <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z"/></svg></span> Toolkit
+      </a>
       <a z-link="/about" class="nav-link">
         <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></svg></span> About
       </a>
     </nav>
+    <div class="sidebar-contacts" id="sidebar-contacts">
+      <div class="sc-header">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:13px;height:13px;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"/></svg>
+        Contacts
+      </div>
+      <div class="sc-list" id="sc-list">
+        <!-- Populated from $.store('main') by app.js -->
+      </div>
+    </div>
+    <div class="sidebar-stats" id="sidebar-stats">
+      <button class="sidebar-stats-toggle" id="stats-toggle">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:14px;height:14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg>
+        Stats
+        <span class="sidebar-stats-arrow open" id="stats-arrow">▸</span>
+      </button>
+      <div class="sidebar-stats-body" id="stats-body">
+        <div class="ss-row"><span class="ss-label">Page Views</span><span class="ss-value" id="ss-visits">0</span></div>
+        <div class="ss-group-label">Todos</div>
+        <div class="ss-row ss-indent"><span class="ss-label">Total</span><span class="ss-value" id="ss-todos">0</span></div>
+        <div class="ss-row ss-indent"><span class="ss-label">Pending</span><span class="ss-value" id="ss-pending">0</span></div>
+        <div class="ss-row ss-indent"><span class="ss-label">Done</span><span class="ss-value" id="ss-done">0</span></div>
+        <div class="ss-group-label">Contacts</div>
+        <div class="ss-row ss-indent"><span class="ss-label">Total</span><span class="ss-value" id="ss-contacts">0</span></div>
+        <div class="ss-row ss-indent"><span class="ss-label">Favorited</span><span class="ss-value" id="ss-favorites">0</span></div>
+      </div>
+    </div>
     <div class="sidebar-footer">
       <small>zQuery <span id="nav-version"></span></small>
     </div>
@@ -59,6 +91,9 @@
 
   <!-- Toast container for notifications -->
   <div class="toast-container" id="toasts"></div>
+
+  <!-- Global contact card popup (works from any page) -->
+  <contact-card></contact-card>
 
 </body>
 </html>

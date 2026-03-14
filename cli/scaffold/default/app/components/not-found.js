@@ -1,6 +1,6 @@
-// scripts/components/not-found.js — 404 fallback page
+// not-found.js — 404 fallback page
 //
-// Demonstrates: $.getRouter() to read the current path
+// Uses $.getRouter() to display the unmatched path.
 
 $.component('not-found', {
   render() {
