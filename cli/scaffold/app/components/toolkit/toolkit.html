@@ -1,0 +1,146 @@
+<!--
+  toolkit.html — external template for toolkit-page component
+
+  HTTP client with interceptors, 30+ utility functions, and advanced
+  store patterns. Uses {{expression}} syntax and z-if / z-for / z-show.
+-->
+<div class="page-header" z-cloak>
+  <h1>Toolkit</h1>
+  <p class="subtitle">HTTP client with interceptors, 30+ utility functions, and advanced store patterns.</p>
+</div>
+
+<!-- Tab bar -->
+<div class="tk-tabs" style="margin-bottom:1rem;">
+  <button class="tk-tab {{activeTab === 'http' ? 'active' : ''}}" @click="setTab('http')">⬡ HTTP Client</button>
+  <button class="tk-tab {{activeTab === 'utils' ? 'active' : ''}}" @click="setTab('utils')">⚙ Utilities</button>
+  <button class="tk-tab {{activeTab === 'store' ? 'active' : ''}}" @click="setTab('store')">◈ Store</button>
+</div>
+
+<!-- ── HTTP Tab ───────────────────────────────────── -->
+<div z-if="activeTab === 'http'">
+  <div class="card">
+    <h3>CRUD Operations</h3>
+    <p>Powered by <code>$.http.configure({ baseURL })</code> with request/response interceptors active.</p>
+    <div class="tk-btns">
+      <button class="btn btn-sm" style="background:rgba(52,211,153,.15);color:var(--success);" @click="doGet">GET /posts/1</button>
+      <button class="btn btn-sm" style="background:rgba(96,165,250,.15);color:var(--info);" @click="doPost">POST /posts</button>
+      <button class="btn btn-sm" style="background:rgba(88,166,255,.15);color:var(--accent);" @click="doPut">PUT /posts/1</button>
+      <button class="btn btn-sm" style="background:rgba(248,113,113,.15);color:var(--danger);" @click="doDelete">DEL /posts/1</button>
+    </div>
+    <div class="tk-response" z-if="httpOutput">
+      <div class="tk-response-hdr">
+        <span class="tk-method tk-method-{{methodClass}}" z-text="httpMethod"></span>
+        <span class="tk-endpoint" z-text="httpEndpoint"></span>
+        <span z-if="httpStatusCode" class="tk-status {{statusOk ? 'tk-status-ok' : 'tk-status-err'}}" z-text="httpStatusCode"></span>
+      </div>
+      <div class="tk-response-body" z-text="httpOutput"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Abortable Search</h3>
+    <p>Each keystroke aborts the previous in-flight request via <code>$.http.createAbort()</code>. Zero race conditions.</p>
+    <input type="text" class="input" placeholder="Search users…" @input="doSearch" z-bind:value="searchQuery" />
+    <p z-if="searchLoading" style="color:var(--text-muted);margin-top:.5rem;">Loading…</p>
+    <ul class="tk-results" z-if="searchResults.length > 0">
+      <li z-for="(user, i) in searchResults" z-key="{{user.id}}">
+        <small style="background:var(--accent-soft);color:var(--accent);padding:.15rem .45rem;border-radius:4px;font-weight:600;">#{{i + 1}}</small>
+        <div>
+          <strong style="font-size:.9rem;">{{user.name}}</strong><br/>
+          <small style="color:var(--text-muted);font-size:.82rem;">{{user.email}}</small>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card card-muted" z-show="httpLog.length > 0">
+    <h3>Interceptor Log</h3>
+    <div class="tk-log">
+      <div z-for="entry in httpLog" z-key="{{entry.id}}" class="tk-log-entry">{{entry.msg}}</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Utilities Tab ──────────────────────────────── -->
+<div z-else-if="activeTab === 'utils'">
+  <div class="card">
+    <h3>Utility Belt</h3>
+    <p>30+ built-in helpers — select a category to run a live demo.</p>
+
+    <div class="tk-util-grid">
+      <div class="tk-util-card {{activeUtil === 'pipe' ? 'selected' : ''}}" @click="runUtil('pipe')">
+        <h4>$.pipe()</h4>
+        <p>Compose left-to-right function pipelines</p>
+      </div>
+      <div class="tk-util-card {{activeUtil === 'memoize' ? 'selected' : ''}}" @click="runUtil('memoize')">
+        <h4>$.memoize()</h4>
+        <p>Cache expensive function results</p>
+      </div>
+      <div class="tk-util-card {{activeUtil === 'retry' ? 'selected' : ''}}" @click="runUtil('retry')">
+        <h4>$.retry()</h4>
+        <p>Retry with exponential backoff</p>
+      </div>
+      <div class="tk-util-card {{activeUtil === 'arrays' ? 'selected' : ''}}" @click="runUtil('arrays')">
+        <h4>Arrays</h4>
+        <p>groupBy, chunk, unique, range</p>
+      </div>
+      <div class="tk-util-card {{activeUtil === 'objects' ? 'selected' : ''}}" @click="runUtil('objects')">
+        <h4>Objects</h4>
+        <p>pick, omit, isEqual, deepMerge</p>
+      </div>
+      <div class="tk-util-card {{activeUtil === 'strings' ? 'selected' : ''}}" @click="runUtil('strings')">
+        <h4>Strings</h4>
+        <p>capitalize, truncate, camelCase, param</p>
+      </div>
+    </div>
+
+    <div class="tk-util-result" z-if="utilOutput" z-text="utilOutput"></div>
+  </div>
+</div>
+
+<!-- ── Store Tab ──────────────────────────────────── -->
+<div z-else>
+  <div class="card" style="margin-bottom:.75rem;">
+    <h3>Store Inspector</h3>
+    <p>Live view into the reactive store — middleware, snapshots, and action history.</p>
+
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+      <div class="tk-stat">
+        Actions dispatched: <span class="tk-stat-val" z-text="actionCount"></span>
+      </div>
+      <div class="tk-stat">
+        Middleware: <span class="tk-stat-val" style="color:var(--success);">active</span>
+      </div>
+    </div>
+
+    <div class="tk-store-grid">
+      <div class="tk-store-card">
+        <h4>📷 State Snapshot</h4>
+        <p>Deep-clone the current store state via <code>store.snapshot()</code>.</p>
+        <button class="btn btn-sm btn-primary" @click="takeSnapshot" style="margin-bottom:.65rem;">Capture Snapshot</button>
+        <div class="tk-store-pre" z-if="storeSnap" z-text="storeSnap"></div>
+        <div class="tk-store-pre" z-else style="color:var(--text-muted);font-style:italic;">Click capture to inspect current state…</div>
+      </div>
+
+      <div class="tk-store-card">
+        <h4>📋 Action History</h4>
+        <p>Track dispatched actions via <code>store.history</code>.</p>
+        <button class="btn btn-sm btn-outline" @click="viewHistory" style="margin-bottom:.65rem;">Load History</button>
+        <div class="tk-store-pre" z-if="storeHistory" z-text="storeHistory"></div>
+        <div class="tk-store-pre" z-else style="color:var(--text-muted);font-style:italic;">Click load to view recent actions…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-muted" z-show="storeLog.length > 0">
+    <h3>Middleware Log</h3>
+    <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:.5rem;">Real-time log from <code>store.use()</code> — interact with other pages to generate entries.</p>
+    <div class="tk-log">
+      <div z-for="entry in storeLog" z-key="{{entry.id}}" class="tk-log-entry">
+        <span style="color:var(--text-muted);font-size:.78rem;min-width:65px;">{{entry.time}}</span>
+        <strong style="color:var(--accent);">{{entry.action}}</strong>
+        <span style="color:var(--text-muted);font-size:.82rem;">{{entry.args}}</span>
+      </div>
+    </div>
+  </div>
+</div>

@@ -5,61 +5,205 @@
 //               $.store integration, $.bus, template rendering
 
 $.component('home-page', {
+  styles: `
+    .sig-lab        { padding: 1.25rem 1.5rem; border-radius: var(--radius-lg);
+                      background: var(--bg-hover); border: 1px solid var(--border); }
+    .sig-row        { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;
+                      margin-bottom: .75rem; }
+    .sig-val        { display: inline-flex; align-items: center; gap: .35rem;
+                      padding: .3rem .7rem; border-radius: var(--radius);
+                      background: rgba(88,166,255,.08); border: 1px solid rgba(88,166,255,.15);
+                      font-family: monospace; font-size: .9rem; font-weight: 600; }
+    .sig-val span   { color: var(--accent); }
+    .sig-val small  { color: var(--text-muted); font-weight: 400; font-size: .8rem; }
+    .sig-op         { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+    .sig-graph      { display: flex; gap: 2px; align-items: flex-end; height: 40px;
+                      margin-top: .5rem; }
+    .sig-bar        { flex: 1; min-width: 3px; max-width: 16px;
+                      background: var(--accent); border-radius: 2px 2px 0 0;
+                      opacity: .6; transition: height .15s ease; }
+
+    /* Custom dropdown for operation picker */
+    .sig-select     { position: relative; z-index: 2; }
+    .sig-select-trigger {
+                      display: inline-flex; align-items: center; gap: .4rem;
+                      padding: .35rem .75rem; border-radius: var(--radius);
+                      background: var(--bg-surface); border: 1px solid var(--border);
+                      color: var(--text); font-size: .85rem; font-family: inherit;
+                      cursor: pointer; transition: all .15s ease; user-select: none; }
+    .sig-select-trigger:hover { border-color: var(--accent); background: var(--accent-soft); }
+    .sig-select-trigger.open  { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,.1); }
+    .sig-select-trigger .sig-select-arrow {
+                      font-size: .65rem; color: var(--text-muted); transition: transform .15s ease;
+                      margin-left: .15rem; }
+    .sig-select-trigger.open .sig-select-arrow { transform: rotate(180deg); }
+    .sig-select-menu {
+                      position: absolute; top: calc(100% + 4px); left: 0; min-width: 160px;
+                      background: var(--bg-surface); border: 1px solid var(--border);
+                      border-radius: var(--radius); padding: .3rem;
+                      box-shadow: 0 8px 24px rgba(0,0,0,.25); z-index: 50; }
+    .sig-select-item {
+                      display: flex; align-items: center; gap: .5rem;
+                      padding: .4rem .65rem; border-radius: calc(var(--radius) - 2px);
+                      font-size: .84rem; cursor: pointer; color: var(--text);
+                      transition: all .1s ease; }
+    .sig-select-item:hover { background: var(--bg-hover); }
+    .sig-select-item.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .sig-select-item .sig-select-symbol {
+                      width: 1.4rem; text-align: center; font-weight: 600; font-size: .9rem; }
+
+    .sig-how        { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                      gap: .75rem; margin-top: 1rem; }
+    .sig-concept    { padding: .75rem .85rem; border-radius: var(--radius);
+                      border: 1px solid var(--border); background: var(--bg-surface); }
+    .sig-concept h4 { font-size: .82rem; margin: 0 0 .3rem; color: var(--accent);
+                      text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+    .sig-concept p  { font-size: .8rem; color: var(--text-muted); margin: 0; line-height: 1.45; }
+    .sig-concept code { font-size: .78rem; color: var(--text); }
+
+    @media (max-width: 768px) {
+      .sig-lab           { padding: 1rem; }
+      .sig-row           { gap: .5rem; }
+      .sig-how           { grid-template-columns: 1fr; }
+      .sig-select-menu   { left: auto; right: 0; }
+    }
+    @media (max-width: 480px) {
+      .sig-lab           { padding: .75rem; }
+      .sig-op            { gap: .3rem; }
+      .sig-val           { padding: .25rem .5rem; font-size: .82rem; }
+    }
+  `,
+
   state: () => ({
     greeting: '',
-    signalDemo: 0,
+    sigA: 0,
+    sigB: 0,
+    sigOp: 'add',
+    sigResult: 0,
+    sigHistory: [],
+    opOpen: false,
   }),
 
   mounted() {
-    // $.signal() — fine-grained reactive primitive
-    const count = $.signal(0);
+    // $.signal() + $.computed() + $.effect() wired together
+    this._sigA = $.signal(3);
+    this._sigB = $.signal(5);
+    this._op   = $.signal('add');
 
-    // $.computed() — derived reactive value that auto-updates
-    const doubled = $.computed(() => count.value * 2);
-
-    // $.effect() — runs whenever its dependencies change
-    $.effect(() => {
-      this.state.signalDemo = doubled.value;
+    this._result = $.computed(() => {
+      const a = this._sigA.value, b = this._sigB.value;
+      switch (this._op.value) {
+        case 'add':      return a + b;
+        case 'subtract': return a - b;
+        case 'multiply': return a * b;
+        case 'divide':   return b !== 0 ? +(a / b).toFixed(4) : 'Infinity';
+        case 'power':    return Math.pow(a, b);
+        case 'modulo':   return b !== 0 ? a % b : 'NaN';
+        default:         return 0;
+      }
     });
 
-    // Store the signal setter so the button can use it
-    this._signalCount = count;
+    $.effect(() => {
+      const val = typeof this._result.value === 'number' ? this._result.value : 0;
+      this.state.sigA = this._sigA.value;
+      this.state.sigB = this._sigB.value;
+      this.state.sigOp = this._op.value;
+      this.state.sigResult = this._result.value;
+      const raw = this.state.sigHistory.__raw || this.state.sigHistory;
+      this.state.sigHistory = [...raw, Math.abs(val)].slice(-20);
+    });
 
-    // Greet based on time of day
     const hour = new Date().getHours();
     this.state.greeting = hour < 12 ? 'Good morning'
                         : hour < 18 ? 'Good afternoon'
                         : 'Good evening';
 
-    // Track page visit via the global store
-    const store = $.getStore('main');
-    store.dispatch('incrementVisits');
+    // Visits are tracked globally via router.afterEach in app.js
   },
 
-  incrementSignal() {
-    if (this._signalCount) {
-      this._signalCount.value++;
-    }
-  },
+  updateA(e) { this._sigA.value = Number(e.target.value) || 0; },
+  updateB(e) { this._sigB.value = Number(e.target.value) || 0; },
+  updateOp(e) { this._op.value = e.target.value; },
+  bumpA(d)   { this._sigA.value += d; },
+  bumpB(d)   { this._sigB.value += d; },
+  toggleOp() { this.state.opOpen = !this.state.opOpen; },
+  closeOp()  { this.state.opOpen = false; },
+  pickOp(op) { this._op.value = op; this.state.opOpen = false; },
 
   render() {
     const store = $.getStore('main');
+    const s = this.state;
+    const opLabels = { add: '+', subtract: '−', multiply: '×', divide: '÷', power: '^', modulo: '%' };
+    const maxH = Math.max(1, ...s.sigHistory.map(v => Math.sqrt(Math.abs(v) + 1)));
     return `
       <div class="page-header">
-        <h1>${this.state.greeting}</h1>
+        <h1>${s.greeting}</h1>
         <p class="subtitle">Welcome to your new <strong>zQuery</strong> app. Explore the pages to see different features in action.</p>
       </div>
 
-      <div class="card-grid">
-        <div class="card card-accent">
-          <h3><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--accent)" style="width:20px;height:20px;vertical-align:-4px;margin-right:0.25rem;"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/></svg> Reactive Signals</h3>
-          <p>Fine-grained reactivity with <code>signal()</code>, <code>computed()</code>, and <code>effect()</code>.</p>
-          <div class="signal-demo">
-            <span class="signal-value">Doubled: ${this.state.signalDemo}</span>
-            <button class="btn btn-sm" @click="incrementSignal">Increment Signal</button>
+      <div class="card card-accent">
+        <h3><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--accent)" style="width:20px;height:20px;vertical-align:-4px;margin-right:0.25rem;"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/></svg> Reactive Signals Lab</h3>
+        <p style="margin-bottom:.65rem;">Signals are <strong>reactive primitives</strong> — values that automatically notify dependents when they change.
+          Adjust <strong>A</strong> and <strong>B</strong> below and watch the computed result update instantly, with no manual DOM wiring.</p>
+
+        <div class="sig-lab">
+          <div class="sig-row">
+            <div class="sig-op">
+              <button class="btn btn-sm btn-ghost" @click="bumpA(-1)">−</button>
+              <div class="sig-val"><small>A</small> <span>${s.sigA}</span></div>
+              <button class="btn btn-sm btn-ghost" @click="bumpA(1)">+</button>
+            </div>
+            <div class="sig-select" @click.outside="closeOp">
+              <button class="sig-select-trigger ${s.opOpen ? 'open' : ''}" @click="toggleOp">
+                <span class="sig-select-symbol">${opLabels[s.sigOp] || '+'}</span> ${s.sigOp.charAt(0).toUpperCase() + s.sigOp.slice(1)}
+                <span class="sig-select-arrow">▼</span>
+              </button>
+              <div class="sig-select-menu" z-show="opOpen">
+                ${Object.entries(opLabels).map(([key, sym]) => `
+                  <div class="sig-select-item ${s.sigOp === key ? 'active' : ''}" @click="pickOp('${key}')">
+                    <span class="sig-select-symbol">${sym}</span> ${key.charAt(0).toUpperCase() + key.slice(1)}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            <div class="sig-op">
+              <button class="btn btn-sm btn-ghost" @click="bumpB(-1)">−</button>
+              <div class="sig-val"><small>B</small> <span>${s.sigB}</span></div>
+              <button class="btn btn-sm btn-ghost" @click="bumpB(1)">+</button>
+            </div>
+            <span style="font-size:1.1rem;color:var(--text-muted);">=</span>
+            <div class="sig-val" style="background:rgba(88,166,255,.14);"><span style="font-size:1.05rem;">${s.sigResult}</span></div>
           </div>
+
+          <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:.4rem;">
+            <code>$.computed(() => ${s.sigA} ${opLabels[s.sigOp] || '+'} ${s.sigB})</code> → <strong style="color:var(--accent);">${s.sigResult}</strong>
+          </div>
+
+          ${s.sigHistory.length > 1 ? `
+            <div class="sig-graph">
+              ${s.sigHistory.map(v => `<div class="sig-bar" style="height:${Math.max(5, (Math.sqrt(Math.abs(v) + 1) / maxH) * 40)}px;"></div>`).join('')}
+            </div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem;">Result history — ${s.sigHistory.length} values tracked by <code>effect()</code></div>
+          ` : ''}
         </div>
 
+        <div class="sig-how">
+          <div class="sig-concept">
+            <h4>Signal</h4>
+            <p>A reactive value container. When you write <code>$.signal(3)</code> you get an object whose <code>.value</code> automatically triggers updates when changed.</p>
+          </div>
+          <div class="sig-concept">
+            <h4>Computed</h4>
+            <p>A derived value that re-evaluates when its dependencies change. <code>$.computed(() => A + B)</code> recalculates whenever A or B updates — no manual calls.</p>
+          </div>
+          <div class="sig-concept">
+            <h4>Effect</h4>
+            <p>A side-effect that runs automatically when tracked signals change. The bar chart above is powered by <code>$.effect()</code> — it records every new result.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-grid">
         <div class="card">
           <h3><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--accent)" style="width:20px;height:20px;vertical-align:-4px;margin-right:0.25rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5-3.9 19.5m-2.1-19.5-3.9 19.5"/></svg> Counter</h3>
           <p><code>computed</code> properties, <code>watch</code> callbacks, and <code>z-for</code> with <code>z-key</code> diffing.</p>
@@ -83,55 +227,20 @@ $.component('home-page', {
           <p>Fetch data with <code>$.get()</code>, loading states, and <code>$.escapeHtml()</code>.</p>
           <a z-link="/api" class="btn btn-outline">Try It →</a>
         </div>
-      </div>
 
-      <div class="card card-muted">
-        <h3><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--accent)" style="width:20px;height:20px;vertical-align:-4px;margin-right:0.25rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></svg> App Stats</h3>
-        <div class="stats-grid">
-          <div class="stat-group">
-            <span class="stat-group-title"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:14px;height:14px;vertical-align:-2px;margin-right:0.2rem;"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955a1.126 1.126 0 0 1 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></svg> General</span>
-            <div class="stat-group-values">
-              <div class="stat">
-                <span class="stat-value">${store.state.visits}</span>
-                <span class="stat-label">Page Views</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="stat-group">
-            <span class="stat-group-title"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:14px;height:14px;vertical-align:-2px;margin-right:0.2rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg> Todos</span>
-            <div class="stat-group-values">
-              <div class="stat">
-                <span class="stat-value">${store.getters.todoCount}</span>
-                <span class="stat-label">Total</span>
-              </div>
-              <div class="stat">
-                <span class="stat-value">${store.getters.pendingCount}</span>
-                <span class="stat-label">Pending</span>
-              </div>
-              <div class="stat">
-                <span class="stat-value">${store.getters.doneCount}</span>
-                <span class="stat-label">Done</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="stat-group">
-            <span class="stat-group-title"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:14px;height:14px;vertical-align:-2px;margin-right:0.2rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z"/></svg> Contacts</span>
-            <div class="stat-group-values">
-              <div class="stat">
-                <span class="stat-value">${store.getters.contactCount}</span>
-                <span class="stat-label">Total</span>
-              </div>
-              <div class="stat">
-                <span class="stat-value">${store.getters.favoriteCount}</span>
-                <span class="stat-label">★ Favorited</span>
-              </div>
-            </div>
-          </div>
+        <div class="card">
+          <h3><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--accent)" style="width:20px;height:20px;vertical-align:-4px;margin-right:0.25rem;"><path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9"/></svg> Playground</h3>
+          <p><code>@click.outside</code> dropdowns, <code>fadeIn/fadeOut</code> modals, <code>slideToggle</code>, <code>z-style</code>, and <code>$.fn</code> plugins.</p>
+          <a z-link="/playground" class="btn btn-outline">Try It →</a>
         </div>
-        <small class="muted">Stats powered by <code>$.store()</code> getters — visit count tracked globally.</small>
+
+        <div class="card">
+          <h3><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--accent)" style="width:20px;height:20px;vertical-align:-4px;margin-right:0.25rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75a4.5 4.5 0 0 1-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 1 1-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 0 1 6.336-4.486l-3.276 3.276a3.004 3.004 0 0 0 2.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852Z"/></svg> Toolkit</h3>
+          <p>HTTP interceptors &amp; CRUD, <code>$.pipe</code>, <code>$.memoize</code>, <code>$.retry</code>, store middleware, and snapshots.</p>
+          <a z-link="/toolkit" class="btn btn-outline">Try It →</a>
+        </div>
       </div>
+
     `;
   }
 });

@@ -1,0 +1,97 @@
+/* toolkit.css — scoped styles for the toolkit page component */
+
+.tk-tabs       { display: flex; padding: .35rem;
+                 background: var(--bg-surface);
+                 border-radius: var(--radius-lg);
+                 border: 1px solid var(--border); gap: .25rem; }
+.tk-tab        { flex: 1; padding: .55rem .9rem; font-size: .85rem; font-weight: 500;
+                 border-radius: var(--radius); cursor: pointer; border: none;
+                 color: var(--text-muted); background: transparent;
+                 transition: all .15s; text-align: center; font-family: inherit; }
+.tk-tab:hover  { color: var(--text); background: var(--bg-hover); }
+.tk-tab.active { color: #fff; background: var(--accent);
+                 box-shadow: 0 2px 8px rgba(88,166,255,.25); }
+
+.tk-method     { display: inline-flex; align-items: center; padding: .2rem .5rem;
+                 border-radius: 4px; font-size: .75rem; font-weight: 700;
+                 font-family: monospace; letter-spacing: .03em; }
+.tk-method-get { background: rgba(52,211,153,.15); color: var(--success); }
+.tk-method-post{ background: rgba(96,165,250,.15); color: var(--info); }
+.tk-method-put { background: rgba(88,166,255,.15); color: var(--accent); }
+.tk-method-del { background: rgba(248,113,113,.15); color: var(--danger); }
+
+.tk-endpoint   { font-family: monospace; font-size: .85rem; color: var(--text-muted); }
+
+.tk-status     { display: inline-flex; align-items: center; padding: .15rem .45rem;
+                 border-radius: 4px; font-size: .75rem; font-weight: 600;
+                 margin-left: auto; }
+.tk-status-ok  { background: rgba(52,211,153,.12); color: var(--success); }
+.tk-status-err { background: rgba(248,113,113,.12); color: var(--danger); }
+
+.tk-response   { margin-top: .75rem; border-radius: var(--radius);
+                 border: 1px solid var(--border); overflow: hidden; }
+.tk-response-hdr { display: flex; align-items: center; gap: .5rem;
+                   padding: .5rem .75rem; background: var(--bg-surface);
+                   border-bottom: 1px solid var(--border); font-size: .85rem; }
+.tk-response-body { padding: .75rem 1rem; font-size: .8rem; line-height: 1.5;
+                    overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+                    max-height: 260px; overflow-y: auto; color: var(--text-muted);
+                    background: rgba(0,0,0,.15); }
+
+.tk-results    { list-style: none; padding: 0; margin: .5rem 0 0; }
+.tk-results li { display: flex; align-items: center; gap: .6rem;
+                 padding: .5rem 0; border-bottom: 1px solid var(--border); }
+.tk-results li:last-child { border-bottom: none; }
+
+.tk-log        { font-size: .8rem; line-height: 1.7; max-height: 200px; overflow-y: auto; }
+.tk-log-entry  { display: flex; align-items: center; gap: .5rem; padding: .3rem 0;
+                 border-bottom: 1px solid rgba(255,255,255,.04); }
+.tk-btns       { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+.tk-util-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem;
+                 margin-bottom: 1rem; }
+@media (max-width: 640px) { .tk-util-grid { grid-template-columns: 1fr; } }
+.tk-util-card  { padding: .85rem 1rem; border-radius: var(--radius);
+                 background: var(--bg-hover); border: 1px solid var(--border);
+                 cursor: pointer; transition: all .15s; }
+.tk-util-card:hover { border-color: var(--accent); background: rgba(88,166,255,.04); }
+.tk-util-card.selected { border-color: var(--accent);
+                 background: rgba(88,166,255,.06);
+                 box-shadow: 0 0 0 1px var(--accent); }
+.tk-util-card h4 { margin: 0 0 .25rem; font-size: .9rem; }
+.tk-util-card p  { margin: 0; font-size: .8rem; color: var(--text-muted); }
+
+.tk-util-result { padding: .75rem 1rem; border-radius: var(--radius);
+                  background: rgba(0,0,0,.2); border: 1px solid var(--border);
+                  font-size: .82rem; line-height: 1.6; color: var(--text-muted);
+                  overflow-x: auto; white-space: pre-wrap;
+                  max-height: 250px; overflow-y: auto; font-family: monospace; }
+
+.tk-store-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+@media (max-width: 640px) { .tk-store-grid { grid-template-columns: 1fr; } }
+.tk-store-card { padding: 1rem 1.15rem; border-radius: var(--radius-lg);
+                 background: var(--bg-hover); border: 1px solid var(--border);
+                 transition: border-color .15s; }
+.tk-store-card:hover { border-color: rgba(88,166,255,.2); }
+.tk-store-card h4 { margin: 0 0 .4rem; font-size: .95rem;
+                    display: flex; align-items: center; gap: .4rem; }
+.tk-store-card p  { margin: 0 0 .65rem; font-size: .82rem; color: var(--text-muted); }
+.tk-store-pre  { padding: .65rem .85rem; border-radius: var(--radius);
+                 background: rgba(0,0,0,.2); border: 1px solid var(--border);
+                 font-size: .78rem; line-height: 1.5; color: var(--text-muted);
+                 overflow-x: auto; white-space: pre-wrap;
+                 max-height: 200px; overflow-y: auto; }
+.tk-stat       { display: flex; align-items: center; gap: .5rem;
+                 padding: .4rem .65rem; border-radius: var(--radius);
+                 background: rgba(88,166,255,.06); font-size: .82rem;
+                 border: 1px solid rgba(88,166,255,.1); }
+.tk-stat-val   { font-weight: 700; color: var(--accent); }
+
+/* ── Responsive: tabs ── */
+@media (max-width: 768px) {
+  .tk-tabs       { flex-wrap: wrap; }
+  .tk-tab        { flex: 1 1 auto; min-width: 0; padding: .5rem .6rem; font-size: .8rem; }
+}
+@media (max-width: 480px) {
+  .tk-tab        { font-size: .75rem; padding: .45rem .5rem; }
+}

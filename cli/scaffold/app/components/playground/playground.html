@@ -1,0 +1,162 @@
+<!--
+  playground.html — external template for playground-page component
+
+  Interactive UI patterns — event modifiers, animations, reactive bindings,
+  and plugins. Uses {{expression}} syntax for data binding.
+-->
+<div class="page-header" z-cloak>
+  <h1>Playground</h1>
+  <p class="subtitle">Interactive UI patterns — event modifiers, animations, reactive bindings, and plugins.</p>
+</div>
+
+<!-- ── Interaction Patterns ──────────────────────────── -->
+<div class="pg-section">Interaction Patterns</div>
+
+<div class="card" style="position:relative;z-index:2;">
+  <h3>Dropdown → Modal Flow</h3>
+  <p>Select an action from the <code>@click.outside</code> dropdown — it opens a confirmation modal. Dismiss via overlay (<code>@click.self</code>) or <kbd style="padding:.1rem .35rem;background:var(--bg-hover);border-radius:4px;font-size:.82rem;">Esc</kbd>.</p>
+  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <div class="pg-dropdown" @click.outside="closeDropdown">
+      <button class="btn btn-primary" @click="toggleDropdown">
+        <span z-if="dropdownSelected" z-text="dropdownSelected"></span><span z-else>Choose action…</span> ▾
+      </button>
+      <div class="pg-dropdown-menu" z-show="dropdownOpen">
+        <a class="pg-dropdown-item" @click="selectItem('Edit Profile')">✏️ Edit Profile</a>
+        <a class="pg-dropdown-item" @click="selectItem('Export Data')">📦 Export Data</a>
+        <a class="pg-dropdown-item" @click="selectItem('Delete Account')">🗑️ Delete Account</a>
+      </div>
+    </div>
+    <button z-if="!onceClicked" class="btn btn-outline" @click.once="onceAction">@click.once</button>
+    <button z-else class="btn btn-ghost" disabled>✓ Once fired</button>
+  </div>
+
+  <!-- Modal — faded in via JS, dismissed via overlay @click.self or Escape -->
+  <div class="pg-modal-backdrop" z-if="modalOpen" style="display:none" @click.self="closeModal">
+    <div class="pg-modal" @keydown.escape="closeModal" tabindex="-1">
+      <h3>Confirm: <span z-text="dropdownSelected || 'Action'"></span></h3>
+      <p style="color:var(--text-muted);">This modal was triggered by the dropdown selection. Try pressing <kbd style="padding:.1rem .35rem;background:var(--bg-hover);border-radius:4px;font-size:.82rem;">Esc</kbd> or clicking the backdrop to cancel.</p>
+      <p style="font-size:.85rem;color:var(--text-muted);margin-top:.5rem;"><code>@click.self</code> on backdrop • <code>@keydown.escape</code> on dialog • <code>fadeIn/fadeOut</code> transition</p>
+      <div class="pg-modal-footer">
+        <button class="btn btn-ghost" @click="closeModal">Cancel</button>
+        <button class="btn btn-primary" @click="confirmModal">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Animations ──────────────────────────────────── -->
+<div class="pg-section">Animations</div>
+
+<div class="card">
+  <h3>Accordion</h3>
+  <p>Smooth height animation with <code>slideToggle()</code>. Uses <code>z-skip</code> to opt the subtree out of morph diffing.</p>
+  <div class="pg-accordion" z-skip>
+    <div class="pg-accordion-item">
+      <button class="pg-accordion-hdr" @click="toggleAccordion('a')">
+        <span>What is zQuery?</span>
+        <span id="pg-acc-icon-a" class="pg-accordion-icon">▸</span>
+      </button>
+      <div id="pg-acc-a" style="display:none">
+        <div class="pg-accordion-body">A zero-dependency frontend library for reactive SPAs — components, routing, stores, HTTP, and 200+ utilities in one ~28 KB file.</div>
+      </div>
+    </div>
+    <div class="pg-accordion-item">
+      <button class="pg-accordion-hdr" @click="toggleAccordion('b')">
+        <span>Do I need a build step?</span>
+        <span id="pg-acc-icon-b" class="pg-accordion-icon">▸</span>
+      </button>
+      <div id="pg-acc-b" style="display:none">
+        <div class="pg-accordion-body">Nope. Drop the script tag and go. <code>npx zquery bundle</code> minifies for production, but it's entirely optional.</div>
+      </div>
+    </div>
+    <div class="pg-accordion-item">
+      <button class="pg-accordion-hdr" @click="toggleAccordion('c')">
+        <span>How does the morph engine work?</span>
+        <span id="pg-acc-icon-c" class="pg-accordion-icon">▸</span>
+      </button>
+      <div id="pg-acc-c" style="display:none">
+        <div class="pg-accordion-body">Re-renders diff new HTML against the live DOM, patching only changed nodes. Keyed lists (<code>z-key</code>) enable O(n) reconciliation.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Reactive Bindings ───────────────────────────── -->
+<div class="pg-section">Reactive Bindings</div>
+
+<div class="card-grid">
+  <div class="card">
+    <h3>Dynamic Styles</h3>
+    <p>Object binding via <code>z-style</code> — inline styles update reactively.</p>
+    <div class="pg-style-preview" z-style="{ color: previewColor, fontSize: previewSize + 'px', borderRadius: previewRadius + 'px', borderColor: previewColor }">
+      Live Preview
+    </div>
+    <div class="pg-style-ctrls">
+      <label>Color <input type="color" z-model="previewColor" /></label>
+      <label>Size <input type="range" z-model="previewSize" z-number min="12" max="32" /></label>
+      <label>Radius <input type="range" z-model="previewRadius" z-number min="0" max="24" /></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Rich Content</h3>
+    <p>Render trusted HTML with <code>z-html</code> — only use with sanitized content.</p>
+    <textarea z-model="richContent" class="input" rows="2" style="resize:vertical;"></textarea>
+    <div class="pg-rich-preview" style="margin-top:.5rem;" z-html="richContent"></div>
+  </div>
+
+  <div class="card">
+    <h3>Conditional Classes</h3>
+    <p>Switch a single class from a set using <code>z-class</code> — the object syntax applies only the matching key.</p>
+    <div class="pg-variant-row">
+      <div class="pg-variant-box" z-class="{'info': variant === 'info', 'success': variant === 'success', 'warning': variant === 'warning', 'danger': variant === 'danger'}">
+        {{variant.charAt(0).toUpperCase() + variant.slice(1)}} Variant
+      </div>
+    </div>
+    <div class="pg-variant-pills">
+      <button class="pg-vpill {{variant === 'info' ? 'on' : ''}}" @click="setVariant('info')">Info</button>
+      <button class="pg-vpill {{variant === 'success' ? 'on' : ''}}" @click="setVariant('success')">Success</button>
+      <button class="pg-vpill {{variant === 'warning' ? 'on' : ''}}" @click="setVariant('warning')">Warning</button>
+      <button class="pg-vpill {{variant === 'danger' ? 'on' : ''}}" @click="setVariant('danger')">Danger</button>
+    </div>
+    <pre class="pg-code" style="margin-top:.65rem;"><code>z-class="{'info': variant === 'info', 'warning': variant === 'warning'}"</code></pre>
+  </div>
+</div>
+
+<!-- ── Keyboard ──────────────────────────────────── -->
+<div class="pg-section">Keyboard</div>
+
+<div class="card">
+  <h3>Key &amp; System Modifiers</h3>
+  <p>Template-level keyboard filtering — no manual <code>e.key</code> checks needed.</p>
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+    <input type="text" class="input input-sm" placeholder="Press Enter…" @keyup.enter="logShortcut('Enter ↵')" style="flex:1;min-width:140px;" />
+    <button class="btn btn-sm btn-outline" @click.ctrl="logShortcut('Ctrl+Click')">Ctrl+Click</button>
+    <button class="btn btn-sm btn-outline" @click.shift="logShortcut('Shift+Click')">Shift+Click</button>
+    <button class="btn btn-sm btn-outline" @click.meta="logShortcut('⌘/⊞+Click')">⌘+Click</button>
+  </div>
+  <div class="pg-shortcut-log" z-if="shortcutLog.length > 0">
+    <span z-for="e in shortcutLog" z-key="{{e.id}}" class="pg-badge">{{e.name}}</span>
+  </div>
+</div>
+
+<!-- ── Plugin System ───────────────────────────────── -->
+<div class="pg-section">Plugin System</div>
+
+<div class="card">
+  <h3><code>$.fn</code> — Extend the Collection</h3>
+  <p>Register custom chainable methods on every <code>$(...)</code> selection. Click the buttons to trigger each plugin.</p>
+  <div id="pg-plugin-box" class="pg-plugin-target">✦ Target Element</div>
+  <div class="pg-plugin-btns">
+    <button class="btn btn-sm btn-primary" @click="highlightDemo">highlight()</button>
+    <button class="btn btn-sm btn-outline" @click="shakeDemo">shake()</button>
+    <button class="btn btn-sm btn-outline" @click="glowDemo">glow()</button>
+  </div>
+  <pre class="pg-code"><code>$.fn.highlight = function(color) {
+  this.css({ boxShadow: '0 0 0 3px ' + color });
+  setTimeout(() =&gt; this.css({ boxShadow: '' }), 1500);
+  return this;   // chainable
+};
+
+$('#el').highlight().shake().glow();  // chain them!</code></pre>
+</div>
