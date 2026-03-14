@@ -9,30 +9,30 @@
 
 $.component('home-page', {
   styles: `
-    .sig-lab        { padding: 1.25rem 1.5rem; border-radius: var(--radius-lg);
+    .sig-lab        { padding: 1.5rem 2rem; border-radius: var(--radius-lg);
                       background: var(--bg-hover); border: 1px solid var(--border); }
-    .sig-row        { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;
-                      margin-bottom: .75rem; }
-    .sig-val        { display: inline-flex; align-items: center; gap: .35rem;
-                      padding: .3rem .7rem; border-radius: var(--radius);
+    .sig-row        { display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap;
+                      margin-bottom: 1rem; }
+    .sig-val        { display: inline-flex; align-items: center; gap: .4rem;
+                      padding: .4rem .85rem; border-radius: var(--radius);
                       background: rgba(88,166,255,.08); border: 1px solid rgba(88,166,255,.15);
-                      font-family: monospace; font-size: .9rem; font-weight: 600; }
+                      font-family: monospace; font-size: 1rem; font-weight: 600; }
     .sig-val span   { color: var(--accent); }
-    .sig-val small  { color: var(--text-muted); font-weight: 400; font-size: .8rem; }
+    .sig-val small  { color: var(--text-muted); font-weight: 400; font-size: .85rem; }
     .sig-op         { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
-    .sig-graph      { display: flex; gap: 2px; align-items: flex-end; height: 40px;
-                      margin-top: .5rem; }
-    .sig-bar        { flex: 1; min-width: 3px; max-width: 16px;
-                      background: var(--accent); border-radius: 2px 2px 0 0;
-                      opacity: .6; transition: height .15s ease; }
+    .sig-graph      { display: flex; gap: 3px; align-items: flex-end; height: 56px;
+                      margin-top: .75rem; }
+    .sig-bar        { flex: 1; min-width: 4px; max-width: 24px;
+                      background: var(--accent); border-radius: 3px 3px 0 0;
+                      opacity: .65; transition: height .15s ease; }
 
     /* Custom dropdown for operation picker */
     .sig-select     { position: relative; z-index: 2; }
     .sig-select-trigger {
                       display: inline-flex; align-items: center; gap: .4rem;
-                      padding: .35rem .75rem; border-radius: var(--radius);
+                      padding: .4rem .85rem; border-radius: var(--radius);
                       background: var(--bg-surface); border: 1px solid var(--border);
-                      color: var(--text); font-size: .85rem; font-family: inherit;
+                      color: var(--text); font-size: .9rem; font-family: inherit;
                       cursor: pointer; transition: all .15s ease; user-select: none; }
     .sig-select-trigger:hover { border-color: var(--accent); background: var(--accent-soft); }
     .sig-select-trigger.open  { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(88,166,255,.1); }
@@ -55,14 +55,14 @@ $.component('home-page', {
     .sig-select-item .sig-select-symbol {
                       width: 1.4rem; text-align: center; font-weight: 600; font-size: .9rem; }
 
-    .sig-how        { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                      gap: .75rem; margin-top: 1rem; }
-    .sig-concept    { padding: .75rem .85rem; border-radius: var(--radius);
+    .sig-how        { display: grid; grid-template-columns: repeat(3, 1fr);
+                      gap: 1rem; margin-top: 1.25rem; }
+    .sig-concept    { padding: 1rem 1.1rem; border-radius: var(--radius);
                       border: 1px solid var(--border); background: var(--bg-surface); }
-    .sig-concept h4 { font-size: .82rem; margin: 0 0 .3rem; color: var(--accent);
+    .sig-concept h4 { font-size: .85rem; margin: 0 0 .4rem; color: var(--accent);
                       text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
-    .sig-concept p  { font-size: .8rem; color: var(--text-muted); margin: 0; line-height: 1.45; }
-    .sig-concept code { font-size: .78rem; color: var(--text); }
+    .sig-concept p  { font-size: .84rem; color: var(--text-muted); margin: 0; line-height: 1.5; }
+    .sig-concept code { font-size: .8rem; color: var(--text); }
 
     @media (max-width: 768px) {
       .sig-lab           { padding: 1rem; }
@@ -184,9 +184,9 @@ $.component('home-page', {
 
           ${s.sigHistory.length > 1 ? `
             <div class="sig-graph">
-              ${s.sigHistory.map(v => `<div class="sig-bar" style="height:${Math.max(5, (Math.sqrt(Math.abs(v) + 1) / maxH) * 40)}px;"></div>`).join('')}
+              ${s.sigHistory.map(v => `<div class="sig-bar" style="height:${Math.max(6, (Math.sqrt(Math.abs(v) + 1) / maxH) * 56)}px;"></div>`).join('')}
             </div>
-            <div style="font-size:.72rem;color:var(--text-muted);margin-top:.25rem;">Result history — ${s.sigHistory.length} values tracked by <code>effect()</code></div>
+            <div style="font-size:.75rem;color:var(--text-muted);margin-top:.35rem;">Result history — ${s.sigHistory.length} values tracked by <code>effect()</code></div>
           ` : ''}
         </div>
 

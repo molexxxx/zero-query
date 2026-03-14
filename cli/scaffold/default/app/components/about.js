@@ -3,6 +3,7 @@
 // Features used:
 //   $.storage        — localStorage wrapper (get / set)
 //   $.version        — library version string
+//   $.unitTests      — build-time test results object
 //   $.bus.emit       — toast notifications
 //   data-theme attr  — dark / light theming
 
@@ -43,6 +44,17 @@ $.component('about-page', {
     .feat-label       { font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
                         letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.4rem;
                         padding-left: 0.1rem; }
+
+    /* -- Test badge -- */
+    .test-badge       { display: inline-flex; align-items: center; gap: 0.3rem;
+                        padding: 0.2rem 0.55rem; border-radius: 999px;
+                        font-size: 0.7rem; font-weight: 600; line-height: 1;
+                        margin-top: 0.35rem; }
+    .test-badge.pass  { background: rgba(63,185,80,.12); color: var(--success);
+                        border: 1px solid rgba(63,185,80,.25); }
+    .test-badge.fail  { background: rgba(248,81,73,.12); color: var(--danger);
+                        border: 1px solid rgba(248,81,73,.25); }
+    .test-badge svg   { width: 11px; height: 11px; }
 
     @media (max-width: 768px) {
       .about-hero       { padding: 1.5rem 0.5rem 1rem; }
@@ -128,10 +140,15 @@ $.component('about-page', {
       </div>
 
       <div class="about-stats">
-        <div class="about-stat"><div class="about-stat-val">207+</div><div class="about-stat-lbl">Features</div></div>
         <div class="about-stat"><div class="about-stat-val">${$.libSize}</div><div class="about-stat-lbl">Minified</div></div>
         <div class="about-stat"><div class="about-stat-val">0</div><div class="about-stat-lbl">Dependencies</div></div>
-        <div class="about-stat"><div class="about-stat-val">1708</div><div class="about-stat-lbl">Tests</div></div>
+        <div class="about-stat">
+          <div class="about-stat-val">${$.unitTests.total}</div>
+          <div class="about-stat-lbl">Tests</div>
+          <span class="test-badge ${$.unitTests.ok ? 'pass' : 'fail'}">${$.unitTests.ok
+            ? '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg> passing'
+            : '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg> ' + $.unitTests.failed + ' failing'}</span>
+        </div>
       </div>
 
       <div class="card">
