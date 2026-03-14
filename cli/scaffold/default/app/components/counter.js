@@ -1,9 +1,11 @@
-// scripts/components/counter.js — interactive counter
+// counter.js — Interactive counter
 //
-// Demonstrates: component state, computed properties, watch callbacks,
-//               @click event binding, z-model two-way binding with
-//               z-number modifier, z-class, z-if, z-for with z-key,
-//               $.bus toast notifications
+// Features used:
+//   state / computed / watch  — reactive data flow
+//   @click                    — event binding
+//   z-model + z-number        — two-way binding with type coercion
+//   z-class / z-if / z-for    — conditional & list rendering
+//   $.bus.emit('toast', …)    — notifications via event bus
 
 $.component('counter-page', {
   styles: `

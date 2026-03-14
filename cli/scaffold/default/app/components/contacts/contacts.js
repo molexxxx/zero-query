@@ -1,13 +1,13 @@
-// app/components/contacts/contacts.js — contact book
+// contacts.js — Contact book page
 //
-// Demonstrates: external templateUrl + styleUrl, z-if/z-else, z-for,
-//               z-show, z-bind/:attr, z-class, z-text, z-html,
-//               z-model, z-ref, z-cloak, z-lowercase, @click, @submit.prevent,
-//               @keydown.escape, @click.outside, event modifiers, watch,
-//               and template {{expressions}}
-//
-// Contact detail + add-contact both open as modals — dismiss with
-// Esc or @click.outside. Contacts are persisted in $.store('main').
+// Features used:
+//   templateUrl / styleUrl  — external template & scoped styles
+//   z-if / z-show / z-for   — conditional & list rendering
+//   z-model / z-ref          — form bindings
+//   @click / @submit.prevent — event handling
+//   @keydown.escape          — keyboard modifier
+//   $.getStore / dispatch    — store integration
+//   $.bus.emit('toast')      — notifications
 
 $.component('contacts-page', {
   templateUrl: 'contacts.html',

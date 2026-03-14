@@ -1,10 +1,12 @@
-// scripts/components/todos.js — todo list with global store
+// todos.js — Todo list with global store
 //
-// Demonstrates: $.getStore, store.dispatch, store.subscribe,
-//               store getters, computed properties, z-model, z-ref,
-//               z-class, z-for with z-key, z-if, z-show, @click
-//               with args, @submit.prevent, mounted/destroyed
-//               lifecycle, $.bus toast, z-debounce, @keydown.escape
+// Features used:
+//   $.getStore / dispatch / subscribe  — centralized state management
+//   z-model / z-ref                    — form bindings
+//   z-for + z-key                      — keyed list rendering with diffing
+//   z-class / z-if / z-show            — conditional rendering
+//   @submit.prevent / @keydown.escape  — event modifiers
+//   mounted / destroyed lifecycle      — setup & teardown
 
 $.component('todos-page', {
   styles: `

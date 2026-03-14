@@ -1,9 +1,15 @@
-// app/app.js — application entry point
+// app.js — Application entry point
 //
-// This file bootstraps the zQuery app: imports all components,
-// sets up routing, wires the responsive nav, and demonstrates
-// several core APIs: $.router, $.ready, $.bus, $.on, $.storage,
-// router.afterEach, and $.create.
+// Bootstraps the app: imports components, sets up routing,
+// wires the responsive sidebar, and connects the store.
+//
+// Key APIs used:
+//   $.router     — SPA navigation (history mode)
+//   $.ready      — run after DOM is loaded
+//   $.bus        — event bus (toast notifications, contact card)
+//   $.on         — global delegated event listeners
+//   $.storage    — localStorage wrapper
+//   $.create     — create DOM elements
 
 import './store.js';
 import './components/home.js';

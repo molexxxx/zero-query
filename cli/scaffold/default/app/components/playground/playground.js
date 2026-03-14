@@ -1,11 +1,14 @@
-// app/components/playground/playground.js — Interactive UI patterns
+// playground.js — Interactive UI patterns
 //
-// Demonstrates: @click.outside, @click.self, @click.once,
-//               @keydown.escape, @keyup.enter, .ctrl/.shift/.meta
-//               system modifiers, fadeIn/fadeOut, slideToggle,
-//               animate(), z-style object binding, z-html,
-//               $.fn plugin extension, z-skip (morph opt-out),
-//               external templateUrl + styleUrl
+// Features used:
+//   @click.outside / .self / .once  — event modifiers
+//   @keydown.escape / @keyup.enter  — keyboard modifiers
+//   fadeIn / fadeOut / slideToggle   — DOM animations
+//   z-style                         — reactive inline styles
+//   z-html                          — trusted HTML rendering
+//   $.fn                            — collection plugin system
+//   z-skip                          — morph opt-out
+//   templateUrl / styleUrl          — external files
 
 // ── $.fn Plugins ─────────────────────────────────────────────────
 $.fn.highlight = function (color = 'var(--accent)') {

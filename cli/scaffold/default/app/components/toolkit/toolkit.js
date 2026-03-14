@@ -1,14 +1,11 @@
-// app/components/toolkit/toolkit.js — HTTP, utilities, and advanced store
+// toolkit.js — HTTP, utilities, and advanced store features
 //
-// Demonstrates: $.http.configure, $.http.onRequest/onResponse (interceptors),
-//               $.post, $.put, $.delete, $.http.createAbort,
-//               $.pipe, $.memoize, $.retry, $.groupBy, $.chunk,
-//               $.unique, $.range, $.pick, $.omit, $.deepClone,
-//               $.deepMerge, $.isEqual, $.capitalize, $.truncate,
-//               $.camelCase, $.kebabCase, $.param, $.parseQuery,
-//               store.use (middleware), store.snapshot, store.history,
-//               init() lifecycle, z-if / z-else-if / z-else,
-//               z-for with (item, index), z-show, templateUrl / styleUrl
+// Features used:
+//   $.http / $.post / $.put / $.delete  — HTTP client + interceptors
+//   $.pipe / $.memoize / $.retry        — functional utilities
+//   $.groupBy / $.chunk / $.unique      — collection helpers
+//   store.use / snapshot / history      — middleware & time-travel
+//   templateUrl / styleUrl              — external template & styles
 
 $.component('toolkit-page', {
   templateUrl: 'toolkit.html',

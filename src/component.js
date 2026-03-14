@@ -502,11 +502,14 @@ class Component {
     this._bindRefs();
     this._bindModels();
 
-    // Restore focus if the morph replaced the focused element
+    // Restore focus if the morph replaced the focused element.
+    // Always restore selectionRange — even when the element is still
+    // the activeElement — because _bindModels or morph attribute syncing
+    // can alter the value and move the cursor.
     if (_focusInfo) {
       const el = this._el.querySelector(_focusInfo.selector);
-      if (el && el !== document.activeElement) {
-        el.focus();
+      if (el) {
+        if (el !== document.activeElement) el.focus();
         try {
           if (_focusInfo.start !== null && _focusInfo.start !== undefined) {
             el.setSelectionRange(_focusInfo.start, _focusInfo.end, _focusInfo.dir);

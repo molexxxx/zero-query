@@ -1,8 +1,8 @@
-// app/store.js — global state management
+// store.js — Global state management
 //
-// $.store() creates a centralized store with state, actions, and getters.
-// Components can dispatch actions and subscribe to changes.
-// The store is accessible anywhere via $.getStore('main').
+// Defines a centralized store with state, actions, and getters.
+// Any component can access it via $.getStore('main').
+// Dispatch actions to update state; subscribe to react to changes.
 
 export const store = $.store('main', {
   state: {

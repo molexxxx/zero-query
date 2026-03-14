@@ -1,8 +1,11 @@
-// scripts/components/home.js — dashboard / landing page
+// home.js — Landing page / dashboard
 //
-// Demonstrates: $.component, state, render, mounted lifecycle,
-//               signal + computed + effect (reactive primitives),
-//               $.store integration, $.bus, template rendering
+// Features used:
+//   $.component   — define a component with state + render
+//   $.signal      — reactive value container
+//   $.computed    — derived reactive value
+//   $.effect      — side-effect that auto-tracks signals
+//   $.getStore    — access the global store
 
 $.component('home-page', {
   styles: `

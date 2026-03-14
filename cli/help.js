@@ -9,6 +9,8 @@ function showHelp() {
     create [dir]               Scaffold a new zQuery project
                                Creates index.html, global.css, app/, assets/ in the target directory
                                (defaults to the current directory)
+      --minimal, -m            Use the minimal template (home, counter, about)
+                               instead of the full-featured default scaffold
 
     dev [root]                 Start a dev server with live-reload
       --port, -p <number>     Port number (default: 3100)

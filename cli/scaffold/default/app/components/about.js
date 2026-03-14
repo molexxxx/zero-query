@@ -1,7 +1,10 @@
-// scripts/components/about.js — about page with theme switcher
+// about.js — About page with theme switcher
 //
-// Demonstrates: $.storage (localStorage wrapper), $.bus for notifications,
-//               $.version, component methods, data-theme attribute toggling
+// Features used:
+//   $.storage        — localStorage wrapper (get / set)
+//   $.version        — library version string
+//   $.bus.emit       — toast notifications
+//   data-theme attr  — dark / light theming
 
 $.component('about-page', {
   styles: `

@@ -1,7 +1,7 @@
-// app/routes.js — route definitions
+// routes.js — Route definitions
 //
-// Each route maps a URL path to a component tag name.
-// Supports: static paths, :params, wildcards, and lazy loading via `load`.
+// Maps URL paths to component tag names.
+// Also supports :params, wildcards, and lazy loading via `load`.
 
 export const routes = [
   { path: '/',           component: 'home-page'       },
