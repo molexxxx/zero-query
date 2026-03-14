@@ -165,6 +165,7 @@ export const http = {
   put:     (url, data, opts)    => request('PUT', url, data, opts),
   patch:   (url, data, opts)    => request('PATCH', url, data, opts),
   delete:  (url, data, opts)    => request('DELETE', url, data, opts),
+  head:    (url, opts)          => request('HEAD', url, undefined, opts),
 
   /**
    * Configure defaults
@@ -176,19 +177,55 @@ export const http = {
   },
 
   /**
+   * Read-only snapshot of current configuration
+   */
+  getConfig() {
+    return {
+      baseURL: _config.baseURL,
+      headers: { ..._config.headers },
+      timeout: _config.timeout,
+    };
+  },
+
+  /**
    * Add request interceptor
    * @param {Function} fn — (fetchOpts, url) → void | false | { url, options }
+   * @returns {Function} unsubscribe function
    */
   onRequest(fn) {
     _interceptors.request.push(fn);
+    return () => {
+      const idx = _interceptors.request.indexOf(fn);
+      if (idx !== -1) _interceptors.request.splice(idx, 1);
+    };
   },
 
   /**
    * Add response interceptor
    * @param {Function} fn — (result) → void
+   * @returns {Function} unsubscribe function
    */
   onResponse(fn) {
     _interceptors.response.push(fn);
+    return () => {
+      const idx = _interceptors.response.indexOf(fn);
+      if (idx !== -1) _interceptors.response.splice(idx, 1);
+    };
+  },
+
+  /**
+   * Clear interceptors — all, or just 'request' / 'response'
+   */
+  clearInterceptors(type) {
+    if (!type || type === 'request') _interceptors.request.length = 0;
+    if (!type || type === 'response') _interceptors.response.length = 0;
+  },
+
+  /**
+   * Run multiple requests in parallel
+   */
+  all(requests) {
+    return Promise.all(requests);
   },
 
   /**
