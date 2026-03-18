@@ -30,6 +30,7 @@
 | **HTTP** | Fetch wrapper with auto-JSON, interceptors (with unsubscribe & clear), HEAD requests, parallel requests (`http.all`), config inspection (`getConfig`), timeout/abort, base URL |
 | **Utils** | debounce, throttle, pipe, once, sleep, memoize, escapeHtml, stripHtml, uuid, capitalize, truncate, range, chunk, groupBy, unique, pick, omit, getPath/setPath, isEmpty, clamp, retry, timeout, deepClone, deepMerge, storage/session wrappers, event bus |
 | **Dev Tools** | CLI dev server with live-reload, CSS hot-swap, full-screen error overlay, floating toolbar, dark-themed inspector panel (Router view, DOM tree, network log, component viewer, performance dashboard), fetch interceptor, render instrumentation, CLI bundler for single-file production builds |
+| **SSR** | Server-side rendering to HTML strings in Node.js — `createSSRApp()`, `renderToString()`, `renderPage()` with SEO/Open Graph support, `renderBatch()` for parallel rendering, fragment mode, hydration markers, graceful error handling, `escapeHtml()` utility |
 
 ---
 
@@ -53,7 +54,7 @@ npx zquery dev my-app
 
 > **Tip:** Stay in the project root (where `node_modules` lives) instead of `cd`-ing into `my-app`. This keeps `index.d.ts` accessible to your IDE for full type/intellisense support.
 
-The `create` command generates a ready-to-run project with a sidebar layout, router, multiple components (including a folder component with external template and styles), and responsive styles. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
+The `create` command generates a ready-to-run project with a sidebar layout, router, multiple components (including folder components with external templates and styles), and responsive styles. Use `--minimal` (or `-m`) to scaffold a lightweight 3-page starter instead. Use `--ssr` (or `-s`) to scaffold a project with a Node.js server-side rendering example. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
 
 #### Error Overlay
 
@@ -136,7 +137,7 @@ That's it — a fully working SPA with the dev server's live-reload.
 ## Recommended Project Structure
 
 ```
-my-app/
+my-app/                          ← default scaffold (npx zquery create my-app)
   index.html
   global.css
   app/
@@ -150,14 +151,61 @@ my-app/
       api-demo.js
       about.js
       not-found.js
+      contact-card.js
       contacts/           ← folder component (templateUrl + styleUrl)
         contacts.js
         contacts.html
         contacts.css
+      playground/          ← folder component
+        playground.js
+        playground.html
+        playground.css
+      toolkit/             ← folder component
+        toolkit.js
+        toolkit.html
+        toolkit.css
   assets/
     scripts/              ← third-party JS (e.g. zquery.min.js for manual setup)
     styles/               ← additional stylesheets, fonts, etc.
 ```
+
+Use `--minimal` for a lighter starting point (3 pages + 404 fallback):
+
+```
+my-app/                          ← minimal scaffold (npx zquery create my-app --minimal)
+  index.html
+  global.css
+  app/
+    app.js
+    routes.js
+    store.js
+    components/
+      home.js
+      counter.js
+      about.js
+      not-found.js               ← 404 fallback
+  assets/
+```
+
+Use `--ssr` for a project with server-side rendering:
+
+```
+my-app/                          ← SSR scaffold (npx zquery create my-app --ssr)
+  index.html                     ← client HTML shell
+  global.css
+  app/
+    app.js                       ← client entry — registers shared components
+    routes.js                    ← shared route definitions
+    components/
+      home.js                    ← shared component (SSR + client)
+      about.js
+      not-found.js
+  server/
+    index.js                     ← SSR HTTP server
+  assets/
+```
+
+Components in `app/components/` export plain definition objects — the client registers them with `$.component()`, the server with `app.component()`. The `--ssr` flag handles everything automatically — installs dependencies, starts the server at `http://localhost:3000`, and opens the browser.
 
 - One component per file inside `components/`.
 - Names **must contain a hyphen** (Web Component convention): `home-page`, `app-counter`, etc.
@@ -271,13 +319,16 @@ location / {
 | `$.retry` `$.timeout` | Async utils |
 | `$.param` `$.parseQuery` | URL utils |
 | `$.storage` `$.session` | Storage wrappers |
-| `$.EventBus` `$.bus` | Event bus || `$.onError` `$.ZQueryError` `$.ErrorCode` `$.guardCallback` `$.validate` | Error handling || `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~100 KB\"`) |
+| `$.EventBus` `$.bus` | Event bus |
+| `$.onError` `$.ZQueryError` `$.ErrorCode` `$.guardCallback` `$.guardAsync` `$.formatError` `$.validate` | Error handling |
+| `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~100 KB\"`) |
+| `$.unitTests` | Build-time test results `{ passed, failed, total, suites, duration, ok }` |
 | `$.meta` | Build metadata (populated by CLI bundler) |
 | `$.noConflict` | Release `$` global |
 
 | CLI Command | Description |
 | --- | --- |
-| `zquery create [dir]` | Scaffold a new project (index.html, components, store, styles) |
+| `zquery create [dir]` | Scaffold a new project. Default: full-featured app. `--minimal` / `-m`: lightweight 3-page starter. `--ssr` / `-s`: SSR project with shared components and HTTP server. |
 | `zquery dev [root]` | Dev server with live-reload, CSS hot-swap, error overlay, expandable floating toolbar &amp; five-tab inspector panel (port 3100). Visit `/_devtools` for the standalone panel. `--index` for custom HTML, `--bundle` for bundled mode, `--no-intercept` to skip CDN intercept. |
 | `zquery bundle [dir\|file]` | Bundle app into a single IIFE file. Accepts dir or direct entry file. |
 | `zquery build` | Build the zQuery library (`dist/zquery.min.js`) |

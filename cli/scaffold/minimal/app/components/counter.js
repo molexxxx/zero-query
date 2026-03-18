@@ -1,11 +1,9 @@
 // counter.js — Interactive counter
 //
 // Features used:
-//   state / computed / watch  — reactive data flow
-//   @click                    — event binding
-//   z-model + z-number        — two-way binding with type coercion
-//   z-class / z-if / z-for    — conditional & list rendering
-//   z-key                     — keyed list reconciliation
+//   $.getStore / store.subscribe — shared state + live re-render
+//   @click / z-model + z-number  — events + two-way binding
+//   z-if / z-for / z-key         — conditional & keyed list rendering
 
 $.component('counter-page', {
   styles: `
@@ -44,31 +42,31 @@ $.component('counter-page', {
   `,
 
   state: () => ({
-    count: 0,
-    step: 1,
     history: [],
   }),
 
-  computed: {
-    isNegative: (state) => state.count < 0,
-    historyCount: (state) => state.history.length,
+  mounted() {
+    this._unsub = $.getStore('main').subscribe(() => this.setState({}));
   },
 
-  watch: {
-    count(val) {
-      if (val === 100)  console.log('🎉 Century reached!');
-      if (val === -100) console.log('💥 Negative century!');
-    },
+  destroyed() {
+    if (this._unsub) this._unsub();
   },
 
   increment() {
-    this.state.count += this.state.step;
-    this._pushHistory('+', this.state.step, this.state.count);
+    const store = $.getStore('main');
+    store.dispatch('increment');
+    this._pushHistory('+', store.state.step, store.state.count);
   },
 
   decrement() {
-    this.state.count -= this.state.step;
-    this._pushHistory('−', this.state.step, this.state.count);
+    const store = $.getStore('main');
+    store.dispatch('decrement');
+    this._pushHistory('−', store.state.step, store.state.count);
+  },
+
+  setStep(e) {
+    $.getStore('main').dispatch('setStep', Number(e.target.value));
   },
 
   _pushHistory(action, value, result) {
@@ -78,21 +76,23 @@ $.component('counter-page', {
   },
 
   reset() {
-    this.state.count = 0;
+    $.getStore('main').dispatch('reset');
     this.state.history = [];
   },
 
   render() {
+    const { count, step } = $.getStore('main').state;
+
     return `
       <div class="page-header">
         <h1>Counter</h1>
-        <p class="subtitle">Reactive <code>state</code>, <code>computed</code>, <code>watch</code>, and <code>z-for</code>.</p>
+        <p class="subtitle">Reactive <code>store</code>, <code>subscribe</code>, <code>dispatch</code>, and <code>z-for</code>.</p>
       </div>
 
       <div class="card">
         <div class="ctr-display">
-          <div class="ctr-num" z-class="{'negative': count < 0}">${this.state.count}</div>
-          <div class="ctr-label">current value${this.state.step !== 1 ? ` · step ${this.state.step}` : ''}</div>
+          <div class="ctr-num ${count < 0 ? 'negative' : ''}">${count}</div>
+          <div class="ctr-label">current value${step !== 1 ? ` · step ${step}` : ''}</div>
         </div>
 
         <div class="ctr-actions">
@@ -102,14 +102,14 @@ $.component('counter-page', {
 
         <div class="ctr-config">
           <label>Step size
-            <input type="number" z-model="step" z-number min="1" max="100" class="input input-sm" />
+            <input type="number" value="${step}" @input="setStep" min="1" max="100" class="input input-sm" />
           </label>
           <button class="btn btn-ghost btn-sm" @click="reset">Reset</button>
         </div>
       </div>
 
       <div class="card" z-if="history.length > 0">
-        <h3>History <small style="color:var(--text-muted);font-weight:400;font-size:.85rem;">${this.computed.historyCount} entries</small></h3>
+        <h3>History <small style="color:var(--text-muted);font-weight:400;font-size:.85rem;">${this.state.history.length} entries</small></h3>
         <div class="ctr-hist">
           <span z-for="e in history" z-key="{{e.id}}" class="ctr-hist-item">
             <span class="ctr-hist-op">{{e.action}}{{e.value}}</span>

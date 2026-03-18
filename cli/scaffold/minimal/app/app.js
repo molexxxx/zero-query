@@ -13,6 +13,7 @@ import './store.js';
 import './components/home.js';
 import './components/counter.js';
 import './components/about.js';
+import './components/not-found.js';
 import { routes } from './routes.js';
 
 // ---------------------------------------------------------------------------
@@ -21,7 +22,7 @@ import { routes } from './routes.js';
 const router = $.router({
   el: '#app',
   routes,
-  fallback: 'home-page',
+  fallback: 'not-found',
   mode: 'history'
 });
 

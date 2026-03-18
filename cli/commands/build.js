@@ -10,6 +10,7 @@
 const fs   = require('fs');
 const path = require('path');
 const zlib = require('zlib');
+const { execSync } = require('child_process');
 const { minify, sizeKB } = require('../utils');
 
 function buildLibrary() {
@@ -29,6 +30,49 @@ function buildLibrary() {
 
   const start = Date.now();
   if (!fs.existsSync(DIST)) fs.mkdirSync(DIST, { recursive: true });
+
+  // -----------------------------------------------------------------------
+  // Run unit tests and capture results for $.unitTests
+  // -----------------------------------------------------------------------
+  let testResults = { passed: 0, failed: 0, total: 0, suites: 0, duration: 0, ok: false };
+  try {
+    const json = execSync('npx vitest run --reporter=json', {
+      cwd: process.cwd(),
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 120000,
+    });
+    // vitest --reporter=json outputs JSON to stdout; may include non-JSON lines
+    const jsonStart = json.indexOf('{');
+    if (jsonStart !== -1) {
+      const parsed = JSON.parse(json.slice(jsonStart));
+      const passed  = parsed.numPassedTests  || 0;
+      const failed  = parsed.numFailedTests  || 0;
+      const total   = parsed.numTotalTests   || 0;
+      const suites  = parsed.numTotalTestSuites || 0;
+      const dur     = Math.round((parsed.testResults || []).reduce((s, r) => s + (r.endTime - r.startTime), 0));
+      testResults = { passed, failed, total, suites, duration: dur, ok: parsed.success !== false };
+    }
+    console.log(`  ✓ Tests: ${testResults.passed}/${testResults.total} passed (${testResults.suites} suites)\n`);
+  } catch (err) {
+    // Tests may fail but we still want to capture the numbers
+    const out = (err.stdout || '') + (err.stderr || '');
+    const jsonStart = out.indexOf('{');
+    if (jsonStart !== -1) {
+      try {
+        const parsed = JSON.parse(out.slice(jsonStart));
+        testResults = {
+          passed:   parsed.numPassedTests  || 0,
+          failed:   parsed.numFailedTests  || 0,
+          total:    parsed.numTotalTests   || 0,
+          suites:   parsed.numTotalTestSuites || 0,
+          duration: Math.round((parsed.testResults || []).reduce((s, r) => s + (r.endTime - r.startTime), 0)),
+          ok:       false,
+        };
+      } catch (_) { /* keep defaults */ }
+    }
+    console.log(`  ⚠ Tests: ${testResults.passed}/${testResults.total} passed, ${testResults.failed} failed\n`);
+  }
 
   const parts = modules.map(file => {
     let code = fs.readFileSync(path.join(process.cwd(), file), 'utf-8');
@@ -54,8 +98,11 @@ function buildLibrary() {
   // Inject actual minified library size into both outputs
   const libSizeKB = Math.round(Buffer.from(minified).length / 1024);
   const libSizeStr = `~${libSizeKB} KB`;
-  const outContent = fs.readFileSync(OUT_FILE, 'utf-8').replace("'__LIB_SIZE__'", `'${libSizeStr}'`);
-  const minContent = minified.replace("'__LIB_SIZE__'", `'${libSizeStr}'`);
+  const testObj = JSON.stringify(testResults);
+  let outContent = fs.readFileSync(OUT_FILE, 'utf-8').replace("'__LIB_SIZE__'", `'${libSizeStr}'`);
+  let minContent = minified.replace("'__LIB_SIZE__'", `'${libSizeStr}'`);
+  outContent = outContent.replace("'__UNIT_TESTS__'", testObj);
+  minContent = minContent.replace("'__UNIT_TESTS__'", testObj);
   fs.writeFileSync(OUT_FILE, outContent, 'utf-8');
   fs.writeFileSync(MIN_FILE, minContent, 'utf-8');
 

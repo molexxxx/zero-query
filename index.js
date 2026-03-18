@@ -27,7 +27,7 @@ import {
   capitalize, truncate, clamp,
   memoize, retry, timeout,
 } from './src/utils.js';
-import { ZQueryError, ErrorCode, onError, reportError, guardCallback, validate } from './src/errors.js';
+import { ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError } from './src/errors.js';
 
 
 // ---------------------------------------------------------------------------
@@ -173,12 +173,15 @@ $.onError        = onError;
 $.ZQueryError    = ZQueryError;
 $.ErrorCode      = ErrorCode;
 $.guardCallback  = guardCallback;
+$.guardAsync     = guardAsync;
 $.validate       = validate;
+$.formatError    = formatError;
 
 // --- Meta ------------------------------------------------------------------
-$.version = '__VERSION__';
-$.libSize = '__LIB_SIZE__';
-$.meta    = {};                // populated at build time by CLI bundler
+$.version   = '__VERSION__';
+$.libSize   = '__LIB_SIZE__';
+$.unitTests = '__UNIT_TESTS__';
+$.meta      = {};              // populated at build time by CLI bundler
 
 $.noConflict = () => {
   if (typeof window !== 'undefined' && window.$ === $) {
@@ -212,7 +215,7 @@ export {
   createRouter, getRouter,
   createStore, getStore,
   http,
-  ZQueryError, ErrorCode, onError, reportError, guardCallback, validate,
+  ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,

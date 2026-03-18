@@ -4,7 +4,7 @@
  * Lightweight modern frontend library — jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.9.7
+ * @version 0.9.8
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -115,10 +115,13 @@ export {
   ErrorCodeValue,
   ZQueryError,
   ZQueryErrorHandler,
+  FormattedError,
   onError,
   reportError,
   guardCallback,
+  guardAsync,
   validate,
+  formatError,
 } from './types/errors';
 
 export {
@@ -127,6 +130,13 @@ export {
   safeEval,
   EventModifier,
 } from './types/misc';
+
+export {
+  SSRApp,
+  createSSRApp,
+  renderToString,
+  escapeHtml as escapeHtmlSSR,
+} from './types/ssr';
 
 // ---------------------------------------------------------------------------
 // $ — Main function & namespace
@@ -324,6 +334,15 @@ interface ZQueryStatic {
   version: string;
   /** Minified library size string (e.g. `"~85.5 KB"`), injected at build time. */
   libSize: string;
+  /** Unit test results captured at build time. */
+  unitTests: {
+    passed: number;
+    failed: number;
+    total: number;
+    suites: number;
+    duration: number;
+    ok: boolean;
+  };
   /** Populated at build time by the CLI bundler. */
   meta: Record<string, any>;
   /** Remove `$` from `window` and return the library object. */
