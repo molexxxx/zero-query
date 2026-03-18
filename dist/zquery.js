@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.9.8
+ * zQuery (zeroQuery) v0.9.9
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -59,6 +59,12 @@ const ErrorCode = Object.freeze({
   HTTP_INTERCEPTOR:    'ZQ_HTTP_INTERCEPTOR',
   HTTP_PARSE:          'ZQ_HTTP_PARSE',
 
+  // SSR
+  SSR_RENDER:          'ZQ_SSR_RENDER',
+  SSR_COMPONENT:       'ZQ_SSR_COMPONENT',
+  SSR_HYDRATION:       'ZQ_SSR_HYDRATION',
+  SSR_PAGE:            'ZQ_SSR_PAGE',
+
   // General
   INVALID_ARGUMENT:    'ZQ_INVALID_ARGUMENT',
 });
@@ -87,16 +93,28 @@ class ZQueryError extends Error {
 // ---------------------------------------------------------------------------
 // Global error handler
 // ---------------------------------------------------------------------------
-let _errorHandler = null;
+let _errorHandlers = [];
 
 /**
  * Register a global error handler.
  * Called whenever zQuery catches an error internally.
+ * Multiple handlers are supported — each receives the error.
+ * Pass `null` to clear all handlers.
  *
  * @param {Function|null} handler — (error: ZQueryError) => void
+ * @returns {Function} unsubscribe function to remove this handler
  */
 function onError(handler) {
-  _errorHandler = typeof handler === 'function' ? handler : null;
+  if (handler === null) {
+    _errorHandlers = [];
+    return () => {};
+  }
+  if (typeof handler !== 'function') return () => {};
+  _errorHandlers.push(handler);
+  return () => {
+    const idx = _errorHandlers.indexOf(handler);
+    if (idx !== -1) _errorHandlers.splice(idx, 1);
+  };
 }
 
 /**
@@ -113,9 +131,9 @@ function reportError(code, message, context = {}, cause) {
     ? cause
     : new ZQueryError(code, message, context, cause);
 
-  // User handler gets first crack
-  if (_errorHandler) {
-    try { _errorHandler(err); } catch { /* prevent handler from crashing framework */ }
+  // Notify all registered handlers
+  for (const handler of _errorHandlers) {
+    try { handler(err); } catch { /* prevent handler from crashing framework */ }
   }
 
   // Always log for developer visibility
@@ -162,6 +180,42 @@ function validate(value, name, expectedType) {
       `"${name}" must be a ${expectedType}, got ${typeof value}`
     );
   }
+}
+
+/**
+ * Format a ZQueryError into a structured object suitable for overlays/logging.
+ * @param {ZQueryError|Error} err
+ * @returns {{ code: string, type: string, message: string, context: object, stack: string }}
+ */
+function formatError(err) {
+  const isZQ = err instanceof ZQueryError;
+  return {
+    code: isZQ ? err.code : '',
+    type: isZQ ? 'ZQueryError' : (err.name || 'Error'),
+    message: err.message || 'Unknown error',
+    context: isZQ ? err.context : {},
+    stack: err.stack || '',
+    cause: err.cause ? formatError(err.cause) : null,
+  };
+}
+
+/**
+ * Async version of guardCallback — wraps an async function so that
+ * rejections are caught, reported, and don't crash execution.
+ *
+ * @param {Function} fn — async function
+ * @param {string} code — ErrorCode to use
+ * @param {object} [context]
+ * @returns {Function}
+ */
+function guardAsync(fn, code, context = {}) {
+  return async (...args) => {
+    try {
+      return await fn(...args);
+    } catch (err) {
+      reportError(code, err.message || 'Async callback error', context, err);
+    }
+  };
 }
 
 // --- src/reactive.js ---------------------------------------------
@@ -5849,12 +5903,14 @@ $.onError        = onError;
 $.ZQueryError    = ZQueryError;
 $.ErrorCode      = ErrorCode;
 $.guardCallback  = guardCallback;
+$.guardAsync     = guardAsync;
 $.validate       = validate;
+$.formatError    = formatError;
 
 // --- Meta ------------------------------------------------------------------
-$.version   = '0.9.8';
+$.version   = '0.9.9';
 $.libSize   = '~101 KB';
-$.unitTests = {"passed":1733,"failed":0,"total":1733,"suites":489,"duration":2847,"ok":true};
+$.unitTests = {"passed":1808,"failed":0,"total":1808,"suites":493,"duration":2896,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 $.noConflict = () => {
