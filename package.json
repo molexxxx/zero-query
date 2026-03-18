@@ -1,9 +1,14 @@
 {
   "name": "zero-query",
-  "version": "0.9.7",
+  "version": "0.9.9",
   "description": "Lightweight modern frontend library — jQuery-like selectors, reactive components, SPA router, and state management with zero dependencies.",
   "main": "index.js",
   "types": "index.d.ts",
+  "exports": {
+    ".": "./index.js",
+    "./ssr": "./src/ssr.js",
+    "./src/*": "./src/*"
+  },
   "bin": {
     "zquery": "cli/index.js"
   },
@@ -26,7 +31,8 @@
     "bundle": "node cli/index.js bundle",
     "bundle:app": "node cli/index.js bundle zquery-website",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:ssr": "node scripts/test-ssr.js"
   },
   "keywords": [
     "dom",

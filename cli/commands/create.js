@@ -6,6 +6,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const { execSync, spawn } = require('child_process');
 const { flag } = require('../args');
 
 /**
@@ -30,11 +31,15 @@ function createProject(args) {
   const target = dirArg ? path.resolve(dirArg) : process.cwd();
   const name   = path.basename(target);
 
-  // Determine scaffold variant: --minimal / -m  or  default
-  const variant = flag('minimal', 'm') ? 'minimal' : 'default';
+  // Determine scaffold variant: --minimal / -m  or  --ssr / -s  or  default
+  const variant = flag('minimal', 'm') ? 'minimal'
+                : flag('ssr', 's')     ? 'ssr'
+                :                        'default';
 
   // Guard: refuse to overwrite existing files
-  const conflicts = ['index.html', 'global.css', 'app', 'assets'].filter(f =>
+  const checkFiles = ['index.html', 'global.css', 'app', 'assets'];
+  if (variant === 'ssr') checkFiles.push('server');
+  const conflicts = checkFiles.filter(f =>
     fs.existsSync(path.join(target, f))
   );
   if (conflicts.length) {
@@ -70,11 +75,40 @@ function createProject(args) {
     console.log(`  ✓ ${rel}`);
   }
 
-  console.log(`
+  const devCmd = `npx zquery dev${target !== process.cwd() ? ` ${dirArg}` : ''}`;
+
+  if (variant === 'ssr') {
+    console.log(`\n  Installing dependencies...\n`);
+    // Install zero-query from the same package that provides this CLI
+    // (works both in local dev and when installed from npm)
+    const zqRoot = path.resolve(__dirname, '..', '..');
+    try {
+      execSync(`npm install "${zqRoot}"`, { cwd: target, stdio: 'inherit' });
+    } catch {
+      console.error(`\n  ✗ npm install failed. Run it manually:\n\n    cd ${dirArg || '.'}\n    npm install\n    node server/index.js\n`);
+      process.exit(1);
+    }
+
+    console.log(`\n  Starting SSR server...\n`);
+    const child = spawn('node', ['server/index.js'], { cwd: target, stdio: 'inherit' });
+
+    setTimeout(() => {
+      const open = process.platform === 'win32' ? 'start'
+                 : process.platform === 'darwin' ? 'open' : 'xdg-open';
+      try { execSync(`${open} http://localhost:3000`, { stdio: 'ignore' }); } catch {}
+    }, 500);
+
+    process.on('SIGINT',  () => { child.kill(); process.exit(); });
+    process.on('SIGTERM', () => { child.kill(); process.exit(); });
+    child.on('exit', (code) => process.exit(code || 0));
+    return; // keep process alive for the server
+  } else {
+    console.log(`
   Done! Next steps:
 
-    npx zquery dev${target !== process.cwd() ? ` ${dirArg}` : ''}
+    ${devCmd}
 `);
+  }
 }
 
 module.exports = createProject;

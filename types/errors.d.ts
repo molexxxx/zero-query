@@ -41,6 +41,12 @@ export declare const ErrorCode: {
   readonly HTTP_INTERCEPTOR: 'ZQ_HTTP_INTERCEPTOR';
   readonly HTTP_PARSE: 'ZQ_HTTP_PARSE';
 
+  // SSR
+  readonly SSR_RENDER: 'ZQ_SSR_RENDER';
+  readonly SSR_COMPONENT: 'ZQ_SSR_COMPONENT';
+  readonly SSR_HYDRATION: 'ZQ_SSR_HYDRATION';
+  readonly SSR_PAGE: 'ZQ_SSR_PAGE';
+
   // General
   readonly INVALID_ARGUMENT: 'ZQ_INVALID_ARGUMENT';
 };
@@ -71,9 +77,10 @@ export type ZQueryErrorHandler = (error: ZQueryError) => void;
 
 /**
  * Register a global error handler. Called whenever zQuery catches an
- * error internally. Pass `null` to remove.
+ * error internally. Multiple handlers are supported. Pass `null` to clear all.
+ * @returns Unsubscribe function to remove this handler.
  */
-export function onError(handler: ZQueryErrorHandler | null): void;
+export function onError(handler: ZQueryErrorHandler | null): () => void;
 
 /**
  * Report an error through the global handler and console.
@@ -101,3 +108,28 @@ export function guardCallback<T extends (...args: any[]) => any>(
  * Throws `ZQueryError` with `INVALID_ARGUMENT` on failure.
  */
 export function validate(value: any, name: string, expectedType?: string): void;
+
+/** Formatted error structure for overlays and logging. */
+export interface FormattedError {
+  code: string;
+  type: string;
+  message: string;
+  context: Record<string, any>;
+  stack: string;
+  cause: FormattedError | null;
+}
+
+/**
+ * Format a ZQueryError into a structured object suitable for overlays/logging.
+ */
+export function formatError(err: ZQueryError | Error): FormattedError;
+
+/**
+ * Async version of guardCallback — wraps an async function so that
+ * rejections are caught, reported, and don't crash execution.
+ */
+export function guardAsync<T extends (...args: any[]) => Promise<any>>(
+  fn: T,
+  code: ErrorCodeValue,
+  context?: Record<string, any>,
+): (...args: Parameters<T>) => Promise<Awaited<ReturnType<T>> | undefined>;

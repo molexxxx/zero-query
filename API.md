@@ -79,8 +79,19 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [reportError()](#reporterrorcode-message-context-cause)
   - [guardCallback()](#guardcallbackfn-code-context)
   - [validate()](#validatevalue-name-expectedtype)
+  - [formatError()](#formaterrorerr)
+  - [guardAsync()](#guardasyncfn-code-context)
 - [Global API](#global-api)
 - [Server-Side Rendering (SSR)](#server-side-rendering-ssr)
+  - [SSR Scaffold](#ssr-scaffold)
+  - [createSSRApp()](#createssrapp)
+  - [renderToString()](#rendertostringdefinition-props)
+  - [app.renderToString()](#apprendertostringname-props-options)
+  - [app.renderPage()](#apprenderpageoptions)
+  - [app.renderBatch()](#apprenderbatchentries)
+  - [app.has()](#apphasname)
+  - [escapeHtml()](#escapehtmlstr)
+  - [SSR Error Handling](#ssr-error-handling)
 - [ES Module Exports](#es-module-exports-for-npmbundler-usage)
 
 ---
@@ -2517,6 +2528,10 @@ A frozen object mapping friendly names to string codes. Use these to identify er
 | `HTTP_TIMEOUT` | `ZQ_HTTP_TIMEOUT` | HTTP timeout |
 | `HTTP_INTERCEPTOR` | `ZQ_HTTP_INTERCEPTOR` | HTTP interceptor |
 | `HTTP_PARSE` | `ZQ_HTTP_PARSE` | HTTP response parsing |
+| `SSR_RENDER` | `ZQ_SSR_RENDER` | SSR render/init/interpolation failure |
+| `SSR_COMPONENT` | `ZQ_SSR_COMPONENT` | SSR component registration or lookup |
+| `SSR_HYDRATION` | `ZQ_SSR_HYDRATION` | Hydration mismatch (reserved) |
+| `SSR_PAGE` | `ZQ_SSR_PAGE` | Full-page render failure |
 | `INVALID_ARGUMENT` | `ZQ_INVALID_ARGUMENT` | General validation |
 
 ### `ZQueryError`
@@ -2544,13 +2559,23 @@ try {
 
 ### `$.onError(handler)`
 
-Register a global error handler that fires when any module catches an error internally. Useful for centralized logging, crash reporting, or dev-overlay integration. Pass `null` to remove.
+Register a global error handler that fires when any module catches an error internally. **Multiple handlers** are supported — each call adds a handler and returns an **unsubscribe function**. The dev overlay and your custom handlers can coexist. Pass `null` to remove all handlers.
 
 ```js
-$.onError((err) => {
+// Register multiple handlers
+const unsub1 = $.onError((err) => {
   console.warn(`[${err.code}]`, err.message, err.context);
+});
+
+const unsub2 = $.onError((err) => {
   myErrorTracker.captureException(err);
 });
+
+// Remove one handler
+unsub1();
+
+// Remove all handlers
+$.onError(null);
 ```
 
 ### `reportError(code, message, context?, cause?)`
@@ -2585,6 +2610,51 @@ validate(name, 'name', 'string');   // throws if name isn't a string
 validate(el, 'target');             // throws if el is null/undefined
 ```
 
+### `formatError(err)`
+
+Convert any `Error` or `ZQueryError` into a plain serializable object. Useful for logging services, JSON APIs, or external error reporting.
+
+```js
+const formatted = $.formatError(err);
+// {
+//   code: 'ZQ_COMP_RENDER',
+//   type: 'ZQueryError',
+//   message: 'render failed',
+//   context: { component: 'my-widget' },
+//   stack: '...',
+//   cause: null
+// }
+```
+
+| Property | Type | Description |
+| --- | --- | --- |
+| `code` | `string \| null` | Error code (if `ZQueryError`), otherwise `null` |
+| `type` | `string` | Error class name (`'ZQueryError'`, `'TypeError'`, etc.) |
+| `message` | `string` | Human-readable message |
+| `context` | `object \| null` | Context metadata (if `ZQueryError`) |
+| `stack` | `string` | Stack trace |
+| `cause` | `object \| null` | Recursively formatted cause chain |
+
+### `guardAsync(fn, code, context?)`
+
+Wrap an async function so thrown errors and rejected promises are caught, routed through `reportError`, and don't propagate. Returns a safe async wrapper that resolves to `undefined` on failure.
+
+```js
+import { guardAsync, ErrorCode } from '@tonywied17/zero-query';
+
+const safeFetch = guardAsync(
+  async (url) => {
+    const res = await fetch(url);
+    return res.json();
+  },
+  ErrorCode.HTTP_REQUEST,
+  { endpoint: '/api' }
+);
+
+const data = await safeFetch('/api/data');
+// On failure: error reported, data === undefined
+```
+
 ---
 
 ## Global API
@@ -2597,7 +2667,8 @@ validate(el, 'target');             // throws if el is null/undefined
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
 | `$.libSize` | Minified library size string (e.g. `'~100 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'0.9.7'`). |
+| `$.version` | Library version string (e.g. `'0.9.8'`). |
+| `$.unitTests` | Build-time test results object — `{ passed, failed, total, suites, duration, ok }`. Injected at build time by the CLI. |
 | `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.TrustedHTML` | `TrustedHTML` constructor class — wrap strings to bypass `$.html` escaping. Create instances via `$.trust()` or `new $.TrustedHTML(str)`. |
 | `$.EventBus` | `EventBus` constructor class — create additional event bus instances beyond the default `$.bus` singleton. |
@@ -2626,14 +2697,24 @@ validate(el, 'target');             // throws if el is null/undefined
 
 ## Server-Side Rendering (SSR)
 
-zQuery includes a lightweight SSR module for rendering components to HTML strings in Node.js. Import from `src/ssr.js`.
+zQuery includes a lightweight SSR module for rendering components to HTML strings in Node.js. Import via `import { createSSRApp } from 'zero-query/ssr'`. SSR is fully integrated with the error system — errors are caught and reported gracefully without crashing the server.
+
+### SSR Scaffold
+
+Scaffold an SSR-ready project with the CLI:
+
+```bash
+npx zquery create my-app --ssr    # or: -s
+```
+
+This generates a working client-side SPA plus a `server/index.js` SSR HTTP server. Component definitions in `app/components/` are shared — the client registers them with `$.component()` and the server imports the same files with `app.component()`. Run `npx zquery dev my-app` for the client SPA or `node my-app/server/index.js` for the SSR server at `http://localhost:3000`.
 
 ### `createSSRApp()`
 
-Create an SSR application instance.
+Create an SSR application instance with its own isolated component registry.
 
 ```js
-import { createSSRApp, renderToString } from '@tonywied17/zero-query/src/ssr.js';
+import { createSSRApp, renderToString } from 'zero-query/ssr';
 
 const app = createSSRApp();
 
@@ -2645,12 +2726,20 @@ app.component('hello-world', {
 });
 ```
 
+| Method | Description |
+| --- | --- |
+| `app.component(name, def)` | Register a component for SSR rendering |
+| `app.has(name)` | Check if a component is registered (returns boolean) |
+| `app.renderToString(name, props?, options?)` | Render a component to an HTML string |
+| `app.renderPage(options?)` | Render a full HTML document with a component embedded |
+| `app.renderBatch(entries)` | Render multiple components in parallel |
+
 ### `renderToString(definition, props?)`
 
 Quick one-shot render of a component definition to an HTML string (without registering it in an app).
 
 ```js
-import { renderToString } from '@tonywied17/zero-query/src/ssr.js';
+import { renderToString } from 'zero-query/ssr';
 
 const html = renderToString({
   state: () => ({ name: 'Tony' }),
@@ -2666,6 +2755,12 @@ Render a registered component to an HTML string via the SSR app.
 ```js
 const html = await app.renderToString('hello-world', { name: 'Tony' });
 // '<hello-world data-zq-ssr><h1>Hello, Tony!</h1></hello-world>'
+
+// Without hydration marker
+const static_ = await app.renderToString('hello-world', {}, { hydrate: false });
+
+// Fragment mode — inner HTML only, no wrapper tag
+const fragment = await app.renderToString('hello-world', {}, { mode: 'fragment' });
 ```
 
 | Parameter | Type | Description |
@@ -2673,6 +2768,7 @@ const html = await app.renderToString('hello-world', { name: 'Tony' });
 | `name` | `string` | Registered component name |
 | `props` | `object` | Props to pass (optional) |
 | `options.hydrate` | `boolean` | Add `data-zq-ssr` marker for client hydration (default `true`) |
+| `options.mode` | `string` | Set to `'fragment'` to return inner HTML without the wrapper element |
 
 ### `app.renderPage(options?)`
 
@@ -2682,9 +2778,19 @@ Render a full HTML page with a component embedded.
 const page = await app.renderPage({
   component: 'hello-world',
   title: 'My App',
+  description: 'SEO-friendly description',
   lang: 'en',
   styles: ['global.css'],
   scripts: ['app/app.js'],
+  head: {
+    canonical: 'https://example.com/',
+    og: {
+      title: 'My App',
+      description: 'Built with zQuery SSR',
+      image: 'https://example.com/og.png',
+      type: 'website',
+    }
+  }
 });
 ```
 
@@ -2693,17 +2799,74 @@ const page = await app.renderPage({
 | `component` | `string` | Component name to render in the page body |
 | `props` | `object` | Props to pass to the component |
 | `title` | `string` | Page `<title>` |
+| `description` | `string` | `<meta name="description">` for SEO |
 | `styles` | `string[]` | CSS file paths to inject as `<link>` tags |
 | `scripts` | `string[]` | JS file paths to inject as `<script>` tags |
 | `lang` | `string` | HTML `lang` attribute (default `'en'`) |
 | `meta` | `string` | Additional HTML for `<head>` |
 | `bodyAttrs` | `string` | Attributes for `<body>` tag |
+| `head.canonical` | `string` | `<link rel="canonical">` URL |
+| `head.og` | `object` | Open Graph `<meta property="og:*">` tags — any key/value pairs |
+
+### `app.renderBatch(entries)`
+
+Render multiple components in parallel using `Promise.all`.
+
+```js
+const results = await app.renderBatch([
+  { name: 'hero-section' },
+  { name: 'feature-list', props: { count: 5 } },
+  { name: 'footer-section', options: { hydrate: false } },
+]);
+// results is an array of HTML strings
+```
+
+| Entry Property | Type | Description |
+| --- | --- | --- |
+| `name` | `string` | Component name |
+| `props` | `object` | Props (optional) |
+| `options` | `object` | Same options as `renderToString` (optional) |
+
+### `app.has(name)`
+
+Check if a component is registered in the SSR app.
+
+```js
+app.has('hello-world'); // true
+app.has('missing');     // false
+```
+
+### `escapeHtml(str)`
+
+Exported HTML escape utility — the same function used internally for `{{expression}}` interpolation.
+
+```js
+import { escapeHtml } from 'zero-query/ssr';
+
+escapeHtml('<script>alert("xss")</script>');
+// '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
+```
+
+### SSR Error Handling
+
+SSR is fully wired into the error system. Errors are caught and handled gracefully:
+
+| Failure Point | Behavior |
+| --- | --- |
+| `render()` throws | Produces `<!-- SSR render error: ... -->` HTML comment |
+| `init()` throws | Reported via `$.onError`, rendering continues with initial state |
+| Computed getter throws | Returns `undefined`, error reported |
+| `{{expression}}` fails | Renders as empty string, error reported |
+| `renderPage()` component fails | Page renders with error comment in body |
+
+SSR uses dedicated error codes: `SSR_RENDER`, `SSR_COMPONENT`, `SSR_HYDRATION`, `SSR_PAGE`. See [Error Codes](#error-codes--errorcode).
 
 | Detail | Description |
 | --- | --- |
 | Hydration | Components rendered with SSR include a `data-zq-ssr` attribute for client-side hydration identification. |
 | State | Initial state and props are serialized into the output for client-side pickup. |
 | Scope | SSR uses its own component registry — call `app.component()` to register components for server rendering. |
+| Validation | `app.component()` validates input — invalid names or definitions throw `ZQueryError` with `SSR_COMPONENT`. |
 
 ---
 
@@ -2720,7 +2883,7 @@ import {
   createRouter, getRouter,
   createStore, getStore,
   http,
-  ZQueryError, ErrorCode, onError, reportError, guardCallback, validate,
+  ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, formatError, validate,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
@@ -2735,5 +2898,5 @@ import {
 SSR is a separate Node.js-only module — import it directly:
 
 ```js
-import { createSSRApp, renderToString } from '@tonywied17/zero-query/src/ssr.js';
+import { createSSRApp, renderToString, escapeHtml } from 'zero-query/ssr';
 ```

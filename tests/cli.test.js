@@ -529,10 +529,10 @@ describe('CLI — createProject', () => {
     expect(fs.existsSync(f)).toBe(true);
   });
 
-  it('minimal scaffold has 3 components', () => {
+  it('minimal scaffold has 4 components', () => {
     const dir = path.resolve(__dirname, '..', 'cli', 'scaffold', 'minimal', 'app', 'components');
     const files = fs.readdirSync(dir).sort();
-    expect(files).toEqual(['about.js', 'counter.js', 'home.js']);
+    expect(files).toEqual(['about.js', 'counter.js', 'home.js', 'not-found.js']);
   });
 
   // -- minimal scaffold is a subset of default --
@@ -624,6 +624,7 @@ describe('CLI — createProject', () => {
     expect(files).toContain('app/components/home.js');
     expect(files).toContain('app/components/counter.js');
     expect(files).toContain('app/components/about.js');
+    expect(files).toContain('app/components/not-found.js');
     expect(files).toContain('assets/.gitkeep');
   });
 

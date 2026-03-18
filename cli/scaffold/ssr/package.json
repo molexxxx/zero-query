@@ -1,0 +1,8 @@
+{
+  "name": "{{NAME}}",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "zero-query": "latest"
+  }
+}
