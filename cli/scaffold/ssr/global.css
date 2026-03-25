@@ -63,8 +63,6 @@ z-outlet {
   padding: 0 1.5rem;
 }
 
-[z-cloak] { display: none !important; }
-
 .page-header {
   margin-bottom: var(--gap);
 }

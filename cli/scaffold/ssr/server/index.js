@@ -40,32 +40,33 @@ function matchRoute(pathname) {
 
 // --- Render a full HTML page ------------------------------------------------
 
+// Read the index.html shell once at startup — it already has z-link nav,
+// client scripts (zquery.min.js + app/app.js), and the <z-outlet> tag.
+// On each request we just inject the SSR body into <z-outlet>.
+let shellCache = null;
+async function getShell() {
+  if (!shellCache) shellCache = await readFile(join(ROOT, 'index.html'), 'utf-8');
+  return shellCache;
+}
+
 async function render(pathname) {
   const component = matchRoute(pathname);
   const body = await app.renderToString(component);
+  const shell = await getShell();
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{NAME}}</title>
-  <link rel="stylesheet" href="/global.css">
-</head>
-<body>
-  <nav class="navbar">
-    <span class="brand">⚡ {{NAME}}</span>
-    <div class="nav-links">
-${routes.map(r =>
-  `      <a href="${r.path}" class="nav-link${r.path === pathname ? ' active' : ''}">${
-    r.path === '/' ? 'Home' : r.path.slice(1)[0].toUpperCase() + r.path.slice(2)
-  }</a>`).join('\n')}
-    </div>
-  </nav>
-  <z-outlet>${body}</z-outlet>
-  <footer class="footer"><small>Built with zQuery · SSR</small></footer>
-</body>
-</html>`;
+  // Inject SSR content into <z-outlet …> and add active class to nav
+  let html = shell.replace(/(<z-outlet[^>]*>)(<\/z-outlet>)?/, `$1${body}</z-outlet>`);
+
+  // Mark the active nav link for the current route
+  html = html.replace(
+    /(<a\s+z-link="([^"]*)"[^>]*class="nav-link)(">)/g,
+    (match, before, href, after) =>
+      href === pathname
+        ? `${before} active${after}`
+        : `${before}${after}`
+  );
+
+  return html;
 }
 
 // --- Static files -----------------------------------------------------------

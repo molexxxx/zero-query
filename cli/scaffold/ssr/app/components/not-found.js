@@ -7,7 +7,7 @@ export const notFound = {
         <h1>404</h1>
         <p class="subtitle">Page not found.</p>
         <p style="margin-top:1rem;">
-          <a href="/" style="color:var(--accent);">← Home</a>
+          <a z-link="/" style="color:var(--accent);">← Home</a>
         </p>
       </div>
     `;
