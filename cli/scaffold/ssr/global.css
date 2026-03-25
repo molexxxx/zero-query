@@ -57,6 +57,7 @@ body {
 
 /* -- Main content -- */
 z-outlet {
+  display: block;
   max-width: 800px;
   margin: 2rem auto;
   padding: 0 1.5rem;
