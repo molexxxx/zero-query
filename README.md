@@ -97,7 +97,7 @@ npx zquery build
     <a z-link="/">Home</a>
     <a z-link="/about">About</a>
   </nav>
-  <div id="app"></div>
+  <z-outlet></z-outlet>
 </body>
 </html>
 ```

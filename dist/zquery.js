@@ -6191,7 +6191,7 @@ $.formatError    = formatError;
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.0.0';
 $.libSize   = '~106 KB';
-$.unitTests = {"passed":1882,"failed":0,"total":1882,"suites":508,"duration":3548,"ok":true};
+$.unitTests = {"passed":1882,"failed":0,"total":1882,"suites":508,"duration":3858,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 $.noConflict = () => {
