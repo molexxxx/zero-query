@@ -1,12 +1,12 @@
-// contact-card.js — Global contact detail popup
+// contact-card.js - Global contact detail popup
 //
 // Always-mounted overlay that listens for $.bus 'openContact' events.
 // Works from any page without navigation.
 //
 // Features used:
-//   $.bus.on / $.bus.emit   — event-driven communication
-//   $.getStore              — read contact data from store
-//   @click.self             — dismiss on backdrop click
+//   $.bus.on / $.bus.emit   - event-driven communication
+//   $.getStore              - read contact data from store
+//   @click.self             - dismiss on backdrop click
 
 $.component('contact-card', {
   styles: `

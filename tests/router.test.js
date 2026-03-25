@@ -13,7 +13,7 @@ component('docs-page', { render: () => '<p>docs</p>' });
 // Router creation and basic API
 // ---------------------------------------------------------------------------
 
-describe('Router — creation', () => {
+describe('Router - creation', () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="app"></div>';
   });
@@ -58,7 +58,7 @@ describe('Router — creation', () => {
 // Route matching
 // ---------------------------------------------------------------------------
 
-describe('Router — route matching', () => {
+describe('Router - route matching', () => {
   it('compiles path params', () => {
     const router = createRouter({
       mode: 'hash',
@@ -89,7 +89,7 @@ describe('Router — route matching', () => {
 // Navigation
 // ---------------------------------------------------------------------------
 
-describe('Router — navigation', () => {
+describe('Router - navigation', () => {
   let router;
 
   beforeEach(() => {
@@ -151,7 +151,7 @@ describe('Router — navigation', () => {
 // _interpolateParams
 // ---------------------------------------------------------------------------
 
-describe('Router — _interpolateParams', () => {
+describe('Router - _interpolateParams', () => {
   let router;
 
   beforeEach(() => {
@@ -190,7 +190,7 @@ describe('Router — _interpolateParams', () => {
 // z-link-params
 // ---------------------------------------------------------------------------
 
-describe('Router — z-link-params', () => {
+describe('Router - z-link-params', () => {
   let router;
 
   beforeEach(() => {
@@ -233,7 +233,7 @@ describe('Router — z-link-params', () => {
 // Guards
 // ---------------------------------------------------------------------------
 
-describe('Router — guards', () => {
+describe('Router - guards', () => {
   it('beforeEach registers a guard', () => {
     const router = createRouter({
       mode: 'hash',
@@ -260,7 +260,7 @@ describe('Router — guards', () => {
 // onChange listener
 // ---------------------------------------------------------------------------
 
-describe('Router — onChange', () => {
+describe('Router - onChange', () => {
   it('onChange registers and returns unsubscribe', () => {
     const router = createRouter({
       mode: 'hash',
@@ -279,7 +279,7 @@ describe('Router — onChange', () => {
 // Path normalization
 // ---------------------------------------------------------------------------
 
-describe('Router — path normalization', () => {
+describe('Router - path normalization', () => {
   it('normalizes relative paths', () => {
     const router = createRouter({
       mode: 'hash',
@@ -316,7 +316,7 @@ describe('Router — path normalization', () => {
 // Destroy
 // ---------------------------------------------------------------------------
 
-describe('Router — destroy', () => {
+describe('Router - destroy', () => {
   it('clears routes, guards, and listeners', () => {
     const router = createRouter({
       mode: 'hash',
@@ -336,7 +336,7 @@ describe('Router — destroy', () => {
 // Wildcard / catch-all routes
 // ---------------------------------------------------------------------------
 
-describe('Router — wildcard routes', () => {
+describe('Router - wildcard routes', () => {
   it('compiles wildcard route', () => {
     const router = createRouter({
       mode: 'hash',
@@ -355,13 +355,13 @@ describe('Router — wildcard routes', () => {
 // Query string handling
 // ---------------------------------------------------------------------------
 
-describe('Router — query parsing', () => {
+describe('Router - query parsing', () => {
   it('_normalizePath strips query string for route matching', () => {
     const router = createRouter({
       mode: 'hash',
       routes: [],
     });
-    // _normalizePath does not strip query params — it only normalizes slashes and base prefix
+    // _normalizePath does not strip query params - it only normalizes slashes and base prefix
     const path = router._normalizePath('/docs?section=intro');
     expect(path).toBe('/docs?section=intro');
   });
@@ -372,7 +372,7 @@ describe('Router — query parsing', () => {
 // Multiple guards
 // ---------------------------------------------------------------------------
 
-describe('Router — multiple guards', () => {
+describe('Router - multiple guards', () => {
   it('registers multiple beforeEach guards', () => {
     const router = createRouter({
       mode: 'hash',
@@ -405,7 +405,7 @@ describe('Router — multiple guards', () => {
 // Route with multiple params
 // ---------------------------------------------------------------------------
 
-describe('Router — multi-param routes', () => {
+describe('Router - multi-param routes', () => {
   it('compiles route with multiple params', () => {
     const router = createRouter({
       mode: 'hash',
@@ -424,7 +424,7 @@ describe('Router — multi-param routes', () => {
 // Same-path deduplication
 // ---------------------------------------------------------------------------
 
-describe('Router — same-path deduplication', () => {
+describe('Router - same-path deduplication', () => {
   let router;
 
   beforeEach(() => {
@@ -443,7 +443,7 @@ describe('Router — same-path deduplication', () => {
   it('skips duplicate hash navigation to the same path', () => {
     router.navigate('/about');
     expect(window.location.hash).toBe('#/about');
-    // Navigate to the same path again — should be a no-op
+    // Navigate to the same path again - should be a no-op
     const result = router.navigate('/about');
     expect(window.location.hash).toBe('#/about');
     expect(result).toBe(router);                // still returns the router chain
@@ -459,10 +459,10 @@ describe('Router — same-path deduplication', () => {
 
 
 // ---------------------------------------------------------------------------
-// History mode — same-path / hash-only navigation
+// History mode - same-path / hash-only navigation
 // ---------------------------------------------------------------------------
 
-describe('Router — history mode deduplication', () => {
+describe('Router - history mode deduplication', () => {
   let router;
   let pushSpy, replaceSpy;
 
@@ -499,7 +499,7 @@ describe('Router — history mode deduplication', () => {
     router.navigate('/docs');
     pushSpy.mockClear();
     replaceSpy.mockClear();
-    // Navigate to /docs#section — same route, different hash
+    // Navigate to /docs#section - same route, different hash
     router.navigate('/docs#section');
     expect(pushSpy).not.toHaveBeenCalled();
     expect(replaceSpy).toHaveBeenCalledTimes(1);
@@ -511,7 +511,7 @@ describe('Router — history mode deduplication', () => {
 // Sub-route history substates
 // ---------------------------------------------------------------------------
 
-describe('Router — substates', () => {
+describe('Router - substates', () => {
   let router;
   let pushSpy;
 
@@ -635,7 +635,7 @@ describe('Router — substates', () => {
 // Edge cases
 // ---------------------------------------------------------------------------
 
-describe('Router — edge cases', () => {
+describe('Router - edge cases', () => {
   it('handles empty routes array', () => {
     const router = createRouter({ mode: 'hash', routes: [] });
     expect(router._routes.length).toBe(0);
@@ -653,7 +653,7 @@ describe('Router — edge cases', () => {
 // Route matching priority (first match wins)
 // ---------------------------------------------------------------------------
 
-describe('Router — route matching priority', () => {
+describe('Router - route matching priority', () => {
   it('first matching route wins', () => {
     const router = createRouter({
       mode: 'hash',
@@ -701,7 +701,7 @@ describe('Router — route matching priority', () => {
 // Route removal
 // ---------------------------------------------------------------------------
 
-describe('Router — route removal', () => {
+describe('Router - route removal', () => {
   it('remove() deletes the matching route', () => {
     const router = createRouter({
       mode: 'hash',
@@ -740,7 +740,7 @@ describe('Router — route removal', () => {
 // Dynamic route addition
 // ---------------------------------------------------------------------------
 
-describe('Router — dynamic route addition', () => {
+describe('Router - dynamic route addition', () => {
   it('add() returns the router for chaining', () => {
     const router = createRouter({ mode: 'hash', routes: [] });
     const result = router.add({ path: '/new', component: 'home-page' });
@@ -770,7 +770,7 @@ describe('Router — dynamic route addition', () => {
 // Navigation chaining
 // ---------------------------------------------------------------------------
 
-describe('Router — navigation chaining', () => {
+describe('Router - navigation chaining', () => {
   let router;
   beforeEach(() => {
     document.body.innerHTML = '<div id="app"></div>';
@@ -813,7 +813,7 @@ describe('Router — navigation chaining', () => {
 // Hash mode path parsing
 // ---------------------------------------------------------------------------
 
-describe('Router — hash mode path parsing', () => {
+describe('Router - hash mode path parsing', () => {
   let router;
   beforeEach(() => {
     router = createRouter({
@@ -843,7 +843,7 @@ describe('Router — hash mode path parsing', () => {
 // History mode path handling with base
 // ---------------------------------------------------------------------------
 
-describe('Router — history mode with base path', () => {
+describe('Router - history mode with base path', () => {
   it('resolve includes base prefix', () => {
     const router = createRouter({
       mode: 'history',
@@ -879,7 +879,7 @@ describe('Router — history mode with base path', () => {
 // Navigate with query strings in hash mode
 // ---------------------------------------------------------------------------
 
-describe('Router — query string in hash mode', () => {
+describe('Router - query string in hash mode', () => {
   let router;
   beforeEach(() => {
     document.body.innerHTML = '<div id="app"></div>';
@@ -905,7 +905,7 @@ describe('Router — query string in hash mode', () => {
 // Guard edge cases
 // ---------------------------------------------------------------------------
 
-describe('Router — guard edge cases', () => {
+describe('Router - guard edge cases', () => {
   it('beforeEach returns the router for chaining', () => {
     const router = createRouter({
       mode: 'hash',
@@ -967,7 +967,7 @@ describe('Router — guard edge cases', () => {
 // onChange with navigation
 // ---------------------------------------------------------------------------
 
-describe('Router — onChange fires on resolve', () => {
+describe('Router - onChange fires on resolve', () => {
   it('fires onChange listener after route resolution', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     const listener = vi.fn();
@@ -997,7 +997,7 @@ describe('Router — onChange fires on resolve', () => {
 // Multi-param extraction
 // ---------------------------------------------------------------------------
 
-describe('Router — multi-param extraction', () => {
+describe('Router - multi-param extraction', () => {
   it('extracts multiple params from URL', () => {
     const router = createRouter({
       mode: 'hash',
@@ -1019,7 +1019,7 @@ describe('Router — multi-param extraction', () => {
 // Substate in hash mode
 // ---------------------------------------------------------------------------
 
-describe('Router — substates hash mode', () => {
+describe('Router - substates hash mode', () => {
   let router, pushSpy;
 
   beforeEach(() => {
@@ -1058,7 +1058,7 @@ describe('Router — substates hash mode', () => {
 // _interpolateParams edge cases
 // ---------------------------------------------------------------------------
 
-describe('Router — _interpolateParams edge cases', () => {
+describe('Router - _interpolateParams edge cases', () => {
   let router;
   beforeEach(() => {
     router = createRouter({ mode: 'hash', routes: [] });
@@ -1099,7 +1099,7 @@ describe('Router — _interpolateParams edge cases', () => {
 // Router.destroy cleans up everything
 // ---------------------------------------------------------------------------
 
-describe('Router — destroy completeness', () => {
+describe('Router - destroy completeness', () => {
   it('clears instance, routes, guards, listeners, and substates', () => {
     document.body.innerHTML = '<div id="app"></div>';
     const router = createRouter({
@@ -1178,7 +1178,7 @@ describe('Router — destroy completeness', () => {
 // PERF: same-route comparison uses shallow equality (no JSON.stringify)
 // ---------------------------------------------------------------------------
 
-describe('Router — same-route shallow equality', () => {
+describe('Router - same-route shallow equality', () => {
   it('skips re-render when navigating to same route with same params', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     let renderCount = 0;
@@ -1196,7 +1196,7 @@ describe('Router — same-route shallow equality', () => {
     await new Promise(r => setTimeout(r, 50));
     const firstCount = renderCount;
 
-    // Navigate to the same route — should skip
+    // Navigate to the same route - should skip
     router.navigate('/user/42');
     await new Promise(r => setTimeout(r, 50));
     // Hash mode prevents same-hash navigation at URL level,
@@ -1208,10 +1208,10 @@ describe('Router — same-route shallow equality', () => {
 
 
 // ===========================================================================
-// Guard — cancel navigation
+// Guard - cancel navigation
 // ===========================================================================
 
-describe('Router — guard returning false cancels navigation', () => {
+describe('Router - guard returning false cancels navigation', () => {
   it('does not resolve route when guard returns false', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     const router = createRouter({
@@ -1234,10 +1234,10 @@ describe('Router — guard returning false cancels navigation', () => {
 
 
 // ===========================================================================
-// Guard — redirect loop detection
+// Guard - redirect loop detection
 // ===========================================================================
 
-describe('Router — guard redirect loop protection', () => {
+describe('Router - guard redirect loop protection', () => {
   it('stops after more than 10 redirects', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     const router = createRouter({
@@ -1255,20 +1255,20 @@ describe('Router — guard redirect loop protection', () => {
       if (to.path === '/b') return '/a';
     });
     await new Promise(r => setTimeout(r, 10));
-    // Navigate to /a — should not infinite loop
+    // Navigate to /a - should not infinite loop
     window.location.hash = '#/a';
     await router._resolve();
-    // Just verify it doesn't hang — the guard count > 10 stops it
+    // Just verify it doesn't hang - the guard count > 10 stops it
     router.destroy();
   });
 });
 
 
 // ===========================================================================
-// Guard — afterEach fires after resolve
+// Guard - afterEach fires after resolve
 // ===========================================================================
 
-describe('Router — afterEach hook', () => {
+describe('Router - afterEach hook', () => {
   it('fires afterEach with to and from after route resolves', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     const afterFn = vi.fn();
@@ -1294,10 +1294,10 @@ describe('Router — afterEach hook', () => {
 
 
 // ===========================================================================
-// Guard — before guard that throws
+// Guard - before guard that throws
 // ===========================================================================
 
-describe('Router — before guard that throws', () => {
+describe('Router - before guard that throws', () => {
   it('catches the error and does not crash', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     const router = createRouter({
@@ -1321,7 +1321,7 @@ describe('Router — before guard that throws', () => {
 // Lazy loading via route.load
 // ===========================================================================
 
-describe('Router — lazy loading with route.load', () => {
+describe('Router - lazy loading with route.load', () => {
   it('calls load() before mounting component', async () => {
     const loadFn = vi.fn().mockResolvedValue(undefined);
     document.body.innerHTML = '<div id="app"></div>';
@@ -1365,7 +1365,7 @@ describe('Router — lazy loading with route.load', () => {
 // Fallback / 404 route
 // ===========================================================================
 
-describe('Router — fallback 404 route', () => {
+describe('Router - fallback 404 route', () => {
   it('resolves to fallback component for unknown paths', async () => {
     component('notfound-page', { render: () => '<p>404</p>' });
     document.body.innerHTML = '<div id="app"></div>';
@@ -1390,7 +1390,7 @@ describe('Router — fallback 404 route', () => {
 // replace()
 // ===========================================================================
 
-describe('Router — replace()', () => {
+describe('Router - replace()', () => {
   it('returns router for chaining in hash mode', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     window.location.hash = '#/';
@@ -1414,7 +1414,7 @@ describe('Router — replace()', () => {
 // query getter
 // ===========================================================================
 
-describe('Router — query getter', () => {
+describe('Router - query getter', () => {
   it('returns parsed query params from hash', () => {
     document.body.innerHTML = '<div id="app"></div>';
     const router = createRouter({
@@ -1442,10 +1442,10 @@ describe('Router — query getter', () => {
 
 
 // ===========================================================================
-// resolve() — programmatic link generation
+// resolve() - programmatic link generation
 // ===========================================================================
 
-describe('Router — resolve()', () => {
+describe('Router - resolve()', () => {
   it('returns full URL path with base prefix', () => {
     const router = createRouter({
       mode: 'hash',
@@ -1471,7 +1471,7 @@ describe('Router — resolve()', () => {
 // back/forward/go wrappers
 // ===========================================================================
 
-describe('Router — back/forward/go wrappers', () => {
+describe('Router - back/forward/go wrappers', () => {
   it('calls window.history.back', () => {
     const spy = vi.spyOn(window.history, 'back').mockImplementation(() => {});
     const router = createRouter({
@@ -1511,10 +1511,10 @@ describe('Router — back/forward/go wrappers', () => {
 
 
 // ===========================================================================
-// Link click interception — modified clicks bypass
+// Link click interception - modified clicks bypass
 // ===========================================================================
 
-describe('Router — link click interception', () => {
+describe('Router - link click interception', () => {
   it('intercepts normal clicks on z-link elements', async () => {
     document.body.innerHTML = '<div id="app"></div><a z-link="/about">About</a>';
     const router = createRouter({
@@ -1555,7 +1555,7 @@ describe('Router — link click interception', () => {
     const e = new MouseEvent('click', { bubbles: true, metaKey: true });
     link.dispatchEvent(e);
     await new Promise(r => setTimeout(r, 10));
-    // Route should remain unchanged — meta key bypasses SPA navigation
+    // Route should remain unchanged - meta key bypasses SPA navigation
     expect(router.current?.path).toBe(currentBefore);
     router.destroy();
   });
@@ -1602,10 +1602,10 @@ describe('Router — link click interception', () => {
 
 
 // ===========================================================================
-// Router — remove() route
+// Router - remove() route
 // ===========================================================================
 
-describe('Router — remove()', () => {
+describe('Router - remove()', () => {
   it('removes route by path', () => {
     const router = createRouter({
       mode: 'hash',
@@ -1624,10 +1624,10 @@ describe('Router — remove()', () => {
 
 
 // ===========================================================================
-// Router — add() chaining
+// Router - add() chaining
 // ===========================================================================
 
-describe('Router — add() chaining', () => {
+describe('Router - add() chaining', () => {
   it('supports fluent chaining of add calls', () => {
     const router = createRouter({
       mode: 'hash',
@@ -1643,10 +1643,10 @@ describe('Router — add() chaining', () => {
 
 
 // ===========================================================================
-// Router — onChange unsubscribe
+// Router - onChange unsubscribe
 // ===========================================================================
 
-describe('Router — onChange unsubscribe', () => {
+describe('Router - onChange unsubscribe', () => {
   it('stops calling listener after unsubscribe', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     const listener = vi.fn();
@@ -1672,10 +1672,10 @@ describe('Router — onChange unsubscribe', () => {
 
 
 // ===========================================================================
-// Router — destroy cleans up
+// Router - destroy cleans up
 // ===========================================================================
 
-describe('Router — destroy cleans up', () => {
+describe('Router - destroy cleans up', () => {
   it('clears listeners, guards, and routes on destroy', () => {
     document.body.innerHTML = '<div id="app"></div>';
     const router = createRouter({
@@ -1698,10 +1698,10 @@ describe('Router — destroy cleans up', () => {
 
 
 // ===========================================================================
-// Router — _interpolateParams
+// Router - _interpolateParams
 // ===========================================================================
 
-describe('Router — _interpolateParams', () => {
+describe('Router - _interpolateParams', () => {
   it('replaces :param with provided values', () => {
     const router = createRouter({
       mode: 'hash',
@@ -1731,10 +1731,10 @@ describe('Router — _interpolateParams', () => {
 
 
 // ===========================================================================
-// Router — _normalizePath with base stripping
+// Router - _normalizePath with base stripping
 // ===========================================================================
 
-describe('Router — _normalizePath', () => {
+describe('Router - _normalizePath', () => {
   it('strips base prefix if accidentally included', () => {
     const router = createRouter({
       mode: 'hash',
@@ -1771,10 +1771,10 @@ describe('Router — _normalizePath', () => {
 
 
 // ===========================================================================
-// Router — navigate with options.params
+// Router - navigate with options.params
 // ===========================================================================
 
-describe('Router — navigate with options.params', () => {
+describe('Router - navigate with options.params', () => {
   it('interpolates params in path', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     const router = createRouter({
@@ -1795,10 +1795,10 @@ describe('Router — navigate with options.params', () => {
 
 
 // ===========================================================================
-// Router — render function components
+// Router - render function components
 // ===========================================================================
 
-describe('Router — render function component', () => {
+describe('Router - render function component', () => {
   it('renders HTML from a function component', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     window.location.hash = '#/';
@@ -1820,10 +1820,10 @@ describe('Router — render function component', () => {
 
 
 // ===========================================================================
-// Router — substate onSubstate unsubscribe
+// Router - substate onSubstate unsubscribe
 // ===========================================================================
 
-describe('Router — onSubstate unsubscribe', () => {
+describe('Router - onSubstate unsubscribe', () => {
   it('removes listener after unsubscribe', () => {
     const router = createRouter({ mode: 'hash', routes: [] });
     const fn = vi.fn();
@@ -1832,5 +1832,432 @@ describe('Router — onSubstate unsubscribe', () => {
     unsub();
     expect(router._substateListeners.length).toBe(0);
     router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// Router - substate history restoration after navigation away
+// ===========================================================================
+
+describe('Router - substate restoration after navigating away and back', () => {
+  let router;
+
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="app"></div>';
+    window.location.hash = '#/';
+  });
+
+  afterEach(() => {
+    if (router) router.destroy();
+  });
+
+  /**
+   * Reproduces the bug: tabbing through substates in a component (e.g.
+   * compare-page), navigating to a different route (e.g. /about), then
+   * pressing back should return to the LAST substate tab — not the default.
+   *
+   * Steps to reproduce:
+   *   1. Navigate to /compare, push substates: tab-a → tab-b → tab-c
+   *   2. Navigate to /about (component with listener is destroyed)
+   *   3. Simulate popstate back → lands on substate entry for tab-c
+   *   4. BUG: no listener exists (it was destroyed), so the substate is
+   *      ignored and the component remounts with its default state.
+   *   5. EXPECTED: the router should re-fire the substate after the new
+   *      component mounts so the listener can restore the correct tab.
+   */
+  it('restores last substate when pressing back after navigating away', async () => {
+    router = createRouter({
+      el: '#app',
+      mode: 'history',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/compare', component: 'about-page' },
+        { path: '/about', component: 'user-page' },
+      ],
+    });
+
+    // Wait for initial resolve
+    await new Promise(r => setTimeout(r, 10));
+
+    // 1. Navigate to /compare and register a substate listener
+    //    (simulates what compare-page does in its mounted() hook)
+    window.history.pushState({ __zq: 'route' }, '', '/compare');
+    await router._resolve();
+    expect(router.current.path).toBe('/compare');
+
+    // Simulate component mounting and registering a substate listener
+    let activeTab = 'overview';
+    const listener = vi.fn((key, data, action) => {
+      if (key === 'compare-tab') { activeTab = data.tab; return true; }
+      if (action === 'reset') { activeTab = 'overview'; return true; }
+    });
+    const unsub = router.onSubstate(listener);
+
+    // 2. Push several substates (tab switches)
+    router.pushSubstate('compare-tab', { tab: 'components' });
+    activeTab = 'components';
+    router.pushSubstate('compare-tab', { tab: 'directives' });
+    activeTab = 'directives';
+    router.pushSubstate('compare-tab', { tab: 'reactivity' });
+    activeTab = 'reactivity';
+
+    // 3. Navigate away to /about — this destroys compare-page
+    //    so we unsubscribe the listener (like destroyed() would)
+    unsub();
+    window.history.pushState({ __zq: 'route' }, '', '/about');
+    await router._resolve();
+    expect(router.current.path).toBe('/about');
+
+    // 4. Register a NEW listener after _resolve, simulating what the freshly
+    //    mounted compare-page would do. We use a one-time setup that defers
+    //    registration until _resolve has run (like mounted() in the component).
+    let restoredTab = 'overview';
+    const freshListener = vi.fn((key, data, action) => {
+      if (key === 'compare-tab') { restoredTab = data.tab; return true; }
+      if (action === 'reset') { restoredTab = 'overview'; return true; }
+    });
+
+    // Intercept _resolve to register the listener after mount (simulating
+    // the component's mounted() lifecycle hook)
+    const origResolve = router.__resolve.bind(router);
+    router.__resolve = async function () {
+      await origResolve();
+      // After resolve mounts the component, register the substate listener
+      router.onSubstate(freshListener);
+    };
+
+    // 5. Simulate pressing back — popstate lands on the last substate
+    const evt = new PopStateEvent('popstate', {
+      state: { __zq: 'substate', key: 'compare-tab', data: { tab: 'reactivity' } }
+    });
+    window.dispatchEvent(evt);
+
+    // Allow async _resolve to complete and the retry to fire
+    await new Promise(r => setTimeout(r, 50));
+
+    // EXPECTED: the fresh listener should have been called with the substate
+    // data so that restoredTab is 'reactivity', NOT 'overview'
+    expect(freshListener).toHaveBeenCalledWith('compare-tab', { tab: 'reactivity' }, 'pop');
+    expect(restoredTab).toBe('reactivity');
+  });
+
+  it('handles second back correctly after substate restoration', async () => {
+    router = createRouter({
+      el: '#app',
+      mode: 'history',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/compare', component: 'about-page' },
+        { path: '/about', component: 'user-page' },
+      ],
+    });
+    await new Promise(r => setTimeout(r, 10));
+
+    // Navigate to /compare
+    window.history.pushState({ __zq: 'route' }, '', '/compare');
+    await router._resolve();
+
+    let activeTab = 'overview';
+    const listener = vi.fn((key, data, action) => {
+      if (key === 'compare-tab') { activeTab = data.tab; return true; }
+      if (action === 'reset') { activeTab = 'overview'; return true; }
+    });
+    const unsub = router.onSubstate(listener);
+
+    // Push two substates
+    router.pushSubstate('compare-tab', { tab: 'components' });
+    router.pushSubstate('compare-tab', { tab: 'directives' });
+
+    // Navigate away and unsubscribe (simulating component destroy)
+    unsub();
+    window.history.pushState({ __zq: 'route' }, '', '/about');
+    await router._resolve();
+
+    // Back: first pop hits 'directives' substate — no listener yet
+    let restoredTab = 'overview';
+    const freshListener = vi.fn((key, data, action) => {
+      if (key === 'compare-tab') { restoredTab = data.tab; return true; }
+      if (action === 'reset') { restoredTab = 'overview'; return true; }
+    });
+
+    const origResolve = router.__resolve.bind(router);
+    let resolveCount = 0;
+    router.__resolve = async function () {
+      await origResolve();
+      if (resolveCount === 0) router.onSubstate(freshListener);
+      resolveCount++;
+    };
+
+    // First back: lands on 'directives' substate
+    window.dispatchEvent(new PopStateEvent('popstate', {
+      state: { __zq: 'substate', key: 'compare-tab', data: { tab: 'directives' } }
+    }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(restoredTab).toBe('directives');
+
+    // Second back: lands on 'components' substate — listener IS registered now
+    window.dispatchEvent(new PopStateEvent('popstate', {
+      state: { __zq: 'substate', key: 'compare-tab', data: { tab: 'components' } }
+    }));
+    await new Promise(r => setTimeout(r, 50));
+
+    expect(restoredTab).toBe('components');
+  });
+});
+
+
+// ===========================================================================
+// Router - <z-outlet> auto-detection
+// ===========================================================================
+
+describe('Router - z-outlet auto-detection', () => {
+  beforeEach(() => {
+    window.location.hash = '#/';
+  });
+
+  it('auto-detects <z-outlet> when no el: is provided', async () => {
+    document.body.innerHTML = '<z-outlet></z-outlet>';
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    expect(router._el).toBe(document.querySelector('z-outlet'));
+    // Wait for initial resolve and verify component was mounted
+    await new Promise(r => setTimeout(r, 50));
+    expect(router._el.innerHTML).not.toBe('');
+    router.destroy();
+  });
+
+  it('prefers explicit el: over <z-outlet>', () => {
+    document.body.innerHTML = '<div id="app"></div><z-outlet></z-outlet>';
+    const router = createRouter({
+      mode: 'hash',
+      el: '#app',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    expect(router._el).toBe(document.getElementById('app'));
+    router.destroy();
+  });
+
+  it('reads fallback attribute from <z-outlet>', () => {
+    document.body.innerHTML = '<z-outlet fallback="about-page"></z-outlet>';
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    expect(router._fallback).toBe('about-page');
+    router.destroy();
+  });
+
+  it('config fallback takes priority over <z-outlet> fallback attribute', () => {
+    document.body.innerHTML = '<z-outlet fallback="about-page"></z-outlet>';
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+      fallback: 'user-page',
+    });
+    expect(router._fallback).toBe('user-page');
+    router.destroy();
+  });
+
+  it('reads mode attribute from <z-outlet>', () => {
+    document.body.innerHTML = '<z-outlet mode="hash"></z-outlet>';
+    const router = createRouter({
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    expect(router._mode).toBe('hash');
+    router.destroy();
+  });
+
+  it('reads base attribute from <z-outlet>', () => {
+    document.body.innerHTML = '<z-outlet base="/my-app"></z-outlet>';
+    const router = createRouter({
+      mode: 'hash',
+      routes: [],
+    });
+    expect(router._base).toBe('/my-app');
+    router.destroy();
+  });
+
+  it('config base takes priority over <z-outlet> base attribute', () => {
+    document.body.innerHTML = '<z-outlet base="/outlet-base"></z-outlet>';
+    const router = createRouter({
+      mode: 'hash',
+      base: '/config-base',
+      routes: [],
+    });
+    expect(router._base).toBe('/config-base');
+    router.destroy();
+  });
+
+  it('falls back gracefully when no <z-outlet> and no el:', () => {
+    document.body.innerHTML = '<div>no outlet here</div>';
+    const router = createRouter({
+      mode: 'hash',
+      routes: [{ path: '/', component: 'home-page' }],
+    });
+    expect(router._el).toBeNull();
+    router.destroy();
+  });
+
+  it('mounts and navigates using <z-outlet>', async () => {
+    document.body.innerHTML = '<z-outlet></z-outlet>';
+    const router = createRouter({
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+      ],
+    });
+    await new Promise(r => setTimeout(r, 50));
+    expect(router.current.path).toBe('/');
+    router.navigate('/about');
+    await router._resolve();
+    expect(router.current.path).toBe('/about');
+    router.destroy();
+  });
+});
+
+
+// ===========================================================================
+// z-active-route directive
+// ===========================================================================
+
+describe('Router - z-active-route', () => {
+  let router;
+
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="app"></div>';
+    router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/', component: 'home-page' },
+        { path: '/about', component: 'about-page' },
+        { path: '/docs/:section', component: 'docs-page' },
+      ],
+    });
+  });
+
+  afterEach(() => {
+    if (router) router.destroy();
+  });
+
+  it('adds "active" class to matching element (prefix match)', () => {
+    document.body.innerHTML += `
+      <a z-link="/docs/intro" z-active-route="/docs">Docs</a>
+      <a z-link="/about" z-active-route="/about">About</a>
+    `;
+    router._updateActiveRoutes('/docs/intro');
+    const docsLink = document.querySelector('[z-active-route="/docs"]');
+    const aboutLink = document.querySelector('[z-active-route="/about"]');
+    expect(docsLink.classList.contains('active')).toBe(true);
+    expect(aboutLink.classList.contains('active')).toBe(false);
+  });
+
+  it('removes "active" class when route no longer matches', () => {
+    document.body.innerHTML += '<a z-active-route="/about">About</a>';
+    const el = document.querySelector('[z-active-route="/about"]');
+
+    router._updateActiveRoutes('/about');
+    expect(el.classList.contains('active')).toBe(true);
+
+    router._updateActiveRoutes('/docs');
+    expect(el.classList.contains('active')).toBe(false);
+  });
+
+  it('supports custom class via z-active-class', () => {
+    document.body.innerHTML += '<a z-active-route="/about" z-active-class="selected">About</a>';
+    const el = document.querySelector('[z-active-route="/about"]');
+
+    router._updateActiveRoutes('/about');
+    expect(el.classList.contains('selected')).toBe(true);
+    expect(el.classList.contains('active')).toBe(false);
+  });
+
+  it('supports exact matching with z-active-exact', () => {
+    document.body.innerHTML += `
+      <a z-active-route="/" z-active-exact>Home</a>
+      <a z-active-route="/docs">Docs</a>
+    `;
+    const home = document.querySelector('[z-active-route="/"]');
+    const docs = document.querySelector('[z-active-route="/docs"]');
+
+    // At root - home is exact match, docs should not match
+    router._updateActiveRoutes('/');
+    expect(home.classList.contains('active')).toBe(true);
+    expect(docs.classList.contains('active')).toBe(false);
+
+    // At /docs - home exact should NOT match, docs prefix should match
+    router._updateActiveRoutes('/docs');
+    expect(home.classList.contains('active')).toBe(false);
+    expect(docs.classList.contains('active')).toBe(true);
+  });
+
+  it('root "/" only matches itself, not all paths (prefix match)', () => {
+    document.body.innerHTML += '<a z-active-route="/">Home</a>';
+    const el = document.querySelector('[z-active-route="/"]');
+
+    router._updateActiveRoutes('/about');
+    expect(el.classList.contains('active')).toBe(false);
+
+    router._updateActiveRoutes('/');
+    expect(el.classList.contains('active')).toBe(true);
+  });
+
+  it('handles multiple elements simultaneously', () => {
+    document.body.innerHTML += `
+      <nav>
+        <a z-active-route="/" z-active-exact>Home</a>
+        <a z-active-route="/about">About</a>
+        <a z-active-route="/docs">Docs</a>
+        <a z-active-route="/docs" z-active-class="highlight">Docs Alt</a>
+      </nav>
+    `;
+
+    router._updateActiveRoutes('/docs/getting-started');
+
+    const home = document.querySelector('[z-active-route="/"]');
+    const about = document.querySelector('[z-active-route="/about"]');
+    const docs = document.querySelectorAll('[z-active-route="/docs"]');
+
+    expect(home.classList.contains('active')).toBe(false);
+    expect(about.classList.contains('active')).toBe(false);
+    expect(docs[0].classList.contains('active')).toBe(true);
+    expect(docs[1].classList.contains('highlight')).toBe(true);
+  });
+
+  it('z-active-exact does not match child routes', () => {
+    document.body.innerHTML += '<a z-active-route="/docs" z-active-exact>Docs</a>';
+    const el = document.querySelector('[z-active-route="/docs"]');
+
+    router._updateActiveRoutes('/docs/intro');
+    expect(el.classList.contains('active')).toBe(false);
+
+    router._updateActiveRoutes('/docs');
+    expect(el.classList.contains('active')).toBe(true);
+  });
+
+  it('toggles class correctly across navigation changes', () => {
+    document.body.innerHTML += `
+      <a z-active-route="/about">About</a>
+      <a z-active-route="/docs">Docs</a>
+    `;
+    const about = document.querySelector('[z-active-route="/about"]');
+    const docs = document.querySelector('[z-active-route="/docs"]');
+
+    router._updateActiveRoutes('/about');
+    expect(about.classList.contains('active')).toBe(true);
+    expect(docs.classList.contains('active')).toBe(false);
+
+    router._updateActiveRoutes('/docs/selectors');
+    expect(about.classList.contains('active')).toBe(false);
+    expect(docs.classList.contains('active')).toBe(true);
+
+    router._updateActiveRoutes('/');
+    expect(about.classList.contains('active')).toBe(false);
+    expect(docs.classList.contains('active')).toBe(false);
   });
 });

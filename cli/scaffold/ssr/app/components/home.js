@@ -1,4 +1,4 @@
-// home.js — Home page component
+// home.js - Home page component
 //
 // Exports a plain definition object that works on both client and server.
 // The client registers it with $.component(), the server with app.component().
@@ -9,7 +9,7 @@ export const homePage = {
     timestamp: new Date().toLocaleTimeString(),
   }),
 
-  // init() runs on both client and server — no DOM required
+  // init() runs on both client and server - no DOM required
   init() {
     const hour = new Date().getHours();
     this.state.greeting =

@@ -1,5 +1,5 @@
 /**
- * Utility functions — debounce, throttle, strings, objects, URL, storage, event bus.
+ * Utility functions - debounce, throttle, strings, objects, URL, storage, event bus.
  *
  * @module utils
  */

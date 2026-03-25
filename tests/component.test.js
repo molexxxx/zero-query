@@ -15,7 +15,7 @@ beforeEach(() => {
 // Component registration
 // ---------------------------------------------------------------------------
 
-describe('component() — registration', () => {
+describe('component() - registration', () => {
   it('registers a component', () => {
     component('test-comp', {
       state: () => ({ count: 0 }),
@@ -79,7 +79,7 @@ describe('mount()', () => {
 // Lifecycle hooks
 // ---------------------------------------------------------------------------
 
-describe('component — lifecycle', () => {
+describe('component - lifecycle', () => {
   it('calls init on creation', () => {
     const initFn = vi.fn();
     component('life-init', {
@@ -144,7 +144,7 @@ describe('component — lifecycle', () => {
 // Reactive state
 // ---------------------------------------------------------------------------
 
-describe('component — reactive state', () => {
+describe('component - reactive state', () => {
   it('re-renders on state change', async () => {
     component('react-state', {
       state: () => ({ count: 0 }),
@@ -186,7 +186,7 @@ describe('component — reactive state', () => {
 // Props
 // ---------------------------------------------------------------------------
 
-describe('component — props', () => {
+describe('component - props', () => {
   it('receives props', () => {
     component('prop-test', {
       render() { return `<span class="prop">${this.props.label}</span>`; },
@@ -211,7 +211,7 @@ describe('component — props', () => {
 // Computed properties
 // ---------------------------------------------------------------------------
 
-describe('component — computed', () => {
+describe('component - computed', () => {
   it('derives values from state', () => {
     component('comp-computed', {
       state: () => ({ count: 5 }),
@@ -248,7 +248,7 @@ describe('component — computed', () => {
 // User methods
 // ---------------------------------------------------------------------------
 
-describe('component — methods', () => {
+describe('component - methods', () => {
   it('binds user methods to instance', () => {
     let captured;
     component('method-test', {
@@ -268,7 +268,7 @@ describe('component — methods', () => {
 // setState
 // ---------------------------------------------------------------------------
 
-describe('component — setState', () => {
+describe('component - setState', () => {
   it('batch updates state', async () => {
     component('set-state', {
       state: () => ({ a: 1, b: 2 }),
@@ -302,7 +302,7 @@ describe('component — setState', () => {
 // emit
 // ---------------------------------------------------------------------------
 
-describe('component — emit', () => {
+describe('component - emit', () => {
   it('dispatches custom event', () => {
     component('emit-test', {
       render() { return '<div>emit</div>'; },
@@ -324,7 +324,7 @@ describe('component — emit', () => {
 // destroy
 // ---------------------------------------------------------------------------
 
-describe('component — destroy', () => {
+describe('component - destroy', () => {
   it('clears innerHTML and removes from registry', () => {
     component('destroy-test', {
       render() { return '<div class="will-die">alive</div>'; },
@@ -400,7 +400,7 @@ describe('mountAll()', () => {
 // z-if / z-else-if / z-else
 // ---------------------------------------------------------------------------
 
-describe('component — z-if directive', () => {
+describe('component - z-if directive', () => {
   it('shows element when condition is true', () => {
     component('zif-true', {
       state: () => ({ show: true }),
@@ -446,7 +446,7 @@ describe('component — z-if directive', () => {
 // z-show
 // ---------------------------------------------------------------------------
 
-describe('component — z-show directive', () => {
+describe('component - z-show directive', () => {
   it('sets display none when falsy', () => {
     component('zshow-hide', {
       state: () => ({ visible: false }),
@@ -473,7 +473,7 @@ describe('component — z-show directive', () => {
 // z-for
 // ---------------------------------------------------------------------------
 
-describe('component — z-for directive', () => {
+describe('component - z-for directive', () => {
   it('renders list items', () => {
     component('zfor-list', {
       state: () => ({ items: ['red', 'green', 'blue'] }),
@@ -530,7 +530,7 @@ describe('component — z-for directive', () => {
 // z-bind / :attr
 // ---------------------------------------------------------------------------
 
-describe('component — z-bind directive', () => {
+describe('component - z-bind directive', () => {
   it('binds attribute dynamically with :attr', () => {
     component('zbind-attr', {
       state: () => ({ cls: 'active' }),
@@ -567,7 +567,7 @@ describe('component — z-bind directive', () => {
 // z-class
 // ---------------------------------------------------------------------------
 
-describe('component — z-class directive', () => {
+describe('component - z-class directive', () => {
   it('adds classes from object', () => {
     component('zclass-obj', {
       state: () => ({ isActive: true, isHidden: false }),
@@ -586,7 +586,7 @@ describe('component — z-class directive', () => {
 // z-text
 // ---------------------------------------------------------------------------
 
-describe('component — z-text directive', () => {
+describe('component - z-text directive', () => {
   it('sets textContent safely', () => {
     component('ztext-test', {
       state: () => ({ msg: 'Hello <b>world</b>' }),
@@ -605,7 +605,7 @@ describe('component — z-text directive', () => {
 // z-html
 // ---------------------------------------------------------------------------
 
-describe('component — z-html directive', () => {
+describe('component - z-html directive', () => {
   it('sets innerHTML', () => {
     component('zhtml-test', {
       state: () => ({ content: '<strong>bold</strong>' }),
@@ -622,7 +622,7 @@ describe('component — z-html directive', () => {
 // z-ref
 // ---------------------------------------------------------------------------
 
-describe('component — z-ref', () => {
+describe('component - z-ref', () => {
   it('populates refs on mount', () => {
     component('zref-test', {
       render() { return '<input z-ref="myInput" type="text">'; },
@@ -639,7 +639,7 @@ describe('component — z-ref', () => {
 // z-model (two-way binding)
 // ---------------------------------------------------------------------------
 
-describe('component — z-model', () => {
+describe('component - z-model', () => {
   it('syncs input value from state on mount', () => {
     component('zmodel-init', {
       state: () => ({ name: 'Tony' }),
@@ -702,7 +702,7 @@ describe('component — z-model', () => {
 // z-cloak
 // ---------------------------------------------------------------------------
 
-describe('component — z-cloak', () => {
+describe('component - z-cloak', () => {
   it('removes z-cloak attribute after render', () => {
     component('zcloak-test', {
       render() { return '<div z-cloak>content</div>'; },
@@ -718,7 +718,7 @@ describe('component — z-cloak', () => {
 // z-pre
 // ---------------------------------------------------------------------------
 
-describe('component — z-pre', () => {
+describe('component - z-pre', () => {
   it('skips directive processing inside z-pre', () => {
     component('zpre-test', {
       state: () => ({ x: 42 }),
@@ -740,7 +740,7 @@ describe('component — z-pre', () => {
 // z-style
 // ---------------------------------------------------------------------------
 
-describe('component — z-style directive', () => {
+describe('component - z-style directive', () => {
   it('applies object styles', () => {
     component('zstyle-obj', {
       state: () => ({ color: 'red' }),
@@ -757,7 +757,7 @@ describe('component — z-style directive', () => {
 // Event binding (@event)
 // ---------------------------------------------------------------------------
 
-describe('component — event binding', () => {
+describe('component - event binding', () => {
   it('handles @click events', () => {
     component('evt-click', {
       state: () => ({ count: 0 }),
@@ -812,7 +812,7 @@ describe('component — event binding', () => {
 // Watchers
 // ---------------------------------------------------------------------------
 
-describe('component — watchers', () => {
+describe('component - watchers', () => {
   it('fires watcher when state key changes', async () => {
     const watchFn = vi.fn();
     component('watch-test', {
@@ -834,7 +834,7 @@ describe('component — watchers', () => {
 // Slots
 // ---------------------------------------------------------------------------
 
-describe('component — slots', () => {
+describe('component - slots', () => {
   it('distributes default slot content', () => {
     component('slot-test', {
       render() { return '<div><slot>fallback</slot></div>'; },
@@ -1049,7 +1049,7 @@ describe('component — slots', () => {
     const inst = mount('#srr', 'slot-rerender');
     expect(document.querySelector('#srr .slotted span').textContent).toBe('Projected!');
 
-    // Trigger re-render via state change (batched — need microtask flush)
+    // Trigger re-render via state change (batched - need microtask flush)
     inst.state.count = 5;
     await new Promise(r => queueMicrotask(r));
     expect(document.querySelector('#srr p').textContent).toBe('Count: 5');
@@ -1068,7 +1068,7 @@ describe('component — slots', () => {
     expect(p.textContent).toContain('& <tag> "quotes"');
   });
 
-  // --- No slot tag in template — content is replaced entirely ---
+  // --- No slot tag in template - content is replaced entirely ---
 
   it('discards projected content when template has no slot', () => {
     component('slot-nosite', {
@@ -1131,7 +1131,7 @@ describe('component — slots', () => {
     el.appendChild(document.createComment('this is a comment'));
     document.body.appendChild(el);
     mount('#scm', 'slot-comments');
-    // Only a comment — should use fallback
+    // Only a comment - should use fallback
     expect(document.querySelector('#scm div').textContent).toBe('fallback');
   });
 
@@ -1302,7 +1302,7 @@ describe('component — slots', () => {
 // Scoped styles
 // ---------------------------------------------------------------------------
 
-describe('component — scoped styles', () => {
+describe('component - scoped styles', () => {
   it('injects scoped style tag', () => {
     component('style-test', {
       styles: '.box { color: red; }',
@@ -1321,7 +1321,7 @@ describe('component — scoped styles', () => {
 // z-if toggling on state change
 // ---------------------------------------------------------------------------
 
-describe('component — z-if reactive toggle', () => {
+describe('component - z-if reactive toggle', () => {
   it('shows/hides element on state change', async () => {
     component('zif-toggle', {
       state: () => ({ visible: false }),
@@ -1368,7 +1368,7 @@ describe('component — z-if reactive toggle', () => {
 // z-show reactive toggle
 // ---------------------------------------------------------------------------
 
-describe('component — z-show reactive toggle', () => {
+describe('component - z-show reactive toggle', () => {
   it('toggles display on state change', async () => {
     component('zshow-toggle', {
       state: () => ({ vis: true }),
@@ -1389,7 +1389,7 @@ describe('component — z-show reactive toggle', () => {
 // z-for advanced
 // ---------------------------------------------------------------------------
 
-describe('component — z-for advanced', () => {
+describe('component - z-for advanced', () => {
   it('re-renders list on state change', async () => {
     component('zfor-rerender', {
       state: () => ({ items: ['a', 'b'] }),
@@ -1459,7 +1459,7 @@ describe('component — z-for advanced', () => {
 // z-bind advanced
 // ---------------------------------------------------------------------------
 
-describe('component — z-bind advanced', () => {
+describe('component - z-bind advanced', () => {
   it('binds data attribute dynamically', () => {
     component('zbind-data', {
       state: () => ({ val: '42' }),
@@ -1486,7 +1486,7 @@ describe('component — z-bind advanced', () => {
 // z-class advanced
 // ---------------------------------------------------------------------------
 
-describe('component — z-class advanced', () => {
+describe('component - z-class advanced', () => {
   it('handles multiple truthy/falsy classes', () => {
     component('zclass-multi', {
       state: () => ({ a: true, b: false, c: true }),
@@ -1506,7 +1506,7 @@ describe('component — z-class advanced', () => {
 // z-style advanced
 // ---------------------------------------------------------------------------
 
-describe('component — z-style advanced', () => {
+describe('component - z-style advanced', () => {
   it('applies multiple style properties', () => {
     component('zstyle-multi', {
       state: () => ({ bg: 'blue', size: '20px' }),
@@ -1525,7 +1525,7 @@ describe('component — z-style advanced', () => {
 // z-model advanced
 // ---------------------------------------------------------------------------
 
-describe('component — z-model advanced', () => {
+describe('component - z-model advanced', () => {
   it('handles z-model with select element', () => {
     component('zmodel-select', {
       state: () => ({ choice: 'b' }),
@@ -1572,7 +1572,7 @@ describe('component — z-model advanced', () => {
 // z-ref advanced
 // ---------------------------------------------------------------------------
 
-describe('component — z-ref advanced', () => {
+describe('component - z-ref advanced', () => {
   it('collects multiple refs', () => {
     component('zref-multi', {
       render() { return '<input z-ref="first" type="text"><input z-ref="second" type="email">'; },
@@ -1591,7 +1591,7 @@ describe('component — z-ref advanced', () => {
 // Event binding advanced
 // ---------------------------------------------------------------------------
 
-describe('component — event binding advanced', () => {
+describe('component - event binding advanced', () => {
   it('handles multiple event bindings on different elements', () => {
     let clickCount = 0, focusCount = 0;
     component('evt-multi', {
@@ -1637,7 +1637,7 @@ describe('component — event binding advanced', () => {
 // Watcher advanced
 // ---------------------------------------------------------------------------
 
-describe('component — watchers advanced', () => {
+describe('component - watchers advanced', () => {
   it('receives correct old and new values', async () => {
     let oldVal, newVal;
     component('watch-vals', {
@@ -1675,7 +1675,7 @@ describe('component — watchers advanced', () => {
 // Component state with no initial state
 // ---------------------------------------------------------------------------
 
-describe('component — no state', () => {
+describe('component - no state', () => {
   it('works without state property', () => {
     component('no-state', {
       render() { return '<div>stateless</div>'; },
@@ -1692,7 +1692,7 @@ describe('component — no state', () => {
 // Mount with element reference
 // ---------------------------------------------------------------------------
 
-describe('mount — with Element reference', () => {
+describe('mount - with Element reference', () => {
   it('accepts an Element directly instead of selector', () => {
     component('mount-elem', {
       state: () => ({ v: 'direct' }),
@@ -1711,7 +1711,7 @@ describe('mount — with Element reference', () => {
 // Component interpolation edge cases
 // ---------------------------------------------------------------------------
 
-describe('component — interpolation', () => {
+describe('component - interpolation', () => {
   it('handles template literal with arithmetic', () => {
     component('interp-math', {
       state: () => ({ a: 3, b: 4 }),
@@ -1758,7 +1758,7 @@ describe('component — interpolation', () => {
 // Component emit with no listeners
 // ---------------------------------------------------------------------------
 
-describe('component — emit edge cases', () => {
+describe('component - emit edge cases', () => {
   it('emit with no listeners does not throw', () => {
     component('emit-noop', {
       render() { return '<div>noop</div>'; },
@@ -1786,7 +1786,7 @@ describe('component — emit edge cases', () => {
 // Component computed edge cases
 // ---------------------------------------------------------------------------
 
-describe('component — computed edge cases', () => {
+describe('component - computed edge cases', () => {
   it('multiple computed properties', () => {
     component('comp-multi-computed', {
       state: () => ({ x: 2, y: 3 }),
@@ -1821,7 +1821,7 @@ describe('component — computed edge cases', () => {
 // Slots advanced
 // ---------------------------------------------------------------------------
 
-describe('component — slots advanced', () => {
+describe('component - slots advanced', () => {
   it('handles multiple children in default slot', () => {
     component('slot-multi', {
       render() { return '<div><slot>fallback</slot></div>'; },
@@ -1851,7 +1851,7 @@ describe('component — slots advanced', () => {
 // Component re-render preserves DOM via morphing
 // ---------------------------------------------------------------------------
 
-describe('component — DOM morphing on re-render', () => {
+describe('component - DOM morphing on re-render', () => {
   it('preserves unchanged DOM nodes on re-render', async () => {
     component('morph-preserve', {
       state: () => ({ title: 'old', count: 0 }),
@@ -1889,7 +1889,7 @@ describe('component — DOM morphing on re-render', () => {
 // MEMORY: destroy clears pending debounce/throttle timers
 // ---------------------------------------------------------------------------
 
-describe('Component — destroy clears pending timers', () => {
+describe('Component - destroy clears pending timers', () => {
   it('clears debounce timers for child elements on destroy', () => {
     component('timer-clear', {
       state: () => ({ val: 0 }),
@@ -1901,7 +1901,7 @@ describe('Component — destroy clears pending timers', () => {
     document.body.innerHTML = '<timer-clear id="tcl"></timer-clear>';
     const inst = mount('#tcl', 'timer-clear');
 
-    // Click to start a debounce timer (5s — won't fire during test)
+    // Click to start a debounce timer (5s - won't fire during test)
     document.querySelector('#tcl button').click();
 
     // Verify the state hasn't changed yet (debounced)
@@ -1917,7 +1917,7 @@ describe('Component — destroy clears pending timers', () => {
 // z-model modifiers
 // ===========================================================================
 
-describe('component — z-model z-lazy modifier', () => {
+describe('component - z-model z-lazy modifier', () => {
   it('uses change event instead of input when z-lazy is present', () => {
     component('zmodel-lazy', {
       state: () => ({ val: '' }),
@@ -1939,7 +1939,7 @@ describe('component — z-model z-lazy modifier', () => {
   });
 });
 
-describe('component — z-model z-trim modifier', () => {
+describe('component - z-model z-trim modifier', () => {
   it('trims whitespace from input value', () => {
     component('zmodel-trim', {
       state: () => ({ val: '' }),
@@ -1954,7 +1954,7 @@ describe('component — z-model z-trim modifier', () => {
   });
 });
 
-describe('component — z-model z-number modifier', () => {
+describe('component - z-model z-number modifier', () => {
   it('converts input value to number', () => {
     component('zmodel-num', {
       state: () => ({ val: 0 }),
@@ -1998,7 +1998,7 @@ describe('component — z-model z-number modifier', () => {
   });
 });
 
-describe('component — z-model contenteditable', () => {
+describe('component - z-model contenteditable', () => {
   it('reads and writes textContent for contenteditable elements', () => {
     component('zmodel-ce', {
       state: () => ({ val: 'initial' }),
@@ -2023,7 +2023,7 @@ describe('component — z-model contenteditable', () => {
 // z-model z-debounce modifier
 // ===========================================================================
 
-describe('component — z-model z-debounce modifier', () => {
+describe('component - z-model z-debounce modifier', () => {
   it('delays state update by the specified ms', () => {
     vi.useFakeTimers();
     component('zmodel-debounce', {
@@ -2096,7 +2096,7 @@ describe('component — z-model z-debounce modifier', () => {
 // z-model z-uppercase / z-lowercase modifiers
 // ===========================================================================
 
-describe('component — z-model z-uppercase modifier', () => {
+describe('component - z-model z-uppercase modifier', () => {
   it('converts input value to uppercase before writing to state', () => {
     component('zmodel-upper', {
       state: () => ({ val: '' }),
@@ -2126,7 +2126,7 @@ describe('component — z-model z-uppercase modifier', () => {
   });
 });
 
-describe('component — z-model z-lowercase modifier', () => {
+describe('component - z-model z-lowercase modifier', () => {
   it('converts input value to lowercase before writing to state', () => {
     component('zmodel-lower', {
       state: () => ({ val: '' }),
@@ -2157,7 +2157,7 @@ describe('component — z-model z-lowercase modifier', () => {
 });
 
 
-describe('component — z-model radio', () => {
+describe('component - z-model radio', () => {
   it('checks the radio matching state value and writes back on change', () => {
     component('zmodel-radio', {
       state: () => ({ color: 'green' }),
@@ -2183,7 +2183,7 @@ describe('component — z-model radio', () => {
   });
 });
 
-describe('component — z-model multi-select', () => {
+describe('component - z-model multi-select', () => {
   it('syncs multiple selected options to an array', () => {
     component('zmodel-multisel', {
       state: () => ({ chosen: ['b', 'c'] }),
@@ -2213,7 +2213,7 @@ describe('component — z-model multi-select', () => {
   });
 });
 
-describe('component — z-model dot-path keys', () => {
+describe('component - z-model dot-path keys', () => {
   it('reads and writes nested state via dot path', () => {
     component('zmodel-dot', {
       state: () => ({ form: { name: 'Alice' } }),
@@ -2233,7 +2233,7 @@ describe('component — z-model dot-path keys', () => {
   });
 });
 
-describe('component — z-model does not duplicate listeners on re-render', () => {
+describe('component - z-model does not duplicate listeners on re-render', () => {
   it('handler fires only once per event after multiple re-renders', async () => {
     let callCount = 0;
     const origSetPath = null;
@@ -2263,7 +2263,7 @@ describe('component — z-model does not duplicate listeners on re-render', () =
 // Event modifiers
 // ===========================================================================
 
-describe('component — event modifier .prevent', () => {
+describe('component - event modifier .prevent', () => {
   it('calls preventDefault on the event', () => {
     component('evt-prevent', {
       handler() {},
@@ -2279,7 +2279,7 @@ describe('component — event modifier .prevent', () => {
   });
 });
 
-describe('component — event modifier .stop', () => {
+describe('component - event modifier .stop', () => {
   it('calls stopPropagation on the event', () => {
     let stopped = false;
     component('evt-stop', {
@@ -2297,7 +2297,7 @@ describe('component — event modifier .stop', () => {
   });
 });
 
-describe('component — event modifier .self', () => {
+describe('component - event modifier .self', () => {
   it('only fires handler when target matches element', () => {
     let count = 0;
     component('evt-self', {
@@ -2319,7 +2319,7 @@ describe('component — event modifier .self', () => {
   });
 });
 
-describe('component — event modifier .once', () => {
+describe('component - event modifier .once', () => {
   it('only fires handler on the first event', () => {
     let count = 0;
     component('evt-once', {
@@ -2338,7 +2338,7 @@ describe('component — event modifier .once', () => {
   });
 });
 
-describe('component — event modifier .debounce', () => {
+describe('component - event modifier .debounce', () => {
   it('delays handler execution', () => {
     vi.useFakeTimers();
     let count = 0;
@@ -2382,7 +2382,7 @@ describe('component — event modifier .debounce', () => {
   });
 });
 
-describe('component — event modifier .throttle', () => {
+describe('component - event modifier .throttle', () => {
   it('fires immediately then blocks until window passes', () => {
     vi.useFakeTimers();
     let count = 0;
@@ -2408,7 +2408,7 @@ describe('component — event modifier .throttle', () => {
   });
 });
 
-describe('component — combined event modifiers', () => {
+describe('component - combined event modifiers', () => {
   it('handles .prevent.stop together', () => {
     component('evt-combo', {
       handler() {},
@@ -2428,10 +2428,10 @@ describe('component — combined event modifiers', () => {
 
 
 // ===========================================================================
-// Key modifiers — .enter, .escape, .tab, .space, .delete, .up, .down, .left, .right
+// Key modifiers - .enter, .escape, .tab, .space, .delete, .up, .down, .left, .right
 // ===========================================================================
 
-describe('component — key modifier .enter', () => {
+describe('component - key modifier .enter', () => {
   it('fires handler only on Enter key', () => {
     let count = 0;
     component('key-enter', {
@@ -2452,7 +2452,7 @@ describe('component — key modifier .enter', () => {
   });
 });
 
-describe('component — key modifier .escape', () => {
+describe('component - key modifier .escape', () => {
   it('fires handler only on Escape key', () => {
     let count = 0;
     component('key-esc', {
@@ -2471,7 +2471,7 @@ describe('component — key modifier .escape', () => {
   });
 });
 
-describe('component — key modifier .tab', () => {
+describe('component - key modifier .tab', () => {
   it('fires handler only on Tab key', () => {
     let count = 0;
     component('key-tab', {
@@ -2490,7 +2490,7 @@ describe('component — key modifier .tab', () => {
   });
 });
 
-describe('component — key modifier .space', () => {
+describe('component - key modifier .space', () => {
   it('fires handler only on Space key', () => {
     let count = 0;
     component('key-space', {
@@ -2509,7 +2509,7 @@ describe('component — key modifier .space', () => {
   });
 });
 
-describe('component — key modifier .delete', () => {
+describe('component - key modifier .delete', () => {
   it('fires handler on Delete and Backspace keys', () => {
     let count = 0;
     component('key-del', {
@@ -2531,7 +2531,7 @@ describe('component — key modifier .delete', () => {
   });
 });
 
-describe('component — key modifier arrow keys', () => {
+describe('component - key modifier arrow keys', () => {
   it('.up fires only on ArrowUp', () => {
     let count = 0;
     component('key-up', {
@@ -2593,7 +2593,7 @@ describe('component — key modifier arrow keys', () => {
   });
 });
 
-describe('component — key modifiers combined with other modifiers', () => {
+describe('component - key modifiers combined with other modifiers', () => {
   it('.enter.prevent prevents default only on Enter', () => {
     component('key-enter-prev', {
       handler() {},
@@ -2618,10 +2618,10 @@ describe('component — key modifiers combined with other modifiers', () => {
 
 
 // ===========================================================================
-// System key modifiers — .ctrl, .shift, .alt, .meta
+// System key modifiers - .ctrl, .shift, .alt, .meta
 // ===========================================================================
 
-describe('component — system key modifier .ctrl', () => {
+describe('component - system key modifier .ctrl', () => {
   it('fires only when Ctrl is held', () => {
     let count = 0;
     component('sys-ctrl', {
@@ -2632,17 +2632,17 @@ describe('component — system key modifier .ctrl', () => {
     mount('#sc', 'sys-ctrl');
     const input = document.querySelector('#sc input');
 
-    // Without Ctrl — should NOT fire
+    // Without Ctrl - should NOT fire
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, ctrlKey: false }));
     expect(count).toBe(0);
 
-    // With Ctrl — should fire
+    // With Ctrl - should fire
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, ctrlKey: true }));
     expect(count).toBe(1);
   });
 });
 
-describe('component — system key modifier .shift', () => {
+describe('component - system key modifier .shift', () => {
   it('fires only when Shift is held', () => {
     let count = 0;
     component('sys-shift', {
@@ -2661,7 +2661,7 @@ describe('component — system key modifier .shift', () => {
   });
 });
 
-describe('component — system key modifier .alt', () => {
+describe('component - system key modifier .alt', () => {
   it('fires only when Alt is held', () => {
     let count = 0;
     component('sys-alt', {
@@ -2680,7 +2680,7 @@ describe('component — system key modifier .alt', () => {
   });
 });
 
-describe('component — system key modifier .meta', () => {
+describe('component - system key modifier .meta', () => {
   it('fires only when Meta (Cmd/Win) is held', () => {
     let count = 0;
     component('sys-meta', {
@@ -2699,7 +2699,7 @@ describe('component — system key modifier .meta', () => {
   });
 });
 
-describe('component — combined key + system modifiers', () => {
+describe('component - combined key + system modifiers', () => {
   it('.ctrl.enter fires only on Ctrl+Enter', () => {
     let count = 0;
     component('sys-ctrl-enter', {
@@ -2743,10 +2743,10 @@ describe('component — combined key + system modifiers', () => {
 
 
 // ===========================================================================
-// .outside modifier — fire when event target is outside the element
+// .outside modifier - fire when event target is outside the element
 // ===========================================================================
 
-describe('component — .outside event modifier', () => {
+describe('component - .outside event modifier', () => {
   it('fires handler when clicking outside the element', () => {
     let count = 0;
     component('evt-outside', {
@@ -2756,15 +2756,15 @@ describe('component — .outside event modifier', () => {
     document.body.innerHTML = '<evt-outside id="eo"></evt-outside>';
     mount('#eo', 'evt-outside');
 
-    // Click inside the dropdown — should NOT fire
+    // Click inside the dropdown - should NOT fire
     document.querySelector('#eo .dropdown').click();
     expect(count).toBe(0);
 
-    // Click inside a child — should NOT fire
+    // Click inside a child - should NOT fire
     document.querySelector('#eo span').click();
     expect(count).toBe(0);
 
-    // Click on the component root (outside the dropdown) — should fire
+    // Click on the component root (outside the dropdown) - should fire
     document.querySelector('#eo').dispatchEvent(new Event('click', { bubbles: true }));
     expect(count).toBe(1);
   });
@@ -2798,10 +2798,10 @@ describe('component — .outside event modifier', () => {
     expect(count).toBe(0);
   });
 });
-// z-for advanced — object, iterable, range, null
+// z-for advanced - object, iterable, range, null
 // ===========================================================================
 
-describe('component — z-for object iteration', () => {
+describe('component - z-for object iteration', () => {
   it('iterates over object entries with key/value', () => {
     component('zfor-obj', {
       state: () => ({ data: { name: 'Alice', age: 30 } }),
@@ -2818,7 +2818,7 @@ describe('component — z-for object iteration', () => {
   });
 });
 
-describe('component — z-for numeric range', () => {
+describe('component - z-for numeric range', () => {
   it('generates items from 1 to n', () => {
     component('zfor-range', {
       state: () => ({ count: 5 }),
@@ -2833,7 +2833,7 @@ describe('component — z-for numeric range', () => {
   });
 });
 
-describe('component — z-for null/undefined list removes element', () => {
+describe('component - z-for null/undefined list removes element', () => {
   it('removes element when list is null', () => {
     component('zfor-null', {
       state: () => ({ items: null }),
@@ -2847,7 +2847,7 @@ describe('component — z-for null/undefined list removes element', () => {
   });
 });
 
-describe('component — z-for with empty array', () => {
+describe('component - z-for with empty array', () => {
   it('renders nothing with an empty array', () => {
     component('zfor-empty', {
       state: () => ({ items: [] }),
@@ -2859,7 +2859,7 @@ describe('component — z-for with empty array', () => {
   });
 });
 
-describe('component — z-for with $index', () => {
+describe('component - z-for with $index', () => {
   it('exposes $index as default index variable', () => {
     component('zfor-idx', {
       state: () => ({ items: ['a', 'b', 'c'] }),
@@ -2874,7 +2874,7 @@ describe('component — z-for with $index', () => {
   });
 });
 
-describe('component — z-for with invalid expression', () => {
+describe('component - z-for with invalid expression', () => {
   it('gracefully handles invalid z-for syntax', () => {
     component('zfor-invalid', {
       state: () => ({}),
@@ -2887,10 +2887,10 @@ describe('component — z-for with invalid expression', () => {
 
 
 // ===========================================================================
-// z-class — string and array forms
+// z-class - string and array forms
 // ===========================================================================
 
-describe('component — z-class string form', () => {
+describe('component - z-class string form', () => {
   it('adds classes from a space-separated string', () => {
     component('zclass-str', {
       state: () => ({ cls: 'foo bar baz' }),
@@ -2905,7 +2905,7 @@ describe('component — z-class string form', () => {
   });
 });
 
-describe('component — z-class array form', () => {
+describe('component - z-class array form', () => {
   it('adds classes from an array, filtering falsy values', () => {
     component('zclass-arr', {
       state: () => ({ classes: ['active', null, 'visible', '', 'large'] }),
@@ -2923,10 +2923,10 @@ describe('component — z-class array form', () => {
 
 
 // ===========================================================================
-// z-style — string form
+// z-style - string form
 // ===========================================================================
 
-describe('component — z-style string form', () => {
+describe('component - z-style string form', () => {
   it('appends CSS text from a string expression', () => {
     component('zstyle-str', {
       state: () => ({ s: 'color: red; font-weight: bold' }),
@@ -2945,7 +2945,7 @@ describe('component — z-style string form', () => {
 // z-text and z-html edge cases
 // ===========================================================================
 
-describe('component — z-text with null/undefined', () => {
+describe('component - z-text with null/undefined', () => {
   it('sets empty textContent for null state', () => {
     component('ztext-null', {
       state: () => ({ val: null }),
@@ -2957,7 +2957,7 @@ describe('component — z-text with null/undefined', () => {
   });
 });
 
-describe('component — z-html with null', () => {
+describe('component - z-html with null', () => {
   it('sets empty innerHTML for null state', () => {
     component('zhtml-null', {
       state: () => ({ content: null }),
@@ -2969,7 +2969,7 @@ describe('component — z-html with null', () => {
   });
 });
 
-describe('component — z-text expression evaluation', () => {
+describe('component - z-text expression evaluation', () => {
   it('evaluates expressions, not just state keys', () => {
     component('ztext-expr', {
       state: () => ({ a: 3, b: 4 }),
@@ -2986,7 +2986,7 @@ describe('component — z-text expression evaluation', () => {
 // mountAll with props and dynamic expressions
 // ===========================================================================
 
-describe('mountAll — static props', () => {
+describe('mountAll - static props', () => {
   it('passes attribute values as props to components', () => {
     component('prop-child', {
       render() { return `<span>${this.props.label}</span>`; },
@@ -3007,7 +3007,7 @@ describe('mountAll — static props', () => {
   });
 });
 
-describe('mountAll — skips already-mounted instances', () => {
+describe('mountAll - skips already-mounted instances', () => {
   it('does not double-mount the same element', () => {
     let mountCount = 0;
     component('mount-once', {
@@ -3024,10 +3024,10 @@ describe('mountAll — skips already-mounted instances', () => {
 
 
 // ===========================================================================
-// Component — scoped styles edge cases
+// Component - scoped styles edge cases
 // ===========================================================================
 
-describe('component — scoped styles injection', () => {
+describe('component - scoped styles injection', () => {
   it('creates a <style> tag with scoped CSS', () => {
     component('scoped-css', {
       styles: 'p { color: blue; }',
@@ -3044,10 +3044,10 @@ describe('component — scoped styles injection', () => {
 
 
 // ===========================================================================
-// Component — event handler with state.* arg passthrough
+// Component - event handler with state.* arg passthrough
 // ===========================================================================
 
-describe('component — event handler receives state.* arguments', () => {
+describe('component - event handler receives state.* arguments', () => {
   it('passes state values via state.propName in event args', () => {
     let received = null;
     component('evt-statearg', {
@@ -3062,7 +3062,7 @@ describe('component — event handler receives state.* arguments', () => {
   });
 });
 
-describe('component — event handler with boolean/null args', () => {
+describe('component - event handler with boolean/null args', () => {
   it('parses true, false, null literals in event arguments', () => {
     let args = [];
     component('evt-literals', {
@@ -3078,10 +3078,10 @@ describe('component — event handler with boolean/null args', () => {
 
 
 // ===========================================================================
-// Component — z-bind edge cases
+// Component - z-bind edge cases
 // ===========================================================================
 
-describe('component — z-bind with false removes boolean attr', () => {
+describe('component - z-bind with false removes boolean attr', () => {
   it('removes disabled attribute when value is false', () => {
     component('zbind-false', {
       state: () => ({ isDisabled: false }),
@@ -3105,10 +3105,10 @@ describe('component — z-bind with false removes boolean attr', () => {
 
 
 // ===========================================================================
-// Component — z-if / z-show with computed
+// Component - z-if / z-show with computed
 // ===========================================================================
 
-describe('component — z-if with computed expression', () => {
+describe('component - z-if with computed expression', () => {
   it('evaluates computed values in z-if', () => {
     component('zif-computed', {
       state: () => ({ items: [1, 2, 3] }),
@@ -3124,7 +3124,7 @@ describe('component — z-if with computed expression', () => {
   });
 });
 
-describe('component — z-show with computed expression', () => {
+describe('component - z-show with computed expression', () => {
   it('toggles visibility based on computed', () => {
     component('zshow-computed', {
       state: () => ({ count: 0 }),
@@ -3142,10 +3142,10 @@ describe('component — z-show with computed expression', () => {
 
 
 // ===========================================================================
-// Component — interpolation edge cases
+// Component - interpolation edge cases
 // ===========================================================================
 
-describe('component — interpolation edge cases', () => {
+describe('component - interpolation edge cases', () => {
   it('handles nested object access via template literal', () => {
     component('interp-deep', {
       state: () => ({ user: { profile: { name: 'Zoe' } } }),
@@ -3179,10 +3179,10 @@ describe('component — interpolation edge cases', () => {
 
 
 // ===========================================================================
-// Component — lifecycle edge cases
+// Component - lifecycle edge cases
 // ===========================================================================
 
-describe('component — destroy removes from instance map', () => {
+describe('component - destroy removes from instance map', () => {
   it('getInstance returns undefined after destroy', () => {
     component('destroy-map', {
       state: () => ({ x: 0 }),
@@ -3198,7 +3198,7 @@ describe('component — destroy removes from instance map', () => {
   });
 });
 
-describe('component — multiple instances of same component', () => {
+describe('component - multiple instances of same component', () => {
   it('each has independent state', () => {
     component('multi-inst', {
       state: () => ({ val: 0 }),
@@ -3214,10 +3214,10 @@ describe('component — multiple instances of same component', () => {
 
 
 // ===========================================================================
-// Custom HTML tag — "drop it anywhere" behavior
+// Custom HTML tag - "drop it anywhere" behavior
 // ===========================================================================
 
-describe('custom HTML tag — drop-in component mounting', () => {
+describe('custom HTML tag - drop-in component mounting', () => {
 
   // -- Basic rendering -------------------------------------------------------
 
@@ -3429,7 +3429,7 @@ describe('custom HTML tag — drop-in component mounting', () => {
       },
     });
 
-    // Drop it anywhere — just like the docs say
+    // Drop it anywhere - just like the docs say
     document.body.innerHTML = `
       <h1>My Page</h1>
       <click-counter></click-counter>

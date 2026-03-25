@@ -1,5 +1,5 @@
 /**
- * zQuery Expression Parser — CSP-safe expression evaluator
+ * zQuery Expression Parser - CSP-safe expression evaluator
  *
  * Replaces `new Function()` / `eval()` with a hand-written parser that
  * evaluates expressions safely without violating Content Security Policy.
@@ -179,7 +179,7 @@ function tokenize(expr) {
       i++; continue;
     }
 
-    // Unknown — skip
+    // Unknown - skip
     i++;
   }
 
@@ -188,7 +188,7 @@ function tokenize(expr) {
 }
 
 // ---------------------------------------------------------------------------
-// Parser — Pratt (precedence climbing)
+// Parser - Pratt (precedence climbing)
 // ---------------------------------------------------------------------------
 class Parser {
   constructor(tokens, scope) {
@@ -420,7 +420,7 @@ class Parser {
       let couldBeArrow = true;
 
       if (this.peek().t === T.PUNC && this.peek().v === ')') {
-        // () => ... — no params
+        // () => ... - no params
       } else {
         while (couldBeArrow) {
           const p = this.peek();
@@ -446,7 +446,7 @@ class Parser {
         }
       }
 
-      // Not an arrow — restore and parse as grouping
+      // Not an arrow - restore and parse as grouping
       this.pos = savedPos;
       this.next(); // consume (
       const expr = this.parseExpression(0);
@@ -539,14 +539,14 @@ class Parser {
       return { type: 'ident', name: tok.v };
     }
 
-    // Fallback — return undefined for unparseable
+    // Fallback - return undefined for unparseable
     this.next();
     return { type: 'literal', value: undefined };
   }
 }
 
 // ---------------------------------------------------------------------------
-// Evaluator — walks the AST, resolves against scope
+// Evaluator - walks the AST, resolves against scope
 // ---------------------------------------------------------------------------
 
 /** Safe property access whitelist for built-in prototypes */
@@ -635,8 +635,6 @@ function evaluate(node, scope) {
       if (name === 'console') return console;
       if (name === 'Map') return Map;
       if (name === 'Set') return Set;
-      if (name === 'RegExp') return RegExp;
-      if (name === 'Error') return Error;
       if (name === 'URL') return URL;
       if (name === 'URLSearchParams') return URLSearchParams;
       return undefined;
@@ -679,7 +677,7 @@ function evaluate(node, scope) {
     case 'optional_call': {
       const calleeNode = node.callee;
       const args = _evalArgs(node.args, scope);
-      // Method call: obj?.method() — bind `this` to obj
+      // Method call: obj?.method() - bind `this` to obj
       if (calleeNode.type === 'member' || calleeNode.type === 'optional_member') {
         const obj = evaluate(calleeNode.obj, scope);
         if (obj == null) return undefined;
@@ -698,9 +696,9 @@ function evaluate(node, scope) {
     case 'new': {
       const Ctor = evaluate(node.callee, scope);
       if (typeof Ctor !== 'function') return undefined;
-      // Only allow safe constructors
+      // Only allow safe constructors (no RegExp - ReDoS risk, no Error - info leak)
       if (Ctor === Date || Ctor === Array || Ctor === Map || Ctor === Set ||
-          Ctor === RegExp || Ctor === Error || Ctor === URL || Ctor === URLSearchParams) {
+          Ctor === URL || Ctor === URLSearchParams) {
         const args = _evalArgs(node.args, scope);
         return new Ctor(...args);
       }
@@ -802,7 +800,7 @@ function _resolveCall(node, scope) {
   const callee = node.callee;
   const args = _evalArgs(node.args, scope);
 
-  // Method call: obj.method() — bind `this` to obj
+  // Method call: obj.method() - bind `this` to obj
   if (callee.type === 'member' || callee.type === 'optional_member') {
     const obj = evaluate(callee.obj, scope);
     if (obj == null) return undefined;
@@ -868,13 +866,13 @@ function _evalBinary(node, scope) {
 /**
  * Safely evaluate a JS expression string against scope layers.
  *
- * @param {string} expr — expression string
- * @param {object[]} scope — array of scope objects, checked in order
+ * @param {string} expr - expression string
+ * @param {object[]} scope - array of scope objects, checked in order
  *   Typical: [loopVars, state, { props, refs, $ }]
- * @returns {*} — evaluation result, or undefined on error
+ * @returns {*} - evaluation result, or undefined on error
  */
 
-// AST cache (LRU) — avoids re-tokenizing and re-parsing the same expression.
+// AST cache (LRU) - avoids re-tokenizing and re-parsing the same expression.
 // Uses Map insertion-order: on hit, delete + re-set moves entry to the end.
 // Eviction removes the least-recently-used (first) entry when at capacity.
 const _astCache = new Map();

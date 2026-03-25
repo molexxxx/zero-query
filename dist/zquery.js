@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v0.9.9
+ * zQuery (zeroQuery) v1.0.0
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -9,7 +9,7 @@
 
 // --- src/errors.js -----------------------------------------------
 /**
- * zQuery Errors — Structured error handling system
+ * zQuery Errors - Structured error handling system
  *
  * Provides typed error classes and a configurable error handler so that
  * errors surface consistently across all modules (reactive, component,
@@ -21,7 +21,7 @@
  */
 
 // ---------------------------------------------------------------------------
-// Error codes — every zQuery error has a unique code for programmatic use
+// Error codes - every zQuery error has a unique code for programmatic use
 // ---------------------------------------------------------------------------
 const ErrorCode = Object.freeze({
   // Reactive
@@ -71,14 +71,14 @@ const ErrorCode = Object.freeze({
 
 
 // ---------------------------------------------------------------------------
-// ZQueryError — custom error class
+// ZQueryError - custom error class
 // ---------------------------------------------------------------------------
 class ZQueryError extends Error {
   /**
-   * @param {string} code    — one of ErrorCode values
-   * @param {string} message — human-readable description
-   * @param {object} [context] — extra data (component name, expression, etc.)
-   * @param {Error}  [cause]   — original error
+   * @param {string} code    - one of ErrorCode values
+   * @param {string} message - human-readable description
+   * @param {object} [context] - extra data (component name, expression, etc.)
+   * @param {Error}  [cause]   - original error
    */
   constructor(code, message, context = {}, cause) {
     super(message);
@@ -98,10 +98,10 @@ let _errorHandlers = [];
 /**
  * Register a global error handler.
  * Called whenever zQuery catches an error internally.
- * Multiple handlers are supported — each receives the error.
+ * Multiple handlers are supported - each receives the error.
  * Pass `null` to clear all handlers.
  *
- * @param {Function|null} handler — (error: ZQueryError) => void
+ * @param {Function|null} handler - (error: ZQueryError) => void
  * @returns {Function} unsubscribe function to remove this handler
  */
 function onError(handler) {
@@ -119,9 +119,9 @@ function onError(handler) {
 
 /**
  * Report an error through the global handler and console.
- * Non-throwing — used for recoverable errors in callbacks, lifecycle hooks, etc.
+ * Non-throwing - used for recoverable errors in callbacks, lifecycle hooks, etc.
  *
- * @param {string} code — ErrorCode
+ * @param {string} code - ErrorCode
  * @param {string} message
  * @param {object} [context]
  * @param {Error} [cause]
@@ -145,7 +145,7 @@ function reportError(code, message, context = {}, cause) {
  * the current execution context.
  *
  * @param {Function} fn
- * @param {string} code — ErrorCode to use if the callback throws
+ * @param {string} code - ErrorCode to use if the callback throws
  * @param {object} [context]
  * @returns {Function}
  */
@@ -164,8 +164,8 @@ function guardCallback(fn, code, context = {}) {
  * Throws ZQueryError on failure (for fast-fail at API boundaries).
  *
  * @param {*} value
- * @param {string} name — parameter name for error message
- * @param {string} expectedType — 'string', 'function', 'object', etc.
+ * @param {string} name - parameter name for error message
+ * @param {string} expectedType - 'string', 'function', 'object', etc.
  */
 function validate(value, name, expectedType) {
   if (value === undefined || value === null) {
@@ -200,11 +200,11 @@ function formatError(err) {
 }
 
 /**
- * Async version of guardCallback — wraps an async function so that
+ * Async version of guardCallback - wraps an async function so that
  * rejections are caught, reported, and don't crash execution.
  *
- * @param {Function} fn — async function
- * @param {string} code — ErrorCode to use
+ * @param {Function} fn - async function
+ * @param {string} code - ErrorCode to use
  * @param {object} [context]
  * @returns {Function}
  */
@@ -220,7 +220,7 @@ function guardAsync(fn, code, context = {}) {
 
 // --- src/reactive.js ---------------------------------------------
 /**
- * zQuery Reactive — Proxy-based deep reactivity system
+ * zQuery Reactive - Proxy-based deep reactivity system
  * 
  * Creates observable objects that trigger callbacks on mutation.
  * Used internally by components and store for auto-updates.
@@ -287,7 +287,7 @@ function reactive(target, onChange, _path = '') {
 
 
 // ---------------------------------------------------------------------------
-// Signal — lightweight reactive primitive (inspired by Solid/Preact signals)
+// Signal - lightweight reactive primitive (inspired by Solid/Preact signals)
 // ---------------------------------------------------------------------------
 class Signal {
   constructor(value) {
@@ -316,7 +316,11 @@ class Signal {
   peek() { return this._value; }
 
   _notify() {
-    // Snapshot subscribers before iterating — a subscriber might modify
+    if (Signal._batching) {
+      Signal._batchQueue.add(this);
+      return;
+    }
+    // Snapshot subscribers before iterating - a subscriber might modify
     // the set (e.g., an effect re-running, adding itself back)
     const subs = [...this._subscribers];
     for (let i = 0; i < subs.length; i++) {
@@ -337,10 +341,13 @@ class Signal {
 
 // Active effect tracking
 Signal._activeEffect = null;
+// Batch state
+Signal._batching = false;
+Signal._batchQueue = new Set();
 
 /**
  * Create a signal
- * @param {*} initial — initial value
+ * @param {*} initial - initial value
  * @returns {Signal}
  */
 function signal(initial) {
@@ -349,7 +356,7 @@ function signal(initial) {
 
 /**
  * Create a computed signal (derived from other signals)
- * @param {Function} fn — computation function
+ * @param {Function} fn - computation function
  * @returns {Signal}
  */
 function computed(fn) {
@@ -367,10 +374,10 @@ function computed(fn) {
 /**
  * Create a side-effect that auto-tracks signal dependencies.
  * Returns a dispose function that removes the effect from all
- * signals it subscribed to — prevents memory leaks.
+ * signals it subscribed to - prevents memory leaks.
  *
- * @param {Function} fn — effect function
- * @returns {Function} — dispose function
+ * @param {Function} fn - effect function
+ * @returns {Function} - dispose function
  */
 function effect(fn) {
   const execute = () => {
@@ -403,13 +410,72 @@ function effect(fn) {
       }
       execute._deps.clear();
     }
-    // Don't clobber _activeEffect — another effect may be running
+    // Don't clobber _activeEffect - another effect may be running
   };
+}
+
+
+// ---------------------------------------------------------------------------
+// batch() - defer signal notifications until the batch completes
+// ---------------------------------------------------------------------------
+
+/**
+ * Batch multiple signal writes - subscribers and effects fire once at the end.
+ * @param {Function} fn - function that performs signal writes
+ */
+function batch(fn) {
+  if (Signal._batching) {
+    // Already inside a batch, just run
+    fn();
+    return;
+  }
+  Signal._batching = true;
+  Signal._batchQueue.clear();
+  try {
+    fn();
+  } finally {
+    Signal._batching = false;
+    // Collect all unique subscribers across all queued signals
+    // so each subscriber/effect runs exactly once
+    const subs = new Set();
+    for (const sig of Signal._batchQueue) {
+      for (const sub of sig._subscribers) {
+        subs.add(sub);
+      }
+    }
+    Signal._batchQueue.clear();
+    for (const sub of subs) {
+      try { sub(); }
+      catch (err) {
+        reportError(ErrorCode.SIGNAL_CALLBACK, 'Signal subscriber threw', {}, err);
+      }
+    }
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// untracked() - read signals without creating dependencies
+// ---------------------------------------------------------------------------
+
+/**
+ * Execute a function without tracking signal reads as dependencies.
+ * @param {Function} fn - function to run
+ * @returns {*} the return value of fn
+ */
+function untracked(fn) {
+  const prev = Signal._activeEffect;
+  Signal._activeEffect = null;
+  try {
+    return fn();
+  } finally {
+    Signal._activeEffect = prev;
+  }
 }
 
 // --- src/diff.js -------------------------------------------------
 /**
- * zQuery Diff — Lightweight DOM morphing engine
+ * zQuery Diff - Lightweight DOM morphing engine
  *
  * Patches an existing DOM tree to match new HTML without destroying nodes
  * that haven't changed. Preserves focus, scroll positions, third-party
@@ -419,17 +485,17 @@ function effect(fn) {
  * Keyed elements (via `z-key`) get matched across position changes.
  *
  * Performance advantages over virtual DOM (React/Angular):
- *   - No virtual tree allocation or diffing — works directly on real DOM
+ *   - No virtual tree allocation or diffing - works directly on real DOM
  *   - Skips unchanged subtrees via fast isEqualNode() check
  *   - z-skip attribute to opt out of diffing entire subtrees
  *   - Reuses a single template element for HTML parsing (zero GC pressure)
  *   - Keyed reconciliation uses LIS (Longest Increasing Subsequence) to
- *     minimize DOM moves — same algorithm as Vue 3 / ivi
+ *     minimize DOM moves - same algorithm as Vue 3 / ivi
  *   - Minimal attribute diffing with early bail-out
  */
 
 // ---------------------------------------------------------------------------
-// Reusable template element — avoids per-call allocation
+// Reusable template element - avoids per-call allocation
 // ---------------------------------------------------------------------------
 let _tpl = null;
 
@@ -439,15 +505,15 @@ function _getTemplate() {
 }
 
 // ---------------------------------------------------------------------------
-// morph(existingRoot, newHTML) — patch existing DOM to match newHTML
+// morph(existingRoot, newHTML) - patch existing DOM to match newHTML
 // ---------------------------------------------------------------------------
 
 /**
  * Morph an existing DOM element's children to match new HTML.
  * Only touches nodes that actually differ.
  *
- * @param {Element} rootEl — The live DOM container to patch
- * @param {string} newHTML — The desired HTML string
+ * @param {Element} rootEl - The live DOM container to patch
+ * @param {string} newHTML - The desired HTML string
  */
 function morph(rootEl, newHTML) {
   const start = typeof window !== 'undefined' && window.__zqMorphHook ? performance.now() : 0;
@@ -456,7 +522,7 @@ function morph(rootEl, newHTML) {
   const newRoot = tpl.content;
 
   // Move children into a wrapper for consistent handling.
-  // We move (not clone) from the template — cheaper than cloning.
+  // We move (not clone) from the template - cheaper than cloning.
   const tempDiv = document.createElement('div');
   while (newRoot.firstChild) tempDiv.appendChild(newRoot.firstChild);
 
@@ -466,16 +532,16 @@ function morph(rootEl, newHTML) {
 }
 
 /**
- * Morph a single element in place — diffs attributes and children
+ * Morph a single element in place - diffs attributes and children
  * without replacing the node reference. Useful for replaceWith-style
  * updates where you want to keep the element identity when the tag
  * name matches.
  *
  * If the new HTML produces a different tag, falls back to native replace.
  *
- * @param {Element} oldEl — The live DOM element to patch
- * @param {string} newHTML — HTML string for the replacement element
- * @returns {Element} — The resulting element (same ref if morphed, new if replaced)
+ * @param {Element} oldEl - The live DOM element to patch
+ * @param {string} newHTML - HTML string for the replacement element
+ * @returns {Element} - The resulting element (same ref if morphed, new if replaced)
  */
 function morphElement(oldEl, newHTML) {
   const start = typeof window !== 'undefined' && window.__zqMorphHook ? performance.now() : 0;
@@ -484,7 +550,7 @@ function morphElement(oldEl, newHTML) {
   const newEl = tpl.content.firstElementChild;
   if (!newEl) return oldEl;
 
-  // Same tag — morph in place (preserves identity, event listeners, refs)
+  // Same tag - morph in place (preserves identity, event listeners, refs)
   if (oldEl.nodeName === newEl.nodeName) {
     _morphAttributes(oldEl, newEl);
     _morphChildren(oldEl, newEl);
@@ -492,14 +558,14 @@ function morphElement(oldEl, newHTML) {
     return oldEl;
   }
 
-  // Different tag — must replace (can't morph <div> into <span>)
+  // Different tag - must replace (can't morph <div> into <span>)
   const clone = newEl.cloneNode(true);
   oldEl.parentNode.replaceChild(clone, oldEl);
   if (start) window.__zqMorphHook(clone, performance.now() - start);
   return clone;
 }
 
-// Aliases for the concat build — core.js imports these as _morph / _morphElement,
+// Aliases for the concat build - core.js imports these as _morph / _morphElement,
 // but the build strips `import … as` lines, so the aliases must exist at runtime.
 const _morph = morph;
 const _morphElement = morphElement;
@@ -507,11 +573,11 @@ const _morphElement = morphElement;
 /**
  * Reconcile children of `oldParent` to match `newParent`.
  *
- * @param {Element} oldParent — live DOM parent
- * @param {Element} newParent — desired state parent
+ * @param {Element} oldParent - live DOM parent
+ * @param {Element} newParent - desired state parent
  */
 function _morphChildren(oldParent, newParent) {
-  // Snapshot live NodeLists into arrays — childNodes is live and
+  // Snapshot live NodeLists into arrays - childNodes is live and
   // mutates during insertBefore/removeChild. Using a for loop to push
   // avoids spread operator overhead for large child lists.
   const oldCN = oldParent.childNodes;
@@ -523,7 +589,7 @@ function _morphChildren(oldParent, newParent) {
   for (let i = 0; i < oldLen; i++) oldChildren[i] = oldCN[i];
   for (let i = 0; i < newLen; i++) newChildren[i] = newCN[i];
 
-  // Scan for keyed elements — only build maps if keys exist
+  // Scan for keyed elements - only build maps if keys exist
   let hasKeys = false;
   let oldKeyMap, newKeyMap;
 
@@ -554,7 +620,7 @@ function _morphChildren(oldParent, newParent) {
 }
 
 /**
- * Unkeyed reconciliation — positional matching.
+ * Unkeyed reconciliation - positional matching.
  */
 function _morphChildrenUnkeyed(oldParent, oldChildren, newChildren) {
   const oldLen = oldChildren.length;
@@ -582,7 +648,7 @@ function _morphChildrenUnkeyed(oldParent, oldChildren, newChildren) {
 }
 
 /**
- * Keyed reconciliation — match by z-key, reorder with minimal moves
+ * Keyed reconciliation - match by z-key, reorder with minimal moves
  * using Longest Increasing Subsequence (LIS) to find the maximum set
  * of nodes that are already in the correct relative order, then only
  * move the remaining nodes.
@@ -616,7 +682,7 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
 
   // Step 3: Build index array for LIS of matched old indices.
   // This finds the largest set of keyed nodes already in order,
-  // so we only need to move the rest — O(n log n) instead of O(n²).
+  // so we only need to move the rest - O(n log n) instead of O(n²).
   const oldIndices = [];      // Maps new-position → old-position (or -1)
   for (let i = 0; i < newLen; i++) {
     if (matched[i]) {
@@ -629,7 +695,7 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
 
   const lisSet = _lis(oldIndices);
 
-  // Step 4: Insert / reorder / morph — walk new children forward,
+  // Step 4: Insert / reorder / morph - walk new children forward,
   // using LIS to decide which nodes stay in place.
   let cursor = oldParent.firstChild;
   const unkeyedOld = [];
@@ -654,7 +720,7 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
       if (!lisSet.has(i)) {
         oldParent.insertBefore(oldNode, cursor);
       }
-      // Capture next sibling BEFORE _morphNode — if _morphNode calls
+      // Capture next sibling BEFORE _morphNode - if _morphNode calls
       // replaceChild, oldNode is removed and nextSibling becomes stale.
       const nextSib = oldNode.nextSibling;
       _morphNode(oldParent, oldNode, newNode);
@@ -694,10 +760,10 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
  * Returns a Set of positions (in the input) that form the LIS.
  * Entries with value -1 (unmatched) are excluded.
  *
- * O(n log n) — same algorithm used by Vue 3 and ivi.
+ * O(n log n) - same algorithm used by Vue 3 and ivi.
  *
- * @param {number[]} arr — array of old-tree indices (-1 = unmatched)
- * @returns {Set<number>} — positions in arr belonging to the LIS
+ * @param {number[]} arr - array of old-tree indices (-1 = unmatched)
+ * @returns {Set<number>} - positions in arr belonging to the LIS
  */
 function _lis(arr) {
   const len = arr.length;
@@ -741,7 +807,7 @@ function _lis(arr) {
  * Morph a single node in place.
  */
 function _morphNode(parent, oldNode, newNode) {
-  // Text / comment nodes — just update content
+  // Text / comment nodes - just update content
   if (oldNode.nodeType === 3 || oldNode.nodeType === 8) {
     if (newNode.nodeType === oldNode.nodeType) {
       if (oldNode.nodeValue !== newNode.nodeValue) {
@@ -749,26 +815,26 @@ function _morphNode(parent, oldNode, newNode) {
       }
       return;
     }
-    // Different node types — replace
+    // Different node types - replace
     parent.replaceChild(newNode.cloneNode(true), oldNode);
     return;
   }
 
-  // Different node types or tag names — replace entirely
+  // Different node types or tag names - replace entirely
   if (oldNode.nodeType !== newNode.nodeType ||
       oldNode.nodeName !== newNode.nodeName) {
     parent.replaceChild(newNode.cloneNode(true), oldNode);
     return;
   }
 
-  // Both are elements — diff attributes then recurse children
+  // Both are elements - diff attributes then recurse children
   if (oldNode.nodeType === 1) {
-    // z-skip: developer opt-out — skip diffing this subtree entirely.
+    // z-skip: developer opt-out - skip diffing this subtree entirely.
     // Useful for third-party widgets, canvas, video, or large static content.
     if (oldNode.hasAttribute('z-skip')) return;
 
     // Fast bail-out: if the elements are identical, skip everything.
-    // isEqualNode() is a native C++ comparison — much faster than walking
+    // isEqualNode() is a native C++ comparison - much faster than walking
     // attributes + children in JS when trees haven't changed.
     if (oldNode.isEqualNode(newNode)) return;
 
@@ -794,7 +860,7 @@ function _morphNode(parent, oldNode, newNode) {
       return;
     }
 
-    // Generic element — recurse children
+    // Generic element - recurse children
     _morphChildren(oldNode, newNode);
   }
 }
@@ -836,7 +902,7 @@ function _morphAttributes(oldEl, newEl) {
     }
   }
 
-  // Remove stale attributes — snapshot names first because oldAttrs
+  // Remove stale attributes - snapshot names first because oldAttrs
   // is a live NamedNodeMap that mutates on removeAttribute().
   const oldNames = new Array(oldLen);
   for (let i = 0; i < oldLen; i++) oldNames[i] = oldAttrs[i].name;
@@ -852,7 +918,7 @@ function _morphAttributes(oldEl, newEl) {
  *
  * Only updates the value when the new HTML explicitly carries a `value`
  * attribute.  Templates that use z-model manage values through reactive
- * state + _bindModels — the morph engine should not interfere by wiping
+ * state + _bindModels - the morph engine should not interfere by wiping
  * a live input's content to '' just because the template has no `value`
  * attr.  This prevents the wipe-then-restore cycle that resets cursor
  * position on every keystroke.
@@ -882,14 +948,14 @@ function _syncInputValue(oldEl, newEl) {
  *
  * This means the LIS-optimised keyed path activates automatically
  * whenever elements carry `id` or `data-id` / `data-key` attributes
- * — no extra markup required.
+ * - no extra markup required.
  *
  * @returns {string|null}
  */
 function _getKey(node) {
   if (node.nodeType !== 1) return null;
 
-  // Explicit z-key — highest priority
+  // Explicit z-key - highest priority
   const zk = node.getAttribute('z-key');
   if (zk) return zk;
 
@@ -908,7 +974,7 @@ function _getKey(node) {
 
 // --- src/core.js -------------------------------------------------
 /**
- * zQuery Core — Selector engine & chainable DOM collection
+ * zQuery Core - Selector engine & chainable DOM collection
  * 
  * Extends the quick-ref pattern (Id, Class, Classes, Children)
  * into a full jQuery-like chainable wrapper with modern APIs.
@@ -916,7 +982,7 @@ function _getKey(node) {
 
 
 // ---------------------------------------------------------------------------
-// ZQueryCollection — wraps an array of elements with chainable methods
+// ZQueryCollection - wraps an array of elements with chainable methods
 // ---------------------------------------------------------------------------
 class ZQueryCollection {
   constructor(elements) {
@@ -1136,7 +1202,7 @@ class ZQueryCollection {
   // --- Classes -------------------------------------------------------------
 
   addClass(...names) {
-    // Fast path: single class, no spaces — avoids flatMap + regex split allocation
+    // Fast path: single class, no spaces - avoids flatMap + regex split allocation
     if (names.length === 1 && names[0].indexOf(' ') === -1) {
       const c = names[0];
       for (let i = 0; i < this.elements.length; i++) this.elements[i].classList.add(c);
@@ -1298,7 +1364,7 @@ class ZQueryCollection {
     if (content === undefined) return this.first()?.innerHTML;
     // Auto-morph: if the element already has children, use the diff engine
     // to patch the DOM (preserves focus, scroll, state, keyed reorder via LIS).
-    // Empty elements get raw innerHTML for fast first-paint — same strategy
+    // Empty elements get raw innerHTML for fast first-paint - same strategy
     // the component system uses (first render = innerHTML, updates = morph).
     return this.each((_, el) => {
       if (el.childNodes.length > 0) {
@@ -1483,7 +1549,7 @@ class ZQueryCollection {
         if (typeof selectorOrHandler === 'function') {
           el.addEventListener(evt, selectorOrHandler);
         } else if (typeof selectorOrHandler === 'string') {
-          // Delegated event — store wrapper so off() can remove it
+          // Delegated event - store wrapper so off() can remove it
           const wrapper = (e) => {
             if (!e.target || typeof e.target.closest !== 'function') return;
             const target = e.target.closest(selectorOrHandler);
@@ -1545,7 +1611,7 @@ class ZQueryCollection {
   // --- Animation -----------------------------------------------------------
 
   animate(props, duration = 300, easing = 'ease') {
-    // Empty collection — resolve immediately
+    // Empty collection - resolve immediately
     if (this.length === 0) return Promise.resolve(this);
     return new Promise(resolve => {
       let resolved = false;
@@ -1671,7 +1737,7 @@ class ZQueryCollection {
 
 
 // ---------------------------------------------------------------------------
-// Helper — create document fragment from HTML string
+// Helper - create document fragment from HTML string
 // ---------------------------------------------------------------------------
 function createFragment(html) {
   const tpl = document.createElement('template');
@@ -1681,21 +1747,21 @@ function createFragment(html) {
 
 
 // ---------------------------------------------------------------------------
-// $() — main selector / creator (returns ZQueryCollection, like jQuery)
+// $() - main selector / creator (returns ZQueryCollection, like jQuery)
 // ---------------------------------------------------------------------------
 function query(selector, context) {
   // null / undefined
   if (!selector) return new ZQueryCollection([]);
 
-  // Already a collection — return as-is
+  // Already a collection - return as-is
   if (selector instanceof ZQueryCollection) return selector;
 
-  // DOM element or Window — wrap in collection
+  // DOM element or Window - wrap in collection
   if (selector instanceof Node || selector === window) {
     return new ZQueryCollection([selector]);
   }
 
-  // NodeList / HTMLCollection / Array — wrap in collection
+  // NodeList / HTMLCollection / Array - wrap in collection
   if (selector instanceof NodeList || selector instanceof HTMLCollection || Array.isArray(selector)) {
     return new ZQueryCollection(Array.from(selector));
   }
@@ -1719,7 +1785,7 @@ function query(selector, context) {
 
 
 // ---------------------------------------------------------------------------
-// $.all() — collection selector (returns ZQueryCollection for CSS selectors)
+// $.all() - collection selector (returns ZQueryCollection for CSS selectors)
 // ---------------------------------------------------------------------------
 function queryAll(selector, context) {
   // null / undefined
@@ -1774,7 +1840,7 @@ query.children = (parentId) => {
 query.qs  = (sel, ctx = document) => ctx.querySelector(sel);
 query.qsa = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
-// Create element shorthand — returns ZQueryCollection for chaining
+// Create element shorthand - returns ZQueryCollection for chaining
 query.create = (tag, attrs = {}, ...children) => {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -1797,7 +1863,7 @@ query.ready = (fn) => {
   else document.addEventListener('DOMContentLoaded', fn);
 };
 
-// Global event listeners — supports direct, delegated, and target-bound forms
+// Global event listeners - supports direct, delegated, and target-bound forms
 //   $.on('keydown', handler)           → direct listener on document
 //   $.on('click', '.btn', handler)     → delegated via closest()
 //   $.on('scroll', window, handler)    → direct listener on target
@@ -1807,7 +1873,7 @@ query.on = (event, selectorOrHandler, handler) => {
     document.addEventListener(event, selectorOrHandler);
     return;
   }
-  // EventTarget (window, element, etc.) — direct listener on target
+  // EventTarget (window, element, etc.) - direct listener on target
   if (typeof selectorOrHandler === 'object' && typeof selectorOrHandler.addEventListener === 'function') {
     selectorOrHandler.addEventListener(event, handler);
     return;
@@ -1830,7 +1896,7 @@ query.fn = ZQueryCollection.prototype;
 
 // --- src/expression.js -------------------------------------------
 /**
- * zQuery Expression Parser — CSP-safe expression evaluator
+ * zQuery Expression Parser - CSP-safe expression evaluator
  *
  * Replaces `new Function()` / `eval()` with a hand-written parser that
  * evaluates expressions safely without violating Content Security Policy.
@@ -2010,7 +2076,7 @@ function tokenize(expr) {
       i++; continue;
     }
 
-    // Unknown — skip
+    // Unknown - skip
     i++;
   }
 
@@ -2019,7 +2085,7 @@ function tokenize(expr) {
 }
 
 // ---------------------------------------------------------------------------
-// Parser — Pratt (precedence climbing)
+// Parser - Pratt (precedence climbing)
 // ---------------------------------------------------------------------------
 class Parser {
   constructor(tokens, scope) {
@@ -2251,7 +2317,7 @@ class Parser {
       let couldBeArrow = true;
 
       if (this.peek().t === T.PUNC && this.peek().v === ')') {
-        // () => ... — no params
+        // () => ... - no params
       } else {
         while (couldBeArrow) {
           const p = this.peek();
@@ -2277,7 +2343,7 @@ class Parser {
         }
       }
 
-      // Not an arrow — restore and parse as grouping
+      // Not an arrow - restore and parse as grouping
       this.pos = savedPos;
       this.next(); // consume (
       const expr = this.parseExpression(0);
@@ -2370,14 +2436,14 @@ class Parser {
       return { type: 'ident', name: tok.v };
     }
 
-    // Fallback — return undefined for unparseable
+    // Fallback - return undefined for unparseable
     this.next();
     return { type: 'literal', value: undefined };
   }
 }
 
 // ---------------------------------------------------------------------------
-// Evaluator — walks the AST, resolves against scope
+// Evaluator - walks the AST, resolves against scope
 // ---------------------------------------------------------------------------
 
 /** Safe property access whitelist for built-in prototypes */
@@ -2466,8 +2532,6 @@ function evaluate(node, scope) {
       if (name === 'console') return console;
       if (name === 'Map') return Map;
       if (name === 'Set') return Set;
-      if (name === 'RegExp') return RegExp;
-      if (name === 'Error') return Error;
       if (name === 'URL') return URL;
       if (name === 'URLSearchParams') return URLSearchParams;
       return undefined;
@@ -2510,7 +2574,7 @@ function evaluate(node, scope) {
     case 'optional_call': {
       const calleeNode = node.callee;
       const args = _evalArgs(node.args, scope);
-      // Method call: obj?.method() — bind `this` to obj
+      // Method call: obj?.method() - bind `this` to obj
       if (calleeNode.type === 'member' || calleeNode.type === 'optional_member') {
         const obj = evaluate(calleeNode.obj, scope);
         if (obj == null) return undefined;
@@ -2529,9 +2593,9 @@ function evaluate(node, scope) {
     case 'new': {
       const Ctor = evaluate(node.callee, scope);
       if (typeof Ctor !== 'function') return undefined;
-      // Only allow safe constructors
+      // Only allow safe constructors (no RegExp - ReDoS risk, no Error - info leak)
       if (Ctor === Date || Ctor === Array || Ctor === Map || Ctor === Set ||
-          Ctor === RegExp || Ctor === Error || Ctor === URL || Ctor === URLSearchParams) {
+          Ctor === URL || Ctor === URLSearchParams) {
         const args = _evalArgs(node.args, scope);
         return new Ctor(...args);
       }
@@ -2633,7 +2697,7 @@ function _resolveCall(node, scope) {
   const callee = node.callee;
   const args = _evalArgs(node.args, scope);
 
-  // Method call: obj.method() — bind `this` to obj
+  // Method call: obj.method() - bind `this` to obj
   if (callee.type === 'member' || callee.type === 'optional_member') {
     const obj = evaluate(callee.obj, scope);
     if (obj == null) return undefined;
@@ -2699,13 +2763,13 @@ function _evalBinary(node, scope) {
 /**
  * Safely evaluate a JS expression string against scope layers.
  *
- * @param {string} expr — expression string
- * @param {object[]} scope — array of scope objects, checked in order
+ * @param {string} expr - expression string
+ * @param {object[]} scope - array of scope objects, checked in order
  *   Typical: [loopVars, state, { props, refs, $ }]
- * @returns {*} — evaluation result, or undefined on error
+ * @returns {*} - evaluation result, or undefined on error
  */
 
-// AST cache (LRU) — avoids re-tokenizing and re-parsing the same expression.
+// AST cache (LRU) - avoids re-tokenizing and re-parsing the same expression.
 // Uses Map insertion-order: on hit, delete + re-set moves entry to the end.
 // Eviction removes the least-recently-used (first) entry when at capacity.
 const _astCache = new Map();
@@ -2756,7 +2820,7 @@ function safeEval(expr, scope) {
 
 // --- src/component.js --------------------------------------------
 /**
- * zQuery Component — Lightweight reactive component system
+ * zQuery Component - Lightweight reactive component system
  * 
  * Declarative components using template literals with directive support.
  * Proxy-based state triggers targeted re-renders via event delegation.
@@ -2772,9 +2836,10 @@ function safeEval(expr, scope) {
  *   - Scoped styles (inline or via styleUrl)
  *   - External templates via templateUrl (with {{expression}} interpolation)
  *   - External styles via styleUrl (fetched & scoped automatically)
- *   - Relative path resolution — templateUrl and styleUrl
+ *   - Relative path resolution - templateUrl and styleUrl
  *     resolve relative to the component file automatically
  */
+
 
 
 
@@ -2804,7 +2869,7 @@ const _throttleTimers = new WeakMap();
 
 /**
  * Fetch and cache a text resource (HTML template or CSS file).
- * @param {string} url — URL to fetch
+ * @param {string} url - URL to fetch
  * @returns {Promise<string>}
  */
 function _fetchResource(url) {
@@ -2848,23 +2913,23 @@ function _fetchResource(url) {
  * - If `base` is an absolute URL (http/https/file), resolve directly.
  * - If `base` is a relative path string, resolve it against the page root
  *   (or <base href>) first, then resolve `url` against that.
- * - If `base` is falsy, return `url` unchanged — _fetchResource's own
+ * - If `base` is falsy, return `url` unchanged - _fetchResource's own
  *   fallback (page root / <base href>) handles it.
  *
- * @param {string} url   — URL or relative path to resolve
- * @param {string} [base] — auto-detected caller URL or explicit base path
+ * @param {string} url   - URL or relative path to resolve
+ * @param {string} [base] - auto-detected caller URL or explicit base path
  * @returns {string}
  */
 function _resolveUrl(url, base) {
   if (!base || !url || typeof url !== 'string') return url;
-  // Already absolute — nothing to do
+  // Already absolute - nothing to do
   if (url.startsWith('/') || url.includes('://') || url.startsWith('//')) return url;
   try {
     if (base.includes('://')) {
       // Absolute base (auto-detected module URL)
       return new URL(url, base).href;
     }
-    // Relative base string — resolve against page root first
+    // Relative base string - resolve against page root first
     const baseEl = document.querySelector('base');
     const root = baseEl ? baseEl.href : (window.location.origin + '/');
     const absBase = new URL(base.endsWith('/') ? base : base + '/', root).href;
@@ -2896,13 +2961,13 @@ function _detectCallerBase() {
     for (const raw of urls) {
       // Strip line:col suffixes  e.g. ":3:5" or ":12:1"
       const url = raw.replace(/:\d+:\d+$/, '').replace(/:\d+$/, '');
-      // Skip the zQuery library itself — by filename pattern and captured URL
+      // Skip the zQuery library itself - by filename pattern and captured URL
       if (/zquery(\.min)?\.js$/i.test(url)) continue;
       if (_ownScriptUrl && url.replace(/[?#].*$/, '') === _ownScriptUrl) continue;
       // Return directory (strip filename, keep trailing slash)
       return url.replace(/\/[^/]*$/, '/');
     }
-  } catch { /* stack parsing unsupported — fall back silently */ }
+  } catch { /* stack parsing unsupported - fall back silently */ }
   return undefined;
 }
 
@@ -2981,7 +3046,7 @@ class Component {
       }
     });
 
-    // Computed properties — lazy getters derived from state
+    // Computed properties - lazy getters derived from state
     this.computed = {};
     if (definition.computed) {
       for (const [name, fn] of Object.entries(definition.computed)) {
@@ -3110,7 +3175,7 @@ class Component {
       this._loadExternals().then(() => {
         if (!this._destroyed) this._render();
       });
-      return; // Skip this render — will re-render after load
+      return; // Skip this render - will re-render after load
     }
 
     // Expose multi-template map on instance (if available)
@@ -3135,7 +3200,7 @@ class Component {
             this.state.__raw || this.state,
             { props: this.props, computed: this.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
           ]);
-          return result != null ? result : '';
+          return result != null ? escapeHtml(String(result)) : '';
         } catch { return ''; }
       });
     } else {
@@ -3181,13 +3246,13 @@ class Component {
         const trimmed = selector.trim();
         // Don't scope @-rules themselves
         if (trimmed.startsWith('@')) {
-          // @keyframes and @font-face contain non-selector content — skip scoping inside them
+          // @keyframes and @font-face contain non-selector content - skip scoping inside them
           if (/^@(keyframes|font-face)\b/.test(trimmed)) {
             noScopeDepth = braceDepth;
           }
           return match;
         }
-        // Inside @keyframes or @font-face — don't scope inner rules
+        // Inside @keyframes or @font-face - don't scope inner rules
         if (noScopeDepth > 0 && braceDepth > noScopeDepth) {
           return match;
         }
@@ -3240,7 +3305,7 @@ class Component {
       }
     }
 
-    // Update DOM via morphing (diffing) — preserves unchanged nodes
+    // Update DOM via morphing (diffing) - preserves unchanged nodes
     // First render uses innerHTML for speed; subsequent renders morph.
     const _renderStart = typeof window !== 'undefined' && (window.__zqMorphHook || window.__zqRenderHook) ? performance.now() : 0;
     if (!this._mounted) {
@@ -3259,8 +3324,8 @@ class Component {
     this._bindModels();
 
     // Restore focus if the morph replaced the focused element.
-    // Always restore selectionRange — even when the element is still
-    // the activeElement — because _bindModels or morph attribute syncing
+    // Always restore selectionRange - even when the element is still
+    // the activeElement - because _bindModels or morph attribute syncing
     // can alter the value and move the cursor.
     if (_focusInfo) {
       const el = this._el.querySelector(_focusInfo.selector);
@@ -3296,7 +3361,7 @@ class Component {
   // Optimization: on the FIRST render, we scan for event attributes, build
   // a delegated handler map, and attach one listener per event type to the
   // component root. On subsequent renders (re-bind), we only rebuild the
-  // internal binding map — existing DOM listeners are reused since they
+  // internal binding map - existing DOM listeners are reused since they
   // delegate to event.target.closest(selector) at fire time.
   _bindEvents() {
     // Always rebuild the binding map from current DOM
@@ -3337,11 +3402,11 @@ class Component {
     // Store binding map for the delegated handlers to reference
     this._eventBindings = eventMap;
 
-    // Only attach DOM listeners once — reuse on subsequent renders.
+    // Only attach DOM listeners once - reuse on subsequent renders.
     // The handlers close over `this` and read `this._eventBindings`
     // at fire time, so they always use the latest binding map.
     if (this._delegatedEvents) {
-      // Already attached — just make sure new event types are covered
+      // Already attached - just make sure new event types are covered
       for (const event of eventMap.keys()) {
         if (!this._delegatedEvents.has(event)) {
           this._attachDelegatedEvent(event, eventMap.get(event));
@@ -3367,7 +3432,7 @@ class Component {
       this._attachDelegatedEvent(event, bindings);
     }
 
-    // .outside — attach a document-level listener for bindings that need
+    // .outside - attach a document-level listener for bindings that need
     // to detect clicks/events outside their element.
     this._outsideListeners = this._outsideListeners || [];
     for (const [event, bindings] of eventMap) {
@@ -3395,7 +3460,7 @@ class Component {
         : false;
 
       const handler = (e) => {
-        // Read bindings from live map — always up to date after re-renders
+        // Read bindings from live map - always up to date after re-renders
         const currentBindings = this._eventBindings?.get(event) || [];
 
         // Collect matching bindings with their matched elements, then sort
@@ -3416,7 +3481,7 @@ class Component {
         for (const { selector, methodExpr, modifiers, el, matched } of hits) {
 
           // In delegated events, .stop should prevent ancestor bindings from
-          // firing — stopPropagation alone only stops real DOM bubbling.
+          // firing - stopPropagation alone only stops real DOM bubbling.
           if (stoppedAt) {
             let blocked = false;
             for (const stopped of stoppedAt) {
@@ -3425,15 +3490,15 @@ class Component {
             if (blocked) continue;
           }
 
-          // .self — only fire if target is the element itself
+          // .self - only fire if target is the element itself
           if (modifiers.includes('self') && e.target !== el) continue;
 
-          // .outside — only fire if event target is OUTSIDE the element
+          // .outside - only fire if event target is OUTSIDE the element
           if (modifiers.includes('outside')) {
             if (el.contains(e.target)) continue;
           }
 
-          // Key modifiers — filter keyboard events by key
+          // Key modifiers - filter keyboard events by key
           const _keyMap = { enter: 'Enter', escape: 'Escape', tab: 'Tab', space: ' ', delete: 'Delete|Backspace', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
           let keyFiltered = false;
           for (const mod of modifiers) {
@@ -3444,7 +3509,7 @@ class Component {
           }
           if (keyFiltered) continue;
 
-          // System key modifiers — require modifier keys to be held
+          // System key modifiers - require modifier keys to be held
           if (modifiers.includes('ctrl') && !e.ctrlKey) continue;
           if (modifiers.includes('shift') && !e.shiftKey) continue;
           if (modifiers.includes('alt') && !e.altKey) continue;
@@ -3484,7 +3549,7 @@ class Component {
             }
           };
 
-          // .debounce.{ms} — delay invocation until idle
+          // .debounce.{ms} - delay invocation until idle
           const debounceIdx = modifiers.indexOf('debounce');
           if (debounceIdx !== -1) {
             const ms = parseInt(modifiers[debounceIdx + 1], 10) || 250;
@@ -3495,7 +3560,7 @@ class Component {
             continue;
           }
 
-          // .throttle.{ms} — fire at most once per interval
+          // .throttle.{ms} - fire at most once per interval
           const throttleIdx = modifiers.indexOf('throttle');
           if (throttleIdx !== -1) {
             const ms = parseInt(modifiers[throttleIdx + 1], 10) || 250;
@@ -3507,7 +3572,7 @@ class Component {
             continue;
           }
 
-          // .once — fire once then ignore
+          // .once - fire once then ignore
           if (modifiers.includes('once')) {
             if (el.dataset.zqOnce === event) continue;
             el.dataset.zqOnce = event;
@@ -3535,12 +3600,12 @@ class Component {
   //                       textarea, select (single & multiple), contenteditable
   //  Nested state keys:   z-model="user.name"  →  this.state.user.name
   //  Modifiers (boolean attributes on the same element):
-  //    z-lazy      — listen on 'change' instead of 'input' (update on blur / commit)
-  //    z-trim      — trim whitespace before writing to state
-  //    z-number    — force Number() conversion regardless of input type
-  //    z-debounce  — debounce state writes (default 250ms, or z-debounce="300")
-  //    z-uppercase — convert string to uppercase before writing to state
-  //    z-lowercase — convert string to lowercase before writing to state
+  //    z-lazy      - listen on 'change' instead of 'input' (update on blur / commit)
+  //    z-trim      - trim whitespace before writing to state
+  //    z-number    - force Number() conversion regardless of input type
+  //    z-debounce  - debounce state writes (default 250ms, or z-debounce="300")
+  //    z-uppercase - convert string to uppercase before writing to state
+  //    z-lowercase - convert string to lowercase before writing to state
   //
   //  Writes to reactive state so the rest of the UI stays in sync.
   //  Focus and cursor position are preserved in _render() via focusInfo.
@@ -3622,7 +3687,7 @@ class Component {
   }
 
   // ---------------------------------------------------------------------------
-  // Expression evaluator — CSP-safe parser (no eval / new Function)
+  // Expression evaluator - CSP-safe parser (no eval / new Function)
   // ---------------------------------------------------------------------------
   _evalExpr(expr) {
     return safeEval(expr, [
@@ -3632,7 +3697,7 @@ class Component {
   }
 
   // ---------------------------------------------------------------------------
-  // z-for — Expand list-rendering directives (pre-innerHTML, string level)
+  // z-for - Expand list-rendering directives (pre-innerHTML, string level)
   //
   //   <li z-for="item in items">{{item.name}}</li>
   //   <li z-for="(item, i) in items">{{i}}: {{item.name}}</li>
@@ -3698,7 +3763,7 @@ class Component {
                 this.state.__raw || this.state,
                 { props: this.props, computed: this.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
               ]);
-              return result != null ? result : '';
+              return result != null ? escapeHtml(String(result)) : '';
             } catch { return ''; }
           });
 
@@ -3721,7 +3786,7 @@ class Component {
   }
 
   // ---------------------------------------------------------------------------
-  // _expandContentDirectives — Pre-morph z-html & z-text expansion
+  // _expandContentDirectives - Pre-morph z-html & z-text expansion
   //
   // Evaluates z-html and z-text directives at the string level so the morph
   // engine receives HTML with the actual content inline. This lets the diff
@@ -3756,7 +3821,7 @@ class Component {
   }
 
   // ---------------------------------------------------------------------------
-  // _processDirectives — Post-innerHTML DOM-level directive processing
+  // _processDirectives - Post-innerHTML DOM-level directive processing
   // ---------------------------------------------------------------------------
   _processDirectives() {
     // z-pre: skip all directive processing on subtrees
@@ -3807,7 +3872,7 @@ class Component {
     });
 
     // -- z-bind:attr / :attr (dynamic attribute binding) -----------
-    // Use TreeWalker instead of querySelectorAll('*') — avoids
+    // Use TreeWalker instead of querySelectorAll('*') - avoids
     // creating a flat array of every single descendant element.
     // TreeWalker visits nodes lazily; FILTER_REJECT skips z-pre subtrees
     // at the walker level (faster than per-node closest('[z-pre]') checks).
@@ -3945,8 +4010,8 @@ const _reservedKeys = new Set([
 
 /**
  * Register a component
- * @param {string} name — tag name (must contain a hyphen, e.g. 'app-counter')
- * @param {object} definition — component definition
+ * @param {string} name - tag name (must contain a hyphen, e.g. 'app-counter')
+ * @param {object} definition - component definition
  */
 function component(name, definition) {
   if (!name || typeof name !== 'string') {
@@ -3971,9 +4036,9 @@ function component(name, definition) {
 
 /**
  * Mount a component into a target element
- * @param {string|Element} target — selector or element to mount into
- * @param {string} componentName — registered component name
- * @param {object} props — props to pass
+ * @param {string|Element} target - selector or element to mount into
+ * @param {string} componentName - registered component name
+ * @param {object} props - props to pass
  * @returns {Component}
  */
 function mount(target, componentName, props = {}) {
@@ -3994,7 +4059,7 @@ function mount(target, componentName, props = {}) {
 
 /**
  * Scan a container for custom component tags and auto-mount them
- * @param {Element} root — root element to scan (default: document.body)
+ * @param {Element} root - root element to scan (default: document.body)
  */
 function mountAll(root = document.body) {
   for (const [name, def] of _registry) {
@@ -4019,7 +4084,7 @@ function mountAll(root = document.body) {
       [...tag.attributes].forEach(attr => {
         if (attr.name.startsWith('@') || attr.name.startsWith('z-')) return;
 
-        // Dynamic prop: :propName="expression" — evaluate in parent context
+        // Dynamic prop: :propName="expression" - evaluate in parent context
         if (attr.name.startsWith(':')) {
           const propName = attr.name.slice(1);
           if (parentInstance) {
@@ -4028,7 +4093,7 @@ function mountAll(root = document.body) {
               { props: parentInstance.props, refs: parentInstance.refs, computed: parentInstance.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
             ]);
           } else {
-            // No parent — try JSON parse
+            // No parent - try JSON parse
             try { props[propName] = JSON.parse(attr.value); }
             catch { props[propName] = attr.value; }
           }
@@ -4077,8 +4142,8 @@ function getRegistry() {
 /**
  * Pre-load a component's external templates and styles so the next mount
  * renders synchronously (no blank flash while fetching).
- * Safe to call multiple times — skips if already loaded.
- * @param {string} name — registered component name
+ * Safe to call multiple times - skips if already loaded.
+ * @param {string} name - registered component name
  * @returns {Promise<void>}
  */
 async function prefetch(name) {
@@ -4106,27 +4171,27 @@ const _globalStyles = new Map(); // url → <link> element
  *
  *   $.style('app.css')                          // critical by default
  *   $.style(['app.css', 'theme.css'])            // multiple files
- *   $.style('/assets/global.css')                // absolute — used as-is
+ *   $.style('/assets/global.css')                // absolute - used as-is
  *   $.style('app.css', { critical: false })       // opt out of FOUC prevention
  *
  * Options:
- *   critical  — (boolean, default true) When true, zQuery injects a tiny
+ *   critical  - (boolean, default true) When true, zQuery injects a tiny
  *               inline style that hides the page (`visibility: hidden`) and
  *               removes it once the stylesheet has loaded. This prevents
- *               FOUC (Flash of Unstyled Content) entirely — no special
+ *               FOUC (Flash of Unstyled Content) entirely - no special
  *               markup needed in the HTML file. Set to false to load
  *               the stylesheet without blocking paint.
- *   bg        — (string, default '#0d1117') Background color applied while
+ *   bg        - (string, default '#0d1117') Background color applied while
  *               the page is hidden during critical load. Prevents a white
  *               flash on dark-themed apps. Only used when critical is true.
  *
  * Duplicate URLs are ignored (idempotent).
  *
- * @param {string|string[]} urls — stylesheet URL(s) to load
- * @param {object} [opts] — options
- * @param {boolean} [opts.critical=true] — hide page until loaded (prevents FOUC)
- * @param {string} [opts.bg] — background color while hidden (default '#0d1117')
- * @returns {{ remove: Function, ready: Promise }} — .remove() to unload, .ready resolves when loaded
+ * @param {string|string[]} urls - stylesheet URL(s) to load
+ * @param {object} [opts] - options
+ * @param {boolean} [opts.critical=true] - hide page until loaded (prevents FOUC)
+ * @param {string} [opts.bg] - background color while hidden (default '#0d1117')
+ * @returns {{ remove: Function, ready: Promise }} - .remove() to unload, .ready resolves when loaded
  */
 function style(urls, opts = {}) {
   const callerBase = _detectCallerBase();
@@ -4135,7 +4200,7 @@ function style(urls, opts = {}) {
   const loadPromises = [];
 
   // Critical mode (default: true): inject a tiny inline <style> that hides the
-  // page and sets a background color. Fully self-contained — no markup needed
+  // page and sets a background color. Fully self-contained - no markup needed
   // in the HTML file. The style is removed once the sheet loads.
   let _criticalStyle = null;
   if (opts.critical !== false) {
@@ -4195,16 +4260,15 @@ function style(urls, opts = {}) {
 
 // --- src/router.js -----------------------------------------------
 /**
- * zQuery Router — Client-side SPA router
+ * zQuery Router - Client-side SPA router
  * 
  * Supports hash mode (#/path) and history mode (/path).
  * Route params, query strings, navigation guards, and lazy loading.
  * Sub-route history substates for in-page UI changes (modals, tabs, etc.).
  * 
  * Usage:
+ *   // HTML: <z-outlet></z-outlet>
  *   $.router({
- *     el: '#app',
- *     mode: 'hash',
  *     routes: [
  *       { path: '/', component: 'home-page' },
  *       { path: '/user/:id', component: 'user-profile' },
@@ -4239,7 +4303,7 @@ function _shallowEqual(a, b) {
 class Router {
   constructor(config = {}) {
     this._el = null;
-    // file:// protocol can't use pushState — always force hash mode
+    // file:// protocol can't use pushState - always force hash mode
     const isFile = typeof location !== 'undefined' && location.protocol === 'file:';
     this._mode = isFile ? 'hash' : (config.mode || 'history');
 
@@ -4274,8 +4338,30 @@ class Router {
     this._inSubstate = false;                       // true while substate entries are in the history stack
 
     // Set outlet element
+    // Priority: explicit config.el → <z-outlet> tag in the DOM
     if (config.el) {
       this._el = typeof config.el === 'string' ? document.querySelector(config.el) : config.el;
+    } else if (typeof document !== 'undefined') {
+      const outlet = document.querySelector('z-outlet');
+      if (outlet) {
+        this._el = outlet;
+        // Read inline attribute overrides from <z-outlet> (config takes priority)
+        if (!config.fallback && outlet.getAttribute('fallback')) {
+          this._fallback = outlet.getAttribute('fallback');
+        }
+        if (!config.mode && outlet.getAttribute('mode')) {
+          const attrMode = outlet.getAttribute('mode');
+          if (attrMode === 'hash' || attrMode === 'history') {
+            this._mode = isFile ? 'hash' : attrMode;
+          }
+        }
+        if (config.base == null && outlet.getAttribute('base')) {
+          let ob = outlet.getAttribute('base');
+          ob = String(ob).replace(/\/+$/, '');
+          if (ob && !ob.startsWith('/')) ob = '/' + ob;
+          this._base = ob;
+        }
+      }
     }
 
     // Register routes
@@ -4283,21 +4369,43 @@ class Router {
       config.routes.forEach(r => this.add(r));
     }
 
-    // Listen for navigation — store handler references for cleanup in destroy()
+    // Listen for navigation - store handler references for cleanup in destroy()
     if (this._mode === 'hash') {
       this._onNavEvent = () => this._resolve();
       window.addEventListener('hashchange', this._onNavEvent);
-    } else {
-      this._onNavEvent = (e) => {
-        // Check for substate pop first — if a listener handles it, don't route
+      // Hash mode also needs popstate for substates (pushSubstate uses pushState)
+      this._onPopState = (e) => {
         const st = e.state;
         if (st && st[_ZQ_STATE_KEY] === 'substate') {
           const handled = this._fireSubstate(st.key, st.data, 'pop');
           if (handled) return;
-          // Unhandled substate — fall through to route resolve
-          // _inSubstate stays true so the next non-substate pop triggers reset
+          this._resolve().then(() => {
+            this._fireSubstate(st.key, st.data, 'pop');
+          });
+          return;
         } else if (this._inSubstate) {
-          // Popped past all substates — notify listeners to reset to defaults
+          this._inSubstate = false;
+          this._fireSubstate(null, null, 'reset');
+        }
+      };
+      window.addEventListener('popstate', this._onPopState);
+    } else {
+      this._onNavEvent = (e) => {
+        // Check for substate pop first - if a listener handles it, don't route
+        const st = e.state;
+        if (st && st[_ZQ_STATE_KEY] === 'substate') {
+          const handled = this._fireSubstate(st.key, st.data, 'pop');
+          if (handled) return;
+          // Unhandled substate — the owning component was likely destroyed
+          // (e.g. user navigated away then pressed back).  Resolve the route
+          // first (which may mount a fresh component that registers a listener),
+          // then retry the substate so the new listener can restore the UI.
+          this._resolve().then(() => {
+            this._fireSubstate(st.key, st.data, 'pop');
+          });
+          return;
+        } else if (this._inSubstate) {
+          // Popped past all substates - notify listeners to reset to defaults
           this._inSubstate = false;
           this._fireSubstate(null, null, 'reset');
         }
@@ -4315,13 +4423,17 @@ class Router {
       if (link.getAttribute('target') === '_blank') return;
       e.preventDefault();
       let href = link.getAttribute('z-link');
+      // Reject absolute URLs and dangerous protocols — z-link is for internal routes only
+      if (href && /^[a-z][a-z0-9+.-]*:/i.test(href)) return;
       // Support z-link-params for dynamic :param interpolation
       const paramsAttr = link.getAttribute('z-link-params');
       if (paramsAttr) {
         try {
           const params = JSON.parse(paramsAttr);
           href = this._interpolateParams(href, params);
-        } catch { /* ignore malformed JSON */ }
+        } catch (err) {
+          reportError(ErrorCode.ROUTER_RESOLVE, 'Malformed JSON in z-link-params', { href, paramsAttr }, err);
+        }
       }
       this.navigate(href);
       // z-to-top modifier: scroll to top after navigation
@@ -4375,8 +4487,8 @@ class Router {
 
   /**
    * Interpolate :param placeholders in a path with the given values.
-   * @param {string} path — e.g. '/user/:id/posts/:pid'
-   * @param {Object} params — e.g. { id: 42, pid: 7 }
+   * @param {string} path - e.g. '/user/:id/posts/:pid'
+   * @param {Object} params - e.g. { id: 42, pid: 7 }
    * @returns {string}
    */
   _interpolateParams(path, params) {
@@ -4420,7 +4532,7 @@ class Router {
       const currentURL = (window.location.pathname || '/') + (window.location.hash || '');
 
       if (targetURL === currentURL && !options.force) {
-        // Same full URL (path + hash) — don't push duplicate entry.
+        // Same full URL (path + hash) - don't push duplicate entry.
         // If only the hash changed to a fragment target, scroll to it.
         if (fragment) {
           const el = document.getElementById(fragment);
@@ -4429,7 +4541,7 @@ class Router {
         return this;
       }
 
-      // Same route path but different hash fragment — use replaceState
+      // Same route path but different hash fragment - use replaceState
       // so back goes to the previous *route*, not the previous scroll position.
       const targetPathOnly = this._base + normalized;
       const currentPathOnly = window.location.pathname || '/';
@@ -4444,7 +4556,7 @@ class Router {
           const el = document.getElementById(fragment);
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-        // Don't re-resolve — same route, just a hash change
+        // Don't re-resolve - same route, just a hash change
         return this;
       }
 
@@ -4480,8 +4592,8 @@ class Router {
 
   /**
    * Normalize an app-relative path and guard against double base-prefixing.
-   * @param {string} path — e.g. '/docs', 'docs', or '/app/docs' when base is '/app'
-   * @returns {string} — always starts with '/'
+   * @param {string} path - e.g. '/docs', 'docs', or '/app/docs' when base is '/app'
+   * @returns {string} - always starts with '/'
    */
   _normalizePath(path) {
     let p = path && path.startsWith('/') ? path : (path ? `/${path}` : '/');
@@ -4531,12 +4643,12 @@ class Router {
 
   /**
    * Push a lightweight history entry for in-component UI state.
-   * The URL path does NOT change — only a history entry is added so the
+   * The URL path does NOT change - only a history entry is added so the
    * back button can undo the UI change (close modal, revert tab, etc.)
    * before navigating away.
    *
-   * @param {string} key   — identifier (e.g. 'modal', 'tab', 'panel')
-   * @param {*}      data  — arbitrary state (serializable)
+   * @param {string} key   - identifier (e.g. 'modal', 'tab', 'panel')
+   * @param {*}      data  - arbitrary state (serializable)
    * @returns {Router}
    *
    * @example
@@ -4547,7 +4659,7 @@ class Router {
   pushSubstate(key, data) {
     this._inSubstate = true;
     if (this._mode === 'hash') {
-      // Hash mode: stash the substate in a global — hashchange will check.
+      // Hash mode: stash the substate in a global - hashchange will check.
       // We still push a history entry via a sentinel hash suffix.
       const current = window.location.hash || '#/';
       window.history.pushState(
@@ -4663,12 +4775,12 @@ class Router {
   async __resolve() {
     // Check if we're landing on a substate entry (e.g. page refresh on a
     // substate bookmark, or hash-mode popstate). Fire listeners and bail
-    // if handled — the URL hasn't changed so there's no route to resolve.
+    // if handled - the URL hasn't changed so there's no route to resolve.
     const histState = window.history.state;
     if (histState && histState[_ZQ_STATE_KEY] === 'substate') {
       const handled = this._fireSubstate(histState.key, histState.data, 'resolve');
       if (handled) return;
-      // No listener handled it — fall through to normal routing
+      // No listener handled it - fall through to normal routing
     }
 
     const fullPath = this.path;
@@ -4705,7 +4817,7 @@ class Router {
       const sameParams = _shallowEqual(params, from.params);
       const sameQuery = _shallowEqual(query, from.query);
       if (sameParams && sameQuery) {
-        // Identical navigation — nothing to do
+        // Identical navigation - nothing to do
         return;
       }
     }
@@ -4793,6 +4905,9 @@ class Router {
       }
     }
 
+    // Update z-active-route elements
+    this._updateActiveRoutes(path);
+
     // Run after guards
     for (const guard of this._guards.after) {
       await guard(to, from);
@@ -4802,6 +4917,32 @@ class Router {
     this._listeners.forEach(fn => fn(to, from));
   }
 
+  // --- Active route class management ----------------------------------------
+
+  /**
+   * Update all elements with z-active-route to toggle their active class
+   * based on the current path.
+   *
+   * Usage:
+   *   <a z-link="/docs" z-active-route="/docs">Docs</a>
+   *   <a z-link="/about" z-active-route="/about" z-active-class="selected">About</a>
+   *   <a z-link="/" z-active-route="/" z-active-exact>Home</a>
+   */
+  _updateActiveRoutes(currentPath) {
+    if (typeof document === 'undefined') return;
+    const els = document.querySelectorAll('[z-active-route]');
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i];
+      const route = el.getAttribute('z-active-route');
+      const cls = el.getAttribute('z-active-class') || 'active';
+      const exact = el.hasAttribute('z-active-exact');
+      const isActive = exact
+        ? currentPath === route
+        : (route === '/' ? currentPath === '/' : currentPath.startsWith(route));
+      el.classList.toggle(cls, isActive);
+    }
+  }
+
   // --- Destroy -------------------------------------------------------------
 
   destroy() {
@@ -4809,6 +4950,10 @@ class Router {
     if (this._onNavEvent) {
       window.removeEventListener(this._mode === 'hash' ? 'hashchange' : 'popstate', this._onNavEvent);
       this._onNavEvent = null;
+    }
+    if (this._onPopState) {
+      window.removeEventListener('popstate', this._onPopState);
+      this._onPopState = null;
     }
     if (this._onLinkClick) {
       document.removeEventListener('click', this._onLinkClick);
@@ -4840,7 +4985,7 @@ function getRouter() {
 
 // --- src/store.js ------------------------------------------------
 /**
- * zQuery Store — Global reactive state management
+ * zQuery Store - Global reactive state management
  * 
  * A lightweight Redux/Vuex-inspired store with:
  *   - Reactive state via Proxy
@@ -4878,22 +5023,22 @@ class Store {
     this._history = [];              // action log
     this._maxHistory = config.maxHistory || 1000;
     this._debug = config.debug || false;
+    this._batching = false;
+    this._batchQueue = [];           // pending notifications during batch
+    this._undoStack = [];
+    this._redoStack = [];
+    this._maxUndo = config.maxUndo || 50;
 
-    // Create reactive state
+    // Store initial state for reset
     const initial = typeof config.state === 'function' ? config.state() : { ...(config.state || {}) };
+    this._initialState = JSON.parse(JSON.stringify(initial));
 
     this.state = reactive(initial, (key, value, old) => {
-      // Notify key-specific subscribers
-      const subs = this._subscribers.get(key);
-      if (subs) subs.forEach(fn => {
-        try { fn(value, old, key); }
-        catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, `Subscriber for "${key}" threw`, { key }, err); }
-      });
-      // Notify wildcard subscribers
-      this._wildcards.forEach(fn => {
-        try { fn(key, value, old); }
-        catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, 'Wildcard subscriber threw', { key }, err); }
-      });
+      if (this._batching) {
+        this._batchQueue.push({ key, value, old });
+        return;
+      }
+      this._notifySubscribers(key, value, old);
     });
 
     // Build getters as computed properties
@@ -4906,10 +5051,90 @@ class Store {
     }
   }
 
+  /** @private Notify key-specific and wildcard subscribers */
+  _notifySubscribers(key, value, old) {
+    const subs = this._subscribers.get(key);
+    if (subs) subs.forEach(fn => {
+      try { fn(key, value, old); }
+      catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, `Subscriber for "${key}" threw`, { key }, err); }
+    });
+    this._wildcards.forEach(fn => {
+      try { fn(key, value, old); }
+      catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, 'Wildcard subscriber threw', { key }, err); }
+    });
+  }
+
+  /**
+   * Batch multiple state changes - subscribers fire once at the end
+   * with only the latest value per key.
+   */
+  batch(fn) {
+    this._batching = true;
+    this._batchQueue = [];
+    try {
+      fn(this.state);
+    } finally {
+      this._batching = false;
+      // Deduplicate: keep only the last change per key
+      const last = new Map();
+      for (const entry of this._batchQueue) {
+        last.set(entry.key, entry);
+      }
+      this._batchQueue = [];
+      for (const { key, value, old } of last.values()) {
+        this._notifySubscribers(key, value, old);
+      }
+    }
+  }
+
+  /**
+   * Save a snapshot for undo. Call before making changes you want to be undoable.
+   */
+  checkpoint() {
+    const snap = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    this._undoStack.push(snap);
+    if (this._undoStack.length > this._maxUndo) {
+      this._undoStack.splice(0, this._undoStack.length - this._maxUndo);
+    }
+    this._redoStack = [];
+  }
+
+  /**
+   * Undo to the last checkpoint
+   * @returns {boolean} true if undo was performed
+   */
+  undo() {
+    if (this._undoStack.length === 0) return false;
+    const current = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    this._redoStack.push(current);
+    const prev = this._undoStack.pop();
+    this.replaceState(prev);
+    return true;
+  }
+
+  /**
+   * Redo the last undone state change
+   * @returns {boolean} true if redo was performed
+   */
+  redo() {
+    if (this._redoStack.length === 0) return false;
+    const current = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    this._undoStack.push(current);
+    const next = this._redoStack.pop();
+    this.replaceState(next);
+    return true;
+  }
+
+  /** Check if undo is available */
+  get canUndo() { return this._undoStack.length > 0; }
+
+  /** Check if redo is available */
+  get canRedo() { return this._redoStack.length > 0; }
+
   /**
    * Dispatch a named action
-   * @param {string} name — action name
-   * @param  {...any} args — payload
+   * @param {string} name - action name
+   * @param  {...any} args - payload
    */
   dispatch(name, ...args) {
     const action = this._actions[name];
@@ -4948,13 +5173,13 @@ class Store {
 
   /**
    * Subscribe to changes on a specific state key
-   * @param {string|Function} keyOrFn — state key, or function for all changes
-   * @param {Function} [fn] — callback (value, oldValue, key)
-   * @returns {Function} — unsubscribe
+   * @param {string|Function} keyOrFn - state key, or function for all changes
+   * @param {Function} [fn] - callback (key, value, oldValue)
+   * @returns {Function} - unsubscribe
    */
   subscribe(keyOrFn, fn) {
     if (typeof keyOrFn === 'function') {
-      // Wildcard — listen to all changes
+      // Wildcard - listen to all changes
       this._wildcards.add(keyOrFn);
       return () => this._wildcards.delete(keyOrFn);
     }
@@ -5000,11 +5225,13 @@ class Store {
   }
 
   /**
-   * Reset state to initial values
+   * Reset state to initial values. If no argument, resets to the original state.
    */
   reset(initialState) {
-    this.replaceState(initialState);
+    this.replaceState(initialState || JSON.parse(JSON.stringify(this._initialState)));
     this._history = [];
+    this._undoStack = [];
+    this._redoStack = [];
   }
 }
 
@@ -5031,7 +5258,7 @@ function getStore(name = 'default') {
 
 // --- src/http.js -------------------------------------------------
 /**
- * zQuery HTTP — Lightweight fetch wrapper
+ * zQuery HTTP - Lightweight fetch wrapper
  * 
  * Clean API for GET/POST/PUT/PATCH/DELETE with:
  *   - Auto JSON serialization/deserialization
@@ -5221,7 +5448,7 @@ const http = {
 
   /**
    * Add request interceptor
-   * @param {Function} fn — (fetchOpts, url) → void | false | { url, options }
+   * @param {Function} fn - (fetchOpts, url) → void | false | { url, options }
    * @returns {Function} unsubscribe function
    */
   onRequest(fn) {
@@ -5234,7 +5461,7 @@ const http = {
 
   /**
    * Add response interceptor
-   * @param {Function} fn — (result) → void
+   * @param {Function} fn - (result) → void
    * @returns {Function} unsubscribe function
    */
   onResponse(fn) {
@@ -5246,7 +5473,7 @@ const http = {
   },
 
   /**
-   * Clear interceptors — all, or just 'request' / 'response'
+   * Clear interceptors - all, or just 'request' / 'response'
    */
   clearInterceptors(type) {
     if (!type || type === 'request') _interceptors.request.length = 0;
@@ -5275,7 +5502,7 @@ const http = {
 
 // --- src/utils.js ------------------------------------------------
 /**
- * zQuery Utils — Common utility functions
+ * zQuery Utils - Common utility functions
  * 
  * Quality-of-life helpers that every frontend project needs.
  * Attached to $ namespace for convenience.
@@ -5286,7 +5513,7 @@ const http = {
 // ---------------------------------------------------------------------------
 
 /**
- * Debounce — delays execution until after `ms` of inactivity
+ * Debounce - delays execution until after `ms` of inactivity
  */
 function debounce(fn, ms = 250) {
   let timer;
@@ -5299,7 +5526,7 @@ function debounce(fn, ms = 250) {
 }
 
 /**
- * Throttle — limits execution to once per `ms`
+ * Throttle - limits execution to once per `ms`
  */
 function throttle(fn, ms = 250) {
   let last = 0;
@@ -5318,14 +5545,14 @@ function throttle(fn, ms = 250) {
 }
 
 /**
- * Pipe — compose functions left-to-right
+ * Pipe - compose functions left-to-right
  */
 function pipe(...fns) {
   return (input) => fns.reduce((val, fn) => fn(val), input);
 }
 
 /**
- * Once — function that only runs once
+ * Once - function that only runs once
  */
 function once(fn) {
   let called = false, result;
@@ -5336,7 +5563,7 @@ function once(fn) {
 }
 
 /**
- * Sleep — promise-based delay
+ * Sleep - promise-based delay
  */
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -5387,8 +5614,12 @@ function trust(htmlStr) {
  * Generate UUID v4
  */
 function uuid() {
-  return crypto?.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
+  if (crypto?.randomUUID) return crypto.randomUUID();
+  // Fallback using crypto.getRandomValues (wider support than randomUUID)
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const buf = new Uint8Array(1);
+    crypto.getRandomValues(buf);
+    const r = buf[0] & 15;
     return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
   });
 }
@@ -5416,12 +5647,49 @@ function kebabCase(str) {
 // ---------------------------------------------------------------------------
 
 /**
- * Deep clone
+ * Deep clone via structuredClone (handles circular refs, Dates, etc.).
+ * Falls back to a manual deep clone that preserves Date, RegExp, Map, Set,
+ * ArrayBuffer, TypedArrays, undefined values, and circular references.
  */
 function deepClone(obj) {
   if (typeof structuredClone === 'function') return structuredClone(obj);
-  return JSON.parse(JSON.stringify(obj));
+
+  const seen = new Map();
+  function clone(val) {
+    if (val === null || typeof val !== 'object') return val;
+    if (seen.has(val)) return seen.get(val);
+    if (val instanceof Date) return new Date(val.getTime());
+    if (val instanceof RegExp) return new RegExp(val.source, val.flags);
+    if (val instanceof Map) {
+      const m = new Map();
+      seen.set(val, m);
+      val.forEach((v, k) => m.set(clone(k), clone(v)));
+      return m;
+    }
+    if (val instanceof Set) {
+      const s = new Set();
+      seen.set(val, s);
+      val.forEach(v => s.add(clone(v)));
+      return s;
+    }
+    if (ArrayBuffer.isView(val)) return new val.constructor(val.buffer.slice(0));
+    if (val instanceof ArrayBuffer) return val.slice(0);
+    if (Array.isArray(val)) {
+      const arr = [];
+      seen.set(val, arr);
+      for (let i = 0; i < val.length; i++) arr[i] = clone(val[i]);
+      return arr;
+    }
+    const result = Object.create(Object.getPrototypeOf(val));
+    seen.set(val, result);
+    for (const key of Object.keys(val)) result[key] = clone(val[key]);
+    return result;
+  }
+  return clone(obj);
 }
+
+// Keys that must never be written through data-merge or path-set operations
+const _UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 /**
  * Deep merge objects
@@ -5432,6 +5700,7 @@ function deepMerge(target, ...sources) {
     if (seen.has(src)) return tgt;
     seen.add(src);
     for (const key of Object.keys(src)) {
+      if (_UNSAFE_KEYS.has(key)) continue;
       if (src[key] && typeof src[key] === 'object' && !Array.isArray(src[key])) {
         if (!tgt[key] || typeof tgt[key] !== 'object') tgt[key] = {};
         merge(tgt[key], src[key]);
@@ -5638,10 +5907,13 @@ function setPath(obj, path, value) {
   let cur = obj;
   for (let i = 0; i < keys.length - 1; i++) {
     const k = keys[i];
+    if (_UNSAFE_KEYS.has(k)) return obj;
     if (cur[k] == null || typeof cur[k] !== 'object') cur[k] = {};
     cur = cur[k];
   }
-  cur[keys[keys.length - 1]] = value;
+  const lastKey = keys[keys.length - 1];
+  if (_UNSAFE_KEYS.has(lastKey)) return obj;
+  cur[lastKey] = value;
   return obj;
 }
 
@@ -5692,9 +5964,16 @@ function memoize(fn, keyFnOrOpts) {
 
   const memoized = (...args) => {
     const key = keyFn ? keyFn(...args) : args[0];
-    if (cache.has(key)) return cache.get(key);
+    if (cache.has(key)) {
+      // LRU: promote to newest by re-inserting
+      const value = cache.get(key);
+      cache.delete(key);
+      cache.set(key, value);
+      return value;
+    }
     const result = fn(...args);
     cache.set(key, result);
+    // LRU eviction: drop the least-recently-used entry
     if (maxSize > 0 && cache.size > maxSize) {
       cache.delete(cache.keys().next().value);
     }
@@ -5741,7 +6020,7 @@ function timeout(promise, ms, message) {
 // --- index.js (assembly) ------------------------------------------
 /**
  * ┌---------------------------------------------------------┐
- * │  zQuery (zeroQuery) — Lightweight Frontend Library     │
+ * │  zQuery (zeroQuery) - Lightweight Frontend Library     │
  * │                                                         │
  * │  jQuery-like selectors · Reactive components            │
  * │  SPA router · State management · Zero dependencies      │
@@ -5761,11 +6040,11 @@ function timeout(promise, ms, message) {
 
 
 // ---------------------------------------------------------------------------
-// $ — The main function & namespace
+// $ - The main function & namespace
 // ---------------------------------------------------------------------------
 
 /**
- * Main selector function — always returns a ZQueryCollection (like jQuery).
+ * Main selector function - always returns a ZQueryCollection (like jQuery).
  * 
  *   $('selector')         → ZQueryCollection (querySelectorAll)
  *   $('<div>hello</div>') → ZQueryCollection from created elements
@@ -5828,6 +6107,8 @@ $.Signal   = Signal;
 $.signal   = signal;
 $.computed = computed;
 $.effect   = effect;
+$.batch    = batch;
+$.untracked = untracked;
 
 // --- Components ------------------------------------------------------------
 $.component   = component;
@@ -5908,9 +6189,9 @@ $.validate       = validate;
 $.formatError    = formatError;
 
 // --- Meta ------------------------------------------------------------------
-$.version   = '0.9.9';
-$.libSize   = '~101 KB';
-$.unitTests = {"passed":1808,"failed":0,"total":1808,"suites":493,"duration":2896,"ok":true};
+$.version   = '1.0.0';
+$.libSize   = '~106 KB';
+$.unitTests = {"passed":1882,"failed":0,"total":1882,"suites":508,"duration":3548,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 $.noConflict = () => {

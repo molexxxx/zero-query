@@ -1,4 +1,4 @@
-// store.js — Global state management
+// store.js - Global state management
 //
 // A simple centralized store. Any component can access it
 // via $.getStore('main') and dispatch actions to update state.

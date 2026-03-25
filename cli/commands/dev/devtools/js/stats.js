@@ -9,7 +9,7 @@ function updateStats() {
   document.getElementById('morph-count').textContent = morphCount + ' renders';
   document.getElementById('req-count').textContent = requests.length + ' requests';
 
-  // Route stat — show current path
+  // Route stat - show current path
   try {
     var router = targetWin && targetWin.$ && targetWin.$.getRouter();
     var routeStat = document.getElementById('route-stat');

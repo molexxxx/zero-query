@@ -39,7 +39,7 @@ function formatTime(ts) {
 }
 
 // ===================================================================
-// Connection — find target window (opener popup → iframe fallback)
+// Connection - find target window (opener popup → iframe fallback)
 // ===================================================================
 function isConnected() {
   try { return targetWin && (targetWin === window.opener ? !targetWin.closed : true) && targetWin.document; }
@@ -48,11 +48,11 @@ function isConnected() {
 
 function detectMode() {
   if (window.opener) {
-    // Opened as popup — hide iframe, use opener
+    // Opened as popup - hide iframe, use opener
     mode = 'popup';
     targetWin = window.opener;
   } else {
-    // Standalone tab — embed app in iframe
+    // Standalone tab - embed app in iframe
     mode = 'split-h';
     targetWin = null; // will set from iframe.contentWindow
   }
@@ -110,11 +110,11 @@ var tbDragging = false;
 
     var isH = mode === 'split-h';
     if (isH) {
-      // Vertical column divider — drag toolbar up/down
+      // Vertical column divider - drag toolbar up/down
       startPos = e.clientY;
       startOffset = parseInt(toolbar.style.top, 10) || toolbar.offsetTop;
     } else {
-      // Horizontal row divider — drag toolbar left/right
+      // Horizontal row divider - drag toolbar left/right
       startPos = e.clientX;
       startOffset = parseInt(toolbar.style.left, 10) || toolbar.offsetLeft;
     }
@@ -180,7 +180,7 @@ divider.addEventListener('mousedown', function(e) {
 });
 
 // ===================================================================
-// Refresh button — reload the embedded iframe
+// Refresh button - reload the embedded iframe
 // ===================================================================
 document.getElementById('btn-refresh').addEventListener('click', function(e) {
   e.stopPropagation();
@@ -192,7 +192,7 @@ document.getElementById('btn-refresh').addEventListener('click', function(e) {
 });
 
 // ===================================================================
-// Viewport preset buttons — resize browser pane to mobile/tablet/desktop
+// Viewport preset buttons - resize browser pane to mobile/tablet/desktop
 // ===================================================================
 var viewportBtns = document.querySelectorAll('.viewport-btn');
 
@@ -219,10 +219,10 @@ viewportBtns.forEach(function(btn) {
     var total = rootEl.offsetWidth;
 
     if (targetWidth === 0) {
-      // Desktop — reset to default CSS proportions
+      // Desktop - reset to default CSS proportions
       rootEl.style.gridTemplateColumns = '';
     } else {
-      // Mobile/Tablet — set iframe column to exact pixel width
+      // Mobile/Tablet - set iframe column to exact pixel width
       var pct = Math.min(85, Math.max(15, (targetWidth / total) * 100));
       rootEl.style.gridTemplateColumns = pct.toFixed(1) + '% 4px 1fr';
     }
@@ -233,7 +233,7 @@ viewportBtns.forEach(function(btn) {
 });
 
 // ===================================================================
-// Route indicator — toggle label showing current path + hash
+// Route indicator - toggle label showing current path + hash
 // ===================================================================
 var routeBtn = document.getElementById('btn-route');
 var routeLabel = document.getElementById('route-label');
@@ -266,7 +266,7 @@ setInterval(function() {
 }, 500);
 
 // ===================================================================
-// init — connect to target window (popup or iframe)
+// init - connect to target window (popup or iframe)
 // ===================================================================
 function init() {
   // If popup mode, targetWin is already set
@@ -310,7 +310,7 @@ function init() {
 }
 
 // ===================================================================
-// connectToTarget — read existing data, start listeners, periodic sync
+// connectToTarget - read existing data, start listeners, periodic sync
 // ===================================================================
 function connectToTarget() {
 
@@ -372,7 +372,7 @@ function connectToTarget() {
   // Periodic refresh for components + perf (fast when tab is visible)
   setInterval(function() {
     if (!isConnected()) {
-      // Retry connection — opener may be mid-mutation, not truly gone
+      // Retry connection - opener may be mid-mutation, not truly gone
       try {
         if (mode === 'popup' && window.opener && !window.opener.closed) {
           targetWin = window.opener;
@@ -389,7 +389,7 @@ function connectToTarget() {
         return;
       }
     }
-    // Keep targetDoc fresh — the opener may have reloaded (live-reload)
+    // Keep targetDoc fresh - the opener may have reloaded (live-reload)
     try {
       var freshDoc = targetWin.document;
       if (freshDoc !== targetDoc) {

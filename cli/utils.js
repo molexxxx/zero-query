@@ -1,5 +1,5 @@
 /**
- * cli/utils.js — shared utility functions
+ * cli/utils.js - shared utility functions
  *
  * Context-aware comment stripping, quick minification, size formatting,
  * and recursive directory copying. These are consumed by both the
@@ -12,7 +12,7 @@ const fs   = require('fs');
 const path = require('path');
 
 // ---------------------------------------------------------------------------
-// _copyTemplateLiteral — copy a template literal verbatim, tracking ${…}
+// _copyTemplateLiteral - copy a template literal verbatim, tracking ${…}
 //   nesting so that `//` inside template text isn't mistaken for a comment.
 // ---------------------------------------------------------------------------
 
@@ -49,7 +49,7 @@ function _copyTemplateLiteral(code, start) {
 }
 
 // ---------------------------------------------------------------------------
-// stripComments — context-aware, skips strings / templates / regex
+// stripComments - context-aware, skips strings / templates / regex
 // ---------------------------------------------------------------------------
 
 function stripComments(code) {
@@ -127,7 +127,7 @@ function stripComments(code) {
 }
 
 // ---------------------------------------------------------------------------
-// minify — single-pass minification
+// minify - single-pass minification
 //   Strips comments, collapses whitespace to the minimum required,
 //   and preserves string / template-literal / regex content verbatim.
 // ---------------------------------------------------------------------------
@@ -251,7 +251,7 @@ function _isRegexCtx(out) {
 }
 
 // ---------------------------------------------------------------------------
-// sizeKB — human-readable file size
+// sizeKB - human-readable file size
 // ---------------------------------------------------------------------------
 
 function sizeKB(buf) {
@@ -259,7 +259,7 @@ function sizeKB(buf) {
 }
 
 // ---------------------------------------------------------------------------
-// copyDirSync — recursive directory copy
+// copyDirSync - recursive directory copy
 // ---------------------------------------------------------------------------
 
 function copyDirSync(src, dest) {

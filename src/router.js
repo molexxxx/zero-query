@@ -1,14 +1,13 @@
 /**
- * zQuery Router — Client-side SPA router
+ * zQuery Router - Client-side SPA router
  * 
  * Supports hash mode (#/path) and history mode (/path).
  * Route params, query strings, navigation guards, and lazy loading.
  * Sub-route history substates for in-page UI changes (modals, tabs, etc.).
  * 
  * Usage:
+ *   // HTML: <z-outlet></z-outlet>
  *   $.router({
- *     el: '#app',
- *     mode: 'hash',
  *     routes: [
  *       { path: '/', component: 'home-page' },
  *       { path: '/user/:id', component: 'user-profile' },
@@ -44,7 +43,7 @@ function _shallowEqual(a, b) {
 class Router {
   constructor(config = {}) {
     this._el = null;
-    // file:// protocol can't use pushState — always force hash mode
+    // file:// protocol can't use pushState - always force hash mode
     const isFile = typeof location !== 'undefined' && location.protocol === 'file:';
     this._mode = isFile ? 'hash' : (config.mode || 'history');
 
@@ -79,8 +78,30 @@ class Router {
     this._inSubstate = false;                       // true while substate entries are in the history stack
 
     // Set outlet element
+    // Priority: explicit config.el → <z-outlet> tag in the DOM
     if (config.el) {
       this._el = typeof config.el === 'string' ? document.querySelector(config.el) : config.el;
+    } else if (typeof document !== 'undefined') {
+      const outlet = document.querySelector('z-outlet');
+      if (outlet) {
+        this._el = outlet;
+        // Read inline attribute overrides from <z-outlet> (config takes priority)
+        if (!config.fallback && outlet.getAttribute('fallback')) {
+          this._fallback = outlet.getAttribute('fallback');
+        }
+        if (!config.mode && outlet.getAttribute('mode')) {
+          const attrMode = outlet.getAttribute('mode');
+          if (attrMode === 'hash' || attrMode === 'history') {
+            this._mode = isFile ? 'hash' : attrMode;
+          }
+        }
+        if (config.base == null && outlet.getAttribute('base')) {
+          let ob = outlet.getAttribute('base');
+          ob = String(ob).replace(/\/+$/, '');
+          if (ob && !ob.startsWith('/')) ob = '/' + ob;
+          this._base = ob;
+        }
+      }
     }
 
     // Register routes
@@ -88,21 +109,43 @@ class Router {
       config.routes.forEach(r => this.add(r));
     }
 
-    // Listen for navigation — store handler references for cleanup in destroy()
+    // Listen for navigation - store handler references for cleanup in destroy()
     if (this._mode === 'hash') {
       this._onNavEvent = () => this._resolve();
       window.addEventListener('hashchange', this._onNavEvent);
-    } else {
-      this._onNavEvent = (e) => {
-        // Check for substate pop first — if a listener handles it, don't route
+      // Hash mode also needs popstate for substates (pushSubstate uses pushState)
+      this._onPopState = (e) => {
         const st = e.state;
         if (st && st[_ZQ_STATE_KEY] === 'substate') {
           const handled = this._fireSubstate(st.key, st.data, 'pop');
           if (handled) return;
-          // Unhandled substate — fall through to route resolve
-          // _inSubstate stays true so the next non-substate pop triggers reset
+          this._resolve().then(() => {
+            this._fireSubstate(st.key, st.data, 'pop');
+          });
+          return;
         } else if (this._inSubstate) {
-          // Popped past all substates — notify listeners to reset to defaults
+          this._inSubstate = false;
+          this._fireSubstate(null, null, 'reset');
+        }
+      };
+      window.addEventListener('popstate', this._onPopState);
+    } else {
+      this._onNavEvent = (e) => {
+        // Check for substate pop first - if a listener handles it, don't route
+        const st = e.state;
+        if (st && st[_ZQ_STATE_KEY] === 'substate') {
+          const handled = this._fireSubstate(st.key, st.data, 'pop');
+          if (handled) return;
+          // Unhandled substate — the owning component was likely destroyed
+          // (e.g. user navigated away then pressed back).  Resolve the route
+          // first (which may mount a fresh component that registers a listener),
+          // then retry the substate so the new listener can restore the UI.
+          this._resolve().then(() => {
+            this._fireSubstate(st.key, st.data, 'pop');
+          });
+          return;
+        } else if (this._inSubstate) {
+          // Popped past all substates - notify listeners to reset to defaults
           this._inSubstate = false;
           this._fireSubstate(null, null, 'reset');
         }
@@ -120,13 +163,17 @@ class Router {
       if (link.getAttribute('target') === '_blank') return;
       e.preventDefault();
       let href = link.getAttribute('z-link');
+      // Reject absolute URLs and dangerous protocols — z-link is for internal routes only
+      if (href && /^[a-z][a-z0-9+.-]*:/i.test(href)) return;
       // Support z-link-params for dynamic :param interpolation
       const paramsAttr = link.getAttribute('z-link-params');
       if (paramsAttr) {
         try {
           const params = JSON.parse(paramsAttr);
           href = this._interpolateParams(href, params);
-        } catch { /* ignore malformed JSON */ }
+        } catch (err) {
+          reportError(ErrorCode.ROUTER_RESOLVE, 'Malformed JSON in z-link-params', { href, paramsAttr }, err);
+        }
       }
       this.navigate(href);
       // z-to-top modifier: scroll to top after navigation
@@ -180,8 +227,8 @@ class Router {
 
   /**
    * Interpolate :param placeholders in a path with the given values.
-   * @param {string} path — e.g. '/user/:id/posts/:pid'
-   * @param {Object} params — e.g. { id: 42, pid: 7 }
+   * @param {string} path - e.g. '/user/:id/posts/:pid'
+   * @param {Object} params - e.g. { id: 42, pid: 7 }
    * @returns {string}
    */
   _interpolateParams(path, params) {
@@ -225,7 +272,7 @@ class Router {
       const currentURL = (window.location.pathname || '/') + (window.location.hash || '');
 
       if (targetURL === currentURL && !options.force) {
-        // Same full URL (path + hash) — don't push duplicate entry.
+        // Same full URL (path + hash) - don't push duplicate entry.
         // If only the hash changed to a fragment target, scroll to it.
         if (fragment) {
           const el = document.getElementById(fragment);
@@ -234,7 +281,7 @@ class Router {
         return this;
       }
 
-      // Same route path but different hash fragment — use replaceState
+      // Same route path but different hash fragment - use replaceState
       // so back goes to the previous *route*, not the previous scroll position.
       const targetPathOnly = this._base + normalized;
       const currentPathOnly = window.location.pathname || '/';
@@ -249,7 +296,7 @@ class Router {
           const el = document.getElementById(fragment);
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-        // Don't re-resolve — same route, just a hash change
+        // Don't re-resolve - same route, just a hash change
         return this;
       }
 
@@ -285,8 +332,8 @@ class Router {
 
   /**
    * Normalize an app-relative path and guard against double base-prefixing.
-   * @param {string} path — e.g. '/docs', 'docs', or '/app/docs' when base is '/app'
-   * @returns {string} — always starts with '/'
+   * @param {string} path - e.g. '/docs', 'docs', or '/app/docs' when base is '/app'
+   * @returns {string} - always starts with '/'
    */
   _normalizePath(path) {
     let p = path && path.startsWith('/') ? path : (path ? `/${path}` : '/');
@@ -336,12 +383,12 @@ class Router {
 
   /**
    * Push a lightweight history entry for in-component UI state.
-   * The URL path does NOT change — only a history entry is added so the
+   * The URL path does NOT change - only a history entry is added so the
    * back button can undo the UI change (close modal, revert tab, etc.)
    * before navigating away.
    *
-   * @param {string} key   — identifier (e.g. 'modal', 'tab', 'panel')
-   * @param {*}      data  — arbitrary state (serializable)
+   * @param {string} key   - identifier (e.g. 'modal', 'tab', 'panel')
+   * @param {*}      data  - arbitrary state (serializable)
    * @returns {Router}
    *
    * @example
@@ -352,7 +399,7 @@ class Router {
   pushSubstate(key, data) {
     this._inSubstate = true;
     if (this._mode === 'hash') {
-      // Hash mode: stash the substate in a global — hashchange will check.
+      // Hash mode: stash the substate in a global - hashchange will check.
       // We still push a history entry via a sentinel hash suffix.
       const current = window.location.hash || '#/';
       window.history.pushState(
@@ -468,12 +515,12 @@ class Router {
   async __resolve() {
     // Check if we're landing on a substate entry (e.g. page refresh on a
     // substate bookmark, or hash-mode popstate). Fire listeners and bail
-    // if handled — the URL hasn't changed so there's no route to resolve.
+    // if handled - the URL hasn't changed so there's no route to resolve.
     const histState = window.history.state;
     if (histState && histState[_ZQ_STATE_KEY] === 'substate') {
       const handled = this._fireSubstate(histState.key, histState.data, 'resolve');
       if (handled) return;
-      // No listener handled it — fall through to normal routing
+      // No listener handled it - fall through to normal routing
     }
 
     const fullPath = this.path;
@@ -510,7 +557,7 @@ class Router {
       const sameParams = _shallowEqual(params, from.params);
       const sameQuery = _shallowEqual(query, from.query);
       if (sameParams && sameQuery) {
-        // Identical navigation — nothing to do
+        // Identical navigation - nothing to do
         return;
       }
     }
@@ -598,6 +645,9 @@ class Router {
       }
     }
 
+    // Update z-active-route elements
+    this._updateActiveRoutes(path);
+
     // Run after guards
     for (const guard of this._guards.after) {
       await guard(to, from);
@@ -607,6 +657,32 @@ class Router {
     this._listeners.forEach(fn => fn(to, from));
   }
 
+  // --- Active route class management ----------------------------------------
+
+  /**
+   * Update all elements with z-active-route to toggle their active class
+   * based on the current path.
+   *
+   * Usage:
+   *   <a z-link="/docs" z-active-route="/docs">Docs</a>
+   *   <a z-link="/about" z-active-route="/about" z-active-class="selected">About</a>
+   *   <a z-link="/" z-active-route="/" z-active-exact>Home</a>
+   */
+  _updateActiveRoutes(currentPath) {
+    if (typeof document === 'undefined') return;
+    const els = document.querySelectorAll('[z-active-route]');
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i];
+      const route = el.getAttribute('z-active-route');
+      const cls = el.getAttribute('z-active-class') || 'active';
+      const exact = el.hasAttribute('z-active-exact');
+      const isActive = exact
+        ? currentPath === route
+        : (route === '/' ? currentPath === '/' : currentPath.startsWith(route));
+      el.classList.toggle(cls, isActive);
+    }
+  }
+
   // --- Destroy -------------------------------------------------------------
 
   destroy() {
@@ -614,6 +690,10 @@ class Router {
     if (this._onNavEvent) {
       window.removeEventListener(this._mode === 'hash' ? 'hashchange' : 'popstate', this._onNavEvent);
       this._onNavEvent = null;
+    }
+    if (this._onPopState) {
+      window.removeEventListener('popstate', this._onPopState);
+      this._onPopState = null;
     }
     if (this._onLinkClick) {
       document.removeEventListener('click', this._onLinkClick);

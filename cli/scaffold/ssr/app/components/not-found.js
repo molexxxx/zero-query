@@ -1,4 +1,4 @@
-// not-found.js — 404 fallback component
+// not-found.js - 404 fallback component
 
 export const notFound = {
   render() {

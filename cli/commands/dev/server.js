@@ -1,5 +1,5 @@
 /**
- * cli/commands/dev/server.js — HTTP server & SSE broadcasting
+ * cli/commands/dev/server.js - HTTP server & SSE broadcasting
  *
  * Creates the zero-http app, serves static files, injects the
  * error-overlay snippet into HTML responses, and manages the
@@ -70,10 +70,10 @@ function promptInstall() {
 
 /**
  * @param {object} opts
- * @param {string} opts.root        — absolute path to project root
- * @param {string} opts.htmlEntry   — e.g. 'index.html'
+ * @param {string} opts.root        - absolute path to project root
+ * @param {string} opts.htmlEntry   - e.g. 'index.html'
  * @param {number} opts.port
- * @param {boolean} opts.noIntercept — skip zquery.min.js auto-resolve
+ * @param {boolean} opts.noIntercept - skip zquery.min.js auto-resolve
  * @returns {Promise<{ app, pool: SSEPool, listen: Function }>}
  */
 async function createServer({ root, htmlEntry, port, noIntercept }) {
@@ -136,7 +136,7 @@ async function createServer({ root, htmlEntry, port, noIntercept }) {
   // ---- Static files ----
   app.use(serveStatic(root, { index: false, dotfiles: 'ignore' }));
 
-  // ---- SPA fallback — inject overlay/SSE snippet ----
+  // ---- SPA fallback - inject overlay/SSE snippet ----
   app.get('*', (req, res) => {
     if (path.extname(req.url) && path.extname(req.url) !== '.html') {
       res.status(404).send('Not Found');

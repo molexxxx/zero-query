@@ -1,14 +1,14 @@
-// playground.js — Interactive UI patterns
+// playground.js - Interactive UI patterns
 //
 // Features used:
-//   @click.outside / .self / .once  — event modifiers
-//   @keydown.escape / @keyup.enter  — keyboard modifiers
-//   fadeIn / fadeOut / slideToggle   — DOM animations
-//   z-style                         — reactive inline styles
-//   z-html                          — trusted HTML rendering
-//   $.fn                            — collection plugin system
-//   z-skip                          — morph opt-out
-//   templateUrl / styleUrl          — external files
+//   @click.outside / .self / .once  - event modifiers
+//   @keydown.escape / @keyup.enter  - keyboard modifiers
+//   fadeIn / fadeOut / slideToggle   - DOM animations
+//   z-style                         - reactive inline styles
+//   z-html                          - trusted HTML rendering
+//   $.fn                            - collection plugin system
+//   z-skip                          - morph opt-out
+//   templateUrl / styleUrl          - external files
 
 // ── $.fn Plugins ─────────────────────────────────────────────────
 $.fn.highlight = function (color = 'var(--accent)') {
@@ -88,7 +88,7 @@ $.component('playground-page', {
     $.bus.emit('toast', { message: `${item} confirmed!`, type: 'success' });
   },
 
-  /* Accordion — pure DOM, z-skip prevents morph interference */
+  /* Accordion - pure DOM, z-skip prevents morph interference */
   toggleAccordion(id) {
     $(this._el).find(`#pg-acc-${id}`).slideToggle(250);
     $(this._el).find(`#pg-acc-icon-${id}`).toggleClass('open');
@@ -112,6 +112,6 @@ $.component('playground-page', {
   /* @click.once */
   onceAction() {
     this.state.onceClicked = true;
-    $.bus.emit('toast', { message: 'Fired once — handler auto-removed!', type: 'info' });
+    $.bus.emit('toast', { message: 'Fired once - handler auto-removed!', type: 'info' });
   },
 });

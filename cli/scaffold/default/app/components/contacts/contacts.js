@@ -1,13 +1,13 @@
-// contacts.js — Contact book page
+// contacts.js - Contact book page
 //
 // Features used:
-//   templateUrl / styleUrl  — external template & scoped styles
-//   z-if / z-show / z-for   — conditional & list rendering
-//   z-model / z-ref          — form bindings
-//   @click / @submit.prevent — event handling
-//   @keydown.escape          — keyboard modifier
-//   $.getStore / dispatch    — store integration
-//   $.bus.emit('toast')      — notifications
+//   templateUrl / styleUrl  - external template & scoped styles
+//   z-if / z-show / z-for   - conditional & list rendering
+//   z-model / z-ref          - form bindings
+//   @click / @submit.prevent - event handling
+//   @keydown.escape          - keyboard modifier
+//   $.getStore / dispatch    - store integration
+//   $.bus.emit('toast')      - notifications
 
 $.component('contacts-page', {
   templateUrl: 'contacts.html',
@@ -29,7 +29,7 @@ $.component('contacts-page', {
     favoriteCount: 0,
     filterText: '',
     filterRole: '',
-    // Derived state (not computed — external templates resolve state only)
+    // Derived state (not computed - external templates resolve state only)
     filteredContacts: [],
     modalContact: null,
   }),
@@ -45,7 +45,7 @@ $.component('contacts-page', {
     this._syncFromStore(store);
     this._unsub = store.subscribe(() => this._syncFromStore(store));
 
-    // Global Escape handler — template @keydown.escape on overlays is
+    // Global Escape handler - template @keydown.escape on overlays is
     // unreliable when no child element has focus (detail modal has no inputs).
     this._onEscape = (e) => {
       if (e.key !== 'Escape') return;
@@ -62,7 +62,7 @@ $.component('contacts-page', {
 
   _syncFromStore(store) {
     // Shallow-clone each contact so the framework detects new references
-    // (store actions mutate objects in place — same refs won't trigger re-render)
+    // (store actions mutate objects in place - same refs won't trigger re-render)
     this.state.contacts      = store.state.contacts.map(c => ({ ...c }));
     this.state.totalAdded    = store.state.contactsAdded;
     this.state.favoriteCount = store.getters.favoriteCount;

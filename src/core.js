@@ -1,5 +1,5 @@
 /**
- * zQuery Core — Selector engine & chainable DOM collection
+ * zQuery Core - Selector engine & chainable DOM collection
  * 
  * Extends the quick-ref pattern (Id, Class, Classes, Children)
  * into a full jQuery-like chainable wrapper with modern APIs.
@@ -8,7 +8,7 @@
 import { morph as _morph, morphElement as _morphElement } from './diff.js';
 
 // ---------------------------------------------------------------------------
-// ZQueryCollection — wraps an array of elements with chainable methods
+// ZQueryCollection - wraps an array of elements with chainable methods
 // ---------------------------------------------------------------------------
 export class ZQueryCollection {
   constructor(elements) {
@@ -228,7 +228,7 @@ export class ZQueryCollection {
   // --- Classes -------------------------------------------------------------
 
   addClass(...names) {
-    // Fast path: single class, no spaces — avoids flatMap + regex split allocation
+    // Fast path: single class, no spaces - avoids flatMap + regex split allocation
     if (names.length === 1 && names[0].indexOf(' ') === -1) {
       const c = names[0];
       for (let i = 0; i < this.elements.length; i++) this.elements[i].classList.add(c);
@@ -390,7 +390,7 @@ export class ZQueryCollection {
     if (content === undefined) return this.first()?.innerHTML;
     // Auto-morph: if the element already has children, use the diff engine
     // to patch the DOM (preserves focus, scroll, state, keyed reorder via LIS).
-    // Empty elements get raw innerHTML for fast first-paint — same strategy
+    // Empty elements get raw innerHTML for fast first-paint - same strategy
     // the component system uses (first render = innerHTML, updates = morph).
     return this.each((_, el) => {
       if (el.childNodes.length > 0) {
@@ -575,7 +575,7 @@ export class ZQueryCollection {
         if (typeof selectorOrHandler === 'function') {
           el.addEventListener(evt, selectorOrHandler);
         } else if (typeof selectorOrHandler === 'string') {
-          // Delegated event — store wrapper so off() can remove it
+          // Delegated event - store wrapper so off() can remove it
           const wrapper = (e) => {
             if (!e.target || typeof e.target.closest !== 'function') return;
             const target = e.target.closest(selectorOrHandler);
@@ -637,7 +637,7 @@ export class ZQueryCollection {
   // --- Animation -----------------------------------------------------------
 
   animate(props, duration = 300, easing = 'ease') {
-    // Empty collection — resolve immediately
+    // Empty collection - resolve immediately
     if (this.length === 0) return Promise.resolve(this);
     return new Promise(resolve => {
       let resolved = false;
@@ -763,7 +763,7 @@ export class ZQueryCollection {
 
 
 // ---------------------------------------------------------------------------
-// Helper — create document fragment from HTML string
+// Helper - create document fragment from HTML string
 // ---------------------------------------------------------------------------
 function createFragment(html) {
   const tpl = document.createElement('template');
@@ -773,21 +773,21 @@ function createFragment(html) {
 
 
 // ---------------------------------------------------------------------------
-// $() — main selector / creator (returns ZQueryCollection, like jQuery)
+// $() - main selector / creator (returns ZQueryCollection, like jQuery)
 // ---------------------------------------------------------------------------
 export function query(selector, context) {
   // null / undefined
   if (!selector) return new ZQueryCollection([]);
 
-  // Already a collection — return as-is
+  // Already a collection - return as-is
   if (selector instanceof ZQueryCollection) return selector;
 
-  // DOM element or Window — wrap in collection
+  // DOM element or Window - wrap in collection
   if (selector instanceof Node || selector === window) {
     return new ZQueryCollection([selector]);
   }
 
-  // NodeList / HTMLCollection / Array — wrap in collection
+  // NodeList / HTMLCollection / Array - wrap in collection
   if (selector instanceof NodeList || selector instanceof HTMLCollection || Array.isArray(selector)) {
     return new ZQueryCollection(Array.from(selector));
   }
@@ -811,7 +811,7 @@ export function query(selector, context) {
 
 
 // ---------------------------------------------------------------------------
-// $.all() — collection selector (returns ZQueryCollection for CSS selectors)
+// $.all() - collection selector (returns ZQueryCollection for CSS selectors)
 // ---------------------------------------------------------------------------
 export function queryAll(selector, context) {
   // null / undefined
@@ -866,7 +866,7 @@ query.children = (parentId) => {
 query.qs  = (sel, ctx = document) => ctx.querySelector(sel);
 query.qsa = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
-// Create element shorthand — returns ZQueryCollection for chaining
+// Create element shorthand - returns ZQueryCollection for chaining
 query.create = (tag, attrs = {}, ...children) => {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -889,7 +889,7 @@ query.ready = (fn) => {
   else document.addEventListener('DOMContentLoaded', fn);
 };
 
-// Global event listeners — supports direct, delegated, and target-bound forms
+// Global event listeners - supports direct, delegated, and target-bound forms
 //   $.on('keydown', handler)           → direct listener on document
 //   $.on('click', '.btn', handler)     → delegated via closest()
 //   $.on('scroll', window, handler)    → direct listener on target
@@ -899,7 +899,7 @@ query.on = (event, selectorOrHandler, handler) => {
     document.addEventListener(event, selectorOrHandler);
     return;
   }
-  // EventTarget (window, element, etc.) — direct listener on target
+  // EventTarget (window, element, etc.) - direct listener on target
   if (typeof selectorOrHandler === 'object' && typeof selectorOrHandler.addEventListener === 'function') {
     selectorOrHandler.addEventListener(event, handler);
     return;

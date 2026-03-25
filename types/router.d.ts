@@ -1,5 +1,5 @@
 /**
- * SPA Router — history and hash-based client-side routing.
+ * SPA Router - history and hash-based client-side routing.
  *
  * @module router
  */
@@ -39,7 +39,11 @@ export interface NavigationContext {
 
 /** Router configuration. */
 export interface RouterConfig {
-  /** Outlet element where route components are rendered. */
+  /**
+   * Outlet element where route components are rendered.
+   * If omitted, the router auto-detects a `<z-outlet>` element in the DOM.
+   * Acts as an explicit override of the default `<z-outlet>` lookup.
+   */
   el?: string | Element;
   /** Routing mode (default: `'history'`; `'hash'` for file:// or hash routing). */
   mode?: 'history' | 'hash';
@@ -86,7 +90,7 @@ export interface RouterInstance {
   remove(path: string): RouterInstance;
 
   /**
-   * Navigation guard — runs before each route change.
+   * Navigation guard - runs before each route change.
    * Return `false` to cancel, or a `string` to redirect.
    */
   beforeEach(
@@ -111,10 +115,10 @@ export interface RouterInstance {
 
   /**
    * Push a lightweight history entry for in-component UI state (modal, tab, panel).
-   * The URL does NOT change — only a history entry is added so the back button
+   * The URL does NOT change - only a history entry is added so the back button
    * can undo the UI change before navigating away from the route.
-   * @param key — identifier for the substate (e.g. 'modal', 'tab')
-   * @param data — arbitrary serializable state
+   * @param key - identifier for the substate (e.g. 'modal', 'tab')
+   * @param data - arbitrary serializable state
    * @example
    * router.pushSubstate('modal', { id: 'confirm-delete' });
    */

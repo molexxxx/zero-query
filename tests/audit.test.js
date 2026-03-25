@@ -12,6 +12,7 @@ import {
   escapeHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   storage, session, EventBus, bus,
+  setPath,
 } from '../src/utils.js';
 import { createRouter, getRouter } from '../src/router.js';
 import { component, mount, mountAll, destroy, prefetch, getInstance } from '../src/component.js';
@@ -2861,7 +2862,7 @@ describe('Store', () => {
       actions: { inc(state) { state.count++; } }
     });
     const received = [];
-    store.subscribe('count', (val, old) => received.push({ val, old }));
+    store.subscribe('count', (key, val, old) => received.push({ val, old }));
     store.dispatch('inc');
     store.dispatch('inc');
     expect(received).toEqual([
@@ -2876,7 +2877,7 @@ describe('Store', () => {
       actions: { bump(state) { state.x++; } }
     });
     const received = [];
-    const unsub = store.subscribe('x', (val) => received.push(val));
+    const unsub = store.subscribe('x', (key, val) => received.push(val));
     store.dispatch('bump');
     unsub();
     store.dispatch('bump');
@@ -3062,7 +3063,7 @@ describe('Store', () => {
     });
     const received = [];
     store.subscribe('x', () => { throw new Error('sub error'); });
-    store.subscribe('x', (val) => received.push(val));
+    store.subscribe('x', (key, val) => received.push(val));
     store.dispatch('bump');
     // The second subscriber still gets called because reportError is used (not re-throw)
     expect(received).toEqual([1]);
@@ -3093,7 +3094,7 @@ describe('Store', () => {
       state: { x: 0 }
     });
     const received = [];
-    store.subscribe('x', (val) => received.push(val));
+    store.subscribe('x', (key, val) => received.push(val));
     store.state.x = 99;
     expect(received).toEqual([99]);
   });
@@ -3895,7 +3896,7 @@ describe('TrustedHTML and html template tag', () => {
 
 
 // ===========================================================================
-// 24. Bug 9 — `new` constructor globals reachable
+// 24. Bug 9 - `new` constructor globals reachable
 // ===========================================================================
 describe('new constructor globals (Bug 9)', () => {
   const eval_ = (expr, ctx = {}) => safeEval(expr, [ctx]);
@@ -3912,10 +3913,9 @@ describe('new constructor globals (Bug 9)', () => {
     expect(result.has(2)).toBe(true);
   });
 
-  it('new RegExp creates a RegExp', () => {
+  it('new RegExp is blocked (ReDoS prevention)', () => {
     const result = eval_('new RegExp(pat, flags)', { pat: '^hello', flags: 'i' });
-    expect(result).toBeInstanceOf(RegExp);
-    expect(result.test('Hello world')).toBe(true);
+    expect(result).toBeUndefined();
   });
 
   it('new URL creates a URL', () => {
@@ -3931,10 +3931,9 @@ describe('new constructor globals (Bug 9)', () => {
     expect(result.get('b')).toBe('2');
   });
 
-  it('new Error creates an Error', () => {
+  it('new Error is blocked (info disclosure prevention)', () => {
     const result = eval_('new Error(msg)', { msg: 'test error' });
-    expect(result).toBeInstanceOf(Error);
-    expect(result.message).toBe('test error');
+    expect(result).toBeUndefined();
   });
 
   it('Map and Set are accessible as identifiers for instanceof', () => {
@@ -3945,7 +3944,7 @@ describe('new constructor globals (Bug 9)', () => {
 
 
 // ===========================================================================
-// 25. Bug 10 — optional_call preserves `this` binding
+// 25. Bug 10 - optional_call preserves `this` binding
 // ===========================================================================
 describe('optional_call this binding (Bug 10)', () => {
   const eval_ = (expr, ctx = {}) => safeEval(expr, [ctx]);
@@ -3974,7 +3973,7 @@ describe('optional_call this binding (Bug 10)', () => {
 
 
 // ===========================================================================
-// 26. Bug 11 — HTTP abort vs timeout distinction
+// 26. Bug 11 - HTTP abort vs timeout distinction
 // ===========================================================================
 describe('HTTP abort vs timeout message (Bug 11)', () => {
   it('user abort says "aborted" not "timeout"', async () => {
@@ -4000,7 +3999,7 @@ describe('HTTP abort vs timeout message (Bug 11)', () => {
 
 
 // ===========================================================================
-// 27. Bug 12 — isEqual circular reference protection
+// 27. Bug 12 - isEqual circular reference protection
 // ===========================================================================
 describe('isEqual circular reference protection (Bug 12)', () => {
   it('does not stack overflow on circular objects', () => {
@@ -4008,7 +4007,7 @@ describe('isEqual circular reference protection (Bug 12)', () => {
     a.self = a;
     const b = { x: 1 };
     b.self = b;
-    // Should not throw — just return true (both are circular in the same shape)
+    // Should not throw - just return true (both are circular in the same shape)
     expect(() => isEqual(a, b)).not.toThrow();
     expect(isEqual(a, b)).toBe(true);
   });
@@ -4026,5 +4025,134 @@ describe('isEqual circular reference protection (Bug 12)', () => {
     expect(isEqual({ a: 1 }, { a: 2 })).toBe(false);
     expect(isEqual([1, 2], [1, 2])).toBe(true);
     expect(isEqual([1, 2], [1, 3])).toBe(false);
+  });
+});
+
+
+// ===========================================================================
+// SECURITY AUDIT v2 - Prototype Pollution, ReDoS, Expression Safety
+// ===========================================================================
+
+describe('Security: deepMerge prototype pollution prevention', () => {
+  it('blocks __proto__ key from being merged', () => {
+    const target = {};
+    const malicious = JSON.parse('{"__proto__": {"polluted": true}}');
+    deepMerge(target, malicious);
+    expect(target.polluted).toBeUndefined();
+    expect(({}).polluted).toBeUndefined();
+  });
+
+  it('blocks constructor key from being merged', () => {
+    const target = {};
+    deepMerge(target, { constructor: { prototype: { polluted: true } } });
+    expect(({}).polluted).toBeUndefined();
+  });
+
+  it('blocks prototype key from being merged', () => {
+    const target = {};
+    deepMerge(target, { prototype: { polluted: true } });
+    expect(target.prototype).toBeUndefined();
+  });
+
+  it('still merges safe keys normally', () => {
+    const result = deepMerge({}, { a: 1, b: { c: 2 } });
+    expect(result).toEqual({ a: 1, b: { c: 2 } });
+  });
+
+  it('blocks nested __proto__ pollution attempt', () => {
+    const target = { nested: {} };
+    const malicious = JSON.parse('{"nested": {"__proto__": {"deep": true}}}');
+    deepMerge(target, malicious);
+    expect(({}).deep).toBeUndefined();
+    expect(target.nested.deep).toBeUndefined();
+  });
+});
+
+describe('Security: setPath prototype pollution prevention', () => {
+  it('blocks __proto__ in path segments', () => {
+    const obj = {};
+    setPath(obj, '__proto__.polluted', true);
+    expect(({}).polluted).toBeUndefined();
+  });
+
+  it('blocks constructor in path segments', () => {
+    const obj = {};
+    setPath(obj, 'constructor.prototype.polluted', true);
+    expect(({}).polluted).toBeUndefined();
+  });
+
+  it('blocks prototype as final key', () => {
+    const obj = {};
+    setPath(obj, 'prototype', { evil: true });
+    expect(obj.prototype).toBeUndefined();
+  });
+
+  it('still sets safe paths normally', () => {
+    const obj = {};
+    setPath(obj, 'a.b.c', 42);
+    expect(obj.a.b.c).toBe(42);
+  });
+});
+
+describe('Security: expression evaluator - blocked constructors', () => {
+  it('blocks RegExp constructor (ReDoS prevention)', () => {
+    expect(eval_('new RegExp(".*")')).toBeUndefined();
+    expect(eval_('RegExp')).toBeUndefined();
+  });
+
+  it('blocks Error constructor (info leak prevention)', () => {
+    expect(eval_('new Error("test")')).toBeUndefined();
+  });
+
+  it('blocks Function constructor', () => {
+    expect(eval_('new Function("return 1")')).toBeUndefined();
+  });
+
+  it('still allows safe constructors', () => {
+    expect(eval_('new Date(2024, 0, 1)')).toBeInstanceOf(Date);
+    expect(eval_('new Map')).toBeInstanceOf(Map);
+    expect(eval_('new Set')).toBeInstanceOf(Set);
+    expect(eval_('new Array(3)')).toBeInstanceOf(Array);
+    expect(eval_('new URL("https://example.com")')).toBeInstanceOf(URL);
+  });
+});
+
+describe('Security: expression evaluator - blocked property access', () => {
+  it('blocks __proto__ access', () => {
+    expect(eval_('obj.__proto__', { obj: {} })).toBeUndefined();
+  });
+
+  it('blocks constructor access', () => {
+    expect(eval_('obj.constructor', { obj: {} })).toBeUndefined();
+  });
+
+  it('blocks prototype access', () => {
+    expect(eval_('obj.prototype', { obj: function(){} })).toBeUndefined();
+  });
+
+  it('blocks __defineGetter__ access', () => {
+    expect(eval_('obj.__defineGetter__', { obj: {} })).toBeUndefined();
+  });
+
+  it('blocks call/apply/bind', () => {
+    expect(eval_('fn.call', { fn: () => {} })).toBeUndefined();
+    expect(eval_('fn.apply', { fn: () => {} })).toBeUndefined();
+    expect(eval_('fn.bind', { fn: () => {} })).toBeUndefined();
+  });
+});
+
+describe('Security: template expression HTML escaping', () => {
+  it('escapeHtml escapes script tags', () => {
+    expect(escapeHtml('<script>alert(1)</script>')).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
+  it('escapeHtml escapes quotes and ampersands', () => {
+    expect(escapeHtml('"&\'')).toBe('&quot;&amp;&#39;');
+  });
+
+  it('escapeHtml handles non-string input', () => {
+    expect(escapeHtml(42)).toBe('42');
+    expect(escapeHtml(null)).toBe('null');
+    expect(escapeHtml(undefined)).toBe('undefined');
   });
 });

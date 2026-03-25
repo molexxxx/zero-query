@@ -30,7 +30,7 @@ describe('createSSRApp', () => {
 // component registration
 // ---------------------------------------------------------------------------
 
-describe('SSRApp — component', () => {
+describe('SSRApp - component', () => {
   it('registers a component and returns self for chaining', () => {
     const app = createSSRApp();
     const result = app.component('my-comp', {
@@ -80,7 +80,7 @@ describe('SSRApp — component', () => {
 // SSRApp.has()
 // ---------------------------------------------------------------------------
 
-describe('SSRApp — has', () => {
+describe('SSRApp - has', () => {
   it('returns false for unregistered', () => {
     const app = createSSRApp();
     expect(app.has('nope')).toBe(false);
@@ -98,7 +98,7 @@ describe('SSRApp — has', () => {
 // renderToString (app method)
 // ---------------------------------------------------------------------------
 
-describe('SSRApp — renderToString', () => {
+describe('SSRApp - renderToString', () => {
   it('renders basic component', async () => {
     const app = createSSRApp();
     app.component('my-page', {
@@ -193,7 +193,8 @@ describe('SSRApp — renderToString', () => {
       render() { throw new Error('render boom'); }
     });
     const html = await app.renderToString('bad');
-    expect(html).toContain('<!-- SSR render error:');
+    expect(html).toContain('<!-- SSR render error -->');
+    expect(html).not.toContain('render boom');
     expect(handler).toHaveBeenCalled();
     const err = handler.mock.calls[0][0];
     expect(err.code).toBe(ErrorCode.SSR_RENDER);
@@ -267,7 +268,7 @@ describe('renderToString (standalone)', () => {
 // State factory
 // ---------------------------------------------------------------------------
 
-describe('SSR — state factory', () => {
+describe('SSR - state factory', () => {
   it('calls state function for initial state', async () => {
     const app = createSSRApp();
     let callCount = 0;
@@ -328,7 +329,7 @@ describe('SSR — state factory', () => {
 // Computed properties
 // ---------------------------------------------------------------------------
 
-describe('SSR — computed', () => {
+describe('SSR - computed', () => {
   it('computes derived values', async () => {
     const app = createSSRApp();
     app.component('comp', {
@@ -382,7 +383,7 @@ describe('SSR — computed', () => {
 // User methods
 // ---------------------------------------------------------------------------
 
-describe('SSR — user methods', () => {
+describe('SSR - user methods', () => {
   it('binds user methods and they can be called in render', async () => {
     const app = createSSRApp();
     app.component('comp', {
@@ -409,7 +410,7 @@ describe('SSR — user methods', () => {
 // Init lifecycle
 // ---------------------------------------------------------------------------
 
-describe('SSR — init lifecycle', () => {
+describe('SSR - init lifecycle', () => {
   it('calls init() during construction', () => {
     let initCalled = false;
     renderToString({
@@ -445,7 +446,7 @@ describe('SSR — init lifecycle', () => {
 // {{expression}} interpolation
 // ---------------------------------------------------------------------------
 
-describe('SSR — expression interpolation', () => {
+describe('SSR - expression interpolation', () => {
   it('interpolates {{state.key}} patterns', () => {
     const html = renderToString({
       state: () => ({ name: 'World' }),
@@ -493,7 +494,7 @@ describe('SSR — expression interpolation', () => {
 // XSS sanitization via _escapeHtml
 // ---------------------------------------------------------------------------
 
-describe('SSR — XSS sanitization', () => {
+describe('SSR - XSS sanitization', () => {
   it('escapes HTML in renderPage title', async () => {
     const app = createSSRApp();
     const html = await app.renderPage({ title: '<script>alert("xss")</script>' });
@@ -539,7 +540,7 @@ describe('SSR — XSS sanitization', () => {
 // renderPage
 // ---------------------------------------------------------------------------
 
-describe('SSRApp — renderPage', () => {
+describe('SSRApp - renderPage', () => {
   it('renders a full HTML page', async () => {
     const app = createSSRApp();
     app.component('page', { render() { return '<h1>Home</h1>'; } });
@@ -605,7 +606,8 @@ describe('SSRApp — renderPage', () => {
     app.component('bad-page', { render() { throw new Error('page boom'); } });
     const html = await app.renderPage({ component: 'bad-page', title: 'Oops' });
     expect(html).toContain('<!DOCTYPE html>');
-    expect(html).toContain('<!-- SSR render error:');
+    expect(html).toContain('<!-- SSR render error -->');
+    expect(html).not.toContain('page boom');
     expect(handler).toHaveBeenCalled();
 
     spy.mockRestore();
@@ -636,7 +638,7 @@ describe('SSRApp — renderPage', () => {
 // renderBatch
 // ---------------------------------------------------------------------------
 
-describe('SSRApp — renderBatch', () => {
+describe('SSRApp - renderBatch', () => {
   it('renders multiple components at once', async () => {
     const app = createSSRApp();
     app.component('header-el', { render() { return '<header>Head</header>'; } });

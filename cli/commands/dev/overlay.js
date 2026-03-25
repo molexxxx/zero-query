@@ -1,21 +1,21 @@
 /**
- * cli/commands/dev/overlay.js — Client-side error overlay + SSE live-reload
+ * cli/commands/dev/overlay.js - Client-side error overlay + SSE live-reload
  *
  * Returns an HTML <script> snippet that is injected before </body> in
  * every HTML response served by the dev server.  Responsibilities:
  *
- *   1. Error Overlay — full-screen dark overlay with code frames, stack
+ *   1. Error Overlay - full-screen dark overlay with code frames, stack
  *      traces, and ZQueryError metadata.  Dismissable via Esc or ×.
- *   2. Runtime error hooks — window.onerror, unhandledrejection, AND
+ *   2. Runtime error hooks - window.onerror, unhandledrejection, AND
  *      the zQuery $.onError() hook so framework-level errors are
  *      surfaced in the overlay automatically.
- *   3. SSE connection — listens for reload / css / error:syntax /
+ *   3. SSE connection - listens for reload / css / error:syntax /
  *      error:clear events from the dev server watcher.
  */
 
 'use strict';
 
-// The snippet is a self-contained IIFE — no external dependencies.
+// The snippet is a self-contained IIFE - no external dependencies.
 // It must work in all browsers that support EventSource (IE11 excluded).
 
 const OVERLAY_SCRIPT = `<script>
@@ -239,7 +239,7 @@ const OVERLAY_SCRIPT = `<script>
   // Hook into zQuery's $.onError() when the library is loaded
   // =====================================================================
   function hookZQueryErrors() {
-    // $.onError is set by the framework — wait for it
+    // $.onError is set by the framework - wait for it
     if (typeof $ !== 'undefined' && typeof $.onError === 'function') {
       $.onError(function(zqErr) {
         var data = {
@@ -298,7 +298,7 @@ const OVERLAY_SCRIPT = `<script>
       });
 
       // 2) Try hot-swapping scoped <style data-zq-style-urls> elements
-      //    These come from component styleUrl — the CSS was fetched, scoped,
+      //    These come from component styleUrl - the CSS was fetched, scoped,
       //    and injected as an inline <style>. We re-fetch and re-scope it.
       if (!matched) {
         var scopedEls = document.querySelectorAll('style[data-zq-style-urls]');
@@ -315,9 +315,13 @@ const OVERLAY_SCRIPT = `<script>
 
           // Re-fetch all style URLs (cache-busted)
           var urlList = urls.split(' ').filter(Boolean);
+          var prevCSS = el.textContent; // preserve current styles as rollback
           Promise.all(urlList.map(function(u) {
             return fetch(u + (u.indexOf('?') >= 0 ? '&' : '?') + '_zqr=' + Date.now())
-              .then(function(r) { return r.text(); });
+              .then(function(r) {
+                if (!r.ok) throw new Error('CSS fetch failed: ' + r.status);
+                return r.text();
+              });
           })).then(function(results) {
             var raw = (inlineStyles ? inlineStyles + '\\n' : '') + results.join('\\n');
             // Re-scope CSS with the same scope attribute
@@ -332,11 +336,14 @@ const OVERLAY_SCRIPT = `<script>
               });
             }
             el.textContent = raw;
+          }).catch(function() {
+            // Restore previous CSS on failure to prevent blank page
+            el.textContent = prevCSS;
           });
         });
       }
 
-      // 3) Nothing matched — fall back to full reload
+      // 3) Nothing matched - fall back to full reload
       if (!matched) { location.reload(); }
     });
 
@@ -362,7 +369,7 @@ const OVERLAY_SCRIPT = `<script>
   connect();
 
   // =====================================================================
-  // Fetch / $.http Interceptor — pretty console logging
+  // Fetch / $.http Interceptor - pretty console logging
   // =====================================================================
   var __zqChannel;
   try { __zqChannel = new BroadcastChannel('__zq_devtools'); } catch(e) {}
@@ -473,7 +480,7 @@ const OVERLAY_SCRIPT = `<script>
   };
 
   // =====================================================================
-  // Morph instrumentation — hook via window.__zqMorphHook (set by diff.js)
+  // Morph instrumentation - hook via window.__zqMorphHook (set by diff.js)
   // =====================================================================
   window.__zqMorphHook = function(el, elapsed) {
     __zqMorphCount++;
@@ -505,7 +512,7 @@ const OVERLAY_SCRIPT = `<script>
   };
 
   // =====================================================================
-  // Render instrumentation — hook for first-renders & route swaps
+  // Render instrumentation - hook for first-renders & route swaps
   // =====================================================================
   window.__zqRenderHook = function(el, elapsed, kind, name) {
     __zqRenderCount++;
@@ -538,7 +545,7 @@ const OVERLAY_SCRIPT = `<script>
   };
 
   // =====================================================================
-  // Router instrumentation — history state tracking for devtools
+  // Router instrumentation - history state tracking for devtools
   // =====================================================================
   var __zqRouterEvents = [];
 
@@ -613,7 +620,7 @@ const OVERLAY_SCRIPT = `<script>
   });
 
   // =====================================================================
-  // Dev Toolbar — expandable floating bar with stats
+  // Dev Toolbar - expandable floating bar with stats
   // =====================================================================
   var devBar;
   var __zqBarExpanded = false;

@@ -10,7 +10,7 @@
 
 /**
  * Morph an existing DOM element's children to match new HTML.
- * Only touches nodes that actually differ — preserves focus, scroll
+ * Only touches nodes that actually differ - preserves focus, scroll
  * positions, video playback, and other live DOM state.
  *
  * Use `z-key="uniqueId"` attributes on list items for keyed reconciliation.
@@ -22,7 +22,7 @@
 export function morph(rootEl: Element, newHTML: string): void;
 
 /**
- * Morph a single element in place — diffs attributes and children
+ * Morph a single element in place - diffs attributes and children
  * without replacing the node reference. If the tag name matches, the
  * element is patched in place (preserving identity). If the tag differs,
  * the element is replaced.
@@ -58,11 +58,11 @@ export function safeEval(expr: string, scope: object[]): any;
 //
 // ─── Structural Directives ──────────────────────────────────────────────
 //
-//   z-if="expression"          Conditional rendering — element removed when falsy.
+//   z-if="expression"          Conditional rendering - element removed when falsy.
 //   z-else-if="expression"     Else-if branch (must be immediate sibling of z-if).
 //   z-else                     Default branch (must follow z-if or z-else-if).
 //
-//   z-for="item in items"      List rendering — repeats the element per item.
+//   z-for="item in items"      List rendering - repeats the element per item.
 //     {{item.prop}}              Use double-brace interpolation for item data.
 //     (item, index) in items     Destructured index support.
 //     n in 5                     Number range → [1, 2, 3, 4, 5].
@@ -100,9 +100,9 @@ export function safeEval(expr: string, scope: object[]): any;
 //     Supports: input, textarea, select, select[multiple], contenteditable.
 //     Nested keys: z-model="user.name" → this.state.user.name.
 //     Modifiers (boolean attributes on same element):
-//       z-lazy    — update on 'change' instead of 'input' (update on blur).
-//       z-trim    — auto .trim() whitespace before writing to state.
-//       z-number  — force Number() conversion regardless of input type.
+//       z-lazy    - update on 'change' instead of 'input' (update on blur).
+//       z-trim    - auto .trim() whitespace before writing to state.
+//       z-number  - force Number() conversion regardless of input type.
 //
 //   z-ref="name"               Element reference → this.refs.name.
 //
@@ -134,9 +134,9 @@ export function safeEval(expr: string, scope: object[]): any;
 //
 // ─── Slot System ────────────────────────────────────────────────────────
 //
-//   <slot>                     Default slot — replaced with child content
+//   <slot>                     Default slot - replaced with child content
 //                              passed by the parent component.
-//   <slot name="header">       Named slot — replaced with child content that
+//   <slot name="header">       Named slot - replaced with child content that
 //                              has a matching slot="header" attribute.
 //   <slot>fallback</slot>      Fallback content shown when no slot content provided.
 //

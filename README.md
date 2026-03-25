@@ -15,22 +15,23 @@
 
 </p>
 
-> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit — all in a single ~100 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
+> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit - all in a single ~91 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
 
 ## Features
 
 | Module | Highlights |
 | --- | --- |
-| **Components** | Reactive state, template literals, `@event` delegation (22 modifiers — key filters, system keys, `.outside`, timing, and more), `z-model` two-way binding (with `z-trim`, `z-number`, `z-lazy`, `z-debounce`, `z-uppercase`, `z-lowercase`), computed properties, watch callbacks, slot-based content projection, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip`), DOM morphing engine with LIS-based keyed reconciliation (no innerHTML rebuild), CSP-safe expression evaluation with AST caching, scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles |
-| **Router** | History & hash mode, route params (`:id`), wildcards, guards (`beforeEach`/`afterEach`), lazy loading, `z-link` navigation, `z-to-top` scroll modifier (`instant`/`smooth`), sub-route history substates (`pushSubstate`/`onSubstate`) |
-| **Directives** | `z-if`, `z-for`, `z-model`, `z-show`, `z-bind`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip` &mdash; 17 built-in template directives |
-| **Reactive** | Deep proxy reactivity, Signals (`.value`, `.peek()`), computed values, effects (auto-tracked with dispose) |
-| **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions, action history, snapshots |
+| **Components** | Reactive state, template literals, `@event` delegation (22 modifiers - key filters, system keys, `.outside`, timing, and more), `z-model` two-way binding (with `z-trim`, `z-number`, `z-lazy`, `z-debounce`, `z-uppercase`, `z-lowercase`), computed properties, watch callbacks, slot-based content projection, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip`), DOM morphing engine with LIS-based keyed reconciliation (no innerHTML rebuild), CSP-safe expression evaluation with AST caching, scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles |
+| **Router** | History & hash mode, route params (`:id`), wildcards, guards (`beforeEach`/`afterEach`), lazy loading, `z-link` navigation with `z-link-params`, `z-to-top` scroll modifier (`instant`/`smooth`), `z-active-route` active-link class directive, `<z-outlet>` declarative mount point, sub-route history substates (`pushSubstate`/`onSubstate`) |
+| **Directives** | `z-if`, `z-else-if`, `z-else`, `z-for`, `z-model`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip`, `@event`/`z-on` &mdash; 17 built-in template directives |
+| **Reactive** | Deep proxy reactivity, Signals (`.value`, `.peek()`), computed values, effects (auto-tracked with dispose), `batch()` for deferred notifications, `untracked()` for dependency-free reads |
+| **Store** | Reactive global state, named actions, computed getters, middleware, subscriptions, `batch()` grouped mutations, `checkpoint()`/`undo()`/`redo()` with configurable stack, action history, snapshots |
 | **Selectors & DOM** | jQuery-like chainable selectors, traversal, DOM manipulation, events, animation |
 | **HTTP** | Fetch wrapper with auto-JSON, interceptors (with unsubscribe & clear), HEAD requests, parallel requests (`http.all`), config inspection (`getConfig`), timeout/abort, base URL |
-| **Utils** | debounce, throttle, pipe, once, sleep, memoize, escapeHtml, stripHtml, uuid, capitalize, truncate, range, chunk, groupBy, unique, pick, omit, getPath/setPath, isEmpty, clamp, retry, timeout, deepClone, deepMerge, storage/session wrappers, event bus |
+| **Utils** | debounce, throttle, pipe, once, sleep, memoize (LRU), escapeHtml, stripHtml, uuid, capitalize, truncate, range, chunk, groupBy, unique, pick, omit, getPath/setPath, isEmpty, clamp, retry, timeout, deepClone (enhanced fallback), deepMerge (prototype-pollution safe), storage/session wrappers, event bus |
+| **Security** | XSS-safe template expressions (`{{}}` auto-escaping), sandboxed expression evaluator (blocks `window`, `Function`, `eval`, `RegExp`, `Error`, prototype chains), prototype pollution prevention in `deepMerge`/`setPath`, `z-link` protocol validation, SSR error sanitization |
 | **Dev Tools** | CLI dev server with live-reload, CSS hot-swap, full-screen error overlay, floating toolbar, dark-themed inspector panel (Router view, DOM tree, network log, component viewer, performance dashboard), fetch interceptor, render instrumentation, CLI bundler for single-file production builds |
-| **SSR** | Server-side rendering to HTML strings in Node.js — `createSSRApp()`, `renderToString()`, `renderPage()` with SEO/Open Graph support, `renderBatch()` for parallel rendering, fragment mode, hydration markers, graceful error handling, `escapeHtml()` utility |
+| **SSR** | Server-side rendering to HTML strings in Node.js - `createSSRApp()`, `renderToString()`, `renderPage()` with SEO/Open Graph support, `renderBatch()` for parallel rendering, fragment mode, hydration markers, graceful error handling, `escapeHtml()` utility |
 
 ---
 
@@ -38,7 +39,7 @@
 
 ### Recommended: CLI Dev Server
 
-The fastest way to develop with zQuery is via the built-in **CLI dev server** with **live-reload**. It serves your ES modules as-is and automatically resolves the library — no manual downloads required.
+The fastest way to develop with zQuery is via the built-in **CLI dev server** with **live-reload**. It serves your ES modules as-is and automatically resolves the library - no manual downloads required.
 
 ```bash
 # Install (per-project or globally)
@@ -58,25 +59,25 @@ The `create` command generates a ready-to-run project with a sidebar layout, rou
 
 #### Error Overlay
 
-The dev server includes a **full-screen error overlay** that surfaces errors directly in the browser — similar to Vite or Angular:
+The dev server includes a **full-screen error overlay** that surfaces errors directly in the browser - similar to Vite or Angular:
 
-- **Syntax errors** — JS files are validated on every save *before* the reload is triggered. If a syntax error is found the page stays intact and a dark overlay appears with the error message, file path, line:column, and a code frame pointing to the exact location.
-- **Runtime errors** — uncaught exceptions and unhandled promise rejections are captured and displayed in the same overlay with a cleaned-up stack trace.
+- **Syntax errors** - JS files are validated on every save *before* the reload is triggered. If a syntax error is found the page stays intact and a dark overlay appears with the error message, file path, line:column, and a code frame pointing to the exact location.
+- **Runtime errors** - uncaught exceptions and unhandled promise rejections are captured and displayed in the same overlay with a cleaned-up stack trace.
 - The overlay **auto-clears** when you fix the error and save. Press `Esc` or click `×` to dismiss manually.
 
 #### Floating Toolbar & Inspector
 
-A compact expandable toolbar appears in the bottom-right corner. In its **collapsed** state it shows live render and request counters. Click the chevron to **expand** and reveal the route indicator (color-coded by the last navigation event — navigate, pop, replace, hashchange, substate), registered component count, and DOM element count. Click any stat to open a **dark-themed DevTools inspector** as a popup — or visit `http://localhost:<port>/_devtools` for a standalone split-view panel with five tabs: **Router** (live route state, guards, history timeline), **Components** (live state cards), **Performance** (render timeline with timing metrics), **Network** (fetch log with JSON viewer), and **Elements** (live DOM tree with component badges, source viewer, expand/collapse).
+A compact expandable toolbar appears in the bottom-right corner. In its **collapsed** state it shows live render and request counters. Click the chevron to **expand** and reveal the route indicator (color-coded by the last navigation event - navigate, pop, replace, hashchange, substate), registered component count, and DOM element count. Click any stat to open a **dark-themed DevTools inspector** as a popup - or visit `http://localhost:<port>/_devtools` for a standalone split-view panel with five tabs: **Router** (live route state, guards, history timeline), **Components** (live state cards), **Performance** (render timeline with timing metrics), **Network** (fetch log with JSON viewer), and **Elements** (live DOM tree with component badges, source viewer, expand/collapse).
 
 ### Alternative: Manual Setup (No npm)
 
-If you prefer **zero tooling**, download `dist/zquery.min.js` from the [dist/ folder](https://github.com/tonywied17/zero-query/tree/main/dist) and drop it into your project root or `assets/scripts/`. Then open `index.html` directly in a browser — no Node.js required.
+If you prefer **zero tooling**, download `dist/zquery.min.js` from the [dist/ folder](https://github.com/tonywied17/zero-query/tree/main/dist) and drop it into your project root or `assets/scripts/`. Then open `index.html` directly in a browser - no Node.js required.
 
 ```bash
 git clone https://github.com/tonywied17/zero-query.git
 cd zero-query
 npx zquery build
-# → dist/zquery.min.js  (~100 KB)
+# → dist/zquery.min.js  (~91 KB)
 ```
 
 ### Include in HTML
@@ -110,7 +111,7 @@ import './components/about.js';
 import './components/contacts/contacts.js';
 import { routes } from './routes.js';
 
-$.router({ el: '#app', routes, fallback: 'not-found' });
+$.router({ routes, fallback: 'not-found' });
 ```
 
 ### Define a Component
@@ -130,7 +131,7 @@ $.component('home-page', {
 });
 ```
 
-That's it — a fully working SPA with the dev server's live-reload.
+That's it - a fully working SPA with the dev server's live-reload.
 
 ---
 
@@ -194,7 +195,7 @@ my-app/                          ← SSR scaffold (npx zquery create my-app --ss
   index.html                     ← client HTML shell
   global.css
   app/
-    app.js                       ← client entry — registers shared components
+    app.js                       ← client entry - registers shared components
     routes.js                    ← shared route definitions
     components/
       home.js                    ← shared component (SSR + client)
@@ -205,12 +206,12 @@ my-app/                          ← SSR scaffold (npx zquery create my-app --ss
   assets/
 ```
 
-Components in `app/components/` export plain definition objects — the client registers them with `$.component()`, the server with `app.component()`. The `--ssr` flag handles everything automatically — installs dependencies, starts the server at `http://localhost:3000`, and opens the browser.
+Components in `app/components/` export plain definition objects - the client registers them with `$.component()`, the server with `app.component()`. The `--ssr` flag handles everything automatically - installs dependencies, starts the server at `http://localhost:3000`, and opens the browser.
 
 - One component per file inside `components/`.
 - Names **must contain a hyphen** (Web Component convention): `home-page`, `app-counter`, etc.
 - Components with external templates or styles can use a subfolder (e.g. `contacts/contacts.js` + `contacts.html` + `contacts.css`).
-- `app.js` is the single entry point — import components, create the store, and boot the router.
+- `app.js` is the single entry point - import components, create the store, and boot the router.
 - `global.css` lives next to `index.html` for easy access; the bundler hashes it into `global.<hash>.min.css` for production.
 - `assets/` holds static files that get copied to `dist/` as-is.
 
@@ -218,7 +219,7 @@ Components in `app/components/` export plain definition objects — the client r
 
 ## CLI Bundler
 
-The CLI compiles your entire app — ES modules, the library, external templates, and assets — into a **single production-ready bundle**. It outputs two builds in one step: a `server/` build for deploying to any web server, and a `local/` build that works straight from disk. No config, no flags — just point it at your app.
+The CLI compiles your entire app - ES modules, the library, external templates, and assets - into a **single production-ready bundle**. It outputs two builds in one step: a `server/` build for deploying to any web server, and a `local/` build that works straight from disk. No config, no flags - just point it at your app.
 
 ```bash
 # Auto-detect entry from any .html with a module script
@@ -240,7 +241,7 @@ dist/
     z-app.<hash>.min.js
     global.<hash>.min.css
     assets/
-  local/                ← open from disk (file://) — no server needed
+  local/                ← open from disk (file://) - no server needed
     index.html
     z-app.<hash>.min.js
     ...
@@ -257,11 +258,11 @@ dist/
 
 ### What the Bundler Does
 
-1. **Entry detection** — a strict precedence order ensures the correct file is chosen:
-   1. **HTML files** — `index.html` is checked first, then other `.html` files (root + one level deep).
-   2. **Module scripts within HTML** — within each HTML file, a `<script type="module">` whose `src` resolves to `app.js` wins; otherwise the first module script tag is used.
-   3. **JS file scan** — if no HTML match, JS files (up to 2 levels deep) are scanned in two passes: first for `$.router(` (the canonical app entry point), then for `$.mount(`, `$.store(`, or `mountAll(`.
-   4. **Convention fallbacks** — `app/app.js`, `scripts/app.js`, `src/app.js`, `js/app.js`, `app.js`, `main.js`.
+1. **Entry detection** - a strict precedence order ensures the correct file is chosen:
+   1. **HTML files** - `index.html` is checked first, then other `.html` files (root + one level deep).
+   2. **Module scripts within HTML** - within each HTML file, a `<script type="module">` whose `src` resolves to `app.js` wins; otherwise the first module script tag is used.
+   3. **JS file scan** - if no HTML match, JS files (up to 2 levels deep) are scanned in two passes: first for `$.router(` (the canonical app entry point), then for `$.mount(`, `$.store(`, or `mountAll(`.
+   4. **Convention fallbacks** - `app/app.js`, `scripts/app.js`, `src/app.js`, `js/app.js`, `app.js`, `main.js`.
 2. Resolves all `import` statements and topologically sorts dependencies
 3. Strips `import`/`export` syntax, wraps in an IIFE
 4. Embeds zQuery library and inlines `templateUrl` / `styleUrl` files
@@ -289,7 +290,7 @@ location / {
 }
 ```
 
-**Sub-path deployment** (e.g. `/my-app/`): set `<base href="/my-app/">` in your HTML — the router auto-detects it.
+**Sub-path deployment** (e.g. `/my-app/`): set `<base href="/my-app/">` in your HTML - the router auto-detects it.
 
 ---
 
@@ -298,13 +299,13 @@ location / {
 | Namespace | Methods |
 | --- | --- |
 | `$()` | Chainable selector → `ZQueryCollection` (CSS selectors, elements, NodeLists, HTML strings) |
-| `$.all()` | Alias for `$()` — identical behavior |
+| `$.all()` | Alias for `$()` - identical behavior |
 | `$.id` `$.class` `$.classes` `$.tag` `$.name` `$.children` `$.qs` `$.qsa` | Quick DOM refs |
 | `$.create` | Element factory |
 | `$.ready` `$.on` `$.off` | DOM ready, global event delegation & direct listeners |
 | `$.fn` | Collection prototype (extend it) |
 | `$.component` `$.mount` `$.mountAll` `$.getInstance` `$.destroy` `$.components` `$.prefetch` | Component system |
-| `$.morph` `$.morphElement` | DOM morphing engine — LIS-based keyed reconciliation, `isEqualNode()` bail-outs, `z-skip` opt-out. Patches existing DOM to match new HTML without destroying unchanged nodes. Auto-key detection (`id`, `data-id`, `data-key`) — no `z-key` required. `$().html()` and `$().replaceWith()` auto-morph existing content; `$().morph()` for explicit morph |
+| `$.morph` `$.morphElement` | DOM morphing engine - LIS-based keyed reconciliation, `isEqualNode()` bail-outs, `z-skip` opt-out. Patches existing DOM to match new HTML without destroying unchanged nodes. Auto-key detection (`id`, `data-id`, `data-key`) - no `z-key` required. `$().html()` and `$().replaceWith()` auto-morph existing content; `$().morph()` for explicit morph |
 | `$.safeEval` | CSP-safe expression evaluator (replaces `eval` / `new Function`) |
 | `$.style` | Dynamically load global stylesheet file(s) at runtime |
 | `$.router` `$.getRouter` | SPA router |
@@ -321,7 +322,7 @@ location / {
 | `$.storage` `$.session` | Storage wrappers |
 | `$.EventBus` `$.bus` | Event bus |
 | `$.onError` `$.ZQueryError` `$.ErrorCode` `$.guardCallback` `$.guardAsync` `$.formatError` `$.validate` | Error handling |
-| `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~100 KB\"`) |
+| `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~91 KB\"`) |
 | `$.unitTests` | Build-time test results `{ passed, failed, total, suites, duration, ok }` |
 | `$.meta` | Build metadata (populated by CLI bundler) |
 | `$.noConflict` | Release `$` global |
@@ -346,4 +347,4 @@ The official **[zQuery for VS Code](https://marketplace.visualstudio.com/items?i
 
 ## License
 
-MIT — [Anthony Wiedman / Molex](https://github.com/tonywied17)
+MIT - [Anthony Wiedman / Molex](https://github.com/tonywied17)

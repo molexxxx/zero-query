@@ -1,5 +1,5 @@
 <!--
-  toolkit.html — external template for toolkit-page component
+  toolkit.html - external template for toolkit-page component
 
   HTTP client with interceptors, 30+ utility functions, and advanced
   store patterns. Uses {{expression}} syntax and z-if / z-for / z-show.
@@ -65,7 +65,7 @@
 <div z-else-if="activeTab === 'utils'">
   <div class="card">
     <h3>Utility Belt</h3>
-    <p>30+ built-in helpers — select a category to run a live demo.</p>
+    <p>30+ built-in helpers - select a category to run a live demo.</p>
 
     <div class="tk-util-grid">
       <div class="tk-util-card {{activeUtil === 'pipe' ? 'selected' : ''}}" @click="runUtil('pipe')">
@@ -102,7 +102,7 @@
 <div z-else>
   <div class="card" style="margin-bottom:.75rem;">
     <h3>Store Inspector</h3>
-    <p>Live view into the reactive store — middleware, snapshots, and action history.</p>
+    <p>Live view into the reactive store - middleware, snapshots, and action history.</p>
 
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">
       <div class="tk-stat">
@@ -134,7 +134,7 @@
 
   <div class="card card-muted" z-show="storeLog.length > 0">
     <h3>Middleware Log</h3>
-    <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:.5rem;">Real-time log from <code>store.use()</code> — interact with other pages to generate entries.</p>
+    <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:.5rem;">Real-time log from <code>store.use()</code> - interact with other pages to generate entries.</p>
     <div class="tk-log">
       <div z-for="entry in storeLog" z-key="{{entry.id}}" class="tk-log-entry">
         <span style="color:var(--text-muted);font-size:.78rem;min-width:65px;">{{entry.time}}</span>

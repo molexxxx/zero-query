@@ -1,4 +1,4 @@
-// cli/commands/create.js — scaffold a new zQuery project
+// cli/commands/create.js - scaffold a new zQuery project
 //
 // Templates live in cli/scaffold/<variant>/ (default or minimal).
 // Reads template files, replaces {{NAME}} with the project name,
@@ -48,7 +48,7 @@ function createProject(args) {
     process.exit(1);
   }
 
-  console.log(`\n  zQuery — Create Project (${variant})\n`);
+  console.log(`\n  zQuery - Create Project (${variant})\n`);
   console.log(`  Scaffolding into ${target}\n`);
 
   // Resolve the scaffold template directory for the chosen variant

@@ -1,4 +1,4 @@
-﻿# zQuery (zeroQuery) — Full API Reference
+﻿# zQuery (zeroQuery) - Full API Reference
 
 Complete API documentation for every module, method, option, and type in zQuery. All examples assume the global `$` is available via the built `zquery.min.js` bundle. For getting started, project setup, the dev server, and the CLI bundler, see [README.md](README.md).
 
@@ -9,12 +9,14 @@ Complete API documentation for every module, method, option, and type in zQuery.
 ## Table of Contents
 
 - [Router](#router)
-  - [$.router() — createRouter](#routerconfig)
+  - [$.router() - createRouter](#routerconfig)
   - [Router Config Options](#router-config-options)
   - [Route Object](#route-object)
   - [Router Instance Methods](#router-instance-methods)
   - [Router Properties](#router-properties)
   - [Navigation Context](#navigation-context)
+  - [z-to-top](#z-to-top---scroll-to-top-on-navigation)
+  - [z-active-route](#z-active-route---active-route-class)
   - [$.getRouter()](#getrouter)
 - [Component System](#component-system)
   - [$.component()](#componentname-definition)
@@ -22,11 +24,11 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Component Instance API](#component-instance-api)
   - [Computed Properties](#computed-properties)
   - [Watch Callbacks](#watch-callbacks)
-  - [Slots — Content Projection](#slots--content-projection)
+  - [Slots - Content Projection](#slots--content-projection)
   - [External Templates & Styles](#external-templates--styles)
   - [Directives](#directives)
-  - [z-key — Keyed Reconciliation](#z-key--keyed-reconciliation)
-  - [z-skip — Opt Out of Diffing](#z-skip--opt-out-of-diffing)
+  - [z-key - Keyed Reconciliation](#z-key--keyed-reconciliation)
+  - [z-skip - Opt Out of Diffing](#z-skip--opt-out-of-diffing)
   - [$.mount()](#mounttarget-name-props)
   - [$.mountAll()](#mountallroot)
   - [$.getInstance()](#getinstancetarget)
@@ -35,10 +37,12 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [$.prefetch()](#prefetchname)
   - [$.style()](#styleurls)
 - [Store](#store)
-  - [$.store() — createStore](#storeconfig)
+  - [$.store() - createStore](#storeconfig)
   - [Store Config Options](#store-config-options)
   - [Store Instance Methods](#store-instance-methods)
   - [Store Properties](#store-properties)
+  - [Batch Updates](#batch-updates)
+  - [Checkpoint / Undo / Redo](#checkpoint--undo--redo)
   - [$.getStore()](#getstorename)
 - [HTTP Client](#http-client)
   - [Request Methods](#request-methods)
@@ -50,20 +54,22 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [$.http.createAbort()](#httpcreateabort)
   - [$.http.raw()](#httprawurl-opts)
   - [Response Object](#response-object)
-- [Reactive — Proxies & Signals](#reactive--proxies--signals)
+- [Reactive - Proxies & Signals](#reactive--proxies--signals)
   - [reactive()](#reactiveobject-onchange)
   - [signal()](#signalinitial)
   - [computed()](#computedfn)
   - [effect()](#effectfn)
+  - [batch()](#batchfn)
+  - [untracked()](#untrackedfn)
 - [Selectors & DOM](#selectors--dom)
   - [Selecting Elements](#selecting-elements)
   - [Working with Single Elements](#working-with-single-elements)
-  - [Collection Methods — ZQueryCollection](#collection-methods--zquerycollection)
-  - [Element Creation — $.create()](#element-creation--create)
-  - [Events — DOM & Global](#events--dom--global)
+  - [Collection Methods - ZQueryCollection](#collection-methods--zquerycollection)
+  - [Element Creation - $.create()](#element-creation--create)
+  - [Events - DOM & Global](#events--dom--global)
   - [Animations](#animations)
   - [Form Helpers](#form-helpers)
-  - [Extend with Plugins — $.fn](#extend-with-plugins--fn)
+  - [Extend with Plugins - $.fn](#extend-with-plugins--fn)
   - [Static Helpers](#static-helpers)
 - [Utilities](#utilities)
   - [Function Utilities](#function-utilities)
@@ -73,7 +79,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Storage Wrappers](#storage-wrappers)
   - [Event Bus](#event-bus)
 - [Error Handling](#error-handling)
-  - [Error Codes — $.ErrorCode](#error-codes--errorcode)
+  - [Error Codes - $.ErrorCode](#error-codes--errorcode)
   - [ZQueryError](#zqueryerror)
   - [$.onError(handler)](#onerrorhandler)
   - [reportError()](#reporterrorcode-message-context-cause)
@@ -92,15 +98,22 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [app.has()](#apphasname)
   - [escapeHtml()](#escapehtmlstr)
   - [SSR Error Handling](#ssr-error-handling)
+- [Security](#security)
+  - [Template Expression Escaping](#template-expression-escaping)
+  - [Expression Sandbox](#expression-sandbox)
+  - [Prototype Pollution Prevention](#prototype-pollution-prevention)
+  - [z-link Protocol Validation](#z-link-protocol-validation)
+  - [SSR Error Sanitization](#ssr-error-sanitization-1)
+  - [Best Practices](#best-practices)
 - [ES Module Exports](#es-module-exports-for-npmbundler-usage)
 
 ---
 
 ## Selectors & DOM
 
-zQuery gives you a full set of selectors for every common lookup pattern — by ID, class, tag, CSS query, or parent.
+zQuery gives you a full set of selectors for every common lookup pattern - by ID, class, tag, CSS query, or parent.
 
-**`$()` — the main function** — always returns a **`ZQueryCollection`** (like jQuery). Chainable, iterable, index-accessible:
+**`$()` - the main function** - always returns a **`ZQueryCollection`** (like jQuery). Chainable, iterable, index-accessible:
 
 | Selector | Returns | Description |
 | --- | --- | --- |
@@ -109,34 +122,34 @@ zQuery gives you a full set of selectors for every common lookup pattern — by 
 | `$(element)` | `ZQueryCollection` | Wrap a single element in a collection |
 | `$(nodeList \| array)` | `ZQueryCollection` | Wrap an existing NodeList or array |
 | `$(fn)` | `void` | DOMContentLoaded shorthand |
-| `$.all(selector)` | `ZQueryCollection` | Alias for `$()` — identical behavior |
+| `$.all(selector)` | `ZQueryCollection` | Alias for `$()` - identical behavior |
 
-**Raw-element shortcuts** — return a native DOM element (or `null`) for direct native API use:
+**Raw-element shortcuts** - return a native DOM element (or `null`) for direct native API use:
 
 | Selector | Returns | Description |
 | --- | --- | --- |
 | `$.id(id)` | `Element \| null` | `document.getElementById` |
-| `$.class(name)` | `Element \| null` | First element with the class — `querySelector('.name')` |
-| `$.qs(selector, ctx?)` | `Element \| null` | `querySelector` — any CSS selector, optional context element |
-| `$.qsa(selector, ctx?)` | `Element[]` | `querySelectorAll` — returns a real `Array` of raw elements |
+| `$.class(name)` | `Element \| null` | First element with the class - `querySelector('.name')` |
+| `$.qs(selector, ctx?)` | `Element \| null` | `querySelector` - any CSS selector, optional context element |
+| `$.qsa(selector, ctx?)` | `Element[]` | `querySelectorAll` - returns a real `Array` of raw elements |
 
-**Multi-element shortcuts** — return a `ZQueryCollection`:
+**Multi-element shortcuts** - return a `ZQueryCollection`:
 
 | Selector | Returns | Description |
 | --- | --- | --- |
-| `$.classes(name)` | `ZQueryCollection` | All elements with the class — `getElementsByClassName` |
-| `$.tag(name)` | `ZQueryCollection` | All elements of a tag — `getElementsByTagName` |
-| `$.name(name)` | `ZQueryCollection` | All elements with a `name` attribute — `getElementsByName` |
+| `$.classes(name)` | `ZQueryCollection` | All elements with the class - `getElementsByClassName` |
+| `$.tag(name)` | `ZQueryCollection` | All elements of a tag - `getElementsByTagName` |
+| `$.name(name)` | `ZQueryCollection` | All elements with a `name` attribute - `getElementsByName` |
 | `$.children(parentId)` | `ZQueryCollection` | Direct children of `#parentId` |
 
-> `queryAll` is the ES module export name for `$.all()` — they are identical. Use `queryAll` in `import { queryAll } from '...'` contexts.
+> `queryAll` is the ES module export name for `$.all()` - they are identical. Use `queryAll` in `import { queryAll } from '...'` contexts.
 
-> **Which one should I use?** `$()` is the go-to — it returns a chainable collection for any CSS selector, HTML string, or element. Use `$.id()` / `$.class()` / `$.qs()` when you need a raw DOM element for the native API. Use `$.qsa()` when you need an array of raw elements with full Array methods. Use `$.classes()` / `$.tag()` / `$.name()` / `$.children()` as convenient shortcuts for common multi-element lookups.
+> **Which one should I use?** `$()` is the go-to - it returns a chainable collection for any CSS selector, HTML string, or element. Use `$.id()` / `$.class()` / `$.qs()` when you need a raw DOM element for the native API. Use `$.qsa()` when you need an array of raw elements with full Array methods. Use `$.classes()` / `$.tag()` / `$.name()` / `$.children()` as convenient shortcuts for common multi-element lookups.
 
 ### Selecting Elements
 
 ```js
-// $() — always returns a ZQueryCollection (chainable)
+// $() - always returns a ZQueryCollection (chainable)
 const sidebar  = $('#sidebar');                     // 1-element collection
 const cards    = $('.card');                        // all matching elements
 const nested   = $('li', '#todo-list');             // scoped inside #todo-list
@@ -161,7 +174,7 @@ const navItems = $.children('main-nav');
 
 ### Working with Single Elements
 
-`$.id()`, `$.class()`, `$.qs()`, and `$.qsa()` return **raw DOM elements** — use the native API directly:
+`$.id()`, `$.class()`, `$.qs()`, and `$.qsa()` return **raw DOM elements** - use the native API directly:
 
 ```js
 // Native DOM API on raw elements
@@ -170,7 +183,7 @@ $.id('confirm-dialog').style.display = 'flex';
 $.id('cart-count').textContent = '3';
 $.class('avatar').setAttribute('src', user.photoUrl);
 
-// $.qs() — use any CSS selector for raw elements
+// $.qs() - use any CSS selector for raw elements
 $.qs('[data-active]').dataset.active = 'false';
 $.qsa('.card').forEach(el => el.classList.add('loaded'));
 
@@ -180,11 +193,11 @@ $('#confirm-dialog').show('flex');
 $('#cart-count').text('3');
 ```
 
-> **`$.id()` uses `document.getElementById`** — it's a hash lookup, faster than `querySelector('#id')`. Use `$.id()` when you need a raw element for the native API; use `$('#id')` when you want chaining.
+> **`$.id()` uses `document.getElementById`** - it's a hash lookup, faster than `querySelector('#id')`. Use `$.id()` when you need a raw element for the native API; use `$('#id')` when you want chaining.
 
 ---
 
-### Collection Methods — `ZQueryCollection`
+### Collection Methods - `ZQueryCollection`
 
 `$()`, `$.all()`, `$.create()`, `$.classes()`, `$.tag()`, `$.name()`, and `$.children()` all return a `ZQueryCollection` with a rich set of chainable methods. Most setters return `this` for chaining; getters return the value from the first element.
 
@@ -215,9 +228,9 @@ $('#cart-count').text('3');
 
 | Method | Signature | Returns | Description |
 | --- | --- | --- | --- |
-| `each` | `each(fn)` | `this` | `fn.call(el, index, el)` — chainable |
-| `map` | `map(fn)` | `Array` | `fn.call(el, index, el)` — returns plain array |
-| `forEach` | `forEach(fn)` | `this` | `fn(el, index, elements)` — Array-style iteration, chainable |
+| `each` | `each(fn)` | `this` | `fn.call(el, index, el)` - chainable |
+| `map` | `map(fn)` | `Array` | `fn.call(el, index, el)` - returns plain array |
+| `forEach` | `forEach(fn)` | `this` | `fn(el, index, elements)` - Array-style iteration, chainable |
 | `first` | `first()` | `Element \| null` | First element in collection |
 | `last` | `last()` | `Element \| null` | Last element in collection |
 | `eq` | `eq(index)` | `ZQueryCollection` | Single-element collection at given index |
@@ -227,7 +240,7 @@ $('#cart-count').text('3');
 | `get` | `get(index?)` | `Element \| Element[]` | Retrieve element by index (supports negative). No args → array of all. |
 | `index` | `index(selector?)` | `number` | Position of first element among its siblings, or index of a given element in the collection |
 
-> **Numeric indexing:** You can access elements directly by index — `$('.card')[0]` returns the first raw DOM element, just like an array. The collection also implements `[Symbol.iterator]`, so `for...of` and spread (`...`) work natively.
+> **Numeric indexing:** You can access elements directly by index - `$('.card')[0]` returns the first raw DOM element, just like an array. The collection also implements `[Symbol.iterator]`, so `for...of` and spread (`...`) work natively.
 
 #### Classes & Attributes
 
@@ -247,7 +260,7 @@ $('#cart-count').text('3');
 | Method | Signature | Returns | Description |
 | --- | --- | --- | --- |
 | `html` | `html(content?)` | `string \| this` | Get innerHTML, or set with **auto-morph**: diffs existing children via the morph engine (LIS keyed reconciliation, `isEqualNode()` bail-outs). Empty elements use raw `innerHTML` for fast first-paint. Use `empty().html()` to force raw innerHTML. |
-| `morph` | `morph(content)` | `this` | Always morph — run content through the diff engine regardless of whether the element already has children |
+| `morph` | `morph(content)` | `this` | Always morph - run content through the diff engine regardless of whether the element already has children |
 | `text` | `text(content?)` | `string \| this` | Get/set textContent |
 | `val` | `val(value?)` | `string \| this` | Get/set input/textarea value |
 | `append` | `append(content)` | `this` | Append HTML string, Node, or ZQueryCollection |
@@ -309,7 +322,7 @@ $('#cart-count').text('3');
 
 ---
 
-### Element Creation — `$.create()`
+### Element Creation - `$.create()`
 
 Create a DOM element programmatically with attributes, styles, event listeners, and children in a single call. Returns a `ZQueryCollection` so you can chain additional methods:
 
@@ -321,7 +334,7 @@ const btn = $.create('button', {
   data: { action: 'submit', id: '42' }  // sets data-action, data-id
 }, 'Click Me').appendTo('body');
 
-// Chaining example — create, style, and insert in one expression
+// Chaining example - create, style, and insert in one expression
 $.create('div', { class: 'toast' })
   .text('Saved!')
   .css({ opacity: 1 })
@@ -340,12 +353,12 @@ Additional arguments after `attrs` are appended as children (strings become text
 
 ---
 
-### Events — DOM & Global
+### Events - DOM & Global
 
 Single elements use native `addEventListener`. Collections get chainable `.on()`. Global events use `$.on()` / `$.off()`. Both `$()` and `$.on()` accept `window` and other `EventTarget`s for non-bubbling events like `scroll`.
 
 ```js
-// Single element — native DOM API
+// Single element - native DOM API
 const saveBtn = $.id('save-btn');
 saveBtn.addEventListener('click', () => { /* save logic */ });
 
@@ -354,12 +367,12 @@ $.on('keydown', (e) => {
   if (e.key === 'Escape') $.id('modal').style.display = 'none';
 });
 
-// Delegated — listen on a parent, filter by child selector
+// Delegated - listen on a parent, filter by child selector
 $.on('click', '.delete-btn', function(e) {
   this.closest('.todo-item').remove();
 });
 
-// Target-bound — listen on a specific EventTarget
+// Target-bound - listen on a specific EventTarget
 $.on('scroll', window, () => {
   console.log('scrolled to', window.scrollY);
 });
@@ -374,7 +387,7 @@ const handler = (e) => console.log(e.detail);
 $.on('theme:change', handler);
 $.off('theme:change', handler);
 
-// Collection .on() — when you truly need the same handler on many elements
+// Collection .on() - when you truly need the same handler on many elements
 $('nav a').on('mouseenter mouseleave', (e) => {
   e.target.classList.toggle('hovered');
 });
@@ -431,7 +444,7 @@ form.serializeObject();  // { name: 'Tony', email: 'tony@x.com' }
 
 ---
 
-### Extend with Plugins — `$.fn`
+### Extend with Plugins - `$.fn`
 
 `$.fn` is an alias for `ZQueryCollection.prototype`. Add custom methods to it just like jQuery plugins:
 
@@ -481,7 +494,7 @@ $.on('scroll', window, () => {
 });
 ```
 
-> **Tip:** You can also use `$(window).on('scroll', handler)` — the collection form works identically.
+> **Tip:** You can also use `$(window).on('scroll', handler)` - the collection form works identically.
 
 #### `$.on(event, handler)`
 
@@ -507,7 +520,7 @@ $.off('resize', onResize);
 
 ---
 
-## Reactive — Proxies & Signals
+## Reactive - Proxies & Signals
 
 ### `reactive(object, onChange)`
 
@@ -570,7 +583,7 @@ Create a derived Signal that auto-recomputes when its signal dependencies change
 | --- | --- | --- |
 | `fn` | `() => any` | Computation function (reads signals via `.value`) |
 
-**Returns:** `Signal` (read-only — setting `.value` is not recommended)
+**Returns:** `Signal` (read-only - setting `.value` is not recommended)
 
 ```js
 const count = $.signal(5);
@@ -588,7 +601,7 @@ Run a side-effect function that automatically subscribes to any Signals read dur
 | --- | --- | --- |
 | `fn` | `() => void` | Effect function |
 
-**Returns:** `() => void` — dispose function
+**Returns:** `() => void` - dispose function
 
 ```js
 const x = $.signal(1);
@@ -600,6 +613,56 @@ const dispose = $.effect(() => {
 
 x.value = 10;  // re-runs: "sum: 12"
 dispose();      // stops tracking
+```
+
+### `batch(fn)`
+
+Defer all signal notifications until the batch function completes. Effects that depend on multiple signals run exactly once.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `fn` | `() => any` | Function containing signal mutations |
+
+**Returns:** Whatever `fn` returns
+
+```js
+const a = $.signal(1);
+const b = $.signal(2);
+
+$.effect(() => console.log(a.value + b.value));  // logs 3
+
+$.batch(() => {
+  a.value = 10;
+  b.value = 20;
+});
+// Effect fires ONCE → logs 30
+```
+
+- Nested batches: inner batch just runs, outer batch flushes
+- Error safety: subscribers still flush via `finally` if batch throws
+
+### `untracked(fn)`
+
+Read signals inside `untracked()` without registering them as dependencies.
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `fn` | `() => any` | Function containing signal reads |
+
+**Returns:** Whatever `fn` returns
+
+```js
+const a = $.signal(1);
+const b = $.signal(10);
+
+$.effect(() => {
+  const aVal = a.value;                      // tracked
+  const bVal = $.untracked(() => b.value);   // NOT tracked
+  console.log(aVal + bVal);
+});
+
+b.value = 20;  // effect does NOT re-run
+a.value = 2;   // effect re-runs → logs 22
 ```
 
 ---
@@ -616,7 +679,7 @@ Create and activate a client-side SPA router.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
-| `el` | `string \| Element` | — | Outlet element where route components are rendered |
+| `el` | `string \| Element` | `<z-outlet>` | Outlet element where route components are rendered. If omitted, the router auto-detects a `<z-outlet>` element in the DOM. |
 | `mode` | `'history' \| 'hash'` | `'history'` | Routing mode. Hash mode uses `#/path`. **Note:** On `file://` protocol, hash mode is always forced regardless of this setting (pushState cannot work on `file://`). |
 | `base` | `string` | `''` | Base path prefix (e.g. `'/my-app'`). Stripped from path matching. **Auto-detected** from `<base href>` if not set (also checks `window.__ZQ_BASE`). |
 | `routes` | `Array<RouteObject>` | `[]` | Initial route definitions |
@@ -624,7 +687,6 @@ Create and activate a client-side SPA router.
 
 ```js
 const router = $.router({
-  el: '#app',
   mode: 'history',
   base: '/my-app',
   routes: [
@@ -636,6 +698,37 @@ const router = $.router({
 });
 ```
 
+#### `<z-outlet>` — Declarative Router Outlet
+
+Instead of specifying `el: '#app'` in JavaScript, you can place a `<z-outlet>` element in your HTML. The router auto-detects it and uses it as the mount point:
+
+```html
+<body>
+  <nav>...</nav>
+  <z-outlet></z-outlet>
+</body>
+```
+
+```js
+// No `el:` needed — auto-detects <z-outlet>
+$.router({ routes, fallback: 'not-found' });
+```
+
+`<z-outlet>` also supports inline attribute overrides for common config. These are read as defaults — explicit config options always take priority:
+
+| Attribute | Maps To | Example |
+| --- | --- | --- |
+| `fallback` | `config.fallback` | `<z-outlet fallback="not-found">` |
+| `mode` | `config.mode` | `<z-outlet mode="hash">` |
+| `base` | `config.base` | `<z-outlet base="/my-app">` |
+
+```html
+<!-- All-in-one: outlet with config defaults -->
+<z-outlet fallback="not-found" mode="hash" base="/my-app"></z-outlet>
+```
+
+If both `el:` and `<z-outlet>` exist, `el:` wins. If neither exists, the router runs headless (no component mounting — guards and listeners still work).
+
 #### Using `<base href>` for Sub-Path Deployments
 
 When deploying under a sub-directory (e.g. `https://example.com/my-app/`), add a `<base href>` tag to your HTML:
@@ -646,10 +739,10 @@ When deploying under a sub-directory (e.g. `https://example.com/my-app/`), add a
 </head>
 ```
 
-The router picks this up automatically — no extra code needed:
+The router picks this up automatically - no extra code needed:
 
 ```js
-$.router({ el: '#app', routes, fallback: 'not-found' });
+$.router({ routes, fallback: 'not-found' });
 ```
 
 Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base href>` tag.
@@ -669,7 +762,7 @@ Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base hre
 
 | Pattern | Matches | Params |
 | --- | --- | --- |
-| `/` | Exactly `/` | — |
+| `/` | Exactly `/` | - |
 | `/user/:id` | `/user/42`, `/user/abc` | `{ id: '42' }` |
 | `/post/:id/comment/:cid` | `/post/1/comment/5` | `{ id: '1', cid: '5' }` |
 | `/files/*` | `/files/a/b/c` | Captured by wildcard group |
@@ -685,13 +778,13 @@ Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base hre
 | `go` | `go(n)` | `this` | `history.go(n)` |
 | `add` | `add(route)` | `this` | Add a route dynamically. Chainable. |
 | `remove` | `remove(path)` | `this` | Remove route by path. |
-| `beforeEach` | `beforeEach(fn)` | `this` | Add navigation guard. `fn(to, from)` — return `false` to cancel, `string` to redirect. |
+| `beforeEach` | `beforeEach(fn)` | `this` | Add navigation guard. `fn(to, from)` - return `false` to cancel, `string` to redirect. |
 | `afterEach` | `afterEach(fn)` | `this` | Add post-navigation guard. |
 | `onChange` | `onChange(fn)` | `() => void` | Subscribe to route changes. Returns unsubscribe. `fn(to, from)`. |
 | `pushSubstate` | `pushSubstate(key, data?)` | `this` | Push a sub-route history entry for in-component UI state. See **Substates** below. |
 | `onSubstate` | `onSubstate(fn)` | `() => void` | Subscribe to substate pops. Returns unsubscribe. `fn(key, data, action)`. |
 | `resolve` | `resolve(path)` | `string` | Resolve an app-relative path to a full URL path (including base). Useful for programmatic link generation. |
-| `destroy` | `destroy()` | — | Teardown router and mounted component. |
+| `destroy` | `destroy()` | - | Teardown router and mounted component. |
 
 #### `navigate()` / `replace()` Options
 
@@ -705,7 +798,7 @@ Detection priority: explicit `base` option → `window.__ZQ_BASE` → `<base hre
 // Simple navigation
 router.navigate('/about');
 
-// Dynamic params — fills :param placeholders in the path
+// Dynamic params - fills :param placeholders in the path
 const userId = 42;
 router.navigate('/user/:id', { params: { id: userId } });  // → /user/42
 
@@ -715,18 +808,18 @@ router.navigate('/post/:postId/comment/:cid', { params: { postId: 5, cid: 99 } }
 // With history state
 router.navigate('/user/:id', { params: { id: userId }, state: { from: 'list' } });
 
-// replace() — same API, but replaces the current history entry (no back button)
+// replace() - same API, but replaces the current history entry (no back button)
 router.replace('/dashboard');
 router.replace('/user/:id', { params: { id: userId } });
 ```
 
-> **`navigate()` vs `replace()`:** `navigate()` pushes a new history entry (user can go back). `replace()` overwrites the current entry — use it for redirects, post-login flows, or tab switches where going back doesn't make sense.
+> **`navigate()` vs `replace()`:** `navigate()` pushes a new history entry (user can go back). `replace()` overwrites the current entry - use it for redirects, post-login flows, or tab switches where going back doesn't make sense.
 
 > **Same-path deduplication:** Calling `navigate()` with the same URL that is already active is a no-op (no duplicate history entry). Hash-only changes on the same route (e.g. `/docs` → `/docs#api`) use `replaceState` internally so the back button returns to the *previous route* instead of toggling between scroll positions.
 
 ### Sub-Route History Substates
 
-Substates let you push lightweight history entries for **in-component UI changes** — modals, tabs, panels, expandable sections — without changing the URL. The back button undoes the most recent UI change instead of leaving the page.
+Substates let you push lightweight history entries for **in-component UI changes** - modals, tabs, panels, expandable sections - without changing the URL. The back button undoes the most recent UI change instead of leaving the page.
 
 ```js
 // 1. Push a substate when opening a modal
@@ -745,7 +838,7 @@ router.onSubstate((key, data, action) => {
 ```
 
 **How it works:**
-- `pushSubstate(key, data)` calls `history.pushState()` with a zQuery state marker — the URL stays the same.
+- `pushSubstate(key, data)` calls `history.pushState()` with a zQuery state marker - the URL stays the same.
 - When the user presses Back, the `popstate` event fires with the substate marker. zQuery calls all `onSubstate` listeners first.
 - If any listener returns `true`, the pop is consumed and route resolution is skipped.
 - If no listener handles it, normal route resolution proceeds (the user navigates away).
@@ -790,12 +883,12 @@ The `to` and `from` objects passed to guards and `onChange`:
 ```
 
 **Routed component props:** When a component is mounted by the router, it receives:
-- `this.props.$route` — the full route context
-- `this.props.$params` — route params
-- `this.props.$query` — query params
+- `this.props.$route` - the full route context
+- `this.props.$params` - route params
+- `this.props.$query` - query params
 - Plus all route params individually (e.g. `this.props.id`)
 
-### `z-link` — Navigation Links
+### `z-link` - Navigation Links
 
 Use the `z-link` attribute on `<a>` tags for SPA navigation. Clicks are intercepted and handled by the router (no page reload).
 
@@ -805,22 +898,22 @@ Use the `z-link` attribute on `<a>` tags for SPA navigation. Clicks are intercep
 <a z-link="/search?q=zQuery">Search</a>
 ```
 
-### `z-to-top` — Scroll to Top on Navigation
+### `z-to-top` - Scroll to Top on Navigation
 
 Add the `z-to-top` modifier to any `z-link` element to scroll the page to the top after navigation. Accepts an optional value of `"instant"` (default) or `"smooth"`.
 
 ```html
-<!-- Instant scroll (default) — avoids visual jitter on page changes -->
+<!-- Instant scroll (default) - avoids visual jitter on page changes -->
 <a z-link="/" z-to-top>Home</a>
 <a z-link="/about" z-to-top="instant">About</a>
 
-<!-- Smooth scroll — animated scroll to top -->
+<!-- Smooth scroll - animated scroll to top -->
 <a z-link="/docs" z-to-top="smooth">Docs</a>
 ```
 
 Omit `z-to-top` to preserve the scroll position across navigations (useful for tabs or sub-views).
 
-**Dynamic paths in `render()` — template literal interpolation:**
+**Dynamic paths in `render()` - template literal interpolation:**
 
 ```js
 render() {
@@ -829,13 +922,13 @@ render() {
 }
 ```
 
-**Dynamic paths in HTML templates — `:z-link` binding:**
+**Dynamic paths in HTML templates - `:z-link` binding:**
 
 ```html
 <a :z-link="'/user/' + state.userId">Profile</a>
 ```
 
-**Named params — `z-link-params` attribute:**
+**Named params - `z-link-params` attribute:**
 
 Use `z-link-params` to supply a JSON object of `:param` values. The router fills in the placeholders automatically:
 
@@ -846,6 +939,27 @@ Use `z-link-params` to supply a JSON object of `:param` values. The router fills
 <a z-link="/post/:pid/comment/:cid" z-link-params='{"pid": "5", "cid": "99"}'>View Comment</a>
 <!-- navigates to /post/5/comment/99 -->
 ```
+
+> **Security:** `z-link` only accepts internal route paths. Protocol schemes like `javascript:`, `data:`, and `http:` are automatically rejected. Use regular `<a href>` tags for external links.
+
+### `z-active-route` - Active Route Class
+
+Automatically toggle a CSS class on elements based on whether their route matches the current path.
+
+| Attribute | Required | Description |
+| --- | --- | --- |
+| `z-active-route="/path"` | Yes | Path to match. Prefix match by default. |
+| `z-active-class="className"` | No | Custom class to toggle (default: `active`). |
+| `z-active-exact` | No | Require exact path match instead of prefix. |
+
+```html
+<a z-link="/docs" z-active-route="/docs">Docs</a>
+<a z-link="/about" z-active-route="/about" z-active-class="selected">About</a>
+<a z-link="/docs" z-active-route="/docs" z-active-exact>Docs</a>
+<a z-link="/" z-active-route="/" z-active-exact>Home</a>
+```
+
+Root path `/` only matches itself (never prefixes other routes).
 
 ### `getRouter()`
 
@@ -866,7 +980,7 @@ Register a new component.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| `name` | `string` | Component name — **must contain a hyphen** (e.g. `'app-counter'`) |
+| `name` | `string` | Component name - **must contain a hyphen** (e.g. `'app-counter'`) |
 | `definition` | `object` | Component definition (see below) |
 
 ```js
@@ -883,17 +997,17 @@ $.component('app-counter', {
 | --- | --- | --- | --- |
 | `state` | `object \| () => object` | No | Initial reactive state. Function form recommended for reusability. |
 | `render` | `() => string` | No | Returns HTML string. Called on every state change. `this` is the component instance. Required unless `templateUrl` is used. |
-| `styles` | `string` | No | CSS string — automatically scoped to this component's root element on first render. |
+| `styles` | `string` | No | CSS string - automatically scoped to this component's root element on first render. |
 | `templateUrl` | `string \| string[] \| { key: url }` | No | URL to an external HTML template file, or an array/object map of URLs for multi-template components. If `render()` is also defined, `render()` takes priority. See [External Templates & Styles](#external-templates--styles). |
 | `styleUrl` | `string \| string[]` | No | URL (or array of URLs) to external CSS file(s). Fetched and scoped automatically on first mount. Merged with inline `styles` if both are present. |
-| `base` | `string` | No | Optional override for the base path used to resolve relative `templateUrl` and `styleUrl` paths. By default, paths resolve relative to the component file automatically — you only need `base` if you want to point somewhere else (e.g. `base: 'app/shared/'`). |
+| `base` | `string` | No | Optional override for the base path used to resolve relative `templateUrl` and `styleUrl` paths. By default, paths resolve relative to the component file automatically - you only need `base` if you want to point somewhere else (e.g. `base: 'app/shared/'`). |
 | `init` | `() => void` | No | Called before first render (during construction). |
 | `mounted` | `() => void` | No | Called once after first render and DOM insertion. |
 | `updated` | `() => void` | No | Called after every subsequent re-render. |
 | `destroyed` | `() => void` | No | Called when the component is destroyed. Clean up subscriptions here. |
 | `computed` | `object` | No | Object of getter functions. Each key becomes a derived value on `this.computed.name`. Receives raw state as argument. |
 | `watch` | `object` | No | Object of callbacks keyed by state path. Called with `(newVal, oldVal)` when the watched key changes. Supports nested keys. |
-| `props` | — | No | Reserved key; props are set externally. |
+| `props` | - | No | Reserved key; props are set externally. |
 | *(any other key)* | `function` | No | Becomes an instance method, available as `this.methodName()` and in `@event` bindings. |
 
 **Full example:**
@@ -971,11 +1085,11 @@ Available inside component methods as `this`, or from `$.mount()` / `$.getInstan
 | `this.setState(partial)` | `(object) => void` | Merge partial state (triggers re-render). |
 | `this.emit(name, detail)` | `(string, any) => void` | Dispatch a bubbling CustomEvent from the component root. |
 | `this.destroy()` | `() => void` | Teardown: removes listeners, scoped styles, clears DOM. |
-| `this._scheduleUpdate()` | `() => void` | Manually queue a re-render (microtask batched). Safe to call from anywhere — state mutations during render are coalesced, so there is no risk of infinite re-render loops. Useful for store subscriptions. |
+| `this._scheduleUpdate()` | `() => void` | Manually queue a re-render (microtask batched). Safe to call from anywhere - state mutations during render are coalesced, so there is no risk of infinite re-render loops. Useful for store subscriptions. |
 
 ### Computed Properties
 
-Computed properties are derived values recalculated from state whenever accessed. Define them as getter functions in the `computed` option — each receives the raw state object and returns a value.
+Computed properties are derived values recalculated from state whenever accessed. Define them as getter functions in the `computed` option - each receives the raw state object and returns a value.
 
 ```js
 $.component('order-summary', {
@@ -1006,14 +1120,14 @@ $.component('order-summary', {
 
 | Detail | Description |
 | --- | --- |
-| Access | `this.computed.name` — available in `render()`, methods, and lifecycle hooks. |
+| Access | `this.computed.name` - available in `render()`, methods, and lifecycle hooks. |
 | Mechanism | Each computed property is a getter via `Object.defineProperty`. Re-invoked on every access. |
 | Argument | The function receives `this.state.__raw` (unwrapped state) as its first argument. |
 | Cross-reference | Computed properties can reference other computed values (e.g. `this.computed.subtotal`). |
 
 ### Watch Callbacks
 
-Watch callbacks fire when a specific state key changes. Use them for side effects — localStorage, analytics, toasts, external DOM updates, data fetching.
+Watch callbacks fire when a specific state key changes. Use them for side effects - localStorage, analytics, toasts, external DOM updates, data fetching.
 
 ```js
 $.component('settings-panel', {
@@ -1041,12 +1155,12 @@ $.component('settings-panel', {
 
 | Detail | Description |
 | --- | --- |
-| Signature | `key(newVal, oldVal)` — called with the new and previous values. |
+| Signature | `key(newVal, oldVal)` - called with the new and previous values. |
 | Nested keys | `'user.name'` watches the `name` property inside `user`. |
 | Parent keys | A watcher on `'user'` also fires when `'user.name'` changes. |
 | Timing | Fires synchronously in the reactive setter, before the batched DOM update. |
 
-### Slots — Content Projection
+### Slots - Content Projection
 
 Slots let a parent inject content into a child component's template. The child uses `<slot>` placeholders; the parent provides content inside the child's tag.
 
@@ -1099,11 +1213,11 @@ $.component('page-layout', {
 | Named | Children with `slot="name"` go to the matching `<slot name="name">`. |
 | Default | Everything else (elements without `slot` attr + non-whitespace text nodes) goes to the unnamed `<slot>`. |
 | Fallback | Content between `<slot>...</slot>` is used when no projected content is provided. Supports rich HTML. |
-| Self-closing | `<slot />` and `<slot name="x" />` are supported — no fallback content for self-closing tags. |
+| Self-closing | `<slot />` and `<slot name="x" />` are supported - no fallback content for self-closing tags. |
 | Multiple sites | If two `<slot>` tags exist in one template, both receive the same projected content. |
 | Accumulation | Multiple children with the same `slot="name"` are concatenated into the named slot. |
 | Preservation | Attributes, classes, inline styles, and nested HTML on projected content are preserved. |
-| Static snapshot | Projected content is an outerHTML snapshot — not re-evaluated as template expressions. |
+| Static snapshot | Projected content is an outerHTML snapshot - not re-evaluated as template expressions. |
 | Re-renders | Slot content survives state-change re-renders (captured once, replayed on every render). |
 | Comment nodes | HTML comments in projected content are silently ignored. |
 | Empty `slot=""` | An empty `slot` attribute (`slot=""` or bare `slot`) maps to the default slot. |
@@ -1112,7 +1226,7 @@ $.component('page-layout', {
 
 Components can load HTML templates and CSS from external files. Resources are fetched once on first mount and cached globally.
 
-#### `styleUrl` — External CSS
+#### `styleUrl` - External CSS
 
 ```js
 $.component('my-widget', {
@@ -1124,7 +1238,7 @@ $.component('my-widget', {
 
 The CSS file is fetched, scoped to the component, and injected into `<head>`. If `styles` (inline) is also defined, they are merged.
 
-#### `templateUrl` — External HTML Template
+#### `templateUrl` - External HTML Template
 
 ```js
 $.component('my-widget', {
@@ -1151,14 +1265,14 @@ Template file uses `{{expression}}` interpolation:
 | Caching | Resources are fetched once per URL and shared across all instances of the definition. |
 | URL resolution | Relative paths resolve relative to the component file automatically. Absolute paths and full URLs are used as-is. If a `base` string is provided, it overrides the auto-detected path. |
 | `{{expression}}` context | Expressions run inside `with(state) { ... }` giving direct access to all state properties. `props` and `$` are also available. |
-| `${}` vs `{{}}` | `${}` is JavaScript template literal syntax — it only works inside `render()`. External `templateUrl` files have no JS context, so `{{}}` is the interpolation syntax here. Inside `render()`, use `${}` for state and logic, and `{{}}` only inside `z-for` loop bodies for iteration variables. |
+| `${}` vs `{{}}` | `${}` is JavaScript template literal syntax - it only works inside `render()`. External `templateUrl` files have no JS context, so `{{}}` is the interpolation syntax here. Inside `render()`, use `${}` for state and logic, and `{{}}` only inside `z-for` loop bodies for iteration variables. |
 
-#### Multiple Templates — `templateUrl` as object or array
+#### Multiple Templates - `templateUrl` as object or array
 
 `templateUrl` also accepts an **object map** or **array** of URLs. When multiple templates are loaded, they are exposed as `this.templates` inside `render()`.
 
 ```js
-// Object form — keyed by name
+// Object form - keyed by name
 $.component('docs-page', {
   templateUrl: {
     'router':     'pages/router.html',
@@ -1171,7 +1285,7 @@ $.component('docs-page', {
   }
 });
 
-// Array form — keyed by index (0, 1, 2…)
+// Array form - keyed by index (0, 1, 2…)
 $.component('multi-step', {
   templateUrl: ['pages/step1.html', 'pages/step2.html'],
   render() {
@@ -1188,7 +1302,7 @@ $.component('multi-step', {
 
 All templates are fetched in parallel on first mount and cached. Subsequent mounts are instant.
 
-#### Multiple Stylesheets — `styleUrl` as array
+#### Multiple Stylesheets - `styleUrl` as array
 
 `styleUrl` can accept an **array of URLs**. All stylesheets are fetched in parallel, concatenated, and scoped.
 
@@ -1206,27 +1320,27 @@ $.component('my-widget', {
 
 Directives are special attributes used inside component `render()` HTML templates. They're processed automatically on each render, giving you declarative control over the DOM without manual queries.
 
-**Processing order:** `z-for` → `z-pre` → `z-if`/`z-else-if`/`z-else` → `z-show` → `z-bind`/`:attr` → `z-class` → `z-style` → `z-html` → `z-text` → `z-cloak` → `@event`/`z-on` → `z-ref` → `z-model` → `z-key` (morph engine) • `z-skip` (morph engine — opt out of diffing)
+**Processing order:** `z-for` → `z-pre` → `z-if`/`z-else-if`/`z-else` → `z-show` → `z-bind`/`:attr` → `z-class` → `z-style` → `z-html` → `z-text` → `z-cloak` → `@event`/`z-on` → `z-ref` → `z-model` → `z-key` (morph engine) • `z-skip` (morph engine - opt out of diffing)
 
-#### `${}` vs `{{}}` — Template Interpolation
+#### `${}` vs `{{}}` - Template Interpolation
 
 zQuery has two interpolation syntaxes that run at different times:
 
 | Syntax | Evaluated When | Scope | Use In |
 | --- | --- | --- | --- |
-| `${}` | At JS execution time (when `render()` runs) | Full JS scope — `this.state`, methods, imports | `render()` only |
+| `${}` | At JS execution time (when `render()` runs) | Full JS scope - `this.state`, methods, imports | `render()` only |
 | `{{}}` | After render, at the string level (pre-morph) | Loop variables + `state` + `computed` + `props` | `z-for` bodies in `render()`; everywhere in `templateUrl` HTML |
 
-**Rule of thumb:** In `render()`, use `${}` for everything *except* inside `z-for` template bodies, where you need `{{}}` to access loop variables like `item` or `i`. In external `templateUrl` HTML files, `{{}}` is the only syntax — there's no JS template literal context.
+**Rule of thumb:** In `render()`, use `${}` for everything *except* inside `z-for` template bodies, where you need `{{}}` to access loop variables like `item` or `i`. In external `templateUrl` HTML files, `{{}}` is the only syntax - there's no JS template literal context.
 
 ```js
-// ✅ render() — mix both syntaxes
+// ✅ render() - mix both syntaxes
 render() {
   return `
     <h1>${this.state.title}</h1>
     <ul>
       <li z-for="item in items" z-key="{{item.id}}">
-        {{item.name}} — {{item.role}}
+        {{item.name}} - {{item.role}}
       </li>
     </ul>
     ${this.state.showFooter ? '<footer>Done</footer>' : ''}
@@ -1235,7 +1349,7 @@ render() {
 ```
 
 ```html
-<!-- ✅ templateUrl — {{}} only -->
+<!-- ✅ templateUrl - {{}} only -->
 <h1>{{title}}</h1>
 <ul>
   <li z-for="item in items" z-key="{{item.id}}">{{item.name}}</li>
@@ -1244,14 +1358,14 @@ render() {
 
 > **Why does `z-key` need `{{}}`?** The `z-key` attribute is read by the morph engine as a raw string. Inside a `z-for`, the `{{}}` interpolation expands *before* the HTML reaches the DOM, so `z-key="{{item.id}}"` becomes `z-key="42"` by the time the differ sees it. Writing `z-key="item.id"` would give every element the literal key `"item.id"`.
 
-#### `z-for` — List Rendering
+#### `z-for` - List Rendering
 
 Expands at the string level (before innerHTML is set). Use `{{expression}}` for interpolation inside the loop body.
 
 | Form | Syntax | Description |
 | --- | --- | --- |
 | Array | `z-for="item in items"` | Iterates each element |
-| Array with index | `z-for="(item, i) in items"` | Destructured — `item` is value, `i` is index |
+| Array with index | `z-for="(item, i) in items"` | Destructured - `item` is value, `i` is index |
 | Number range | `z-for="n in 5"` | Produces 1, 2, 3, 4, 5 (1-based) |
 | Object | `z-for="(val, key) in obj"` | Iterates `Object.entries()` |
 
@@ -1273,9 +1387,9 @@ Expands at the string level (before innerHTML is set). Use `{{expression}}` for 
 <div z-for="(val, key) in settings">{{key}}: {{val}}</div>
 ```
 
-Nested `z-for` is supported — inner loops are processed first, then the parser recurses outward.
+Nested `z-for` is supported - inner loops are processed first, then the parser recurses outward.
 
-#### `z-if` / `z-else-if` / `z-else` — Conditional Rendering
+#### `z-if` / `z-else-if` / `z-else` - Conditional Rendering
 
 Evaluates the expression. If truthy, the element is kept; if falsy, it's **removed from the DOM entirely**. Chain with immediate siblings:
 
@@ -1287,7 +1401,7 @@ Evaluates the expression. If truthy, the element is kept; if falsy, it's **remov
 
 Only the first truthy branch is kept. All others are removed.
 
-#### `z-show` — Toggle Display
+#### `z-show` - Toggle Display
 
 Toggles `display: none` without removing the element from the DOM. Use when you need frequent toggling.
 
@@ -1296,7 +1410,7 @@ Toggles `display: none` without removing the element from the DOM. Use when you 
 <p z-show="items.length === 0">No items yet.</p>
 ```
 
-#### `z-bind` / `:attr` — Dynamic Attribute Binding
+#### `z-bind` / `:attr` - Dynamic Attribute Binding
 
 Two equivalent syntaxes for binding any HTML attribute:
 
@@ -1311,7 +1425,7 @@ Two equivalent syntaxes for binding any HTML attribute:
 - `true` → boolean attribute (`<el disabled>`)
 - Any other value → attribute set to `String(val)`
 
-#### `z-class` — Dynamic Class Binding
+#### `z-class` - Dynamic Class Binding
 
 Accepts a string, array, or object:
 
@@ -1325,7 +1439,7 @@ Accepts a string, array, or object:
 <div z-class="{ active: isSelected, 'text-muted': !isEnabled }">...</div>
 ```
 
-#### `z-style` — Dynamic Inline Styles
+#### `z-style` - Dynamic Inline Styles
 
 Accepts a string or object:
 
@@ -1336,24 +1450,24 @@ Accepts a string or object:
 
 Object keys use camelCase (`fontSize`, not `font-size`). String values are appended to existing `cssText`.
 
-#### `z-text` — Safe Text Binding
+#### `z-text` - Safe Text Binding
 
-Sets `el.textContent`. Does **not** parse HTML — safe by default.
+Sets `el.textContent`. Does **not** parse HTML - safe by default.
 
 ```html
 <span z-text="user.name"></span>
 <p z-text="message"></p>
 ```
 
-#### `z-html` — HTML Injection
+#### `z-html` - HTML Injection
 
-Sets `el.innerHTML`. Use only with trusted content — caller is responsible for sanitization.
+Sets `el.innerHTML`. Use only with trusted content - caller is responsible for sanitization.
 
 ```html
 <div z-html="richContent"></div>
 ```
 
-#### `z-cloak` — Anti-FOUC
+#### `z-cloak` - Anti-FOUC
 
 Elements with `z-cloak` are hidden via a global style rule (`[z-cloak]{display:none!important}`) injected at load time. The attribute is removed after the component renders, preventing a flash of unrendered template content.
 
@@ -1363,7 +1477,7 @@ The same auto-injected `<style>` tag also applies `-webkit-tap-highlight-color: 
 <div z-cloak>{{content that would flash}}</div>
 ```
 
-#### `z-pre` — Skip Directive Processing
+#### `z-pre` - Skip Directive Processing
 
 All elements inside a `[z-pre]` subtree are exempt from directive processing. Event bindings are also skipped.
 
@@ -1374,7 +1488,7 @@ All elements inside a `[z-pre]` subtree are exempt from directive processing. Ev
 </div>
 ```
 
-#### `@event` / `z-on:event` — Event Binding
+#### `@event` / `z-on:event` - Event Binding
 
 Two equivalent syntaxes:
 
@@ -1410,19 +1524,19 @@ If no parentheses are used (e.g. `@click="handler"`), the native event is automa
 | `.passive` | Registers listener as passive |
 | `.debounce.{ms}` | Delays invocation until idle for `{ms}` ms (default 250). E.g. `@input.debounce.300="search"` |
 | `.throttle.{ms}` | Fires at most once per `{ms}` ms (default 250). E.g. `@scroll.throttle.100="onScroll"` |
-| `.enter` | Key filter — requires `Enter` key |
-| `.escape` | Key filter — requires `Escape` key |
-| `.tab` | Key filter — requires `Tab` key |
-| `.space` | Key filter — requires `Space` key |
-| `.delete` | Key filter — requires `Delete` or `Backspace` |
-| `.up` | Key filter — requires `ArrowUp` |
-| `.down` | Key filter — requires `ArrowDown` |
-| `.left` | Key filter — requires `ArrowLeft` |
-| `.right` | Key filter — requires `ArrowRight` |
-| `.ctrl` | System key — requires `Ctrl` held |
-| `.shift` | System key — requires `Shift` held |
-| `.alt` | System key — requires `Alt` held |
-| `.meta` | System key — requires `Meta` (⌘/⊞) held |
+| `.enter` | Key filter - requires `Enter` key |
+| `.escape` | Key filter - requires `Escape` key |
+| `.tab` | Key filter - requires `Tab` key |
+| `.space` | Key filter - requires `Space` key |
+| `.delete` | Key filter - requires `Delete` or `Backspace` |
+| `.up` | Key filter - requires `ArrowUp` |
+| `.down` | Key filter - requires `ArrowDown` |
+| `.left` | Key filter - requires `ArrowLeft` |
+| `.right` | Key filter - requires `ArrowRight` |
+| `.ctrl` | System key - requires `Ctrl` held |
+| `.shift` | System key - requires `Shift` held |
+| `.alt` | System key - requires `Alt` held |
+| `.meta` | System key - requires `Meta` (⌘/⊞) held |
 
 Key and system modifiers are combinable: `@keyup.ctrl.enter="save"` requires Ctrl + Enter.
 
@@ -1438,11 +1552,11 @@ Key and system modifiers are combinable: `@keyup.ctrl.enter="save"` requires Ctr
 <div @click.outside="closeDropdown">...</div>
 ```
 
-#### `z-model` — Two-Way Binding
+#### `z-model` - Two-Way Binding
 
 Creates a reactive two-way sync between a form element and a state property. When the user types or selects, the state updates and the rest of the template re-renders.
 
-> **Focus preservation:** During re-render, the DOM morphing engine patches only the nodes that changed, so focused elements typically survive untouched. As a fallback, focus and cursor position on **any focused input, textarea, or select** are saved before the morph and restored afterward — not just `z-model` elements. The element is relocated using the first available identifier: `z-model` attribute → `z-ref` attribute → a tag/type/name/placeholder combination. This means typing feels seamless even in plain `@input`-bound search fields or other non-`z-model` inputs.
+> **Focus preservation:** During re-render, the DOM morphing engine patches only the nodes that changed, so focused elements typically survive untouched. As a fallback, focus and cursor position on **any focused input, textarea, or select** are saved before the morph and restored afterward - not just `z-model` elements. The element is relocated using the first available identifier: `z-model` attribute → `z-ref` attribute → a tag/type/name/placeholder combination. This means typing feels seamless even in plain `@input`-bound search fields or other non-`z-model` inputs.
 
 | Element / Type | Behavior |
 | --- | --- |
@@ -1521,7 +1635,7 @@ $.component('binding-demo', {
 });
 ```
 
-#### `z-ref` — Element Reference
+#### `z-ref` - Element Reference
 
 ```html
 <input z-ref="searchInput">
@@ -1530,14 +1644,14 @@ $.component('binding-demo', {
 
 After render, access via `this.refs.searchInput` or `this.refs.chart`.
 
-### z-key — Keyed Reconciliation
+### z-key - Keyed Reconciliation
 
 Add `z-key` to elements inside a `z-for` loop to enable keyed DOM reconciliation. When the list changes, the morph engine matches old and new DOM nodes by key rather than by position, preserving focus, input values, and animations.
 
 ```html
 <ul>
   <li z-for="user in users" z-key="{{user.id}}">
-    {{user.name}} — {{user.role}}
+    {{user.name}} - {{user.role}}
   </li>
 </ul>
 ```
@@ -1546,8 +1660,8 @@ Add `z-key` to elements inside a `z-for` loop to enable keyed DOM reconciliation
 | --- | --- |
 | Placement | On the same element as `z-for`, or any child that needs identity tracking. |
 | Value | Must be a unique, stable identifier per item (e.g. database ID, UUID). |
-| Without key | Positional matching — old[0]↔new[0]. Moved nodes are patched in place. |
-| With key | Identity matching — existing DOM nodes are moved, not recreated. |
+| Without key | Positional matching - old[0]↔new[0]. Moved nodes are patched in place. |
+| With key | Identity matching - existing DOM nodes are moved, not recreated. |
 | Avoid index | `z-key="{{i}}"` defeats the purpose since indices shift on insert/remove. |
 
 > **Under the hood:** The `morph()` engine builds key maps for old and new children, then reconciles using a **Longest Increasing Subsequence (LIS)** algorithm (the same approach used by Vue 3 and ivi) to minimize DOM moves. Unchanged subtrees are detected via native `isEqualNode()` checks and skipped entirely. Combined with Proxy-based reactivity (only the changed component re-renders), this delivers minimal DOM updates.
@@ -1568,7 +1682,7 @@ $.morph($.id('list'), '<li>Updated</li><li>Items</li>');
 
 ### `morphElement(oldEl, newHTML)`
 
-Morph a single element **in place** — diffs attributes and children without replacing the node reference. When the tag name matches, the element is patched (preserving its identity, event listeners, and references). When the tag name differs, the element is replaced.
+Morph a single element **in place** - diffs attributes and children without replacing the node reference. When the tag name matches, the element is patched (preserving its identity, event listeners, and references). When the tag name differs, the element is replaced.
 
 Used internally by `replaceWith()` for automatic DOM diffing.
 
@@ -1583,7 +1697,7 @@ $.morphElement($.id('user-card'), '<div id="user-card" class="updated">New info<
 | `newHTML` | `string` | HTML string for the replacement element |
 | **Returns** | `Element` | The resulting element (same ref if morphed, new ref if tag changed) |
 
-### Auto-Morph — Automatic DOM Diffing via `$()`
+### Auto-Morph - Automatic DOM Diffing via `$()`
 
 The `$()` collection methods **automatically route through the diff engine** when updating existing DOM, using the same strategy as the component system:
 
@@ -1591,9 +1705,9 @@ The `$()` collection methods **automatically route through the diff engine** whe
 | --- | --- |
 | `.html(content)` | **Auto-morphs** when the element already has children. Empty elements use raw `innerHTML` for fast first-paint. |
 | `.replaceWith(content)` | **Auto-morphs** when given an HTML string with the same tag name. Falls back to full replacement when the tag differs or content is a Node. |
-| `.morph(content)` | **Always morphs** — explicit call, skips the empty-element check. |
+| `.morph(content)` | **Always morphs** - explicit call, skips the empty-element check. |
 
-This means every `$('#app').html(newContent)` automatically gets LIS-keyed reconciliation, `isEqualNode()` fast-skips, and attribute diffing — no extra method calls required.
+This means every `$('#app').html(newContent)` automatically gets LIS-keyed reconciliation, `isEqualNode()` fast-skips, and attribute diffing - no extra method calls required.
 
 ```js
 // Auto-morph: element has children → diff engine patches in place
@@ -1611,7 +1725,7 @@ $('#app').morph(newContent);
 
 #### Auto-Key Detection
 
-The LIS-keyed reconciliation path activates automatically whenever elements carry `id`, `data-id`, or `data-key` attributes — no `z-key` required:
+The LIS-keyed reconciliation path activates automatically whenever elements carry `id`, `data-id`, or `data-key` attributes - no `z-key` required:
 
 | Attribute | Priority | Example |
 | --- | --- | --- |
@@ -1632,12 +1746,12 @@ The LIS-keyed reconciliation path activates automatically whenever elements carr
 | **Pre-allocated arrays** | Internal working arrays are reused across passes to reduce GC pressure. |
 | **Reusable template** | A single `<template>` element is reused for HTML parsing instead of creating a new one each render. |
 
-### z-skip — Opt Out of Diffing
+### z-skip - Opt Out of Diffing
 
 Add `z-skip` to any element to tell the morph engine to leave it (and its entire subtree) untouched during DOM reconciliation. This is useful for third-party widgets, canvas elements, embedded iframes, or any DOM managed by external code.
 
 ```html
-<!-- Chart.js manages this canvas — morph will never touch it -->
+<!-- Chart.js manages this canvas - morph will never touch it -->
 <canvas z-skip></canvas>
 
 <!-- Third-party widget container -->
@@ -1646,7 +1760,7 @@ Add `z-skip` to any element to tell the morph engine to leave it (and its entire
 
 | Detail | Description |
 | --- | --- |
-| Behavior | The morph engine skips the element and all of its descendants — no attribute patching, no child diffing. |
+| Behavior | The morph engine skips the element and all of its descendants - no attribute patching, no child diffing. |
 | Placement | On any element inside a component template. |
 | Use case | Third-party libraries, rich-text editors, map widgets, canvas/WebGL, or any subtree you manage manually. |
 
@@ -1741,7 +1855,7 @@ The router calls this automatically before destroying the current component, but
 | --- | --- | --- |
 | `name` | `string` | Registered component name |
 
-**Returns:** `Promise<void>` — resolves when all external resources have been fetched and cached.
+**Returns:** `Promise<void>` - resolves when all external resources have been fetched and cached.
 
 ```js
 // Prefetch a component before the user navigates
@@ -1756,7 +1870,7 @@ await prefetch('about-page');
 
 Dynamically load one or more **global** (unscoped) stylesheet files into `<head>`. Unlike component `styleUrl` (which scopes CSS to the component), `$.style()` injects stylesheets that apply to the entire page.
 
-> **Recommended for global styles:** For app-wide CSS (resets, layout, themes), a `<link rel="stylesheet">` tag in your `index.html` `<head>` is the best approach — it prevents FOUC (Flash of Unstyled Content) most reliably because the browser loads it before first paint with no JavaScript needed. `$.style()` is intended for **dynamically loading additional stylesheet files** at runtime — theme switching, override files, conditional styles, etc.
+> **Recommended for global styles:** For app-wide CSS (resets, layout, themes), a `<link rel="stylesheet">` tag in your `index.html` `<head>` is the best approach - it prevents FOUC (Flash of Unstyled Content) most reliably because the browser loads it before first paint with no JavaScript needed. `$.style()` is intended for **dynamically loading additional stylesheet files** at runtime - theme switching, override files, conditional styles, etc.
 
 Relative paths are resolved **relative to the calling file** (auto-detected via stack trace), just like component `styleUrl` and `templateUrl` paths.
 
@@ -1767,14 +1881,14 @@ Relative paths are resolved **relative to the calling file** (auto-detected via 
 | `opts.critical` | `boolean` | Hide page until loaded to prevent FOUC (default `true`). |
 | `opts.bg` | `string` | Background color while hidden during critical load (default `'#0d1117'`). |
 
-**Returns:** `{ remove(): void, ready: Promise }` — `.remove()` to unload, `.ready` resolves when loaded.
+**Returns:** `{ remove(): void, ready: Promise }` - `.remove()` to unload, `.ready` resolves when loaded.
 
 **Behavior:**
 
 | Detail | Description |
 | --- | --- |
 | **Relative paths** | Resolved against the calling module's directory (auto-detected). Absolute paths and full URLs are used as-is. |
-| **Idempotent** | Duplicate URLs are ignored — calling `$.style('app.css')` twice only injects one `<link>`. |
+| **Idempotent** | Duplicate URLs are ignored - calling `$.style('app.css')` twice only injects one `<link>`. |
 | **DOM element** | Each stylesheet is injected as a `<link rel="stylesheet" data-zq-style>` in `<head>`. |
 | **Removal** | The returned handle's `.remove()` detaches all injected `<link>` elements. |
 
@@ -1792,12 +1906,12 @@ $.style(['reset.css', 'theme.css', 'layout.css']);
 // Load an override file on top of global styles
 $.style('overrides.css');
 
-// Absolute path — resolved against origin root
+// Absolute path - resolved against origin root
 $.style('/assets/global.css');
 ```
 
 > **When to use `<link rel>` vs `$.style()` vs `styleUrl`:**
-> - Use a **`<link rel="stylesheet">`** in `index.html` for global/app-wide styles (resets, layout, themes) — best FOUC prevention.
+> - Use a **`<link rel="stylesheet">`** in `index.html` for global/app-wide styles (resets, layout, themes) - best FOUC prevention.
 > - Use **`$.style()`** to dynamically load additional stylesheet files (themes, overrides, conditional styles).
 > - Use **`styleUrl`** on a component definition for styles that should be **scoped** to that specific component.
 > - Use component **`styles`** (inline string) for scoped inline CSS within a component definition.
@@ -1826,6 +1940,7 @@ Create a new global reactive store.
 | `getters` | `{ [name]: (state) => any }` | `{}` | Computed properties derived from state. Accessed as `store.getters.name`. |
 | `debug` | `boolean` | `false` | Log dispatched actions to console. |
 | `maxHistory` | `number` | `1000` | Maximum number of action history entries to keep. |
+| `maxUndo` | `number` | `50` | Maximum undo checkpoint stack size. |
 
 ```js
 const store = $.store({
@@ -1853,7 +1968,7 @@ const store = $.store({
 });
 ```
 
-> **Tip — Working with reactive arrays:** When replacing an array in state (push, splice equivalents), access the raw array first with `state.arrayKey.__raw || state.arrayKey`, then create a new array and assign it. This ensures the proxy triggers change detection.
+> **Tip - Working with reactive arrays:** When replacing an array in state (push, splice equivalents), access the raw array first with `state.arrayKey.__raw || state.arrayKey`, then create a new array and assign it. This ensures the proxy triggers change detection.
 
 ### Store Instance Methods
 
@@ -1861,11 +1976,15 @@ const store = $.store({
 | --- | --- | --- | --- |
 | `dispatch` | `dispatch(name, ...args)` | `any` | Execute a named action. Runs middleware first. Returns action's return value. |
 | `subscribe` | `subscribe(key, fn)` | `() => void` | Listen to changes on a specific state key. `fn(value, oldValue, key)`. Returns unsubscribe. |
-| `subscribe` | `subscribe(fn)` | `() => void` | Wildcard — listen to all state changes. `fn(key, value, oldValue)`. |
+| `subscribe` | `subscribe(fn)` | `() => void` | Wildcard - listen to all state changes. `fn(key, value, oldValue)`. |
 | `snapshot` | `snapshot()` | `object` | Deep clone of current state (plain object). |
-| `replaceState` | `replaceState(newState)` | — | Replace entire state (clears old keys, merges new). |
-| `use` | `use(fn)` | `this` | Add middleware. `fn(actionName, args, state)` — return `false` to block action. Chainable. |
-| `reset` | `reset(initialState)` | — | Replace state and clear action history. |
+| `replaceState` | `replaceState(newState)` | - | Replace entire state (clears old keys, merges new). |
+| `use` | `use(fn)` | `this` | Add middleware. `fn(actionName, args, state)` - return `false` to block action. Chainable. |
+| `reset` | `reset(initialState?)` | - | Replace state and clear action history + undo/redo stacks. With no args, resets to original initial state. |
+| `batch` | `batch(fn)` | `any` | Group mutations - subscribers fire once per key with the final value. Returns callback's return value. |
+| `checkpoint` | `checkpoint()` | - | Snapshot current state onto the undo stack. Clears the redo stack. |
+| `undo` | `undo()` | `boolean` | Revert to last checkpoint. Returns `false` if nothing to undo. |
+| `redo` | `redo()` | `boolean` | Re-apply last undo. Returns `false` if nothing to redo. |
 
 ### Store Properties
 
@@ -1875,6 +1994,8 @@ const store = $.store({
 | `state.__raw` | `object` | Raw unwrapped state. |
 | `getters` | `object` | Computed getters (lazily evaluated on access). |
 | `history` | `Array<{ action, args, timestamp }>` | Log of all dispatched actions (read-only copy). |
+| `canUndo` | `boolean` | Getter - `true` if the undo stack is non-empty. |
+| `canRedo` | `boolean` | Getter - `true` if the redo stack is non-empty. |
 
 ### `getStore(name?)`
 
@@ -1884,6 +2005,49 @@ Retrieve a previously created store by name. Defaults to `'default'`.
 const store = $.getStore();        // default store
 const users = $.getStore('users'); // named store
 ```
+
+### Batch Updates
+
+Group multiple state mutations into a single notification pass. Subscribers fire once per key with only the final value.
+
+```js
+store.batch(state => {
+  state.count = 1;
+  state.count = 2;
+  state.count = 3;  // subscriber only sees this value
+  state.name = 'hello';
+});
+```
+
+- Nested `batch()` calls are safe — only the outermost batch flushes
+- If the callback throws, pending notifications still flush via `finally`
+- Returns whatever the callback returns
+
+### Checkpoint / Undo / Redo
+
+Snapshot-based undo/redo system. `checkpoint()` saves a restore point, `undo()` reverts, `redo()` re-applies.
+
+```js
+const store = $.store({
+  state: { text: '' },
+  maxUndo: 50,  // optional, default 50
+  actions: { setText(state, val) { state.text = val; } }
+});
+
+store.checkpoint();
+store.dispatch('setText', 'hello');
+
+store.canUndo;  // true
+store.undo();   // state.text → ''
+
+store.canRedo;  // true
+store.redo();   // state.text → 'hello'
+```
+
+- `checkpoint()` clears the redo stack (new branch)
+- `undo()` / `redo()` return `boolean` — `false` if nothing to undo/redo
+- `reset()` clears both undo and redo stacks
+- `maxUndo` trims oldest checkpoints when exceeded
 
 ---
 
@@ -1900,7 +2064,7 @@ All request methods return `Promise<ResponseObject>`.
 | `$.put` | `$.put(url, data?, opts?)` | PUT request. |
 | `$.patch` | `$.patch(url, data?, opts?)` | PATCH request. |
 | `$.delete` | `$.delete(url, data?, opts?)` | DELETE request. |
-| `$.head` | `$.head(url, opts?)` | HEAD request — no body. Useful for resource existence checks, content-length, caching headers. |
+| `$.head` | `$.head(url, opts?)` | HEAD request - no body. Useful for resource existence checks, content-length, caching headers. |
 
 Also available as `$.http.get(...)`, `$.http.post(...)`, `$.http.head(...)`, etc.
 
@@ -1911,7 +2075,7 @@ Also available as `$.http.get(...)`, `$.http.post(...)`, `$.http.head(...)`, etc
 | `headers` | `object` | Additional headers (merged with defaults). |
 | `timeout` | `number` | Override default timeout (ms). |
 | `signal` | `AbortSignal` | Abort signal for cancellation. |
-| `...` | — | Any other valid `fetch` options (e.g. `mode`, `credentials`). |
+| `...` | - | Any other valid `fetch` options (e.g. `mode`, `credentials`). |
 
 ```js
 // GET with query params
@@ -1986,7 +2150,7 @@ const unsub = $.http.onRequest(async (fetchOpts, url) => {
   };
 });
 
-// Later — remove this specific interceptor
+// Later - remove this specific interceptor
 unsub();
 ```
 
@@ -2002,7 +2166,7 @@ const unsub = $.http.onResponse(async (result) => {
   }
 });
 
-// Later — remove this specific interceptor
+// Later - remove this specific interceptor
 unsub();
 ```
 
@@ -2048,7 +2212,7 @@ console.log(users.data, posts.data, comments.data);
 
 ### `http.raw(url, opts)`
 
-Direct passthrough to native `fetch()` — no JSON handling, no interceptors, no timeout wrapper.
+Direct passthrough to native `fetch()` - no JSON handling, no interceptors, no timeout wrapper.
 
 ```js
 const response = await $.http.raw('/api/stream');
@@ -2097,7 +2261,7 @@ Returns a debounced function that delays execution until `ms` milliseconds of in
 
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
-| `fn` | `function` | — | Function to debounce |
+| `fn` | `function` | - | Function to debounce |
 | `ms` | `number` | `250` | Delay in milliseconds |
 
 **Returns:** Debounced function with `.cancel()` method.
@@ -2191,7 +2355,7 @@ const safe = $.html`<div>Hello, ${name}!</div>`;
 
 #### `$.trust(htmlStr)`
 
-Wrap an HTML string as trusted — it will not be escaped when used inside `$.html`:
+Wrap an HTML string as trusted - it will not be escaped when used inside `$.html`:
 
 ```js
 const bold = $.trust('<strong>Bold</strong>');
@@ -2218,7 +2382,7 @@ $.kebabCase('myComponent');   // 'my-component'
 
 #### `$.deepClone(obj)`
 
-Deep clone using `structuredClone` (with JSON fallback).
+Deep clone using `structuredClone` when available. The fallback handles `Date`, `RegExp`, `Map`, `Set`, `ArrayBuffer`, typed arrays, circular references, and `undefined` values.
 
 ```js
 const clone = $.deepClone({ nested: { array: [1, 2, 3] } });
@@ -2226,7 +2390,7 @@ const clone = $.deepClone({ nested: { array: [1, 2, 3] } });
 
 #### `$.deepMerge(target, ...sources)`
 
-Recursively merge objects. Arrays are replaced, not merged.
+Recursively merge objects. Arrays are replaced, not merged. Blocks `__proto__`, `constructor`, and `prototype` keys for security.
 
 ```js
 const config = $.deepMerge({}, defaults, userConfig);
@@ -2268,7 +2432,7 @@ $.parseQuery('page=1&sort=name');
 
 ### Storage Wrappers
 
-#### `$.storage` — localStorage
+#### `$.storage` - localStorage
 
 | Method | Signature | Description |
 | --- | --- | --- |
@@ -2285,7 +2449,7 @@ $.storage.remove('prefs');
 $.storage.clear();
 ```
 
-#### `$.session` — sessionStorage
+#### `$.session` - sessionStorage
 
 Same API as `$.storage`, backed by `sessionStorage`.
 
@@ -2298,10 +2462,10 @@ Singleton EventBus instance for cross-component communication.
 | Method | Signature | Returns | Description |
 | --- | --- | --- | --- |
 | `on` | `on(event, fn)` | `() => void` | Subscribe. Returns unsubscribe function. |
-| `off` | `off(event, fn)` | — | Unsubscribe specific handler. |
-| `emit` | `emit(event, ...args)` | — | Emit event with arguments. |
+| `off` | `off(event, fn)` | - | Unsubscribe specific handler. |
+| `emit` | `emit(event, ...args)` | - | Emit event with arguments. |
 | `once` | `once(event, fn)` | `() => void` | Subscribe for one invocation. |
-| `clear` | `clear()` | — | Remove all listeners. |
+| `clear` | `clear()` | - | Remove all listeners. |
 
 ```js
 // Cross-component communication
@@ -2396,7 +2560,7 @@ $.setPath(cfg, 'server.db.host', 'localhost');
 
 #### `$.isEmpty(val)`
 
-Check if a value is "empty" — `null`, `undefined`, `''`, `[]`, `{}`, or empty `Map`/`Set`.
+Check if a value is "empty" - `null`, `undefined`, `''`, `[]`, `{}`, or empty `Map`/`Set`.
 
 ```js
 $.isEmpty(null);       // true
@@ -2499,7 +2663,7 @@ const data = await $.timeout(fetch('/api'), 3000, 'API timed out');
 
 zQuery includes a structured error-handling system so that runtime errors across every subsystem (reactive, component, router, store, HTTP, expression parser) are reported consistently. All internal errors are wrapped in a `ZQueryError` with a machine-readable code, a human-readable message, optional context, and the original cause.
 
-### Error Codes — `$.ErrorCode`
+### Error Codes - `$.ErrorCode`
 
 A frozen object mapping friendly names to string codes. Use these to identify errors programmatically.
 
@@ -2543,7 +2707,7 @@ Custom `Error` subclass used by all internal error reports.
 | `name` | `string` | Always `'ZQueryError'`. |
 | `code` | `string` | One of the `$.ErrorCode` values. |
 | `message` | `string` | Human-readable description. |
-| `context` | `object` | Extra data — component name, expression string, etc. |
+| `context` | `object` | Extra data - component name, expression string, etc. |
 | `cause` | `Error?` | Original error (if wrapping another). |
 
 ```js
@@ -2559,7 +2723,7 @@ try {
 
 ### `$.onError(handler)`
 
-Register a global error handler that fires when any module catches an error internally. **Multiple handlers** are supported — each call adds a handler and returns an **unsubscribe function**. The dev overlay and your custom handlers can coexist. Pass `null` to remove all handlers.
+Register a global error handler that fires when any module catches an error internally. **Multiple handlers** are supported - each call adds a handler and returns an **unsubscribe function**. The dev overlay and your custom handlers can coexist. Pass `null` to remove all handlers.
 
 ```js
 // Register multiple handlers
@@ -2601,7 +2765,7 @@ safeTick(); // errors are caught & reported, never thrown
 
 ### `validate(value, name, expectedType?)`
 
-Assert a value is non-null and optionally the expected type. Throws `ZQueryError` with `INVALID_ARGUMENT` on failure — intended for fast-fail at API boundaries.
+Assert a value is non-null and optionally the expected type. Throws `ZQueryError` with `INVALID_ARGUMENT` on failure - intended for fast-fail at API boundaries.
 
 ```js
 import { validate } from '@tonywied17/zero-query';
@@ -2662,18 +2826,18 @@ const data = await safeFetch('/api/data');
 | Property/Method | Description |
 | --- | --- |
 | `$.style(urls)` | Dynamically load additional global (unscoped) stylesheet file(s) into `<head>`. Paths resolve relative to the calling file. Returns `{ remove(), ready }`. |
-| `$.morph(el, html)` | DOM morphing engine — patch existing DOM to match new HTML without destroying unchanged nodes. Uses LIS-based keyed reconciliation, `isEqualNode()` bail-outs, and `z-skip` opt-out. See [z-key](#z-key--keyed-reconciliation) and [z-skip](#z-skip--opt-out-of-diffing). |
-| `$.morphElement(el, html)` | Morph a single element in place — diffs attributes and children without replacing the node reference. If the tag name matches, the element is patched; if the tag differs, the element is replaced. Returns the resulting element. |
+| `$.morph(el, html)` | DOM morphing engine - patch existing DOM to match new HTML without destroying unchanged nodes. Uses LIS-based keyed reconciliation, `isEqualNode()` bail-outs, and `z-skip` opt-out. See [z-key](#z-key--keyed-reconciliation) and [z-skip](#z-skip--opt-out-of-diffing). |
+| `$.morphElement(el, html)` | Morph a single element in place - diffs attributes and children without replacing the node reference. If the tag name matches, the element is patched; if the tag differs, the element is replaced. Returns the resulting element. |
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
-| `$.safeEval(expr, scope)` | CSP-safe expression evaluator — parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
+| `$.safeEval(expr, scope)` | CSP-safe expression evaluator - parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
 | `$.libSize` | Minified library size string (e.g. `'~100 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'0.9.9'`). |
-| `$.unitTests` | Build-time test results object — `{ passed, failed, total, suites, duration, ok }`. Injected at build time by the CLI. |
-| `$.meta` | Build metadata object — populated at build time by the CLI bundler. Empty `{}` by default. |
-| `$.TrustedHTML` | `TrustedHTML` constructor class — wrap strings to bypass `$.html` escaping. Create instances via `$.trust()` or `new $.TrustedHTML(str)`. |
-| `$.EventBus` | `EventBus` constructor class — create additional event bus instances beyond the default `$.bus` singleton. |
-| `$.qs(sel, ctx?)` | Raw `querySelector` — any CSS selector, optional context element. Returns `Element \| null`. |
-| `$.qsa(sel, ctx?)` | Raw `querySelectorAll` — returns a real `Array<Element>` with full Array methods. |
+| `$.version` | Library version string (e.g. `'1.0.0'`). |
+| `$.unitTests` | Build-time test results object - `{ passed, failed, total, suites, duration, ok }`. Injected at build time by the CLI. |
+| `$.meta` | Build metadata object - populated at build time by the CLI bundler. Empty `{}` by default. |
+| `$.TrustedHTML` | `TrustedHTML` constructor class - wrap strings to bypass `$.html` escaping. Create instances via `$.trust()` or `new $.TrustedHTML(str)`. |
+| `$.EventBus` | `EventBus` constructor class - create additional event bus instances beyond the default `$.bus` singleton. |
+| `$.qs(sel, ctx?)` | Raw `querySelector` - any CSS selector, optional context element. Returns `Element \| null`. |
+| `$.qsa(sel, ctx?)` | Raw `querySelectorAll` - returns a real `Array<Element>` with full Array methods. |
 | `$.range(...)` | Generate a numeric range array. `range(5)` → `[0..4]`. |
 | `$.unique(arr, keyFn?)` | Deduplicate an array. Optional key function for objects. |
 | `$.chunk(arr, size)` | Split an array into chunks of `size`. |
@@ -2697,7 +2861,7 @@ const data = await safeFetch('/api/data');
 
 ## Server-Side Rendering (SSR)
 
-zQuery includes a lightweight SSR module for rendering components to HTML strings in Node.js. Import via `import { createSSRApp } from 'zero-query/ssr'`. SSR is fully integrated with the error system — errors are caught and reported gracefully without crashing the server.
+zQuery includes a lightweight SSR module for rendering components to HTML strings in Node.js. Import via `import { createSSRApp } from 'zero-query/ssr'`. SSR is fully integrated with the error system - errors are caught and reported gracefully without crashing the server.
 
 ### SSR Scaffold
 
@@ -2707,7 +2871,7 @@ Scaffold an SSR-ready project with the CLI:
 npx zquery create my-app --ssr    # or: -s
 ```
 
-This generates a working client-side SPA plus a `server/index.js` SSR HTTP server. Component definitions in `app/components/` are shared — the client registers them with `$.component()` and the server imports the same files with `app.component()`. Run `npx zquery dev my-app` for the client SPA or `node my-app/server/index.js` for the SSR server at `http://localhost:3000`.
+This generates a working client-side SPA plus a `server/index.js` SSR HTTP server. Component definitions in `app/components/` are shared - the client registers them with `$.component()` and the server imports the same files with `app.component()`. Run `npx zquery dev my-app` for the client SPA or `node my-app/server/index.js` for the SSR server at `http://localhost:3000`.
 
 ### `createSSRApp()`
 
@@ -2759,7 +2923,7 @@ const html = await app.renderToString('hello-world', { name: 'Tony' });
 // Without hydration marker
 const static_ = await app.renderToString('hello-world', {}, { hydrate: false });
 
-// Fragment mode — inner HTML only, no wrapper tag
+// Fragment mode - inner HTML only, no wrapper tag
 const fragment = await app.renderToString('hello-world', {}, { mode: 'fragment' });
 ```
 
@@ -2806,7 +2970,7 @@ const page = await app.renderPage({
 | `meta` | `string` | Additional HTML for `<head>` |
 | `bodyAttrs` | `string` | Attributes for `<body>` tag |
 | `head.canonical` | `string` | `<link rel="canonical">` URL |
-| `head.og` | `object` | Open Graph `<meta property="og:*">` tags — any key/value pairs |
+| `head.og` | `object` | Open Graph `<meta property="og:*">` tags - any key/value pairs |
 
 ### `app.renderBatch(entries)`
 
@@ -2838,7 +3002,7 @@ app.has('missing');     // false
 
 ### `escapeHtml(str)`
 
-Exported HTML escape utility — the same function used internally for `{{expression}}` interpolation.
+Exported HTML escape utility - the same function used internally for `{{expression}}` interpolation.
 
 ```js
 import { escapeHtml } from 'zero-query/ssr';
@@ -2865,8 +3029,73 @@ SSR uses dedicated error codes: `SSR_RENDER`, `SSR_COMPONENT`, `SSR_HYDRATION`, 
 | --- | --- |
 | Hydration | Components rendered with SSR include a `data-zq-ssr` attribute for client-side hydration identification. |
 | State | Initial state and props are serialized into the output for client-side pickup. |
-| Scope | SSR uses its own component registry — call `app.component()` to register components for server rendering. |
-| Validation | `app.component()` validates input — invalid names or definitions throw `ZQueryError` with `SSR_COMPONENT`. |
+| Scope | SSR uses its own component registry - call `app.component()` to register components for server rendering. |
+| Validation | `app.component()` validates input - invalid names or definitions throw `ZQueryError` with `SSR_COMPONENT`. |
+
+---
+
+## Security
+
+zQuery applies defense-in-depth across templates, expressions, state utilities, routing, and SSR. All protections are enabled by default — no configuration required.
+
+### Template Expression Escaping
+
+The `{{expression}}` syntax in templates and `z-for` loops automatically escapes HTML entities. This prevents XSS when state contains user-supplied content.
+
+```js
+state.name = '<img src=x onerror=alert(1)>';
+// {{state.name}} renders as: &lt;img src=x onerror=alert(1)&gt;
+```
+
+| Syntax | Escapes HTML? | Use For |
+|--------|--------------|--------|
+| `{{expression}}` | **Yes** (auto-escaped) | Text content, labels, user data — safe by default |
+| `z-text="expr"` | **Yes** (sets `textContent`) | Text-only content, counters |
+| `z-html="expr"` | **No** (raw `innerHTML`) | Trusted rich HTML only — never use with user input |
+
+### Expression Sandbox
+
+Template expressions run in a sandboxed scope. They cannot access:
+
+| Blocked | Reason |
+|---------|--------|
+| `window` / `document` / `globalThis` | Prevents DOM manipulation and global state access |
+| `Function` / `eval` | Prevents arbitrary code execution |
+| `RegExp` | Prevents ReDoS (catastrophic backtracking) attacks |
+| `Error` | Prevents information disclosure via stack traces |
+| `__proto__` / `constructor` / `prototype` | Prevents prototype chain traversal |
+| `.call()` / `.apply()` / `.bind()` | Prevents context manipulation |
+
+**Allowed globals** (safe, side-effect-free): `Date`, `Array`, `Map`, `Set`, `URL`, `URLSearchParams`, `Object`, `String`, `Number`, `Boolean`, `Math`, `JSON`, `console`, `parseInt`, `parseFloat`, `isNaN`, `isFinite`, `encodeURIComponent`, `decodeURIComponent`.
+
+### Prototype Pollution Prevention
+
+`deepMerge()` and `setPath()` block unsafe keys (`__proto__`, `constructor`, `prototype`) to prevent prototype pollution:
+
+```js
+$.deepMerge({}, { __proto__: { polluted: true } });
+// Object.prototype.polluted is still undefined ✓
+
+$.setPath({}, '__proto__.polluted', true);
+// Blocked ✓
+```
+
+### z-link Protocol Validation
+
+The `z-link` click handler rejects any value matching a protocol scheme (`javascript:`, `data:`, `http:`, etc.). Only internal route paths are processed.
+
+### SSR Error Sanitization
+
+When a component throws during SSR, the HTML output contains only `<!-- SSR render error -->`. Error details (message, stack, file paths) are reported via `reportError()` for developer debugging but never exposed to end users.
+
+### Best Practices
+
+1. **Prefer `{{}}` and `z-text` over `z-html`** — auto-escaped output is XSS-safe by default.
+2. **Sanitize before storing** — if you accept rich HTML from users, sanitize server-side (e.g. DOMPurify) before saving. Then use `z-html` only on sanitized output.
+3. **Never build expressions from user input** — don't construct `z-if` or `z-for` expressions from untrusted data.
+4. **Validate API data before merging** — check data shapes before calling `deepMerge()` with external input.
+5. **Use `z-link` for internal routes only** — use regular `<a href>` tags with `target="_blank" rel="noopener"` for external links.
+6. **Keep error details server-side** — log full details on the server, show generic messages to users.
 
 ---
 
@@ -2877,7 +3106,7 @@ When used as an ES module (not the built bundle), the library exports:
 ```js
 import {
   $, zQuery, ZQueryCollection, queryAll,
-  reactive, Signal, signal, computed, effect,
+  reactive, Signal, signal, computed, effect, batch, untracked,
   component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style,
   morph, morphElement, safeEval,
   createRouter, getRouter,
@@ -2895,7 +3124,7 @@ import {
 } from '@tonywied17/zero-query';
 ```
 
-SSR is a separate Node.js-only module — import it directly:
+SSR is a separate Node.js-only module - import it directly:
 
 ```js
 import { createSSRApp, renderToString, escapeHtml } from 'zero-query/ssr';

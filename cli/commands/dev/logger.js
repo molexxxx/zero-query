@@ -1,5 +1,5 @@
 /**
- * cli/commands/dev/logger.js — Terminal output helpers
+ * cli/commands/dev/logger.js - Terminal output helpers
  *
  * Provides styled console output for the dev server: startup banner,
  * timestamped file-change messages, and error formatting.

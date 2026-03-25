@@ -1,11 +1,11 @@
-// home.js — Landing page / dashboard
+// home.js - Landing page / dashboard
 //
 // Features used:
-//   $.component   — define a component with state + render
-//   $.signal      — reactive value container
-//   $.computed    — derived reactive value
-//   $.effect      — side-effect that auto-tracks signals
-//   $.getStore    — access the global store
+//   $.component   - define a component with state + render
+//   $.signal      - reactive value container
+//   $.computed    - derived reactive value
+//   $.effect      - side-effect that auto-tracks signals
+//   $.getStore    - access the global store
 
 $.component('home-page', {
   styles: `
@@ -136,7 +136,7 @@ $.component('home-page', {
   render() {
     const store = $.getStore('main');
     const s = this.state;
-    const opLabels = { add: '+', subtract: '−', multiply: '×', divide: '÷', power: '^', modulo: '%' };
+    const opLabels = { add: '+', subtract: '-', multiply: '×', divide: '÷', power: '^', modulo: '%' };
     const maxH = Math.max(1, ...s.sigHistory.map(v => Math.sqrt(Math.abs(v) + 1)));
     return `
       <div class="page-header">
@@ -146,13 +146,13 @@ $.component('home-page', {
 
       <div class="card card-accent">
         <h3><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--accent)" style="width:20px;height:20px;vertical-align:-4px;margin-right:0.25rem;"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/></svg> Reactive Signals Lab</h3>
-        <p style="margin-bottom:.65rem;">Signals are <strong>reactive primitives</strong> — values that automatically notify dependents when they change.
+        <p style="margin-bottom:.65rem;">Signals are <strong>reactive primitives</strong> - values that automatically notify dependents when they change.
           Adjust <strong>A</strong> and <strong>B</strong> below and watch the computed result update instantly, with no manual DOM wiring.</p>
 
         <div class="sig-lab">
           <div class="sig-row">
             <div class="sig-op">
-              <button class="btn btn-sm btn-ghost" @click="bumpA(-1)">−</button>
+              <button class="btn btn-sm btn-ghost" @click="bumpA(-1)">-</button>
               <div class="sig-val"><small>A</small> <span>${s.sigA}</span></div>
               <button class="btn btn-sm btn-ghost" @click="bumpA(1)">+</button>
             </div>
@@ -170,7 +170,7 @@ $.component('home-page', {
               </div>
             </div>
             <div class="sig-op">
-              <button class="btn btn-sm btn-ghost" @click="bumpB(-1)">−</button>
+              <button class="btn btn-sm btn-ghost" @click="bumpB(-1)">-</button>
               <div class="sig-val"><small>B</small> <span>${s.sigB}</span></div>
               <button class="btn btn-sm btn-ghost" @click="bumpB(1)">+</button>
             </div>
@@ -186,7 +186,7 @@ $.component('home-page', {
             <div class="sig-graph">
               ${s.sigHistory.map(v => `<div class="sig-bar" style="height:${Math.max(6, (Math.sqrt(Math.abs(v) + 1) / maxH) * 56)}px;"></div>`).join('')}
             </div>
-            <div style="font-size:.75rem;color:var(--text-muted);margin-top:.35rem;">Result history — ${s.sigHistory.length} values tracked by <code>effect()</code></div>
+            <div style="font-size:.75rem;color:var(--text-muted);margin-top:.35rem;">Result history - ${s.sigHistory.length} values tracked by <code>effect()</code></div>
           ` : ''}
         </div>
 
@@ -197,11 +197,11 @@ $.component('home-page', {
           </div>
           <div class="sig-concept">
             <h4>Computed</h4>
-            <p>A derived value that re-evaluates when its dependencies change. <code>$.computed(() => A + B)</code> recalculates whenever A or B updates — no manual calls.</p>
+            <p>A derived value that re-evaluates when its dependencies change. <code>$.computed(() => A + B)</code> recalculates whenever A or B updates - no manual calls.</p>
           </div>
           <div class="sig-concept">
             <h4>Effect</h4>
-            <p>A side-effect that runs automatically when tracked signals change. The bar chart above is powered by <code>$.effect()</code> — it records every new result.</p>
+            <p>A side-effect that runs automatically when tracked signals change. The bar chart above is powered by <code>$.effect()</code> - it records every new result.</p>
           </div>
         </div>
       </div>

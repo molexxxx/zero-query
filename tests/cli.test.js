@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 
 // ---------------------------------------------------------------------------
-// CLI utils — stripComments
+// CLI utils - stripComments
 // ---------------------------------------------------------------------------
 
-describe('CLI — stripComments', () => {
+describe('CLI - stripComments', () => {
   let stripComments;
 
   beforeEach(async () => {
@@ -88,10 +88,10 @@ describe('CLI — stripComments', () => {
 
 
 // ---------------------------------------------------------------------------
-// CLI utils — minify
+// CLI utils - minify
 // ---------------------------------------------------------------------------
 
-describe('CLI — minify', () => {
+describe('CLI - minify', () => {
   let minify;
 
   beforeEach(async () => {
@@ -152,10 +152,10 @@ describe('CLI — minify', () => {
 
 
 // ---------------------------------------------------------------------------
-// CLI utils — sizeKB
+// CLI utils - sizeKB
 // ---------------------------------------------------------------------------
 
-describe('CLI — sizeKB', () => {
+describe('CLI - sizeKB', () => {
   let sizeKB;
 
   beforeEach(async () => {
@@ -186,10 +186,10 @@ describe('CLI — sizeKB', () => {
 
 
 // ---------------------------------------------------------------------------
-// CLI args — flag and option
+// CLI args - flag and option
 // ---------------------------------------------------------------------------
 
-describe('CLI — args module', () => {
+describe('CLI - args module', () => {
   let originalArgv;
 
   beforeEach(() => {
@@ -257,7 +257,7 @@ describe('CLI — args module', () => {
 // showHelp
 // ===========================================================================
 
-describe('CLI — showHelp', () => {
+describe('CLI - showHelp', () => {
   it('outputs help text to console', async () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const showHelp = (await import('../cli/help.js')).default;
@@ -283,10 +283,10 @@ describe('CLI — showHelp', () => {
 
 
 // ===========================================================================
-// stripComments — additional edge cases
+// stripComments - additional edge cases
 // ===========================================================================
 
-describe('CLI — stripComments extra', () => {
+describe('CLI - stripComments extra', () => {
   let stripComments;
   beforeEach(async () => {
     const mod = await import('../cli/utils.js');
@@ -331,10 +331,10 @@ describe('CLI — stripComments extra', () => {
 
 
 // ===========================================================================
-// minify — additional edge cases
+// minify - additional edge cases
 // ===========================================================================
 
-describe('CLI — minify extra', () => {
+describe('CLI - minify extra', () => {
   let minify;
   beforeEach(async () => {
     const mod = await import('../cli/utils.js');
@@ -365,10 +365,10 @@ describe('CLI — minify extra', () => {
 
 
 // ===========================================================================
-// sizeKB — edge cases
+// sizeKB - edge cases
 // ===========================================================================
 
-describe('CLI — sizeKB extra', () => {
+describe('CLI - sizeKB extra', () => {
   let sizeKB;
   beforeEach(async () => {
     const mod = await import('../cli/utils.js');
@@ -393,7 +393,7 @@ describe('CLI — sizeKB extra', () => {
 // copyDirSync
 // ===========================================================================
 
-describe('CLI — copyDirSync', () => {
+describe('CLI - copyDirSync', () => {
   let copyDirSync;
   const fs = require('fs');
   const path = require('path');
@@ -428,10 +428,10 @@ describe('CLI — copyDirSync', () => {
 
 
 // ===========================================================================
-// flag/option — additional cases
+// flag/option - additional cases
 // ===========================================================================
 
-describe('CLI — flag/option extra', () => {
+describe('CLI - flag/option extra', () => {
   it('flag returns false when absent', async () => {
     process.argv = ['node', 'script'];
     vi.resetModules();
@@ -457,10 +457,10 @@ describe('CLI — flag/option extra', () => {
 
 
 // ===========================================================================
-// createProject — scaffold command
+// createProject - scaffold command
 // ===========================================================================
 
-describe('CLI — createProject', () => {
+describe('CLI - createProject', () => {
   const fs = require('fs');
   const path = require('path');
   const os = require('os');

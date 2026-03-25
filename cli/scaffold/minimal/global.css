@@ -1,4 +1,4 @@
-/* global.css — minimal scaffold styles
+/* global.css - minimal scaffold styles
  *
  * Dark theme by default, light theme via [data-theme="light"].
  * Modify the CSS variables below to customise the look and feel.
@@ -259,7 +259,7 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
 .muted { color: var(--text-muted); }
 
 /* -- Route Transition -- */
-#app { animation: fade-in 0.25s var(--ease-out); }
+z-outlet { animation: fade-in 0.25s var(--ease-out); }
 @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 /* -- Responsive: Mobile -- */

@@ -1,10 +1,10 @@
 /**
- * zQuery (zeroQuery) — TypeScript Declarations
+ * zQuery (zeroQuery) - TypeScript Declarations
  *
- * Lightweight modern frontend library — jQuery-like selectors, reactive
+ * Lightweight modern frontend library - jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 0.9.9
+ * @version 1.0.0
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -22,6 +22,8 @@ export {
   signal,
   computed,
   effect,
+  batch,
+  untracked,
 } from './types/reactive';
 
 export {
@@ -135,15 +137,14 @@ export {
   SSRApp,
   createSSRApp,
   renderToString,
-  escapeHtml as escapeHtmlSSR,
 } from './types/ssr';
 
 // ---------------------------------------------------------------------------
-// $ — Main function & namespace
+// $ - Main function & namespace
 // ---------------------------------------------------------------------------
 
 import type { ZQueryCollection } from './types/collection';
-import type { reactive, Signal, signal, computed, effect } from './types/reactive';
+import type { reactive, Signal, signal, computed, effect, batch, untracked } from './types/reactive';
 import type { component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style } from './types/component';
 import type { createRouter, getRouter } from './types/router';
 import type { createStore, getStore } from './types/store';
@@ -162,7 +163,7 @@ import type { onError, ZQueryError, ErrorCode, guardCallback, validate } from '.
 import type { morph, morphElement, safeEval } from './types/misc';
 
 /**
- * Main selector / DOM-ready function — always returns a `ZQueryCollection` (like jQuery).
+ * Main selector / DOM-ready function - always returns a `ZQueryCollection` (like jQuery).
  *
  * - `$('selector')` → ZQueryCollection via `querySelectorAll`
  * - `$('<div>…</div>')` → ZQueryCollection from created elements
@@ -177,7 +178,7 @@ interface ZQueryStatic {
 
   // -- Collection selector -------------------------------------------------
   /**
-   * Collection selector — returns a `ZQueryCollection`.
+   * Collection selector - returns a `ZQueryCollection`.
    *
    * - `$.all('.card')` → all matching elements
    * - `$.all('<div>…</div>')` → create elements as collection
@@ -201,9 +202,9 @@ interface ZQueryStatic {
   name(name: string): ZQueryCollection;
   /** Children of `#parentId` as `ZQueryCollection`. */
   children(parentId: string): ZQueryCollection;
-  /** `document.querySelector(selector)` — raw Element or null. */
+  /** `document.querySelector(selector)` - raw Element or null. */
   qs(selector: string, context?: Element | Document): Element | null;
-  /** `document.querySelectorAll(selector)` — as a real `Array<Element>`. */
+  /** `document.querySelectorAll(selector)` - as a real `Array<Element>`. */
   qsa(selector: string, context?: Element | Document): Element[];
 
   // -- Static helpers ------------------------------------------------------
@@ -232,7 +233,7 @@ interface ZQueryStatic {
   /** Remove a direct global event listener previously attached with `$.on(event, handler)`. */
   off(event: string, handler: (e: Event) => void): void;
 
-  /** Alias for `ZQueryCollection.prototype` — extend to add custom collection methods. */
+  /** Alias for `ZQueryCollection.prototype` - extend to add custom collection methods. */
   fn: typeof ZQueryCollection.prototype;
 
   // -- Reactive ------------------------------------------------------------
@@ -241,6 +242,8 @@ interface ZQueryStatic {
   signal: typeof signal;
   computed: typeof computed;
   effect: typeof effect;
+  batch: typeof batch;
+  untracked: typeof untracked;
 
   // -- Components ----------------------------------------------------------
   component: typeof component;
@@ -254,7 +257,7 @@ interface ZQueryStatic {
   prefetch: typeof prefetch;
   style: typeof style;
   morph: typeof morph;
-  /** Morph a single element in place — preserves identity when tag name matches. */
+  /** Morph a single element in place - preserves identity when tag name matches. */
   morphElement: typeof morphElement;
   safeEval: typeof safeEval;
 
@@ -353,7 +356,7 @@ interface ZQueryStatic {
 export const $: ZQueryStatic;
 export { $ as zQuery };
 
-/** Collection selector function — same as `$.all()`. */
+/** Collection selector function - same as `$.all()`. */
 export function queryAll(selector: string, context?: string | Element): ZQueryCollection;
 export function queryAll(element: Element): ZQueryCollection;
 export function queryAll(nodeList: NodeList | HTMLCollection | Element[]): ZQueryCollection;

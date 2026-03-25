@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reactive, Signal, signal, computed, effect } from '../src/reactive.js';
+import { reactive, Signal, signal, computed, effect, batch, untracked } from '../src/reactive.js';
 
 
 // ---------------------------------------------------------------------------
@@ -58,7 +58,7 @@ describe('reactive', () => {
   });
 
   it('handles onChange gracefully when onChange is not a function', () => {
-    // Should not throw — error is reported and a no-op is used
+    // Should not throw - error is reported and a no-op is used
     expect(() => {
       const obj = reactive({ x: 1 }, 'not a function');
       obj.x = 2;
@@ -231,7 +231,7 @@ describe('effect()', () => {
       log(toggle.value ? a.value : b.value);
     });
     expect(log).toHaveBeenCalledWith('A');
-    // Change b — should NOT re-run because b is not tracked when toggle=true
+    // Change b - should NOT re-run because b is not tracked when toggle=true
     b.value = 'B2';
     // After toggle switches, b becomes tracked
     toggle.value = false;
@@ -241,10 +241,10 @@ describe('effect()', () => {
 
 
 // ---------------------------------------------------------------------------
-// reactive — array mutations
+// reactive - array mutations
 // ---------------------------------------------------------------------------
 
-describe('reactive — arrays', () => {
+describe('reactive - arrays', () => {
   it('detects push on a reactive array', () => {
     const fn = vi.fn();
     const obj = reactive({ items: [1, 2, 3] }, fn);
@@ -262,10 +262,10 @@ describe('reactive — arrays', () => {
 
 
 // ---------------------------------------------------------------------------
-// computed — advanced
+// computed - advanced
 // ---------------------------------------------------------------------------
 
-describe('computed — advanced', () => {
+describe('computed - advanced', () => {
   it('chains computed signals', () => {
     const count = signal(2);
     const doubled = computed(() => count.value * 2);
@@ -302,10 +302,10 @@ describe('computed — advanced', () => {
 
 
 // ---------------------------------------------------------------------------
-// Signal — batch behavior
+// Signal - batch behavior
 // ---------------------------------------------------------------------------
 
-describe('Signal — multiple subscribers', () => {
+describe('Signal - multiple subscribers', () => {
   it('notifies all subscribers', () => {
     const s = signal(0);
     const fn1 = vi.fn();
@@ -343,7 +343,7 @@ describe('Signal — multiple subscribers', () => {
 // BUG FIX: effect() dispose must not corrupt _activeEffect
 // ---------------------------------------------------------------------------
 
-describe('effect — dispose safety', () => {
+describe('effect - dispose safety', () => {
   it('disposing inside another effect does not break tracking', () => {
     const a = signal(1);
     const b = signal(2);
@@ -376,10 +376,10 @@ describe('effect — dispose safety', () => {
 // PERF FIX: computed() should not notify when value unchanged
 // ---------------------------------------------------------------------------
 
-describe('computed — skip notification on same value', () => {
+describe('computed - skip notification on same value', () => {
   it('does not notify subscribers when computed result is the same', () => {
     const s = signal(5);
-    // Computed that clamps to a range — returns same value if within bounds
+    // Computed that clamps to a range - returns same value if within bounds
     const clamped = computed(() => Math.min(Math.max(s.value, 0), 10));
     expect(clamped.value).toBe(5);
 
@@ -392,19 +392,19 @@ describe('computed — skip notification on same value', () => {
     expect(subscriber).toHaveBeenCalledTimes(1);
 
     subscriber.mockClear();
-    // Changing s from 7 to 15 — clamped stays at 10
+    // Changing s from 7 to 15 - clamped stays at 10
     s.value = 15;
     expect(clamped.value).toBe(10);
-    s.value = 20; // clamped still 10 — should NOT notify again
+    s.value = 20; // clamped still 10 - should NOT notify again
     expect(subscriber).toHaveBeenCalledTimes(1); // only the 7→10 change
   });
 });
 
 // ===========================================================================
-// reactive() — advanced edge cases
+// reactive() - advanced edge cases
 // ===========================================================================
 
-describe('reactive — edge cases', () => {
+describe('reactive - edge cases', () => {
   it('returns primitive as-is', () => {
     expect(reactive(42, () => {})).toBe(42);
     expect(reactive('hello', () => {})).toBe('hello');
@@ -473,7 +473,7 @@ describe('reactive — edge cases', () => {
 
   it('onChange throwing does not prevent set', () => {
     const r = reactive({ a: 1 }, () => { throw new Error('boom'); });
-    // Should not throw externally — error is reported via reportError
+    // Should not throw externally - error is reported via reportError
     r.a = 2;
     expect(r.__raw.a).toBe(2);
   });
@@ -488,10 +488,10 @@ describe('reactive — edge cases', () => {
 
 
 // ===========================================================================
-// Signal — advanced
+// Signal - advanced
 // ===========================================================================
 
-describe('Signal — advanced', () => {
+describe('Signal - advanced', () => {
   it('peek() does not trigger tracking', () => {
     const s = signal(1);
     const fn = vi.fn(() => { s.peek(); });
@@ -549,10 +549,10 @@ describe('Signal — advanced', () => {
 
 
 // ===========================================================================
-// effect() — advanced
+// effect() - advanced
 // ===========================================================================
 
-describe('effect — advanced', () => {
+describe('effect - advanced', () => {
   it('returns dispose function', () => {
     const s = signal(0);
     const fn = vi.fn(() => s.value);
@@ -625,17 +625,17 @@ describe('effect — advanced', () => {
 
 
 // ===========================================================================
-// computed() — advanced
+// computed() - advanced
 // ===========================================================================
 
-describe('computed — advanced', () => {
+describe('computed - advanced', () => {
   it('computed does not notify when value unchanged', () => {
     const s = signal(5);
     const c = computed(() => s.value > 3);
     const fn = vi.fn();
     c.subscribe(fn);
 
-    s.value = 10; // c still true — no change
+    s.value = 10; // c still true - no change
     expect(fn).not.toHaveBeenCalled();
   });
 
@@ -655,5 +655,166 @@ describe('computed — advanced', () => {
     expect(full.value).toBe('John Doe');
     first.value = 'Jane';
     expect(full.value).toBe('Jane Doe');
+  });
+});
+
+
+// ===========================================================================
+// batch()
+// ===========================================================================
+
+describe('batch()', () => {
+  it('defers effect execution until batch completes', () => {
+    const a = signal(1);
+    const b = signal(2);
+    const fn = vi.fn();
+
+    effect(() => {
+      fn(a.value + b.value);
+    });
+    fn.mockClear(); // clear initial run
+
+    batch(() => {
+      a.value = 10;
+      b.value = 20;
+    });
+
+    // Effect should run once after the batch, not twice
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn).toHaveBeenCalledWith(30);
+  });
+
+  it('subscribers see the final value, not intermediate', () => {
+    const s = signal(0);
+    const values = [];
+    s.subscribe(() => values.push(s.value));
+
+    batch(() => {
+      s.value = 1;
+      s.value = 2;
+      s.value = 3;
+    });
+
+    expect(values).toEqual([3]);
+  });
+
+  it('nested batch runs inner immediately, flushes at outer', () => {
+    const s = signal(0);
+    const fn = vi.fn();
+    s.subscribe(fn);
+
+    batch(() => {
+      s.value = 1;
+      batch(() => {
+        s.value = 2;
+      });
+      // inner batch should not have flushed
+      expect(fn).not.toHaveBeenCalled();
+      s.value = 3;
+    });
+
+    // Outer batch flushes once
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(s.value).toBe(3);
+  });
+
+  it('computed values update correctly after batch', () => {
+    const a = signal(1);
+    const b = signal(2);
+    const sum = computed(() => a.value + b.value);
+
+    batch(() => {
+      a.value = 10;
+      b.value = 20;
+    });
+
+    expect(sum.value).toBe(30);
+  });
+
+  it('effects still run if batch throws', () => {
+    const s = signal(0);
+    const fn = vi.fn();
+    s.subscribe(() => fn(s.value));
+
+    try {
+      batch(() => {
+        s.value = 42;
+        throw new Error('oops');
+      });
+    } catch {}
+
+    // Batch should still flush on error via finally
+    expect(fn).toHaveBeenCalledWith(42);
+  });
+});
+
+
+// ===========================================================================
+// untracked()
+// ===========================================================================
+
+describe('untracked()', () => {
+  it('reads signals without creating dependencies', () => {
+    const a = signal(1);
+    const b = signal(10);
+    const fn = vi.fn();
+
+    effect(() => {
+      const aVal = a.value; // tracked
+      const bVal = untracked(() => b.value); // not tracked
+      fn(aVal + bVal);
+    });
+    fn.mockClear();
+
+    // Changing b should NOT re-run the effect
+    b.value = 20;
+    expect(fn).not.toHaveBeenCalled();
+
+    // Changing a should re-run and pick up new b
+    a.value = 2;
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn).toHaveBeenCalledWith(22); // a=2 + b=20
+  });
+
+  it('returns the value from the callback', () => {
+    const s = signal(42);
+    const result = untracked(() => s.value);
+    expect(result).toBe(42);
+  });
+
+  it('does not break tracking for outer effect', () => {
+    const tracked = signal('hello');
+    const notTracked = signal('world');
+    const runs = [];
+
+    effect(() => {
+      const t = tracked.value;
+      const u = untracked(() => notTracked.value);
+      runs.push(`${t} ${u}`);
+    });
+
+    expect(runs).toEqual(['hello world']);
+
+    tracked.value = 'hi';
+    expect(runs).toEqual(['hello world', 'hi world']);
+
+    notTracked.value = 'earth';
+    expect(runs).toEqual(['hello world', 'hi world']); // no re-run
+  });
+
+  it('works inside computed', () => {
+    const a = signal(5);
+    const b = signal(10);
+    const c = computed(() => a.value + untracked(() => b.value));
+
+    expect(c.value).toBe(15);
+
+    b.value = 100;
+    // computed shouldn't re-evaluate from b change
+    expect(c.value).toBe(15);
+
+    a.value = 1;
+    // Now recomputes, picks up new b
+    expect(c.value).toBe(101);
   });
 });

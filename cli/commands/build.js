@@ -1,5 +1,5 @@
 /**
- * cli/commands/build.js — library build command
+ * cli/commands/build.js - library build command
  *
  * Concatenates the zQuery source modules into dist/zquery.js and
  * dist/zquery.min.js.
@@ -208,7 +208,7 @@ function buildLibrary() {
   const zipBuf = buildZip(entries);
   const zipPath = path.join(DIST, 'zquery.dist.zip');
   fs.writeFileSync(zipPath, zipBuf);
-  console.log(`  ✓ dist/zquery.dist.zip (${sizeKB(zipBuf)} KB) — ${entries.length} files`);
+  console.log(`  ✓ dist/zquery.dist.zip (${sizeKB(zipBuf)} KB) - ${entries.length} files`);
 
   return { DIST, OUT_FILE, MIN_FILE };
 }

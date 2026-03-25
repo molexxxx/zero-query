@@ -1,5 +1,5 @@
 /**
- * zQuery Errors — Structured error handling system
+ * zQuery Errors - Structured error handling system
  *
  * Provides typed error classes and a configurable error handler so that
  * errors surface consistently across all modules (reactive, component,
@@ -11,7 +11,7 @@
  */
 
 // ---------------------------------------------------------------------------
-// Error codes — every zQuery error has a unique code for programmatic use
+// Error codes - every zQuery error has a unique code for programmatic use
 // ---------------------------------------------------------------------------
 export const ErrorCode = Object.freeze({
   // Reactive
@@ -61,14 +61,14 @@ export const ErrorCode = Object.freeze({
 
 
 // ---------------------------------------------------------------------------
-// ZQueryError — custom error class
+// ZQueryError - custom error class
 // ---------------------------------------------------------------------------
 export class ZQueryError extends Error {
   /**
-   * @param {string} code    — one of ErrorCode values
-   * @param {string} message — human-readable description
-   * @param {object} [context] — extra data (component name, expression, etc.)
-   * @param {Error}  [cause]   — original error
+   * @param {string} code    - one of ErrorCode values
+   * @param {string} message - human-readable description
+   * @param {object} [context] - extra data (component name, expression, etc.)
+   * @param {Error}  [cause]   - original error
    */
   constructor(code, message, context = {}, cause) {
     super(message);
@@ -88,10 +88,10 @@ let _errorHandlers = [];
 /**
  * Register a global error handler.
  * Called whenever zQuery catches an error internally.
- * Multiple handlers are supported — each receives the error.
+ * Multiple handlers are supported - each receives the error.
  * Pass `null` to clear all handlers.
  *
- * @param {Function|null} handler — (error: ZQueryError) => void
+ * @param {Function|null} handler - (error: ZQueryError) => void
  * @returns {Function} unsubscribe function to remove this handler
  */
 export function onError(handler) {
@@ -109,9 +109,9 @@ export function onError(handler) {
 
 /**
  * Report an error through the global handler and console.
- * Non-throwing — used for recoverable errors in callbacks, lifecycle hooks, etc.
+ * Non-throwing - used for recoverable errors in callbacks, lifecycle hooks, etc.
  *
- * @param {string} code — ErrorCode
+ * @param {string} code - ErrorCode
  * @param {string} message
  * @param {object} [context]
  * @param {Error} [cause]
@@ -135,7 +135,7 @@ export function reportError(code, message, context = {}, cause) {
  * the current execution context.
  *
  * @param {Function} fn
- * @param {string} code — ErrorCode to use if the callback throws
+ * @param {string} code - ErrorCode to use if the callback throws
  * @param {object} [context]
  * @returns {Function}
  */
@@ -154,8 +154,8 @@ export function guardCallback(fn, code, context = {}) {
  * Throws ZQueryError on failure (for fast-fail at API boundaries).
  *
  * @param {*} value
- * @param {string} name — parameter name for error message
- * @param {string} expectedType — 'string', 'function', 'object', etc.
+ * @param {string} name - parameter name for error message
+ * @param {string} expectedType - 'string', 'function', 'object', etc.
  */
 export function validate(value, name, expectedType) {
   if (value === undefined || value === null) {
@@ -190,11 +190,11 @@ export function formatError(err) {
 }
 
 /**
- * Async version of guardCallback — wraps an async function so that
+ * Async version of guardCallback - wraps an async function so that
  * rejections are caught, reported, and don't crash execution.
  *
- * @param {Function} fn — async function
- * @param {string} code — ErrorCode to use
+ * @param {Function} fn - async function
+ * @param {string} code - ErrorCode to use
  * @param {object} [context]
  * @returns {Function}
  */

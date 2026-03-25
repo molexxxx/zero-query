@@ -1,9 +1,9 @@
-// about.js — About page with theme switcher
+// about.js - About page with theme switcher
 //
 // Features used:
-//   $.storage   — localStorage wrapper (get / set)
-//   $.version   — library version string
-//   data-theme  — dark / light theming
+//   $.storage   - localStorage wrapper (get / set)
+//   $.version   - library version string
+//   data-theme  - dark / light theming
 
 $.component('about-page', {
   styles: `
@@ -40,7 +40,7 @@ $.component('about-page', {
     return `
       <div class="page-header">
         <h1>About</h1>
-        <p class="subtitle">zQuery v${$.version} — zero-dependency frontend micro-library.</p>
+        <p class="subtitle">zQuery v${$.version} - zero-dependency frontend micro-library.</p>
       </div>
 
       <div class="card">

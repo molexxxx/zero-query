@@ -1,13 +1,13 @@
-// app.js — Application entry point
+// app.js - Application entry point
 //
 // Bootstraps the app: imports components, sets up routing,
 // and wires the responsive sidebar.
 //
 // Key APIs used:
-//   $.router  — SPA navigation (history mode)
-//   $.ready   — run after DOM is loaded
-//   $.on      — global delegated event listeners
-//   $.storage — localStorage wrapper
+//   $.router  - SPA navigation (history mode)
+//   $.ready   - run after DOM is loaded
+//   $.on      - global delegated event listeners
+//   $.storage - localStorage wrapper
 
 import './store.js';
 import './components/home.js';
@@ -20,7 +20,6 @@ import { routes } from './routes.js';
 // Router
 // ---------------------------------------------------------------------------
 const router = $.router({
-  el: '#app',
   routes,
   fallback: 'not-found',
   mode: 'history'
@@ -75,7 +74,7 @@ $.ready(() => {
   const current = window.location.pathname;
   $.all(`.nav-link[z-link="${current}"]`).addClass('active');
 
-  console.log('⚡ {{NAME}} — powered by zQuery v' + $.version);
+  console.log('⚡ {{NAME}} - powered by zQuery v' + $.version);
 });
 
 // ---------------------------------------------------------------------------

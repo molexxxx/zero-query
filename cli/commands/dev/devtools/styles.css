@@ -20,7 +20,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .divider:hover{background:var(--accent)}
 
 /* Divider toolbar */
-/* split-h: divider is a tall 4px column — toolbar sits to its LEFT, overlaying the browser */
+/* split-h: divider is a tall 4px column - toolbar sits to its LEFT, overlaying the browser */
 .divider-toolbar{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;
 padding:4px 2px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;
 z-index:11;top:12px;right:100%;margin-right:2px;cursor:grab}
@@ -36,7 +36,7 @@ border:1px solid var(--border);border-radius:4px;font-size:11px;color:var(--acce
 max-width:0;overflow:hidden;opacity:0;transition:max-width .25s ease,opacity .2s ease,padding .2s ease;
 padding:0;pointer-events:none;line-height:22px;text-overflow:ellipsis}
 .route-label.open{max-width:50vw;opacity:1;padding:2px 8px;pointer-events:auto}
-/* split-v: divider is a wide 4px row — toolbar sits ABOVE it as a horizontal bar */
+/* split-v: divider is a wide 4px row - toolbar sits ABOVE it as a horizontal bar */
 #root.split-v .divider-toolbar{flex-direction:row;gap:4px;padding:2px 4px;
 top:auto;right:auto;bottom:100%;left:12px;margin-right:0;margin-bottom:2px}
 #root.split-v .divider-sep{width:1px;height:14px;margin:0 1px}

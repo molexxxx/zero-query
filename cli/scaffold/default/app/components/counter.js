@@ -1,11 +1,11 @@
-// counter.js — Interactive counter
+// counter.js - Interactive counter
 //
 // Features used:
-//   state / computed / watch  — reactive data flow
-//   @click                    — event binding
-//   z-model + z-number        — two-way binding with type coercion
-//   z-class / z-if / z-for    — conditional & list rendering
-//   $.bus.emit('toast', …)    — notifications via event bus
+//   state / computed / watch  - reactive data flow
+//   @click                    - event binding
+//   z-model + z-number        - two-way binding with type coercion
+//   z-class / z-if / z-for    - conditional & list rendering
+//   $.bus.emit('toast', …)    - notifications via event bus
 
 $.component('counter-page', {
   styles: `
@@ -72,7 +72,7 @@ $.component('counter-page', {
 
   decrement() {
     this.state.count -= this.state.step;
-    this._pushHistory('−', this.state.step, this.state.count);
+    this._pushHistory('-', this.state.step, this.state.count);
   },
 
   _pushHistory(action, value, result) {
@@ -101,7 +101,7 @@ $.component('counter-page', {
         </div>
 
         <div class="ctr-actions">
-          <button class="btn btn-outline" @click="decrement">− Subtract</button>
+          <button class="btn btn-outline" @click="decrement">- Subtract</button>
           <button class="btn btn-primary" @click="increment">+ Add</button>
         </div>
 

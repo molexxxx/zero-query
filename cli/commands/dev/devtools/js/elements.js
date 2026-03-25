@@ -72,7 +72,7 @@ function buildNode(node, depth) {
   var nodePath = getNodePath(node);
   var hasChildren = false;
   var childNodes = node.childNodes;
-  // style/script content is shown inline via the peek button — treat as leaf
+  // style/script content is shown inline via the peek button - treat as leaf
   if (tag !== 'style' && tag !== 'script') {
     for (var i = 0; i < childNodes.length; i++) {
       var cn = childNodes[i];
@@ -238,7 +238,7 @@ function buildNode(node, depth) {
     toggleNested(childContainer, 0);
   });
 
-  // Row click — select element (not toggle)
+  // Row click - select element (not toggle)
   row.addEventListener('click', function(e) {
     // Don't select when clicking toggle arrow, badge, action buttons, or peek
     if (e.target.closest('.tree-toggle') || e.target.closest('.tree-badge') || e.target.closest('.tree-action') || e.target.closest('.tree-peek')) return;
@@ -351,7 +351,7 @@ function showDetail(node) {
 }
 
 // ===================================================================
-// MutationObserver — watch target document for live DOM changes
+// MutationObserver - watch target document for live DOM changes
 // ===================================================================
 function startObserver() {
   if (!targetDoc || observer) return;
@@ -394,7 +394,7 @@ function startObserver() {
         }
     }
 
-    if (!dominated) return; // All mutations were from devtools highlight — skip rebuild
+    if (!dominated) return; // All mutations were from devtools highlight - skip rebuild
 
     // Debounce tree rebuild
     clearTimeout(startObserver._timer);

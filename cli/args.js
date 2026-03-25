@@ -1,5 +1,5 @@
 /**
- * cli/args.js — CLI argument parsing helpers
+ * cli/args.js - CLI argument parsing helpers
  *
  * Provides the raw args array and two helper functions for reading
  * named flags (--verbose, -v) and valued options (--port 8080, -p 8080).

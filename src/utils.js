@@ -1,5 +1,5 @@
 /**
- * zQuery Utils — Common utility functions
+ * zQuery Utils - Common utility functions
  * 
  * Quality-of-life helpers that every frontend project needs.
  * Attached to $ namespace for convenience.
@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 
 /**
- * Debounce — delays execution until after `ms` of inactivity
+ * Debounce - delays execution until after `ms` of inactivity
  */
 export function debounce(fn, ms = 250) {
   let timer;
@@ -23,7 +23,7 @@ export function debounce(fn, ms = 250) {
 }
 
 /**
- * Throttle — limits execution to once per `ms`
+ * Throttle - limits execution to once per `ms`
  */
 export function throttle(fn, ms = 250) {
   let last = 0;
@@ -42,14 +42,14 @@ export function throttle(fn, ms = 250) {
 }
 
 /**
- * Pipe — compose functions left-to-right
+ * Pipe - compose functions left-to-right
  */
 export function pipe(...fns) {
   return (input) => fns.reduce((val, fn) => fn(val), input);
 }
 
 /**
- * Once — function that only runs once
+ * Once - function that only runs once
  */
 export function once(fn) {
   let called = false, result;
@@ -60,7 +60,7 @@ export function once(fn) {
 }
 
 /**
- * Sleep — promise-based delay
+ * Sleep - promise-based delay
  */
 export function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -111,8 +111,12 @@ export function trust(htmlStr) {
  * Generate UUID v4
  */
 export function uuid() {
-  return crypto?.randomUUID?.() || 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0;
+  if (crypto?.randomUUID) return crypto.randomUUID();
+  // Fallback using crypto.getRandomValues (wider support than randomUUID)
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const buf = new Uint8Array(1);
+    crypto.getRandomValues(buf);
+    const r = buf[0] & 15;
     return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
   });
 }
@@ -140,12 +144,49 @@ export function kebabCase(str) {
 // ---------------------------------------------------------------------------
 
 /**
- * Deep clone
+ * Deep clone via structuredClone (handles circular refs, Dates, etc.).
+ * Falls back to a manual deep clone that preserves Date, RegExp, Map, Set,
+ * ArrayBuffer, TypedArrays, undefined values, and circular references.
  */
 export function deepClone(obj) {
   if (typeof structuredClone === 'function') return structuredClone(obj);
-  return JSON.parse(JSON.stringify(obj));
+
+  const seen = new Map();
+  function clone(val) {
+    if (val === null || typeof val !== 'object') return val;
+    if (seen.has(val)) return seen.get(val);
+    if (val instanceof Date) return new Date(val.getTime());
+    if (val instanceof RegExp) return new RegExp(val.source, val.flags);
+    if (val instanceof Map) {
+      const m = new Map();
+      seen.set(val, m);
+      val.forEach((v, k) => m.set(clone(k), clone(v)));
+      return m;
+    }
+    if (val instanceof Set) {
+      const s = new Set();
+      seen.set(val, s);
+      val.forEach(v => s.add(clone(v)));
+      return s;
+    }
+    if (ArrayBuffer.isView(val)) return new val.constructor(val.buffer.slice(0));
+    if (val instanceof ArrayBuffer) return val.slice(0);
+    if (Array.isArray(val)) {
+      const arr = [];
+      seen.set(val, arr);
+      for (let i = 0; i < val.length; i++) arr[i] = clone(val[i]);
+      return arr;
+    }
+    const result = Object.create(Object.getPrototypeOf(val));
+    seen.set(val, result);
+    for (const key of Object.keys(val)) result[key] = clone(val[key]);
+    return result;
+  }
+  return clone(obj);
 }
+
+// Keys that must never be written through data-merge or path-set operations
+const _UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 /**
  * Deep merge objects
@@ -156,6 +197,7 @@ export function deepMerge(target, ...sources) {
     if (seen.has(src)) return tgt;
     seen.add(src);
     for (const key of Object.keys(src)) {
+      if (_UNSAFE_KEYS.has(key)) continue;
       if (src[key] && typeof src[key] === 'object' && !Array.isArray(src[key])) {
         if (!tgt[key] || typeof tgt[key] !== 'object') tgt[key] = {};
         merge(tgt[key], src[key]);
@@ -362,10 +404,13 @@ export function setPath(obj, path, value) {
   let cur = obj;
   for (let i = 0; i < keys.length - 1; i++) {
     const k = keys[i];
+    if (_UNSAFE_KEYS.has(k)) return obj;
     if (cur[k] == null || typeof cur[k] !== 'object') cur[k] = {};
     cur = cur[k];
   }
-  cur[keys[keys.length - 1]] = value;
+  const lastKey = keys[keys.length - 1];
+  if (_UNSAFE_KEYS.has(lastKey)) return obj;
+  cur[lastKey] = value;
   return obj;
 }
 
@@ -416,9 +461,16 @@ export function memoize(fn, keyFnOrOpts) {
 
   const memoized = (...args) => {
     const key = keyFn ? keyFn(...args) : args[0];
-    if (cache.has(key)) return cache.get(key);
+    if (cache.has(key)) {
+      // LRU: promote to newest by re-inserting
+      const value = cache.get(key);
+      cache.delete(key);
+      cache.set(key, value);
+      return value;
+    }
     const result = fn(...args);
     cache.set(key, result);
+    // LRU eviction: drop the least-recently-used entry
     if (maxSize > 0 && cache.size > maxSize) {
       cache.delete(cache.keys().next().value);
     }

@@ -1,9 +1,9 @@
-// counter.js — Interactive counter
+// counter.js - Interactive counter
 //
 // Features used:
-//   $.getStore / store.subscribe — shared state + live re-render
-//   @click / z-model + z-number  — events + two-way binding
-//   z-if / z-for / z-key         — conditional & keyed list rendering
+//   $.getStore / store.subscribe - shared state + live re-render
+//   @click / z-model + z-number  - events + two-way binding
+//   z-if / z-for / z-key         - conditional & keyed list rendering
 
 $.component('counter-page', {
   styles: `
@@ -62,7 +62,7 @@ $.component('counter-page', {
   decrement() {
     const store = $.getStore('main');
     store.dispatch('decrement');
-    this._pushHistory('−', store.state.step, store.state.count);
+    this._pushHistory('-', store.state.step, store.state.count);
   },
 
   setStep(e) {
@@ -96,7 +96,7 @@ $.component('counter-page', {
         </div>
 
         <div class="ctr-actions">
-          <button class="btn btn-outline" @click="decrement">− Subtract</button>
+          <button class="btn btn-outline" @click="decrement">- Subtract</button>
           <button class="btn btn-primary" @click="increment">+ Add</button>
         </div>
 

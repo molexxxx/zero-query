@@ -1,4 +1,4 @@
-// cli/help.js — show CLI usage information
+// cli/help.js - show CLI usage information
 
 function showHelp() {
   console.log(`
@@ -11,7 +11,7 @@ function showHelp() {
                                (defaults to the current directory)
       --minimal, -m            Use the minimal template (home, counter, about)
                                instead of the full-featured default scaffold
-      --ssr, -s                Use the SSR template — includes server/index.js
+      --ssr, -s                Use the SSR template - includes server/index.js
                                SSR HTTP server with shared component definitions
 
     dev [root]                 Start a dev server with live-reload
@@ -69,7 +69,7 @@ function showHelp() {
     zquery dev --port 8080     custom port
 
     The dev server includes a full-screen error overlay:
-      • JS files are syntax-checked on save — errors block reload
+      • JS files are syntax-checked on save - errors block reload
         and show an overlay with exact file, line:column, and code frame
       • Runtime errors and unhandled rejections are also captured
       • The overlay auto-clears when the file is fixed and saved

@@ -1,5 +1,5 @@
 /**
- * Structured error handling — error codes, error class, and global handler.
+ * Structured error handling - error codes, error class, and global handler.
  *
  * @module errors
  */
@@ -84,7 +84,7 @@ export function onError(handler: ZQueryErrorHandler | null): () => void;
 
 /**
  * Report an error through the global handler and console.
- * Non-throwing — used for recoverable errors in callbacks, lifecycle hooks, etc.
+ * Non-throwing - used for recoverable errors in callbacks, lifecycle hooks, etc.
  */
 export function reportError(
   code: ErrorCodeValue,
@@ -125,7 +125,7 @@ export interface FormattedError {
 export function formatError(err: ZQueryError | Error): FormattedError;
 
 /**
- * Async version of guardCallback — wraps an async function so that
+ * Async version of guardCallback - wraps an async function so that
  * rejections are caught, reported, and don't crash execution.
  */
 export function guardAsync<T extends (...args: any[]) => Promise<any>>(

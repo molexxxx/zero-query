@@ -1,11 +1,11 @@
-// toolkit.js — HTTP, utilities, and advanced store features
+// toolkit.js - HTTP, utilities, and advanced store features
 //
 // Features used:
-//   $.http / $.post / $.put / $.delete  — HTTP client + interceptors
-//   $.pipe / $.memoize / $.retry        — functional utilities
-//   $.groupBy / $.chunk / $.unique      — collection helpers
-//   store.use / snapshot / history      — middleware & time-travel
-//   templateUrl / styleUrl              — external template & styles
+//   $.http / $.post / $.put / $.delete  - HTTP client + interceptors
+//   $.pipe / $.memoize / $.retry        - functional utilities
+//   $.groupBy / $.chunk / $.unique      - collection helpers
+//   store.use / snapshot / history      - middleware & time-travel
+//   templateUrl / styleUrl              - external template & styles
 
 $.component('toolkit-page', {
   templateUrl: 'toolkit.html',
@@ -32,7 +32,7 @@ $.component('toolkit-page', {
     actionCount: 0,
   }),
 
-  // init() lifecycle — runs before the first render
+  // init() lifecycle - runs before the first render
   init() {
     this._prevBaseURL = $.http.getConfig().baseURL || '';
     $.http.configure({ baseURL: 'https://jsonplaceholder.typicode.com' });

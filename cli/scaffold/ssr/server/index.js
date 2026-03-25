@@ -1,7 +1,7 @@
-// server/index.js — SSR HTTP server
+// server/index.js - SSR HTTP server
 //
 // Renders routes to HTML with zQuery SSR and serves them over HTTP.
-// Components are imported from app/components/ — the same definitions
+// Components are imported from app/components/ - the same definitions
 // the client uses.
 //
 // Usage:
@@ -14,7 +14,7 @@ import { join, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createSSRApp } from 'zero-query/ssr';
 
-// Shared component definitions — same ones the client registers
+// Shared component definitions - same ones the client registers
 import { homePage }  from '../app/components/home.js';
 import { aboutPage } from '../app/components/about.js';
 import { notFound }  from '../app/components/not-found.js';
@@ -62,7 +62,7 @@ ${routes.map(r =>
   }</a>`).join('\n')}
     </div>
   </nav>
-  <main id="app">${body}</main>
+  <z-outlet>${body}</z-outlet>
   <footer class="footer"><small>Built with zQuery · SSR</small></footer>
 </body>
 </html>`;

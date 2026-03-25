@@ -25,7 +25,7 @@ beforeEach(() => {
 
 
 // ---------------------------------------------------------------------------
-// query() — single selector
+// query() - single selector
 // ---------------------------------------------------------------------------
 
 describe('query()', () => {
@@ -79,7 +79,7 @@ describe('query()', () => {
 
 
 // ---------------------------------------------------------------------------
-// queryAll() — collection selector
+// queryAll() - collection selector
 // ---------------------------------------------------------------------------
 
 describe('queryAll()', () => {
@@ -362,7 +362,7 @@ describe('ZQueryCollection', () => {
       const ref = main.children[0];  // grab DOM reference
       const col = queryAll('#main');
       col.html('<p id="preserved">new text</p>');
-      // Same DOM node preserved — morph, not innerHTML replace
+      // Same DOM node preserved - morph, not innerHTML replace
       expect(main.children[0]).toBe(ref);
       expect(main.children[0].textContent).toBe('new text');
     });
@@ -381,7 +381,7 @@ describe('ZQueryCollection', () => {
       const ref = main.children[0];
       const col = queryAll('#main');
       col.empty().html('<p id="old">replaced</p>');
-      // NOT the same node — empty() cleared children, so html() used innerHTML
+      // NOT the same node - empty() cleared children, so html() used innerHTML
       expect(main.children[0]).not.toBe(ref);
       expect(main.children[0].textContent).toBe('replaced');
     });
@@ -547,7 +547,7 @@ describe('query quick refs', () => {
     expect(el.textContent).toBe('text');
   });
 
-  // qs / qsa — raw DOM shortcuts
+  // qs / qsa - raw DOM shortcuts
   it('$.qs() returns raw element by CSS selector', () => {
     const el = query.qs('#main');
     expect(el).toBe(document.getElementById('main'));
@@ -792,7 +792,7 @@ describe('CSS dimension methods', () => {
 // prop() method
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — prop()', () => {
+describe('ZQueryCollection - prop()', () => {
   it('gets a DOM property', () => {
     document.body.innerHTML = '<input type="checkbox" checked>';
     const col = queryAll('input');
@@ -821,7 +821,7 @@ describe('ZQueryCollection — prop()', () => {
 // css() method
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — css()', () => {
+describe('ZQueryCollection - css()', () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="styled">test</div>';
   });
@@ -843,7 +843,7 @@ describe('ZQueryCollection — css()', () => {
 // val() method
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — val()', () => {
+describe('ZQueryCollection - val()', () => {
   it('gets input value', () => {
     document.body.innerHTML = '<input value="test">';
     expect(queryAll('input').val()).toBe('test');
@@ -871,7 +871,7 @@ describe('ZQueryCollection — val()', () => {
 // after(), before() methods
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — after() / before()', () => {
+describe('ZQueryCollection - after() / before()', () => {
   beforeEach(() => {
     document.body.innerHTML = '<div id="container"><p id="target">target</p></div>';
   });
@@ -894,7 +894,7 @@ describe('ZQueryCollection — after() / before()', () => {
 // wrap() method
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — wrap()', () => {
+describe('ZQueryCollection - wrap()', () => {
   it('wraps element in new parent', () => {
     document.body.innerHTML = '<div id="container"><p id="target">text</p></div>';
     queryAll('#target').wrap('<div class="wrapper"></div>');
@@ -909,7 +909,7 @@ describe('ZQueryCollection — wrap()', () => {
 // replaceWith() method
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — replaceWith()', () => {
+describe('ZQueryCollection - replaceWith()', () => {
   it('replaces element with new content', () => {
     document.body.innerHTML = '<div id="container"><p id="old">old</p></div>';
     queryAll('#old').replaceWith('<span id="new">new</span>');
@@ -921,7 +921,7 @@ describe('ZQueryCollection — replaceWith()', () => {
     document.body.innerHTML = '<div id="container"><p id="target" class="old">old text</p></div>';
     const target = document.querySelector('#target');
     queryAll('#target').replaceWith('<p id="target" class="new">new text</p>');
-    // Same DOM node — morphed, not replaced
+    // Same DOM node - morphed, not replaced
     expect(document.querySelector('#target')).toBe(target);
     expect(target.className).toBe('new');
     expect(target.textContent).toBe('new text');
@@ -941,7 +941,7 @@ describe('ZQueryCollection — replaceWith()', () => {
 // offset() and position()
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — offset() / position()', () => {
+describe('ZQueryCollection - offset() / position()', () => {
   it('offset() returns object with top and left', () => {
     document.body.innerHTML = '<div id="box">box</div>';
     const off = queryAll('#box').offset();
@@ -963,7 +963,7 @@ describe('ZQueryCollection — offset() / position()', () => {
 // width() and height()
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — width() / height()', () => {
+describe('ZQueryCollection - width() / height()', () => {
   it('width() returns a number', () => {
     document.body.innerHTML = '<div id="box" style="width:100px">box</div>';
     const val = queryAll('#box').width();
@@ -982,7 +982,7 @@ describe('ZQueryCollection — width() / height()', () => {
 // animate()
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — animate()', () => {
+describe('ZQueryCollection - animate()', () => {
   it('returns a promise', () => {
     document.body.innerHTML = '<div id="box">box</div>';
     const result = queryAll('#box').animate({ opacity: 0 }, 100);
@@ -1019,10 +1019,10 @@ describe('hover()', () => {
 
 
 // ---------------------------------------------------------------------------
-// ZQueryCollection — empty collection safety
+// ZQueryCollection - empty collection safety
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — empty collection operations', () => {
+describe('ZQueryCollection - empty collection operations', () => {
   it('first() returns null on empty', () => {
     expect(queryAll('.nonexistent').first()).toBeNull();
   });
@@ -1076,7 +1076,7 @@ describe('ZQueryCollection — empty collection operations', () => {
 // Collection wrapping edge cases
 // ---------------------------------------------------------------------------
 
-describe('query — wrapping edge cases', () => {
+describe('query - wrapping edge cases', () => {
   it('wraps an HTMLCollection', () => {
     const col = queryAll(document.getElementsByClassName('text'));
     expect(col).toBeInstanceOf(ZQueryCollection);
@@ -1115,7 +1115,7 @@ describe('query — wrapping edge cases', () => {
 // html() morphing advanced
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — html() morphing advanced', () => {
+describe('ZQueryCollection - html() morphing advanced', () => {
   it('morphs complex nested structure', () => {
     document.body.innerHTML = '<div id="m"><ul><li id="i1">old1</li><li id="i2">old2</li></ul></div>';
     const li1 = document.getElementById('i1');
@@ -1139,7 +1139,7 @@ describe('ZQueryCollection — html() morphing advanced', () => {
 // Event delegation
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — event delegation', () => {
+describe('ZQueryCollection - event delegation', () => {
   it('on() with selector delegates to matching children', () => {
     let clicked = null;
     queryAll('#nav').on('click', '.nav-item', function() { clicked = this.textContent; });
@@ -1160,7 +1160,7 @@ describe('ZQueryCollection — event delegation', () => {
 // Multiple class operations
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — multiple class operations', () => {
+describe('ZQueryCollection - multiple class operations', () => {
   it('addClass with space-separated classes', () => {
     const col = queryAll('#main');
     col.addClass('a', 'b', 'c');
@@ -1184,7 +1184,7 @@ describe('ZQueryCollection — multiple class operations', () => {
 // Traversal edge cases
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — traversal edge cases', () => {
+describe('ZQueryCollection - traversal edge cases', () => {
   it('find() returns empty when no descendants match', () => {
     expect(queryAll('#main').find('.nonexistent').length).toBe(0);
   });
@@ -1230,7 +1230,7 @@ describe('ZQueryCollection — traversal edge cases', () => {
 // DOM manipulation edge cases
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — DOM manipulation edge cases', () => {
+describe('ZQueryCollection - DOM manipulation edge cases', () => {
   it('append with element node', () => {
     const newEl = document.createElement('div');
     newEl.id = 'appended-el';
@@ -1272,7 +1272,7 @@ describe('ZQueryCollection — DOM manipulation edge cases', () => {
 // Attribute edge cases
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — attribute edge cases', () => {
+describe('ZQueryCollection - attribute edge cases', () => {
   it('attr() set with sequential calls sets multiple attributes', () => {
     document.body.innerHTML = '<div id="a"></div>';
     queryAll('#a').attr('data-x', '1').attr('data-y', '2').attr('title', 'test');
@@ -1296,7 +1296,7 @@ describe('ZQueryCollection — attribute edge cases', () => {
 // css() advanced
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — css() advanced', () => {
+describe('ZQueryCollection - css() advanced', () => {
   it('sets a single style property via object', () => {
     document.body.innerHTML = '<div id="s">test</div>';
     queryAll('#s').css({ color: 'green' });
@@ -1317,7 +1317,7 @@ describe('ZQueryCollection — css() advanced', () => {
 // $.create advanced
 // ---------------------------------------------------------------------------
 
-describe('query.create — advanced', () => {
+describe('query.create - advanced', () => {
   it('creates element with no attributes', () => {
     const col = query.create('span');
     expect(col.length).toBe(1);
@@ -1345,7 +1345,7 @@ describe('query.create — advanced', () => {
 // Prop edge cases
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — prop() edge cases', () => {
+describe('ZQueryCollection - prop() edge cases', () => {
   it('gets defaultValue property', () => {
     document.body.innerHTML = '<input value="initial">';
     const col = queryAll('input');
@@ -1367,7 +1367,7 @@ describe('ZQueryCollection — prop() edge cases', () => {
 // BUG FIX: siblings() with selector filtering + null parent guard
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — siblings() fixes', () => {
+describe('ZQueryCollection - siblings() fixes', () => {
   it('filters siblings by selector', () => {
     document.body.innerHTML = '<div><p class="a">1</p><p class="b">2</p><p class="a">3</p></div>';
     const sibs = queryAll('.b').siblings('.a');
@@ -1393,7 +1393,7 @@ describe('ZQueryCollection — siblings() fixes', () => {
 // BUG FIX: ZQueryCollection constructor null safety
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — constructor null/undefined safety', () => {
+describe('ZQueryCollection - constructor null/undefined safety', () => {
   it('creates empty collection from null', () => {
     const col = new ZQueryCollection(null);
     expect(col.length).toBe(0);
@@ -1417,7 +1417,7 @@ describe('ZQueryCollection — constructor null/undefined safety', () => {
 // BUG FIX: attr() with object syntax
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — attr() object set', () => {
+describe('ZQueryCollection - attr() object set', () => {
   it('sets multiple attributes with object', () => {
     document.body.innerHTML = '<div id="at"></div>';
     queryAll('#at').attr({ 'data-x': '1', 'data-y': '2', title: 'hello' });
@@ -1433,7 +1433,7 @@ describe('ZQueryCollection — attr() object set', () => {
 // BUG FIX: css() two-argument setter
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — css() two-argument setter', () => {
+describe('ZQueryCollection - css() two-argument setter', () => {
   it('sets a CSS property with key-value arguments', () => {
     document.body.innerHTML = '<div id="cs">text</div>';
     queryAll('#cs').css('color', 'green');
@@ -1460,7 +1460,7 @@ describe('ZQueryCollection — css() two-argument setter', () => {
 // BUG FIX: wrap() does not crash on empty/invalid wrapper
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — wrap() safety', () => {
+describe('ZQueryCollection - wrap() safety', () => {
   it('does not crash if wrapper string is empty', () => {
     document.body.innerHTML = '<div id="w"><p>inside</p></div>';
     expect(() => queryAll('#w p').wrap('')).not.toThrow();
@@ -1478,7 +1478,7 @@ describe('ZQueryCollection — wrap() safety', () => {
 // BUG FIX: index() does not crash on detached element
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — index() null parent safety', () => {
+describe('ZQueryCollection - index() null parent safety', () => {
   it('returns -1 for detached element', () => {
     const detached = document.createElement('div');
     const col = new ZQueryCollection([detached]);
@@ -1491,7 +1491,7 @@ describe('ZQueryCollection — index() null parent safety', () => {
 // BUG FIX: delegated on() / off() handler removal
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — delegated on/off', () => {
+describe('ZQueryCollection - delegated on/off', () => {
   it('off() removes delegated event handlers', () => {
     document.body.innerHTML = '<div id="parent"><button class="btn">click</button></div>';
     const parent = new ZQueryCollection([document.getElementById('parent')]);
@@ -1513,7 +1513,7 @@ describe('ZQueryCollection — delegated on/off', () => {
 // BUG FIX: animate() resolves immediately on empty collection
 // ---------------------------------------------------------------------------
 
-describe('ZQueryCollection — animate() empty collection', () => {
+describe('ZQueryCollection - animate() empty collection', () => {
   it('resolves immediately when collection is empty', async () => {
     const col = new ZQueryCollection([]);
     const result = await col.animate({ opacity: '0' }, 50);
@@ -1523,10 +1523,10 @@ describe('ZQueryCollection — animate() empty collection', () => {
 
 
 // ===========================================================================
-// one() — single-fire event listener
+// one() - single-fire event listener
 // ===========================================================================
 
-describe('ZQueryCollection — one()', () => {
+describe('ZQueryCollection - one()', () => {
   it('fires handler only once', () => {
     const handler = vi.fn();
     document.body.innerHTML = '<button id="one-btn">click</button>';
@@ -1540,10 +1540,10 @@ describe('ZQueryCollection — one()', () => {
 
 
 // ===========================================================================
-// toggle() — show/hide toggle
+// toggle() - show/hide toggle
 // ===========================================================================
 
-describe('ZQueryCollection — toggle()', () => {
+describe('ZQueryCollection - toggle()', () => {
   it('hides a visible element', () => {
     const el = document.querySelector('#main');
     el.style.display = '';
@@ -1574,7 +1574,7 @@ describe('ZQueryCollection — toggle()', () => {
 // serialize() and serializeObject()
 // ===========================================================================
 
-describe('ZQueryCollection — serialize()', () => {
+describe('ZQueryCollection - serialize()', () => {
   it('serializes form inputs to URL-encoded string', () => {
     document.body.innerHTML = '<form id="f"><input name="user" value="Alice"><input name="age" value="30"></form>';
     const result = query('#f').serialize();
@@ -1587,7 +1587,7 @@ describe('ZQueryCollection — serialize()', () => {
   });
 });
 
-describe('ZQueryCollection — serializeObject()', () => {
+describe('ZQueryCollection - serializeObject()', () => {
   it('builds an object from form fields', () => {
     document.body.innerHTML = '<form id="f"><input name="user" value="Alice"><input name="age" value="30"></form>';
     expect(query('#f').serializeObject()).toEqual({ user: 'Alice', age: '30' });
@@ -1681,10 +1681,10 @@ describe('$.create', () => {
 
 
 // ===========================================================================
-// data() — no key returns full dataset
+// data() - no key returns full dataset
 // ===========================================================================
 
-describe('ZQueryCollection — data() full dataset', () => {
+describe('ZQueryCollection - data() full dataset', () => {
   it('returns the full dataset when no key is given', () => {
     document.body.innerHTML = '<div id="d" data-x="1" data-y="2"></div>';
     const ds = query('#d').data();
@@ -1698,7 +1698,7 @@ describe('ZQueryCollection — data() full dataset', () => {
 // css() getter on empty collection
 // ===========================================================================
 
-describe('ZQueryCollection — css() empty collection', () => {
+describe('ZQueryCollection - css() empty collection', () => {
   it('returns undefined when collection is empty', () => {
     const col = new ZQueryCollection([]);
     expect(col.css('color')).toBeUndefined();
@@ -1710,7 +1710,7 @@ describe('ZQueryCollection — css() empty collection', () => {
 // append/prepend/after/before with Node
 // ===========================================================================
 
-describe('ZQueryCollection — append/prepend with Node', () => {
+describe('ZQueryCollection - append/prepend with Node', () => {
   it('appends a Node element', () => {
     document.body.innerHTML = '<div id="container"><p>existing</p></div>';
     const newNode = document.createElement('span');
@@ -1736,7 +1736,7 @@ describe('ZQueryCollection — append/prepend with Node', () => {
   });
 });
 
-describe('ZQueryCollection — after/before with Node', () => {
+describe('ZQueryCollection - after/before with Node', () => {
   it('inserts Node after element', () => {
     document.body.innerHTML = '<div id="anchor"></div>';
     const newNode = document.createElement('span');
@@ -1759,7 +1759,7 @@ describe('ZQueryCollection — after/before with Node', () => {
 // replaceWith using Node
 // ===========================================================================
 
-describe('ZQueryCollection — replaceWith(Node)', () => {
+describe('ZQueryCollection - replaceWith(Node)', () => {
   it('replaces element with a Node', () => {
     document.body.innerHTML = '<div id="old">old</div>';
     const newNode = document.createElement('span');
@@ -1776,7 +1776,7 @@ describe('ZQueryCollection — replaceWith(Node)', () => {
 // nextUntil/prevUntil/parentsUntil with filter
 // ===========================================================================
 
-describe('ZQueryCollection — nextUntil with filter', () => {
+describe('ZQueryCollection - nextUntil with filter', () => {
   it('collects siblings until stop selector, applying filter', () => {
     document.body.innerHTML = '<div id="start"></div><span class="a">A</span><p>P</p><span class="a">A2</span><div id="stop"></div>';
     const result = query('#start').nextUntil('#stop', 'span');
@@ -1784,7 +1784,7 @@ describe('ZQueryCollection — nextUntil with filter', () => {
   });
 });
 
-describe('ZQueryCollection — prevUntil with filter', () => {
+describe('ZQueryCollection - prevUntil with filter', () => {
   it('collects previous siblings until stop selector, applying filter', () => {
     document.body.innerHTML = '<div id="stop"></div><span>A</span><p>P</p><span>B</span><div id="end"></div>';
     const result = query('#end').prevUntil('#stop', 'span');
@@ -1792,7 +1792,7 @@ describe('ZQueryCollection — prevUntil with filter', () => {
   });
 });
 
-describe('ZQueryCollection — parentsUntil with filter', () => {
+describe('ZQueryCollection - parentsUntil with filter', () => {
   it('collects parent elements until stop selector, applying filter', () => {
     document.body.innerHTML = '<section><article><div><span id="target"></span></div></article></section>';
     const result = query('#target').parentsUntil('section', 'div');
@@ -1806,7 +1806,7 @@ describe('ZQueryCollection — parentsUntil with filter', () => {
 // delegated on() at document level
 // ===========================================================================
 
-describe('ZQueryCollection — delegated on()', () => {
+describe('ZQueryCollection - delegated on()', () => {
   it('delegates event to matching child selector', () => {
     document.body.innerHTML = '<div id="container"><button class="action">click</button></div>';
     const handler = vi.fn();
@@ -1829,7 +1829,7 @@ describe('ZQueryCollection — delegated on()', () => {
 // Multi-event on/off
 // ===========================================================================
 
-describe('ZQueryCollection — multi-event on()', () => {
+describe('ZQueryCollection - multi-event on()', () => {
   it('binds handler to multiple space-separated events', () => {
     document.body.innerHTML = '<input id="inp" type="text">';
     const handler = vi.fn();
@@ -1845,7 +1845,7 @@ describe('ZQueryCollection — multi-event on()', () => {
 // scrollTop/scrollLeft getters
 // ===========================================================================
 
-describe('ZQueryCollection — scrollTop/scrollLeft', () => {
+describe('ZQueryCollection - scrollTop/scrollLeft', () => {
   it('gets and sets scrollTop', () => {
     document.body.innerHTML = '<div id="scr" style="overflow:auto; height: 50px;"><div style="height:200px;">x</div></div>';
     const el = document.querySelector('#scr');
@@ -1865,7 +1865,7 @@ describe('ZQueryCollection — scrollTop/scrollLeft', () => {
 // slideDown/slideUp set styles
 // ===========================================================================
 
-describe('ZQueryCollection — slideDown/slideUp', () => {
+describe('ZQueryCollection - slideDown/slideUp', () => {
   it('slideDown sets overflow hidden and maxHeight initially', () => {
     vi.useFakeTimers();
     document.body.innerHTML = '<div id="slide" style="display:none;">content</div>';
@@ -1893,7 +1893,7 @@ describe('ZQueryCollection — slideDown/slideUp', () => {
 // fadeIn/fadeOut set opacity
 // ===========================================================================
 
-describe('ZQueryCollection — fadeIn/fadeOut', () => {
+describe('ZQueryCollection - fadeIn/fadeOut', () => {
   it('fadeIn sets initial opacity to 0', () => {
     document.body.innerHTML = '<div id="fade" style="display:none;">content</div>';
     query('#fade').fadeIn(100);
@@ -1904,7 +1904,7 @@ describe('ZQueryCollection — fadeIn/fadeOut', () => {
   it('fadeTo animates to specified opacity', () => {
     document.body.innerHTML = '<div id="fade">content</div>';
     query('#fade').fadeTo(100, 0.5);
-    // Animation starts — just verify no throw
+    // Animation starts - just verify no throw
     expect(document.querySelector('#fade')).not.toBeNull();
   });
 });

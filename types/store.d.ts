@@ -1,5 +1,5 @@
 /**
- * Store — reactive global state management.
+ * Store - reactive global state management.
  *
  * @module store
  */
@@ -26,6 +26,9 @@ export interface StoreConfig<
 
   /** Maximum number of action history entries to keep (default `1000`). */
   maxHistory?: number;
+
+  /** Maximum number of undo checkpoints to keep (default `50`). */
+  maxUndo?: number;
 }
 
 /** A store action history entry. */
@@ -62,10 +65,10 @@ export interface StoreInstance<
 
   /**
    * Subscribe to changes on a specific state key.
-   * Callback receives `(newValue, oldValue, key)`.
+   * Callback receives `(key, newValue, oldValue)`.
    * @returns An unsubscribe function.
    */
-  subscribe(key: string, fn: (value: any, oldValue: any, key: string) => void): () => void;
+  subscribe(key: string, fn: (key: string, value: any, oldValue: any) => void): () => void;
 
   /**
    * Subscribe to all state changes (wildcard).
@@ -86,8 +89,40 @@ export interface StoreInstance<
    */
   use(fn: (actionName: string, args: any[], state: S) => boolean | void): StoreInstance<S, A, G>;
 
-  /** Replace state and clear action history. */
-  reset(initialState: Partial<S>): void;
+  /**
+   * Replace state and clear action history.
+   * If no argument, resets to the original initial state.
+   */
+  reset(initialState?: Partial<S>): void;
+
+  /**
+   * Batch multiple state changes - subscribers fire once at the end
+   * with only the latest value per key.
+   */
+  batch(fn: (state: S) => void): void;
+
+  /**
+   * Save a state snapshot for undo. Call before making changes you want to be undoable.
+   */
+  checkpoint(): void;
+
+  /**
+   * Undo to the last checkpoint.
+   * @returns `true` if undo was performed, `false` if nothing to undo.
+   */
+  undo(): boolean;
+
+  /**
+   * Redo the last undone state change.
+   * @returns `true` if redo was performed, `false` if nothing to redo.
+   */
+  redo(): boolean;
+
+  /** Whether undo is available. */
+  readonly canUndo: boolean;
+
+  /** Whether redo is available. */
+  readonly canRedo: boolean;
 }
 
 /** Create a new global reactive store. */
