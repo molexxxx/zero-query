@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v1.0.0
+ * zQuery (zeroQuery) v1.0.1
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -6189,9 +6189,9 @@ $.validate       = validate;
 $.formatError    = formatError;
 
 // --- Meta ------------------------------------------------------------------
-$.version   = '1.0.0';
+$.version   = '1.0.1';
 $.libSize   = '~106 KB';
-$.unitTests = {"passed":1882,"failed":0,"total":1882,"suites":508,"duration":3858,"ok":true};
+$.unitTests = {"passed":1882,"failed":0,"total":1882,"suites":508,"duration":3261,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 $.noConflict = () => {

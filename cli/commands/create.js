@@ -89,6 +89,13 @@ function createProject(args) {
       process.exit(1);
     }
 
+    // Copy zquery.min.js into the project root so the SSR server can serve it
+    const zqMin = path.join(target, 'node_modules', 'zero-query', 'dist', 'zquery.min.js');
+    if (fs.existsSync(zqMin)) {
+      fs.copyFileSync(zqMin, path.join(target, 'zquery.min.js'));
+      console.log(`  ✓ zquery.min.js`);
+    }
+
     console.log(`\n  Starting SSR server...\n`);
     const child = spawn('node', ['server/index.js'], { cwd: target, stdio: 'inherit' });
 

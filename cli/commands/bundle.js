@@ -172,8 +172,10 @@ function minifyCSS(css) {
   css = css.replace(/\/\*[\s\S]*?\*\//g, '');
   // Collapse whitespace
   css = css.replace(/\s{2,}/g, ' ');
-  // Remove spaces around { } : ; ,
-  css = css.replace(/\s*([{};:,])\s*/g, '$1');
+  // Remove spaces around { } ; ,  (but NOT : — pseudo-selectors like :not() need the preceding space)
+  css = css.replace(/\s*([{};,])\s*/g, '$1');
+  // Remove space after : (safe in both selectors and declarations)
+  css = css.replace(/:\s+/g, ':');
   // Remove trailing semicolons before }
   css = css.replace(/;}/g, '}');
   return css.trim();
@@ -357,7 +359,8 @@ function _collapseTemplateCSS(tpl) {
     let t = segments[s].val;
     t = t.replace(/\/\*[\s\S]*?\*\//g, '');
     t = t.replace(/\s{2,}/g, ' ');
-    t = t.replace(/\s*([{};:,])\s*/g, '$1');
+    t = t.replace(/\s*([{};,])\s*/g, '$1');
+    t = t.replace(/:\s+/g, ':');
     t = t.replace(/;}/g, '}');
     segments[s].val = t;
   }
