@@ -1,5 +1,5 @@
 /**
- * ZQueryCollection — chainable DOM element wrapper.
+ * ZQueryCollection - chainable DOM element wrapper.
  *
  * Returned by `$()`, `$.all()`, `$.create()`, and many traversal methods.
  * Similar to a jQuery object: wraps an array of elements with fluent methods.
@@ -50,7 +50,7 @@ export class ZQueryCollection {
   /** Convert to a plain `Element[]`. */
   toArray(): Element[];
 
-  /** Iterable protocol — works with `for...of` and spread. */
+  /** Iterable protocol - works with `for...of` and spread. */
   [Symbol.iterator](): IterableIterator<Element>;
 
   // -- Traversal -----------------------------------------------------------

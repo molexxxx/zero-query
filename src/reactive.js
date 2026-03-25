@@ -1,5 +1,5 @@
 /**
- * zQuery Reactive — Proxy-based deep reactivity system
+ * zQuery Reactive - Proxy-based deep reactivity system
  * 
  * Creates observable objects that trigger callbacks on mutation.
  * Used internally by components and store for auto-updates.
@@ -67,7 +67,7 @@ export function reactive(target, onChange, _path = '') {
 
 
 // ---------------------------------------------------------------------------
-// Signal — lightweight reactive primitive (inspired by Solid/Preact signals)
+// Signal - lightweight reactive primitive (inspired by Solid/Preact signals)
 // ---------------------------------------------------------------------------
 export class Signal {
   constructor(value) {
@@ -96,7 +96,11 @@ export class Signal {
   peek() { return this._value; }
 
   _notify() {
-    // Snapshot subscribers before iterating — a subscriber might modify
+    if (Signal._batching) {
+      Signal._batchQueue.add(this);
+      return;
+    }
+    // Snapshot subscribers before iterating - a subscriber might modify
     // the set (e.g., an effect re-running, adding itself back)
     const subs = [...this._subscribers];
     for (let i = 0; i < subs.length; i++) {
@@ -117,10 +121,13 @@ export class Signal {
 
 // Active effect tracking
 Signal._activeEffect = null;
+// Batch state
+Signal._batching = false;
+Signal._batchQueue = new Set();
 
 /**
  * Create a signal
- * @param {*} initial — initial value
+ * @param {*} initial - initial value
  * @returns {Signal}
  */
 export function signal(initial) {
@@ -129,7 +136,7 @@ export function signal(initial) {
 
 /**
  * Create a computed signal (derived from other signals)
- * @param {Function} fn — computation function
+ * @param {Function} fn - computation function
  * @returns {Signal}
  */
 export function computed(fn) {
@@ -147,10 +154,10 @@ export function computed(fn) {
 /**
  * Create a side-effect that auto-tracks signal dependencies.
  * Returns a dispose function that removes the effect from all
- * signals it subscribed to — prevents memory leaks.
+ * signals it subscribed to - prevents memory leaks.
  *
- * @param {Function} fn — effect function
- * @returns {Function} — dispose function
+ * @param {Function} fn - effect function
+ * @returns {Function} - dispose function
  */
 export function effect(fn) {
   const execute = () => {
@@ -183,6 +190,65 @@ export function effect(fn) {
       }
       execute._deps.clear();
     }
-    // Don't clobber _activeEffect — another effect may be running
+    // Don't clobber _activeEffect - another effect may be running
   };
+}
+
+
+// ---------------------------------------------------------------------------
+// batch() - defer signal notifications until the batch completes
+// ---------------------------------------------------------------------------
+
+/**
+ * Batch multiple signal writes - subscribers and effects fire once at the end.
+ * @param {Function} fn - function that performs signal writes
+ */
+export function batch(fn) {
+  if (Signal._batching) {
+    // Already inside a batch, just run
+    fn();
+    return;
+  }
+  Signal._batching = true;
+  Signal._batchQueue.clear();
+  try {
+    fn();
+  } finally {
+    Signal._batching = false;
+    // Collect all unique subscribers across all queued signals
+    // so each subscriber/effect runs exactly once
+    const subs = new Set();
+    for (const sig of Signal._batchQueue) {
+      for (const sub of sig._subscribers) {
+        subs.add(sub);
+      }
+    }
+    Signal._batchQueue.clear();
+    for (const sub of subs) {
+      try { sub(); }
+      catch (err) {
+        reportError(ErrorCode.SIGNAL_CALLBACK, 'Signal subscriber threw', {}, err);
+      }
+    }
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// untracked() - read signals without creating dependencies
+// ---------------------------------------------------------------------------
+
+/**
+ * Execute a function without tracking signal reads as dependencies.
+ * @param {Function} fn - function to run
+ * @returns {*} the return value of fn
+ */
+export function untracked(fn) {
+  const prev = Signal._activeEffect;
+  Signal._activeEffect = null;
+  try {
+    return fn();
+  } finally {
+    Signal._activeEffect = prev;
+  }
 }

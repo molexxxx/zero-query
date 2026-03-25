@@ -1,5 +1,5 @@
 /**
- * zQuery HTTP — Lightweight fetch wrapper
+ * zQuery HTTP - Lightweight fetch wrapper
  * 
  * Clean API for GET/POST/PUT/PATCH/DELETE with:
  *   - Auto JSON serialization/deserialization
@@ -189,7 +189,7 @@ export const http = {
 
   /**
    * Add request interceptor
-   * @param {Function} fn — (fetchOpts, url) → void | false | { url, options }
+   * @param {Function} fn - (fetchOpts, url) → void | false | { url, options }
    * @returns {Function} unsubscribe function
    */
   onRequest(fn) {
@@ -202,7 +202,7 @@ export const http = {
 
   /**
    * Add response interceptor
-   * @param {Function} fn — (result) → void
+   * @param {Function} fn - (result) → void
    * @returns {Function} unsubscribe function
    */
   onResponse(fn) {
@@ -214,7 +214,7 @@ export const http = {
   },
 
   /**
-   * Clear interceptors — all, or just 'request' / 'response'
+   * Clear interceptors - all, or just 'request' / 'response'
    */
   clearInterceptors(type) {
     if (!type || type === 'request') _interceptors.request.length = 0;

@@ -1,11 +1,11 @@
-// api-demo.js — HTTP client demo
+// api-demo.js - HTTP client demo
 //
 // Features used:
-//   $.get()                — fetch JSON from an API
-//   z-if / z-else / z-show — conditional rendering
-//   z-for / z-text         — list rendering & text binding
-//   $.escapeHtml()         — sanitize user-provided content
-//   async methods          — loading & error state patterns
+//   $.get()                - fetch JSON from an API
+//   z-if / z-else / z-show - conditional rendering
+//   z-for / z-text         - list rendering & text binding
+//   $.escapeHtml()         - sanitize user-provided content
+//   async methods          - loading & error state patterns
 
 $.component('api-demo', {
   styles: `

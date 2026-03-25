@@ -1,5 +1,5 @@
 /**
- * HTTP Client — fetch-based wrapper with interceptors and auto-JSON.
+ * HTTP Client - fetch-based wrapper with interceptors and auto-JSON.
  *
  * @module http
  */
@@ -61,7 +61,7 @@ export interface HttpClient {
   patch<T = any>(url: string, data?: any, opts?: HttpRequestOptions): Promise<HttpResponse<T>>;
   /** DELETE request. */
   delete<T = any>(url: string, data?: any, opts?: HttpRequestOptions): Promise<HttpResponse<T>>;
-  /** HEAD request — no body, useful for checking resource existence or headers. */
+  /** HEAD request - no body, useful for checking resource existence or headers. */
   head<T = any>(url: string, opts?: HttpRequestOptions): Promise<HttpResponse<T>>;
 
   /** Update default configuration for all subsequent requests. */
@@ -85,7 +85,7 @@ export interface HttpClient {
   /** Create a new `AbortController` for manual request cancellation. */
   createAbort(): AbortController;
 
-  /** Direct passthrough to native `fetch()` — no JSON handling, no interceptors. */
+  /** Direct passthrough to native `fetch()` - no JSON handling, no interceptors. */
   raw(url: string, opts?: RequestInit): Promise<Response>;
 }
 

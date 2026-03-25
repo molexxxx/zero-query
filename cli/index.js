@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * zQuery CLI — entry point
+ * zQuery CLI - entry point
  *
  * Dispatches to the appropriate command module under cli/commands/.
  * Run `zquery --help` for full usage information.

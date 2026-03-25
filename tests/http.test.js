@@ -99,7 +99,7 @@ describe('http.post', () => {
 // Error handling
 // ---------------------------------------------------------------------------
 
-describe('http — error handling', () => {
+describe('http - error handling', () => {
   it('throws on non-ok response', async () => {
     mockFetch({ error: 'Not Found' }, false, 404);
     await expect(http.get('https://api.test.com/missing')).rejects.toThrow('HTTP 404');
@@ -126,7 +126,7 @@ describe('http — error handling', () => {
 // PUT / PATCH / DELETE
 // ---------------------------------------------------------------------------
 
-describe('http — other methods', () => {
+describe('http - other methods', () => {
   it('PUT sends correct method', async () => {
     mockFetch({});
     await http.put('https://api.test.com/users/1', { name: 'Updated' });
@@ -172,7 +172,7 @@ describe('http.configure', () => {
 // Text response
 // ---------------------------------------------------------------------------
 
-describe('http — text response', () => {
+describe('http - text response', () => {
   it('parses text response', async () => {
     mockFetch('Hello World');
     const result = await http.get('https://api.test.com/text');
@@ -185,7 +185,7 @@ describe('http — text response', () => {
 // Interceptors
 // ---------------------------------------------------------------------------
 
-describe('http — interceptors', () => {
+describe('http - interceptors', () => {
   it('request interceptor via onRequest', async () => {
     http.configure({ baseURL: '' });
     http.onRequest((fetchOpts, url) => {
@@ -212,13 +212,13 @@ describe('http — interceptors', () => {
 // Timeout / abort
 // ---------------------------------------------------------------------------
 
-describe('http — abort signal', () => {
+describe('http - abort signal', () => {
   it('passes signal through options', async () => {
     const controller = new AbortController();
     mockFetch({});
     await http.get('https://api.test.com/data', null, { signal: controller.signal });
     const opts = fetchSpy.mock.calls[0][1];
-    // Signal may be combined via AbortSignal.any — verify it responds to user abort
+    // Signal may be combined via AbortSignal.any - verify it responds to user abort
     expect(opts.signal).toBeDefined();
     expect(opts.signal.aborted).toBe(false);
     controller.abort();
@@ -231,7 +231,7 @@ describe('http — abort signal', () => {
 // Blob response
 // ---------------------------------------------------------------------------
 
-describe('http — blob response', () => {
+describe('http - blob response', () => {
   it('can request blob responses', async () => {
     mockFetch('binary data');
     const result = await http.get('https://api.test.com/file', null, { responseType: 'blob' });
@@ -245,7 +245,7 @@ describe('http — blob response', () => {
 // HEAD and OPTIONS methods
 // ---------------------------------------------------------------------------
 
-describe('http — raw fetch pass-through', () => {
+describe('http - raw fetch pass-through', () => {
   it('raw() delegates to native fetch', async () => {
     mockFetch({ ok: true });
     await http.raw('https://api.test.com/ping', { method: 'HEAD' });
@@ -258,7 +258,7 @@ describe('http — raw fetch pass-through', () => {
 // Request with custom headers
 // ---------------------------------------------------------------------------
 
-describe('http — custom per-request headers', () => {
+describe('http - custom per-request headers', () => {
   it('merges per-request headers', async () => {
     mockFetch({});
     await http.get('https://api.test.com/data', null, {
@@ -274,7 +274,7 @@ describe('http — custom per-request headers', () => {
 // Response metadata
 // ---------------------------------------------------------------------------
 
-describe('http — response metadata', () => {
+describe('http - response metadata', () => {
   it('includes status and ok in result', async () => {
     mockFetch({ data: 'yes' }, true, 200);
     const result = await http.get('https://api.test.com/data');
@@ -326,7 +326,7 @@ describe('http.configure', () => {
 // interceptors
 // ===========================================================================
 
-describe('http.onRequest — extra', () => {
+describe('http.onRequest - extra', () => {
   it('interceptor modifying URL', async () => {
     // Note: interceptors from earlier tests may still be registered; this one
     // only adds a query param so it doesn't break others
@@ -337,16 +337,16 @@ describe('http.onRequest — extra', () => {
   });
 });
 
-// Test interceptor blocking in isolation — it permanently modifies internal state,
+// Test interceptor blocking in isolation - it permanently modifies internal state,
 // so we verify behavior without adding a blocking interceptor that breaks later tests
-describe('http — interceptor blocking concept', () => {
+describe('http - interceptor blocking concept', () => {
   it('onRequest returning false would throw blocked error', () => {
     // Just verify the error message format expected by the source code
     expect(() => { throw new Error('Request blocked by interceptor'); }).toThrow('blocked by interceptor');
   });
 });
 
-describe('http.onResponse — extra', () => {
+describe('http.onResponse - extra', () => {
   it('response interceptors are additive', async () => {
     // onResponse was already called in earlier tests; verify the callback
     const spy = vi.fn();
@@ -384,7 +384,7 @@ describe('http.delete', () => {
 // GET with existing query string
 // ===========================================================================
 
-describe('http.get — query params', () => {
+describe('http.get - query params', () => {
   it('appends params with & when URL already has ?', async () => {
     mockFetch({ ok: true });
     await http.get('https://api.test.com/search?q=hello', { page: 2 });
@@ -397,7 +397,7 @@ describe('http.get — query params', () => {
 // string body
 // ===========================================================================
 
-describe('http.post — string body', () => {
+describe('http.post - string body', () => {
   it('sends string body as-is', async () => {
     mockFetch({ ok: true });
     await http.post('https://api.test.com/raw', 'plain text body');
@@ -411,7 +411,7 @@ describe('http.post — string body', () => {
 // URL validation
 // ===========================================================================
 
-describe('http — URL validation', () => {
+describe('http - URL validation', () => {
   it('throws on missing URL', async () => {
     await expect(http.get(undefined)).rejects.toThrow('URL string');
   });
@@ -438,7 +438,7 @@ describe('http.createAbort', () => {
 // timeout / abort
 // ===========================================================================
 
-describe('http — AbortController integration', () => {
+describe('http - AbortController integration', () => {
   it('createAbort signal can be passed as option', async () => {
     const controller = http.createAbort();
     mockFetch({ ok: true });
@@ -490,7 +490,7 @@ describe('http.head', () => {
 // Interceptor unsubscribe
 // ===========================================================================
 
-describe('http — interceptor unsubscribe', () => {
+describe('http - interceptor unsubscribe', () => {
   it('onRequest returns an unsubscribe function', async () => {
     http.clearInterceptors();
     const spy = vi.fn();
@@ -584,7 +584,7 @@ describe('http.clearInterceptors', () => {
 
 
 // ===========================================================================
-// http.all — parallel requests
+// http.all - parallel requests
 // ===========================================================================
 
 describe('http.all', () => {

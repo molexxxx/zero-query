@@ -1,5 +1,5 @@
 /**
- * Server-Side Rendering — render components to HTML strings.
+ * Server-Side Rendering - render components to HTML strings.
  *
  * @module ssr
  */
@@ -64,6 +64,6 @@ export function createSSRApp(): SSRApp;
 export function renderToString(definition: ComponentDefinition, props?: Record<string, any>): string;
 
 /**
- * Escape HTML entities — exposed for use in SSR templates.
+ * Escape HTML entities - exposed for use in SSR templates.
  */
 export function escapeHtml(str: string): string;

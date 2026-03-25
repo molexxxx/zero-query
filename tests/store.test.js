@@ -6,7 +6,7 @@ import { createStore, getStore } from '../src/store.js';
 // Store creation
 // ---------------------------------------------------------------------------
 
-describe('Store — creation', () => {
+describe('Store - creation', () => {
   it('creates a store with initial state', () => {
     const store = createStore('test-create', {
       state: { count: 0, name: 'Tony' },
@@ -42,7 +42,7 @@ describe('Store — creation', () => {
 // Dispatch & actions
 // ---------------------------------------------------------------------------
 
-describe('Store — dispatch', () => {
+describe('Store - dispatch', () => {
   it('dispatches a named action', () => {
     const store = createStore('dispatch-1', {
       state: { count: 0 },
@@ -101,7 +101,7 @@ describe('Store — dispatch', () => {
 // Subscriptions
 // ---------------------------------------------------------------------------
 
-describe('Store — subscribe', () => {
+describe('Store - subscribe', () => {
   it('notifies key-specific subscribers', () => {
     const store = createStore('sub-1', {
       state: { count: 0 },
@@ -110,7 +110,7 @@ describe('Store — subscribe', () => {
     const fn = vi.fn();
     store.subscribe('count', fn);
     store.dispatch('inc');
-    expect(fn).toHaveBeenCalledWith(1, 0, 'count');
+    expect(fn).toHaveBeenCalledWith('count', 1, 0);
   });
 
   it('wildcard subscriber gets all changes', () => {
@@ -157,7 +157,7 @@ describe('Store — subscribe', () => {
 // Getters
 // ---------------------------------------------------------------------------
 
-describe('Store — getters', () => {
+describe('Store - getters', () => {
   it('computes values from state', () => {
     const store = createStore('getters-1', {
       state: { count: 5 },
@@ -184,7 +184,7 @@ describe('Store — getters', () => {
 // Middleware
 // ---------------------------------------------------------------------------
 
-describe('Store — middleware', () => {
+describe('Store - middleware', () => {
   it('calls middleware before action', () => {
     const log = vi.fn();
     const store = createStore('mw-1', {
@@ -223,7 +223,7 @@ describe('Store — middleware', () => {
 // Snapshot & replaceState
 // ---------------------------------------------------------------------------
 
-describe('Store — snapshot & replaceState', () => {
+describe('Store - snapshot & replaceState', () => {
   it('snapshot returns plain object copy', () => {
     const store = createStore('snap-1', { state: { a: 1, b: { c: 2 } } });
     const snap = store.snapshot();
@@ -257,7 +257,7 @@ describe('Store — snapshot & replaceState', () => {
 // Multiple middleware
 // ---------------------------------------------------------------------------
 
-describe('Store — multiple middleware', () => {
+describe('Store - multiple middleware', () => {
   it('runs middleware in order', () => {
     const order = [];
     const store = createStore('mw-multi', {
@@ -287,7 +287,7 @@ describe('Store — multiple middleware', () => {
 // Async actions
 // ---------------------------------------------------------------------------
 
-describe('Store — async actions', () => {
+describe('Store - async actions', () => {
   it('supports async action returning promise', async () => {
     const store = createStore('async-1', {
       state: { data: null },
@@ -307,7 +307,7 @@ describe('Store — async actions', () => {
 // Subscriber deduplication
 // ---------------------------------------------------------------------------
 
-describe('Store — subscriber edge cases', () => {
+describe('Store - subscriber edge cases', () => {
   it('same function subscribed twice fires twice', () => {
     const store = createStore('sub-dedup', {
       state: { x: 0 },
@@ -340,7 +340,7 @@ describe('Store — subscriber edge cases', () => {
 // Action return value
 // ---------------------------------------------------------------------------
 
-describe('Store — action return value', () => {
+describe('Store - action return value', () => {
   it('dispatch returns action result', () => {
     const store = createStore('ret-1', {
       state: { x: 0 },
@@ -355,7 +355,7 @@ describe('Store — action return value', () => {
 // Getters with multiple state keys
 // ---------------------------------------------------------------------------
 
-describe('Store — complex getters', () => {
+describe('Store - complex getters', () => {
   it('getter uses multiple state keys', () => {
     const store = createStore('getter-multi', {
       state: { firstName: 'Tony', lastName: 'W' },
@@ -383,7 +383,7 @@ describe('Store — complex getters', () => {
 // PERF: history trim uses splice (in-place) instead of slice (copy)
 // ---------------------------------------------------------------------------
 
-describe('Store — history trim in-place', () => {
+describe('Store - history trim in-place', () => {
   it('trims history to maxHistory without exceeding', () => {
     const store = createStore('hist-trim', {
       state: { n: 0 },
@@ -412,10 +412,10 @@ describe('Store — history trim in-place', () => {
 
 
 // ===========================================================================
-// use() — middleware chaining
+// use() - middleware chaining
 // ===========================================================================
 
-describe('Store — use() chaining', () => {
+describe('Store - use() chaining', () => {
   it('returns the store for chaining', () => {
     const store = createStore({
       state: { x: 0 },
@@ -453,7 +453,7 @@ describe('Store — use() chaining', () => {
 // debug mode
 // ===========================================================================
 
-describe('Store — debug mode', () => {
+describe('Store - debug mode', () => {
   it('logs when debug is true', () => {
     const spy = vi.spyOn(console, 'log').mockImplementation(() => {});
     const store = createStore({
@@ -474,7 +474,7 @@ describe('Store — debug mode', () => {
 // replaceState
 // ===========================================================================
 
-describe('Store — replaceState', () => {
+describe('Store - replaceState', () => {
   it('replaces all keys', () => {
     const store = createStore({
       state: { a: 1, b: 2 }
@@ -492,7 +492,7 @@ describe('Store — replaceState', () => {
 // wildcard subscription
 // ===========================================================================
 
-describe('Store — wildcard subscription', () => {
+describe('Store - wildcard subscription', () => {
   it('fires on any state change', () => {
     const store = createStore({
       state: { a: 1, b: 2 },
@@ -528,7 +528,7 @@ describe('Store — wildcard subscription', () => {
 // state as factory function
 // ===========================================================================
 
-describe('Store — state factory', () => {
+describe('Store - state factory', () => {
   it('calls state function for initial state', () => {
     const store = createStore({
       state: () => ({ count: 0 })
@@ -539,10 +539,10 @@ describe('Store — state factory', () => {
 
 
 // ===========================================================================
-// createStore — named stores
+// createStore - named stores
 // ===========================================================================
 
-describe('createStore — named stores', () => {
+describe('createStore - named stores', () => {
   it('creates default store when no name given', () => {
     const store = createStore({ state: { x: 1 } });
     expect(store.state.x).toBe(1);
@@ -559,7 +559,7 @@ describe('createStore — named stores', () => {
 // reset
 // ===========================================================================
 
-describe('Store — reset', () => {
+describe('Store - reset', () => {
   it('resets state and clears history', () => {
     const store = createStore({
       state: { x: 0 },
@@ -580,10 +580,251 @@ describe('Store — reset', () => {
 // empty config
 // ===========================================================================
 
-describe('Store — empty config', () => {
+describe('Store - empty config', () => {
   it('creates store with no config', () => {
     const store = createStore({});
     expect(store.snapshot()).toEqual({});
     expect(store.history).toEqual([]);
+  });
+});
+
+
+// ===========================================================================
+// Store - batch
+// ===========================================================================
+
+describe('Store - batch', () => {
+  it('fires subscribers once per key, not per mutation', () => {
+    const store = createStore({
+      state: { x: 0, y: 0 },
+      actions: {
+        setX(state, v) { state.x = v; },
+        setY(state, v) { state.y = v; },
+      }
+    });
+    const fn = vi.fn();
+    store.subscribe('x', fn);
+
+    store.batch(state => {
+      state.x = 1;
+      state.x = 2;
+      state.x = 3;
+    });
+
+    // Should fire once with the final value
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(store.state.x).toBe(3);
+  });
+
+  it('batches changes across multiple keys', () => {
+    const store = createStore({
+      state: { a: 0, b: 0 }
+    });
+    const fnA = vi.fn();
+    const fnB = vi.fn();
+    store.subscribe('a', fnA);
+    store.subscribe('b', fnB);
+
+    store.batch(state => {
+      state.a = 10;
+      state.b = 20;
+    });
+
+    expect(fnA).toHaveBeenCalledTimes(1);
+    expect(fnB).toHaveBeenCalledTimes(1);
+    expect(store.state.a).toBe(10);
+    expect(store.state.b).toBe(20);
+  });
+
+  it('does not fire subscribers during the batch', () => {
+    const store = createStore({ state: { x: 0 } });
+    const calls = [];
+    store.subscribe('x', (val) => calls.push(val));
+
+    store.batch(state => {
+      state.x = 1;
+      // Subscriber should not have been called yet
+      expect(calls.length).toBe(0);
+      state.x = 2;
+      expect(calls.length).toBe(0);
+    });
+
+    // Now it fires
+    expect(calls.length).toBe(1);
+  });
+});
+
+
+// ===========================================================================
+// Store - checkpoint / undo / redo
+// ===========================================================================
+
+describe('Store - checkpoint / undo / redo', () => {
+  it('undo restores to checkpointed state', () => {
+    const store = createStore({
+      state: { count: 0 },
+      actions: { inc(state) { state.count++; } }
+    });
+
+    store.checkpoint();
+    store.dispatch('inc');
+    store.dispatch('inc');
+    expect(store.state.count).toBe(2);
+
+    const didUndo = store.undo();
+    expect(didUndo).toBe(true);
+    expect(store.state.count).toBe(0);
+  });
+
+  it('redo restores the undone state', () => {
+    const store = createStore({
+      state: { count: 0 },
+      actions: { inc(state) { state.count++; } }
+    });
+
+    store.checkpoint();
+    store.dispatch('inc');
+    store.dispatch('inc');
+    store.undo();
+    expect(store.state.count).toBe(0);
+
+    const didRedo = store.redo();
+    expect(didRedo).toBe(true);
+    expect(store.state.count).toBe(2);
+  });
+
+  it('undo returns false when no checkpoints', () => {
+    const store = createStore({ state: { x: 1 } });
+    expect(store.undo()).toBe(false);
+    expect(store.state.x).toBe(1);
+  });
+
+  it('redo returns false when nothing to redo', () => {
+    const store = createStore({ state: { x: 1 } });
+    expect(store.redo()).toBe(false);
+  });
+
+  it('canUndo and canRedo reflect stack state', () => {
+    const store = createStore({
+      state: { v: 'a' },
+      actions: { set(state, v) { state.v = v; } }
+    });
+
+    expect(store.canUndo).toBe(false);
+    expect(store.canRedo).toBe(false);
+
+    store.checkpoint();
+    expect(store.canUndo).toBe(true);
+
+    store.dispatch('set', 'b');
+    store.undo();
+    expect(store.canRedo).toBe(true);
+
+    store.redo();
+    expect(store.canRedo).toBe(false);
+  });
+
+  it('new checkpoint clears redo stack', () => {
+    const store = createStore({
+      state: { x: 0 },
+      actions: { set(state, v) { state.x = v; } }
+    });
+
+    store.checkpoint();
+    store.dispatch('set', 1);
+    store.undo();
+    expect(store.canRedo).toBe(true);
+
+    // New checkpoint clears redo
+    store.checkpoint();
+    expect(store.canRedo).toBe(false);
+  });
+
+  it('respects maxUndo limit', () => {
+    const store = createStore({
+      state: { x: 0 },
+      maxUndo: 3,
+      actions: { set(state, v) { state.x = v; } }
+    });
+
+    store.checkpoint(); // save x=0
+    store.dispatch('set', 1);
+    store.checkpoint(); // save x=1
+    store.dispatch('set', 2);
+    store.checkpoint(); // save x=2
+    store.dispatch('set', 3);
+    store.checkpoint(); // save x=3 -> should trim oldest (x=0)
+    store.dispatch('set', 4);
+
+    // Should have at most 3 entries
+    store.undo(); // -> x=3
+    store.undo(); // -> x=2
+    store.undo(); // -> x=1
+    expect(store.undo()).toBe(false); // oldest was trimmed
+  });
+
+  it('multiple undo/redo cycles', () => {
+    const store = createStore({
+      state: { n: 0 },
+      actions: { set(state, v) { state.n = v; } }
+    });
+
+    store.checkpoint();
+    store.dispatch('set', 1);
+    store.checkpoint();
+    store.dispatch('set', 2);
+    store.checkpoint();
+    store.dispatch('set', 3);
+
+    store.undo(); // -> 2
+    expect(store.state.n).toBe(2);
+    store.undo(); // -> 1
+    expect(store.state.n).toBe(1);
+    store.redo(); // -> 2
+    expect(store.state.n).toBe(2);
+    store.redo(); // -> 3
+    expect(store.state.n).toBe(3);
+  });
+});
+
+
+// ===========================================================================
+// Store - reset with no args
+// ===========================================================================
+
+describe('Store - reset defaults to initial state', () => {
+  it('resets to the original initial state when called with no arguments', () => {
+    const store = createStore({
+      state: { count: 0, name: 'test' },
+      actions: {
+        inc(state) { state.count++; },
+        rename(state, n) { state.name = n; }
+      }
+    });
+
+    store.dispatch('inc');
+    store.dispatch('inc');
+    store.dispatch('rename', 'changed');
+    expect(store.state.count).toBe(2);
+    expect(store.state.name).toBe('changed');
+
+    store.reset();
+    expect(store.state.count).toBe(0);
+    expect(store.state.name).toBe('test');
+  });
+
+  it('clears undo/redo stacks on reset', () => {
+    const store = createStore({
+      state: { x: 0 },
+      actions: { set(state, v) { state.x = v; } }
+    });
+
+    store.checkpoint();
+    store.dispatch('set', 5);
+    expect(store.canUndo).toBe(true);
+
+    store.reset();
+    expect(store.canUndo).toBe(false);
+    expect(store.canRedo).toBe(false);
   });
 });

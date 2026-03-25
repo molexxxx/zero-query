@@ -1,12 +1,12 @@
-// todos.js — Todo list with global store
+// todos.js - Todo list with global store
 //
 // Features used:
-//   $.getStore / dispatch / subscribe  — centralized state management
-//   z-model / z-ref                    — form bindings
-//   z-for + z-key                      — keyed list rendering with diffing
-//   z-class / z-if / z-show            — conditional rendering
-//   @submit.prevent / @keydown.escape  — event modifiers
-//   mounted / destroyed lifecycle      — setup & teardown
+//   $.getStore / dispatch / subscribe  - centralized state management
+//   z-model / z-ref                    - form bindings
+//   z-for + z-key                      - keyed list rendering with diffing
+//   z-class / z-if / z-show            - conditional rendering
+//   @submit.prevent / @keydown.escape  - event modifiers
+//   mounted / destroyed lifecycle      - setup & teardown
 
 $.component('todos-page', {
   styles: `
@@ -204,7 +204,7 @@ $.component('todos-page', {
 
         <div z-if="filtered.length === 0" class="td-empty">
           <div class="td-empty-icon">${this.state.total === 0 ? '📝' : '🔍'}</div>
-          <p>${this.state.total === 0 ? 'No todos yet — type something above and hit Add!' : 'No matching todos for this filter.'}</p>
+          <p>${this.state.total === 0 ? 'No todos yet - type something above and hit Add!' : 'No matching todos for this filter.'}</p>
         </div>
 
         <ul z-else class="td-list">

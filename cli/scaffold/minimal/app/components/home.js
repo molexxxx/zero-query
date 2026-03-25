@@ -1,10 +1,10 @@
-// home.js — Landing page
+// home.js - Landing page
 //
 // Features used:
-//   $.component      — define a component
-//   $.getStore       — read/dispatch global store
-//   store.subscribe  — re-render on store changes
-//   @click / z-model — event binding + two-way input
+//   $.component      - define a component
+//   $.getStore       - read/dispatch global store
+//   store.subscribe  - re-render on store changes
+//   @click / z-model - event binding + two-way input
 
 $.component('home-page', {
   state: () => ({
@@ -41,7 +41,7 @@ $.component('home-page', {
       <div class="card">
         <h3>Getting Started</h3>
         <p>
-          This is the <strong>minimal</strong> scaffold — three pages, a global store,
+          This is the <strong>minimal</strong> scaffold - three pages, a global store,
           and the router. Edit the files in <code>app/</code> to start building.
         </p>
         <p>
@@ -52,9 +52,9 @@ $.component('home-page', {
 
       <div class="card">
         <h3>Global Store</h3>
-        <p>The counter from <a z-link="/counter">Counter</a> is backed by <code>$.store</code> — its value persists across pages:</p>
+        <p>The counter from <a z-link="/counter">Counter</a> is backed by <code>$.store</code> - its value persists across pages:</p>
         <div style="display:flex;align-items:center;gap:.75rem;margin-top:.75rem;">
-          <button class="btn btn-outline btn-sm" @click="decrement">−</button>
+          <button class="btn btn-outline btn-sm" @click="decrement">-</button>
           <span style="font-size:1.25rem;font-weight:700;color:var(--accent);min-width:2rem;text-align:center;">${count}</span>
           <button class="btn btn-primary btn-sm" @click="increment">+</button>
           <button class="btn btn-outline btn-sm" @click="reset" style="margin-left:.5rem;">Reset</button>

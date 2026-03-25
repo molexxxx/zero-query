@@ -1,5 +1,5 @@
 /**
- * cli/commands/dev/watcher.js — File system watcher
+ * cli/commands/dev/watcher.js - File system watcher
  *
  * Recursively watches the project root for file changes, validates
  * JS files for syntax errors, and broadcasts reload / CSS hot-swap /
@@ -44,7 +44,7 @@ function collectWatchDirs(dir) {
       if (!entry.isDirectory() || IGNORE_DIRS.has(entry.name)) continue;
       dirs.push(...collectWatchDirs(path.join(dir, entry.name)));
     }
-  } catch { /* unreadable dir — skip */ }
+  } catch { /* unreadable dir - skip */ }
   return dirs;
 }
 
@@ -56,8 +56,8 @@ function collectWatchDirs(dir) {
  * Start watching `root` for file changes.
  *
  * @param {object}  opts
- * @param {string}  opts.root  — absolute project root
- * @param {SSEPool} opts.pool  — SSE broadcast pool
+ * @param {string}  opts.root  - absolute project root
+ * @param {SSEPool} opts.pool  - SSE broadcast pool
  * @returns {{ dirs: string[], destroy: Function }}
  */
 function startWatcher({ root, pool, bundleMode, serveRoot }) {
@@ -121,7 +121,7 @@ function startWatcher({ root, pool, bundleMode, serveRoot }) {
               pool.broadcast('error:syntax', JSON.stringify(err));
               return;
             }
-            // File was fixed — clear previous overlay
+            // File was fixed - clear previous overlay
             if (currentError === rel) {
               currentError = null;
               pool.broadcast('error:clear', '');
@@ -158,7 +158,7 @@ function startWatcher({ root, pool, bundleMode, serveRoot }) {
         }, 100);
       });
       watchers.push(watcher);
-    } catch { /* dir became inaccessible — skip */ }
+    } catch { /* dir became inaccessible - skip */ }
   }
 
   function destroy() {

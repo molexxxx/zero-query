@@ -1,4 +1,4 @@
-/* playground.css — scoped styles for the playground page component */
+/* playground.css - scoped styles for the playground page component */
 
 .pg-section        { display: flex; align-items: center; gap: .5rem;
                      font-size: .72rem; font-weight: 600; text-transform: uppercase;

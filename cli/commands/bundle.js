@@ -1,5 +1,5 @@
 /**
- * cli/commands/bundle.js — app bundler command
+ * cli/commands/bundle.js - app bundler command
  *
  * Walks the ES module import graph starting from an entry file,
  * strips import/export syntax, concatenates everything into a single
@@ -59,7 +59,7 @@ function extractImports(code) {
   return specifiers;
 }
 
-/** Walk the import graph — topological sort (leaves first). */
+/** Walk the import graph - topological sort (leaves first). */
 function walkImportGraph(entry) {
   const visited = new Set();
   const order   = [];
@@ -119,7 +119,7 @@ function rewriteResourceUrls(code, filePath, projectRoot) {
     (match, prefix, quote, url) => {
       if (url.startsWith('/') || url.includes('://')) return match;
       const abs = path.resolve(fileDir, url);
-      // Only rewrite if the file actually exists — avoids mangling code examples
+      // Only rewrite if the file actually exists - avoids mangling code examples
       if (!fs.existsSync(abs)) return match;
       const rel = path.relative(projectRoot, abs).replace(/\\/g, '/');
       return `${prefix}${quote}${rel}${quote}`;
@@ -128,7 +128,7 @@ function rewriteResourceUrls(code, filePath, projectRoot) {
 }
 
 /**
- * Minify HTML for inlining — strips indentation and collapses whitespace
+ * Minify HTML for inlining - strips indentation and collapses whitespace
  * between tags.  Preserves content inside <pre>, <code>, and <textarea>
  * blocks verbatim so syntax-highlighted code samples survive.
  */
@@ -164,7 +164,7 @@ function minifyHTML(html) {
 }
 
 /**
- * Minify CSS for inlining — strips comments, collapses whitespace,
+ * Minify CSS for inlining - strips comments, collapses whitespace,
  * removes unnecessary spaces around punctuation.
  */
 function minifyCSS(css) {
@@ -396,7 +396,7 @@ function collectInlineResources(files, projectRoot) {
         inlineMap[relKey] = fs.readFileSync(tmplPath, 'utf-8');
       }
     } else if (/templateUrl\s*:/.test(code)) {
-      // Dynamic templateUrl (e.g. Object.fromEntries, computed map) —
+      // Dynamic templateUrl (e.g. Object.fromEntries, computed map) -
       // inline all .html files in the component's directory tree so
       // the runtime __zqInline lookup can resolve them by suffix.
       (function scanHtml(dir) {
@@ -412,7 +412,7 @@ function collectInlineResources(files, projectRoot) {
               scanHtml(full);
             }
           }
-        } catch { /* permission error — skip */ }
+        } catch { /* permission error - skip */ }
       })(fileDir);
     }
   }
@@ -429,7 +429,7 @@ function collectInlineResources(files, projectRoot) {
 /**
  * Auto-detect the app entry point.
  *
- * Strategy — ordered by precedence (first match wins):
+ * Strategy - ordered by precedence (first match wins):
  *   1. HTML discovery: index.html first, then other .html files
  *      (root level + one directory deep).
  *   2. Within each HTML file, prefer a module <script> whose src
@@ -456,7 +456,7 @@ function detectEntry(projectRoot) {
             htmlFiles.push(path.join(sub, child.name));
           }
         }
-      } catch { /* permission error — skip */ }
+      } catch { /* permission error - skip */ }
     }
   }
 
@@ -490,8 +490,8 @@ function detectEntry(projectRoot) {
   }
 
   // 2. Search JS files for entry-point patterns.
-  //    Pass 1 — $.router (the canonical entry point).
-  //    Pass 2 — $.mount, $.store, mountAll (component-level, lower confidence).
+  //    Pass 1 - $.router (the canonical entry point).
+  //    Pass 2 - $.mount, $.store, mountAll (component-level, lower confidence).
   const routerRe  = /\$\.router\s*\(/;
   const otherRe   = /\$\.(mount|store)\s*\(|mountAll\s*\(/;
 
@@ -541,8 +541,8 @@ function detectEntry(projectRoot) {
 /**
  * Rewrite an HTML file to replace the module <script> with the bundle.
  * Produces two variants:
- *   server/index.html — <base href="/"> for SPA deep routes
- *   local/index.html  — relative paths for file:// access
+ *   server/index.html - <base href="/"> for SPA deep routes
+ *   local/index.html  - relative paths for file:// access
  */
 function rewriteHtml(projectRoot, htmlRelPath, bundleFile, includeLib, bundledFiles, serverDir, localDir, globalCssOrigHref, globalCssHash) {
   const htmlPath = path.resolve(projectRoot, htmlRelPath);
@@ -737,7 +737,7 @@ function bundleApp() {
   const minimal = flag('minimal', 'm');
   const globalCssOverride = option('global-css', null, null);
 
-  // Entry point — positional arg (directory or file) or auto-detection
+  // Entry point - positional arg (directory or file) or auto-detection
   let entry = null;
   let targetDir = null;
   for (let i = 1; i < args.length; i++) {
@@ -984,7 +984,7 @@ function bundleApp() {
   console.log(`\n  ✓ ${minBase} (${sizeKB(fs.readFileSync(minFile))} KB)`);
 
   // ------------------------------------------------------------------
-  // Global CSS bundling — extract from index.html <link> or --global-css
+  // Global CSS bundling - extract from index.html <link> or --global-css
   // ------------------------------------------------------------------
   let globalCssHash = null;
   let globalCssOrigHref = null;

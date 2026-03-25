@@ -1,5 +1,5 @@
 /**
- * zQuery Component — Lightweight reactive component system
+ * zQuery Component - Lightweight reactive component system
  * 
  * Declarative components using template literals with directive support.
  * Proxy-based state triggers targeted re-renders via event delegation.
@@ -15,7 +15,7 @@
  *   - Scoped styles (inline or via styleUrl)
  *   - External templates via templateUrl (with {{expression}} interpolation)
  *   - External styles via styleUrl (fetched & scoped automatically)
- *   - Relative path resolution — templateUrl and styleUrl
+ *   - Relative path resolution - templateUrl and styleUrl
  *     resolve relative to the component file automatically
  */
 
@@ -23,6 +23,7 @@ import { reactive } from './reactive.js';
 import { morph } from './diff.js';
 import { safeEval } from './expression.js';
 import { reportError, ErrorCode, ZQueryError } from './errors.js';
+import { escapeHtml } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // Component registry & external resource cache
@@ -48,7 +49,7 @@ const _throttleTimers = new WeakMap();
 
 /**
  * Fetch and cache a text resource (HTML template or CSS file).
- * @param {string} url — URL to fetch
+ * @param {string} url - URL to fetch
  * @returns {Promise<string>}
  */
 function _fetchResource(url) {
@@ -92,23 +93,23 @@ function _fetchResource(url) {
  * - If `base` is an absolute URL (http/https/file), resolve directly.
  * - If `base` is a relative path string, resolve it against the page root
  *   (or <base href>) first, then resolve `url` against that.
- * - If `base` is falsy, return `url` unchanged — _fetchResource's own
+ * - If `base` is falsy, return `url` unchanged - _fetchResource's own
  *   fallback (page root / <base href>) handles it.
  *
- * @param {string} url   — URL or relative path to resolve
- * @param {string} [base] — auto-detected caller URL or explicit base path
+ * @param {string} url   - URL or relative path to resolve
+ * @param {string} [base] - auto-detected caller URL or explicit base path
  * @returns {string}
  */
 function _resolveUrl(url, base) {
   if (!base || !url || typeof url !== 'string') return url;
-  // Already absolute — nothing to do
+  // Already absolute - nothing to do
   if (url.startsWith('/') || url.includes('://') || url.startsWith('//')) return url;
   try {
     if (base.includes('://')) {
       // Absolute base (auto-detected module URL)
       return new URL(url, base).href;
     }
-    // Relative base string — resolve against page root first
+    // Relative base string - resolve against page root first
     const baseEl = document.querySelector('base');
     const root = baseEl ? baseEl.href : (window.location.origin + '/');
     const absBase = new URL(base.endsWith('/') ? base : base + '/', root).href;
@@ -140,13 +141,13 @@ function _detectCallerBase() {
     for (const raw of urls) {
       // Strip line:col suffixes  e.g. ":3:5" or ":12:1"
       const url = raw.replace(/:\d+:\d+$/, '').replace(/:\d+$/, '');
-      // Skip the zQuery library itself — by filename pattern and captured URL
+      // Skip the zQuery library itself - by filename pattern and captured URL
       if (/zquery(\.min)?\.js$/i.test(url)) continue;
       if (_ownScriptUrl && url.replace(/[?#].*$/, '') === _ownScriptUrl) continue;
       // Return directory (strip filename, keep trailing slash)
       return url.replace(/\/[^/]*$/, '/');
     }
-  } catch { /* stack parsing unsupported — fall back silently */ }
+  } catch { /* stack parsing unsupported - fall back silently */ }
   return undefined;
 }
 
@@ -225,7 +226,7 @@ class Component {
       }
     });
 
-    // Computed properties — lazy getters derived from state
+    // Computed properties - lazy getters derived from state
     this.computed = {};
     if (definition.computed) {
       for (const [name, fn] of Object.entries(definition.computed)) {
@@ -354,7 +355,7 @@ class Component {
       this._loadExternals().then(() => {
         if (!this._destroyed) this._render();
       });
-      return; // Skip this render — will re-render after load
+      return; // Skip this render - will re-render after load
     }
 
     // Expose multi-template map on instance (if available)
@@ -379,7 +380,7 @@ class Component {
             this.state.__raw || this.state,
             { props: this.props, computed: this.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
           ]);
-          return result != null ? result : '';
+          return result != null ? escapeHtml(String(result)) : '';
         } catch { return ''; }
       });
     } else {
@@ -425,13 +426,13 @@ class Component {
         const trimmed = selector.trim();
         // Don't scope @-rules themselves
         if (trimmed.startsWith('@')) {
-          // @keyframes and @font-face contain non-selector content — skip scoping inside them
+          // @keyframes and @font-face contain non-selector content - skip scoping inside them
           if (/^@(keyframes|font-face)\b/.test(trimmed)) {
             noScopeDepth = braceDepth;
           }
           return match;
         }
-        // Inside @keyframes or @font-face — don't scope inner rules
+        // Inside @keyframes or @font-face - don't scope inner rules
         if (noScopeDepth > 0 && braceDepth > noScopeDepth) {
           return match;
         }
@@ -484,7 +485,7 @@ class Component {
       }
     }
 
-    // Update DOM via morphing (diffing) — preserves unchanged nodes
+    // Update DOM via morphing (diffing) - preserves unchanged nodes
     // First render uses innerHTML for speed; subsequent renders morph.
     const _renderStart = typeof window !== 'undefined' && (window.__zqMorphHook || window.__zqRenderHook) ? performance.now() : 0;
     if (!this._mounted) {
@@ -503,8 +504,8 @@ class Component {
     this._bindModels();
 
     // Restore focus if the morph replaced the focused element.
-    // Always restore selectionRange — even when the element is still
-    // the activeElement — because _bindModels or morph attribute syncing
+    // Always restore selectionRange - even when the element is still
+    // the activeElement - because _bindModels or morph attribute syncing
     // can alter the value and move the cursor.
     if (_focusInfo) {
       const el = this._el.querySelector(_focusInfo.selector);
@@ -540,7 +541,7 @@ class Component {
   // Optimization: on the FIRST render, we scan for event attributes, build
   // a delegated handler map, and attach one listener per event type to the
   // component root. On subsequent renders (re-bind), we only rebuild the
-  // internal binding map — existing DOM listeners are reused since they
+  // internal binding map - existing DOM listeners are reused since they
   // delegate to event.target.closest(selector) at fire time.
   _bindEvents() {
     // Always rebuild the binding map from current DOM
@@ -581,11 +582,11 @@ class Component {
     // Store binding map for the delegated handlers to reference
     this._eventBindings = eventMap;
 
-    // Only attach DOM listeners once — reuse on subsequent renders.
+    // Only attach DOM listeners once - reuse on subsequent renders.
     // The handlers close over `this` and read `this._eventBindings`
     // at fire time, so they always use the latest binding map.
     if (this._delegatedEvents) {
-      // Already attached — just make sure new event types are covered
+      // Already attached - just make sure new event types are covered
       for (const event of eventMap.keys()) {
         if (!this._delegatedEvents.has(event)) {
           this._attachDelegatedEvent(event, eventMap.get(event));
@@ -611,7 +612,7 @@ class Component {
       this._attachDelegatedEvent(event, bindings);
     }
 
-    // .outside — attach a document-level listener for bindings that need
+    // .outside - attach a document-level listener for bindings that need
     // to detect clicks/events outside their element.
     this._outsideListeners = this._outsideListeners || [];
     for (const [event, bindings] of eventMap) {
@@ -639,7 +640,7 @@ class Component {
         : false;
 
       const handler = (e) => {
-        // Read bindings from live map — always up to date after re-renders
+        // Read bindings from live map - always up to date after re-renders
         const currentBindings = this._eventBindings?.get(event) || [];
 
         // Collect matching bindings with their matched elements, then sort
@@ -660,7 +661,7 @@ class Component {
         for (const { selector, methodExpr, modifiers, el, matched } of hits) {
 
           // In delegated events, .stop should prevent ancestor bindings from
-          // firing — stopPropagation alone only stops real DOM bubbling.
+          // firing - stopPropagation alone only stops real DOM bubbling.
           if (stoppedAt) {
             let blocked = false;
             for (const stopped of stoppedAt) {
@@ -669,15 +670,15 @@ class Component {
             if (blocked) continue;
           }
 
-          // .self — only fire if target is the element itself
+          // .self - only fire if target is the element itself
           if (modifiers.includes('self') && e.target !== el) continue;
 
-          // .outside — only fire if event target is OUTSIDE the element
+          // .outside - only fire if event target is OUTSIDE the element
           if (modifiers.includes('outside')) {
             if (el.contains(e.target)) continue;
           }
 
-          // Key modifiers — filter keyboard events by key
+          // Key modifiers - filter keyboard events by key
           const _keyMap = { enter: 'Enter', escape: 'Escape', tab: 'Tab', space: ' ', delete: 'Delete|Backspace', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
           let keyFiltered = false;
           for (const mod of modifiers) {
@@ -688,7 +689,7 @@ class Component {
           }
           if (keyFiltered) continue;
 
-          // System key modifiers — require modifier keys to be held
+          // System key modifiers - require modifier keys to be held
           if (modifiers.includes('ctrl') && !e.ctrlKey) continue;
           if (modifiers.includes('shift') && !e.shiftKey) continue;
           if (modifiers.includes('alt') && !e.altKey) continue;
@@ -728,7 +729,7 @@ class Component {
             }
           };
 
-          // .debounce.{ms} — delay invocation until idle
+          // .debounce.{ms} - delay invocation until idle
           const debounceIdx = modifiers.indexOf('debounce');
           if (debounceIdx !== -1) {
             const ms = parseInt(modifiers[debounceIdx + 1], 10) || 250;
@@ -739,7 +740,7 @@ class Component {
             continue;
           }
 
-          // .throttle.{ms} — fire at most once per interval
+          // .throttle.{ms} - fire at most once per interval
           const throttleIdx = modifiers.indexOf('throttle');
           if (throttleIdx !== -1) {
             const ms = parseInt(modifiers[throttleIdx + 1], 10) || 250;
@@ -751,7 +752,7 @@ class Component {
             continue;
           }
 
-          // .once — fire once then ignore
+          // .once - fire once then ignore
           if (modifiers.includes('once')) {
             if (el.dataset.zqOnce === event) continue;
             el.dataset.zqOnce = event;
@@ -779,12 +780,12 @@ class Component {
   //                       textarea, select (single & multiple), contenteditable
   //  Nested state keys:   z-model="user.name"  →  this.state.user.name
   //  Modifiers (boolean attributes on the same element):
-  //    z-lazy      — listen on 'change' instead of 'input' (update on blur / commit)
-  //    z-trim      — trim whitespace before writing to state
-  //    z-number    — force Number() conversion regardless of input type
-  //    z-debounce  — debounce state writes (default 250ms, or z-debounce="300")
-  //    z-uppercase — convert string to uppercase before writing to state
-  //    z-lowercase — convert string to lowercase before writing to state
+  //    z-lazy      - listen on 'change' instead of 'input' (update on blur / commit)
+  //    z-trim      - trim whitespace before writing to state
+  //    z-number    - force Number() conversion regardless of input type
+  //    z-debounce  - debounce state writes (default 250ms, or z-debounce="300")
+  //    z-uppercase - convert string to uppercase before writing to state
+  //    z-lowercase - convert string to lowercase before writing to state
   //
   //  Writes to reactive state so the rest of the UI stays in sync.
   //  Focus and cursor position are preserved in _render() via focusInfo.
@@ -866,7 +867,7 @@ class Component {
   }
 
   // ---------------------------------------------------------------------------
-  // Expression evaluator — CSP-safe parser (no eval / new Function)
+  // Expression evaluator - CSP-safe parser (no eval / new Function)
   // ---------------------------------------------------------------------------
   _evalExpr(expr) {
     return safeEval(expr, [
@@ -876,7 +877,7 @@ class Component {
   }
 
   // ---------------------------------------------------------------------------
-  // z-for — Expand list-rendering directives (pre-innerHTML, string level)
+  // z-for - Expand list-rendering directives (pre-innerHTML, string level)
   //
   //   <li z-for="item in items">{{item.name}}</li>
   //   <li z-for="(item, i) in items">{{i}}: {{item.name}}</li>
@@ -942,7 +943,7 @@ class Component {
                 this.state.__raw || this.state,
                 { props: this.props, computed: this.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
               ]);
-              return result != null ? result : '';
+              return result != null ? escapeHtml(String(result)) : '';
             } catch { return ''; }
           });
 
@@ -965,7 +966,7 @@ class Component {
   }
 
   // ---------------------------------------------------------------------------
-  // _expandContentDirectives — Pre-morph z-html & z-text expansion
+  // _expandContentDirectives - Pre-morph z-html & z-text expansion
   //
   // Evaluates z-html and z-text directives at the string level so the morph
   // engine receives HTML with the actual content inline. This lets the diff
@@ -1000,7 +1001,7 @@ class Component {
   }
 
   // ---------------------------------------------------------------------------
-  // _processDirectives — Post-innerHTML DOM-level directive processing
+  // _processDirectives - Post-innerHTML DOM-level directive processing
   // ---------------------------------------------------------------------------
   _processDirectives() {
     // z-pre: skip all directive processing on subtrees
@@ -1051,7 +1052,7 @@ class Component {
     });
 
     // -- z-bind:attr / :attr (dynamic attribute binding) -----------
-    // Use TreeWalker instead of querySelectorAll('*') — avoids
+    // Use TreeWalker instead of querySelectorAll('*') - avoids
     // creating a flat array of every single descendant element.
     // TreeWalker visits nodes lazily; FILTER_REJECT skips z-pre subtrees
     // at the walker level (faster than per-node closest('[z-pre]') checks).
@@ -1189,8 +1190,8 @@ const _reservedKeys = new Set([
 
 /**
  * Register a component
- * @param {string} name — tag name (must contain a hyphen, e.g. 'app-counter')
- * @param {object} definition — component definition
+ * @param {string} name - tag name (must contain a hyphen, e.g. 'app-counter')
+ * @param {object} definition - component definition
  */
 export function component(name, definition) {
   if (!name || typeof name !== 'string') {
@@ -1215,9 +1216,9 @@ export function component(name, definition) {
 
 /**
  * Mount a component into a target element
- * @param {string|Element} target — selector or element to mount into
- * @param {string} componentName — registered component name
- * @param {object} props — props to pass
+ * @param {string|Element} target - selector or element to mount into
+ * @param {string} componentName - registered component name
+ * @param {object} props - props to pass
  * @returns {Component}
  */
 export function mount(target, componentName, props = {}) {
@@ -1238,7 +1239,7 @@ export function mount(target, componentName, props = {}) {
 
 /**
  * Scan a container for custom component tags and auto-mount them
- * @param {Element} root — root element to scan (default: document.body)
+ * @param {Element} root - root element to scan (default: document.body)
  */
 export function mountAll(root = document.body) {
   for (const [name, def] of _registry) {
@@ -1263,7 +1264,7 @@ export function mountAll(root = document.body) {
       [...tag.attributes].forEach(attr => {
         if (attr.name.startsWith('@') || attr.name.startsWith('z-')) return;
 
-        // Dynamic prop: :propName="expression" — evaluate in parent context
+        // Dynamic prop: :propName="expression" - evaluate in parent context
         if (attr.name.startsWith(':')) {
           const propName = attr.name.slice(1);
           if (parentInstance) {
@@ -1272,7 +1273,7 @@ export function mountAll(root = document.body) {
               { props: parentInstance.props, refs: parentInstance.refs, computed: parentInstance.computed, $: typeof window !== 'undefined' ? window.$ : undefined }
             ]);
           } else {
-            // No parent — try JSON parse
+            // No parent - try JSON parse
             try { props[propName] = JSON.parse(attr.value); }
             catch { props[propName] = attr.value; }
           }
@@ -1321,8 +1322,8 @@ export function getRegistry() {
 /**
  * Pre-load a component's external templates and styles so the next mount
  * renders synchronously (no blank flash while fetching).
- * Safe to call multiple times — skips if already loaded.
- * @param {string} name — registered component name
+ * Safe to call multiple times - skips if already loaded.
+ * @param {string} name - registered component name
  * @returns {Promise<void>}
  */
 export async function prefetch(name) {
@@ -1350,27 +1351,27 @@ const _globalStyles = new Map(); // url → <link> element
  *
  *   $.style('app.css')                          // critical by default
  *   $.style(['app.css', 'theme.css'])            // multiple files
- *   $.style('/assets/global.css')                // absolute — used as-is
+ *   $.style('/assets/global.css')                // absolute - used as-is
  *   $.style('app.css', { critical: false })       // opt out of FOUC prevention
  *
  * Options:
- *   critical  — (boolean, default true) When true, zQuery injects a tiny
+ *   critical  - (boolean, default true) When true, zQuery injects a tiny
  *               inline style that hides the page (`visibility: hidden`) and
  *               removes it once the stylesheet has loaded. This prevents
- *               FOUC (Flash of Unstyled Content) entirely — no special
+ *               FOUC (Flash of Unstyled Content) entirely - no special
  *               markup needed in the HTML file. Set to false to load
  *               the stylesheet without blocking paint.
- *   bg        — (string, default '#0d1117') Background color applied while
+ *   bg        - (string, default '#0d1117') Background color applied while
  *               the page is hidden during critical load. Prevents a white
  *               flash on dark-themed apps. Only used when critical is true.
  *
  * Duplicate URLs are ignored (idempotent).
  *
- * @param {string|string[]} urls — stylesheet URL(s) to load
- * @param {object} [opts] — options
- * @param {boolean} [opts.critical=true] — hide page until loaded (prevents FOUC)
- * @param {string} [opts.bg] — background color while hidden (default '#0d1117')
- * @returns {{ remove: Function, ready: Promise }} — .remove() to unload, .ready resolves when loaded
+ * @param {string|string[]} urls - stylesheet URL(s) to load
+ * @param {object} [opts] - options
+ * @param {boolean} [opts.critical=true] - hide page until loaded (prevents FOUC)
+ * @param {string} [opts.bg] - background color while hidden (default '#0d1117')
+ * @returns {{ remove: Function, ready: Promise }} - .remove() to unload, .ready resolves when loaded
  */
 export function style(urls, opts = {}) {
   const callerBase = _detectCallerBase();
@@ -1379,7 +1380,7 @@ export function style(urls, opts = {}) {
   const loadPromises = [];
 
   // Critical mode (default: true): inject a tiny inline <style> that hides the
-  // page and sets a background color. Fully self-contained — no markup needed
+  // page and sets a background color. Fully self-contained - no markup needed
   // in the HTML file. The style is removed once the sheet loads.
   let _criticalStyle = null;
   if (opts.critical !== false) {

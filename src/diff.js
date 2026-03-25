@@ -1,5 +1,5 @@
 /**
- * zQuery Diff — Lightweight DOM morphing engine
+ * zQuery Diff - Lightweight DOM morphing engine
  *
  * Patches an existing DOM tree to match new HTML without destroying nodes
  * that haven't changed. Preserves focus, scroll positions, third-party
@@ -9,17 +9,17 @@
  * Keyed elements (via `z-key`) get matched across position changes.
  *
  * Performance advantages over virtual DOM (React/Angular):
- *   - No virtual tree allocation or diffing — works directly on real DOM
+ *   - No virtual tree allocation or diffing - works directly on real DOM
  *   - Skips unchanged subtrees via fast isEqualNode() check
  *   - z-skip attribute to opt out of diffing entire subtrees
  *   - Reuses a single template element for HTML parsing (zero GC pressure)
  *   - Keyed reconciliation uses LIS (Longest Increasing Subsequence) to
- *     minimize DOM moves — same algorithm as Vue 3 / ivi
+ *     minimize DOM moves - same algorithm as Vue 3 / ivi
  *   - Minimal attribute diffing with early bail-out
  */
 
 // ---------------------------------------------------------------------------
-// Reusable template element — avoids per-call allocation
+// Reusable template element - avoids per-call allocation
 // ---------------------------------------------------------------------------
 let _tpl = null;
 
@@ -29,15 +29,15 @@ function _getTemplate() {
 }
 
 // ---------------------------------------------------------------------------
-// morph(existingRoot, newHTML) — patch existing DOM to match newHTML
+// morph(existingRoot, newHTML) - patch existing DOM to match newHTML
 // ---------------------------------------------------------------------------
 
 /**
  * Morph an existing DOM element's children to match new HTML.
  * Only touches nodes that actually differ.
  *
- * @param {Element} rootEl — The live DOM container to patch
- * @param {string} newHTML — The desired HTML string
+ * @param {Element} rootEl - The live DOM container to patch
+ * @param {string} newHTML - The desired HTML string
  */
 export function morph(rootEl, newHTML) {
   const start = typeof window !== 'undefined' && window.__zqMorphHook ? performance.now() : 0;
@@ -46,7 +46,7 @@ export function morph(rootEl, newHTML) {
   const newRoot = tpl.content;
 
   // Move children into a wrapper for consistent handling.
-  // We move (not clone) from the template — cheaper than cloning.
+  // We move (not clone) from the template - cheaper than cloning.
   const tempDiv = document.createElement('div');
   while (newRoot.firstChild) tempDiv.appendChild(newRoot.firstChild);
 
@@ -56,16 +56,16 @@ export function morph(rootEl, newHTML) {
 }
 
 /**
- * Morph a single element in place — diffs attributes and children
+ * Morph a single element in place - diffs attributes and children
  * without replacing the node reference. Useful for replaceWith-style
  * updates where you want to keep the element identity when the tag
  * name matches.
  *
  * If the new HTML produces a different tag, falls back to native replace.
  *
- * @param {Element} oldEl — The live DOM element to patch
- * @param {string} newHTML — HTML string for the replacement element
- * @returns {Element} — The resulting element (same ref if morphed, new if replaced)
+ * @param {Element} oldEl - The live DOM element to patch
+ * @param {string} newHTML - HTML string for the replacement element
+ * @returns {Element} - The resulting element (same ref if morphed, new if replaced)
  */
 export function morphElement(oldEl, newHTML) {
   const start = typeof window !== 'undefined' && window.__zqMorphHook ? performance.now() : 0;
@@ -74,7 +74,7 @@ export function morphElement(oldEl, newHTML) {
   const newEl = tpl.content.firstElementChild;
   if (!newEl) return oldEl;
 
-  // Same tag — morph in place (preserves identity, event listeners, refs)
+  // Same tag - morph in place (preserves identity, event listeners, refs)
   if (oldEl.nodeName === newEl.nodeName) {
     _morphAttributes(oldEl, newEl);
     _morphChildren(oldEl, newEl);
@@ -82,14 +82,14 @@ export function morphElement(oldEl, newHTML) {
     return oldEl;
   }
 
-  // Different tag — must replace (can't morph <div> into <span>)
+  // Different tag - must replace (can't morph <div> into <span>)
   const clone = newEl.cloneNode(true);
   oldEl.parentNode.replaceChild(clone, oldEl);
   if (start) window.__zqMorphHook(clone, performance.now() - start);
   return clone;
 }
 
-// Aliases for the concat build — core.js imports these as _morph / _morphElement,
+// Aliases for the concat build - core.js imports these as _morph / _morphElement,
 // but the build strips `import … as` lines, so the aliases must exist at runtime.
 const _morph = morph;
 const _morphElement = morphElement;
@@ -97,11 +97,11 @@ const _morphElement = morphElement;
 /**
  * Reconcile children of `oldParent` to match `newParent`.
  *
- * @param {Element} oldParent — live DOM parent
- * @param {Element} newParent — desired state parent
+ * @param {Element} oldParent - live DOM parent
+ * @param {Element} newParent - desired state parent
  */
 function _morphChildren(oldParent, newParent) {
-  // Snapshot live NodeLists into arrays — childNodes is live and
+  // Snapshot live NodeLists into arrays - childNodes is live and
   // mutates during insertBefore/removeChild. Using a for loop to push
   // avoids spread operator overhead for large child lists.
   const oldCN = oldParent.childNodes;
@@ -113,7 +113,7 @@ function _morphChildren(oldParent, newParent) {
   for (let i = 0; i < oldLen; i++) oldChildren[i] = oldCN[i];
   for (let i = 0; i < newLen; i++) newChildren[i] = newCN[i];
 
-  // Scan for keyed elements — only build maps if keys exist
+  // Scan for keyed elements - only build maps if keys exist
   let hasKeys = false;
   let oldKeyMap, newKeyMap;
 
@@ -144,7 +144,7 @@ function _morphChildren(oldParent, newParent) {
 }
 
 /**
- * Unkeyed reconciliation — positional matching.
+ * Unkeyed reconciliation - positional matching.
  */
 function _morphChildrenUnkeyed(oldParent, oldChildren, newChildren) {
   const oldLen = oldChildren.length;
@@ -172,7 +172,7 @@ function _morphChildrenUnkeyed(oldParent, oldChildren, newChildren) {
 }
 
 /**
- * Keyed reconciliation — match by z-key, reorder with minimal moves
+ * Keyed reconciliation - match by z-key, reorder with minimal moves
  * using Longest Increasing Subsequence (LIS) to find the maximum set
  * of nodes that are already in the correct relative order, then only
  * move the remaining nodes.
@@ -206,7 +206,7 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
 
   // Step 3: Build index array for LIS of matched old indices.
   // This finds the largest set of keyed nodes already in order,
-  // so we only need to move the rest — O(n log n) instead of O(n²).
+  // so we only need to move the rest - O(n log n) instead of O(n²).
   const oldIndices = [];      // Maps new-position → old-position (or -1)
   for (let i = 0; i < newLen; i++) {
     if (matched[i]) {
@@ -219,7 +219,7 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
 
   const lisSet = _lis(oldIndices);
 
-  // Step 4: Insert / reorder / morph — walk new children forward,
+  // Step 4: Insert / reorder / morph - walk new children forward,
   // using LIS to decide which nodes stay in place.
   let cursor = oldParent.firstChild;
   const unkeyedOld = [];
@@ -244,7 +244,7 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
       if (!lisSet.has(i)) {
         oldParent.insertBefore(oldNode, cursor);
       }
-      // Capture next sibling BEFORE _morphNode — if _morphNode calls
+      // Capture next sibling BEFORE _morphNode - if _morphNode calls
       // replaceChild, oldNode is removed and nextSibling becomes stale.
       const nextSib = oldNode.nextSibling;
       _morphNode(oldParent, oldNode, newNode);
@@ -284,10 +284,10 @@ function _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, new
  * Returns a Set of positions (in the input) that form the LIS.
  * Entries with value -1 (unmatched) are excluded.
  *
- * O(n log n) — same algorithm used by Vue 3 and ivi.
+ * O(n log n) - same algorithm used by Vue 3 and ivi.
  *
- * @param {number[]} arr — array of old-tree indices (-1 = unmatched)
- * @returns {Set<number>} — positions in arr belonging to the LIS
+ * @param {number[]} arr - array of old-tree indices (-1 = unmatched)
+ * @returns {Set<number>} - positions in arr belonging to the LIS
  */
 function _lis(arr) {
   const len = arr.length;
@@ -331,7 +331,7 @@ function _lis(arr) {
  * Morph a single node in place.
  */
 function _morphNode(parent, oldNode, newNode) {
-  // Text / comment nodes — just update content
+  // Text / comment nodes - just update content
   if (oldNode.nodeType === 3 || oldNode.nodeType === 8) {
     if (newNode.nodeType === oldNode.nodeType) {
       if (oldNode.nodeValue !== newNode.nodeValue) {
@@ -339,26 +339,26 @@ function _morphNode(parent, oldNode, newNode) {
       }
       return;
     }
-    // Different node types — replace
+    // Different node types - replace
     parent.replaceChild(newNode.cloneNode(true), oldNode);
     return;
   }
 
-  // Different node types or tag names — replace entirely
+  // Different node types or tag names - replace entirely
   if (oldNode.nodeType !== newNode.nodeType ||
       oldNode.nodeName !== newNode.nodeName) {
     parent.replaceChild(newNode.cloneNode(true), oldNode);
     return;
   }
 
-  // Both are elements — diff attributes then recurse children
+  // Both are elements - diff attributes then recurse children
   if (oldNode.nodeType === 1) {
-    // z-skip: developer opt-out — skip diffing this subtree entirely.
+    // z-skip: developer opt-out - skip diffing this subtree entirely.
     // Useful for third-party widgets, canvas, video, or large static content.
     if (oldNode.hasAttribute('z-skip')) return;
 
     // Fast bail-out: if the elements are identical, skip everything.
-    // isEqualNode() is a native C++ comparison — much faster than walking
+    // isEqualNode() is a native C++ comparison - much faster than walking
     // attributes + children in JS when trees haven't changed.
     if (oldNode.isEqualNode(newNode)) return;
 
@@ -384,7 +384,7 @@ function _morphNode(parent, oldNode, newNode) {
       return;
     }
 
-    // Generic element — recurse children
+    // Generic element - recurse children
     _morphChildren(oldNode, newNode);
   }
 }
@@ -426,7 +426,7 @@ function _morphAttributes(oldEl, newEl) {
     }
   }
 
-  // Remove stale attributes — snapshot names first because oldAttrs
+  // Remove stale attributes - snapshot names first because oldAttrs
   // is a live NamedNodeMap that mutates on removeAttribute().
   const oldNames = new Array(oldLen);
   for (let i = 0; i < oldLen; i++) oldNames[i] = oldAttrs[i].name;
@@ -442,7 +442,7 @@ function _morphAttributes(oldEl, newEl) {
  *
  * Only updates the value when the new HTML explicitly carries a `value`
  * attribute.  Templates that use z-model manage values through reactive
- * state + _bindModels — the morph engine should not interfere by wiping
+ * state + _bindModels - the morph engine should not interfere by wiping
  * a live input's content to '' just because the template has no `value`
  * attr.  This prevents the wipe-then-restore cycle that resets cursor
  * position on every keystroke.
@@ -472,14 +472,14 @@ function _syncInputValue(oldEl, newEl) {
  *
  * This means the LIS-optimised keyed path activates automatically
  * whenever elements carry `id` or `data-id` / `data-key` attributes
- * — no extra markup required.
+ * - no extra markup required.
  *
  * @returns {string|null}
  */
 function _getKey(node) {
   if (node.nodeType !== 1) return null;
 
-  // Explicit z-key — highest priority
+  // Explicit z-key - highest priority
   const zk = node.getAttribute('z-key');
   if (zk) return zk;
 

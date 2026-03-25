@@ -1,12 +1,12 @@
-// about.js — About page component
+// about.js - About page component
 
 export const aboutPage = {
   state: () => ({
     features: [
-      'createSSRApp() — isolated component registry for Node.js',
-      'renderToString() — render a component to an HTML string',
-      'renderPage() — full HTML document with meta tags',
-      'renderBatch() — render multiple components in one call',
+      'createSSRApp() - isolated component registry for Node.js',
+      'renderToString() - render a component to an HTML string',
+      'renderPage() - full HTML document with meta tags',
+      'renderBatch() - render multiple components in one call',
       'Hydration markers (data-zq-ssr) for client takeover',
       'SEO: description, canonical URL, Open Graph tags',
     ]

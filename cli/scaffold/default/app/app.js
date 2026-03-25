@@ -1,15 +1,15 @@
-// app.js — Application entry point
+// app.js - Application entry point
 //
 // Bootstraps the app: imports components, sets up routing,
 // wires the responsive sidebar, and connects the store.
 //
 // Key APIs used:
-//   $.router     — SPA navigation (history mode)
-//   $.ready      — run after DOM is loaded
-//   $.bus        — event bus (toast notifications, contact card)
-//   $.on         — global delegated event listeners
-//   $.storage    — localStorage wrapper
-//   $.create     — create DOM elements
+//   $.router     - SPA navigation (history mode)
+//   $.ready      - run after DOM is loaded
+//   $.bus        - event bus (toast notifications, contact card)
+//   $.on         - global delegated event listeners
+//   $.storage    - localStorage wrapper
+//   $.create     - create DOM elements
 
 import './store.js';
 import './components/home.js';
@@ -25,16 +25,15 @@ import './components/not-found.js';
 import { routes } from './routes.js';
 
 // ---------------------------------------------------------------------------
-// Router — SPA navigation with history mode
+// Router - SPA navigation with history mode
 // ---------------------------------------------------------------------------
 const router = $.router({
-  el: '#app',   //@ Mount point (Set in index.html)
   routes,
   fallback: 'not-found',
   mode: 'history'
 });
 
-// Post-navigation hook — track page views on every navigation
+// Post-navigation hook - track page views on every navigation
 router.afterEach((to) => {
   const store = $.getStore('main');
   if (store) store.dispatch('incrementVisits');
@@ -65,17 +64,17 @@ function toggleMobileMenu(open) {
 
 function closeMobileMenu() { toggleMobileMenu(false); }
 
-// $.on — global delegated event listeners
+// $.on - global delegated event listeners
 $.on('click', '#menu-toggle', () => toggleMobileMenu(!$sidebar.hasClass('open')));
 $.on('click', '#overlay', closeMobileMenu);
 
-// Close sidebar on Escape key — using $.on direct (no selector needed)
+// Close sidebar on Escape key - using $.on direct (no selector needed)
 $.on('keydown', (e) => {
   if (e.key === 'Escape') closeMobileMenu();
 });
 
 // ---------------------------------------------------------------------------
-// Sidebar stats panel — collapsible, live-updating from $.store
+// Sidebar stats panel - collapsible, live-updating from $.store
 // Starts expanded by default. Open/closed state saved via $.storage.
 // ---------------------------------------------------------------------------
 $.on('click', '#stats-toggle', () => {
@@ -100,7 +99,7 @@ function updateSidebarStats() {
 }
 
 // ---------------------------------------------------------------------------
-// Sidebar contacts — live status indicators from $.store
+// Sidebar contacts - live status indicators from $.store
 // ---------------------------------------------------------------------------
 function updateSidebarContacts() {
   const store = $.getStore('main');
@@ -145,7 +144,7 @@ $.bus.on('toast', ({ message, type = 'info' }) => {
 });
 
 // ---------------------------------------------------------------------------
-// On DOM ready — final setup
+// On DOM ready - final setup
 // ---------------------------------------------------------------------------
 $.ready(() => {
   // Display version in the sidebar footer
@@ -173,7 +172,7 @@ $.ready(() => {
     $('#stats-arrow').removeClass('open');
   }
 
-  // Sidebar contact click — open the global contact card overlay
+  // Sidebar contact click - open the global contact card overlay
   $('#sc-list').on('click', '.sc-item', (e) => {
     const item = e.target.closest('.sc-item');
     if (!item) return;
@@ -193,11 +192,11 @@ $.ready(() => {
   // Mount any components outside the router outlet (e.g. <contact-card>)
   $.mountAll();
 
-  console.log('⚡ {{NAME}} — powered by zQuery v' + $.version);
+  console.log('⚡ {{NAME}} - powered by zQuery v' + $.version);
 });
 
 // ---------------------------------------------------------------------------
-// Theme helper — resolves 'system' to actual dark/light and applies it
+// Theme helper - resolves 'system' to actual dark/light and applies it
 // ---------------------------------------------------------------------------
 function applyTheme(preference) {
   let resolved = preference;

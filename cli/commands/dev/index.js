@@ -1,5 +1,5 @@
 /**
- * cli/commands/dev/index.js — Dev server orchestrator
+ * cli/commands/dev/index.js - Dev server orchestrator
  *
  * Ties together the HTTP server, file watcher, logger, and overlay
  * to provide a complete development environment with live-reload,
@@ -44,7 +44,7 @@ function resolveRoot(htmlEntry) {
 }
 
 // ---------------------------------------------------------------------------
-// devServer — main entry point (called from cli/index.js)
+// devServer - main entry point (called from cli/index.js)
 // ---------------------------------------------------------------------------
 
 async function devServer() {

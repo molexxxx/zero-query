@@ -1,5 +1,5 @@
 /**
- * cli/commands/dev/devtools/index.js — DevTools HTML assembler
+ * cli/commands/dev/devtools/index.js - DevTools HTML assembler
  *
  * Reads CSS, HTML, and JS partials from this folder and concatenates them
  * into a single self-contained HTML page served at /_devtools.

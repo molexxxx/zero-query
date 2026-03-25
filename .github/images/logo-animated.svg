@@ -114,7 +114,7 @@
     </g>
 
     <!-- ==================== PARTICLES ==================== -->
-    <!-- Soft luminous particles that slowly rise/drift — no harsh shapes -->
+    <!-- Soft luminous particles that slowly rise/drift - no harsh shapes -->
 
     <!-- Particle cluster: bottom → up, staggered -->
     <circle cx="80" cy="480" r="1.5" fill="#58a6ff" opacity="0" filter="url(#particleGlow)">

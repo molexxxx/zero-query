@@ -1,12 +1,12 @@
 <!--
-  playground.html — external template for playground-page component
+  playground.html - external template for playground-page component
 
-  Interactive UI patterns — event modifiers, animations, reactive bindings,
+  Interactive UI patterns - event modifiers, animations, reactive bindings,
   and plugins. Uses {{expression}} syntax for data binding.
 -->
 <div class="page-header" z-cloak>
   <h1>Playground</h1>
-  <p class="subtitle">Interactive UI patterns — event modifiers, animations, reactive bindings, and plugins.</p>
+  <p class="subtitle">Interactive UI patterns - event modifiers, animations, reactive bindings, and plugins.</p>
 </div>
 
 <!-- ── Interaction Patterns ──────────────────────────── -->
@@ -14,7 +14,7 @@
 
 <div class="card" style="position:relative;z-index:2;">
   <h3>Dropdown → Modal Flow</h3>
-  <p>Select an action from the <code>@click.outside</code> dropdown — it opens a confirmation modal. Dismiss via overlay (<code>@click.self</code>) or <kbd style="padding:.1rem .35rem;background:var(--bg-hover);border-radius:4px;font-size:.82rem;">Esc</kbd>.</p>
+  <p>Select an action from the <code>@click.outside</code> dropdown - it opens a confirmation modal. Dismiss via overlay (<code>@click.self</code>) or <kbd style="padding:.1rem .35rem;background:var(--bg-hover);border-radius:4px;font-size:.82rem;">Esc</kbd>.</p>
   <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
     <div class="pg-dropdown" @click.outside="closeDropdown">
       <button class="btn btn-primary" @click="toggleDropdown">
@@ -30,7 +30,7 @@
     <button z-else class="btn btn-ghost" disabled>✓ Once fired</button>
   </div>
 
-  <!-- Modal — faded in via JS, dismissed via overlay @click.self or Escape -->
+  <!-- Modal - faded in via JS, dismissed via overlay @click.self or Escape -->
   <div class="pg-modal-backdrop" z-if="modalOpen" style="display:none" @click.self="closeModal">
     <div class="pg-modal" @keydown.escape="closeModal" tabindex="-1">
       <h3>Confirm: <span z-text="dropdownSelected || 'Action'"></span></h3>
@@ -57,7 +57,7 @@
         <span id="pg-acc-icon-a" class="pg-accordion-icon">▸</span>
       </button>
       <div id="pg-acc-a" style="display:none">
-        <div class="pg-accordion-body">A zero-dependency frontend library for reactive SPAs — components, routing, stores, HTTP, and 200+ utilities in one ~28 KB file.</div>
+        <div class="pg-accordion-body">A zero-dependency frontend library for reactive SPAs - components, routing, stores, HTTP, and 200+ utilities in one ~28 KB file.</div>
       </div>
     </div>
     <div class="pg-accordion-item">
@@ -87,7 +87,7 @@
 <div class="card-grid">
   <div class="card">
     <h3>Dynamic Styles</h3>
-    <p>Object binding via <code>z-style</code> — inline styles update reactively.</p>
+    <p>Object binding via <code>z-style</code> - inline styles update reactively.</p>
     <div class="pg-style-preview" z-style="{ color: previewColor, fontSize: previewSize + 'px', borderRadius: previewRadius + 'px', borderColor: previewColor }">
       Live Preview
     </div>
@@ -100,14 +100,14 @@
 
   <div class="card">
     <h3>Rich Content</h3>
-    <p>Render trusted HTML with <code>z-html</code> — only use with sanitized content.</p>
+    <p>Render trusted HTML with <code>z-html</code> - only use with sanitized content.</p>
     <textarea z-model="richContent" class="input" rows="2" style="resize:vertical;"></textarea>
     <div class="pg-rich-preview" style="margin-top:.5rem;" z-html="richContent"></div>
   </div>
 
   <div class="card">
     <h3>Conditional Classes</h3>
-    <p>Switch a single class from a set using <code>z-class</code> — the object syntax applies only the matching key.</p>
+    <p>Switch a single class from a set using <code>z-class</code> - the object syntax applies only the matching key.</p>
     <div class="pg-variant-row">
       <div class="pg-variant-box" z-class="{'info': variant === 'info', 'success': variant === 'success', 'warning': variant === 'warning', 'danger': variant === 'danger'}">
         {{variant.charAt(0).toUpperCase() + variant.slice(1)}} Variant
@@ -128,7 +128,7 @@
 
 <div class="card">
   <h3>Key &amp; System Modifiers</h3>
-  <p>Template-level keyboard filtering — no manual <code>e.key</code> checks needed.</p>
+  <p>Template-level keyboard filtering - no manual <code>e.key</code> checks needed.</p>
   <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
     <input type="text" class="input input-sm" placeholder="Press Enter…" @keyup.enter="logShortcut('Enter ↵')" style="flex:1;min-width:140px;" />
     <button class="btn btn-sm btn-outline" @click.ctrl="logShortcut('Ctrl+Click')">Ctrl+Click</button>
@@ -144,7 +144,7 @@
 <div class="pg-section">Plugin System</div>
 
 <div class="card">
-  <h3><code>$.fn</code> — Extend the Collection</h3>
+  <h3><code>$.fn</code> - Extend the Collection</h3>
   <p>Register custom chainable methods on every <code>$(...)</code> selection. Click the buttons to trigger each plugin.</p>
   <div id="pg-plugin-box" class="pg-plugin-target">✦ Target Element</div>
   <div class="pg-plugin-btns">

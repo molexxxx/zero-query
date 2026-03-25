@@ -1,4 +1,4 @@
-// routes.js — Route definitions
+// routes.js - Route definitions
 //
 // Maps URL paths to component tag names.
 

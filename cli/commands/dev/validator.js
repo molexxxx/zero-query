@@ -1,5 +1,5 @@
 /**
- * cli/commands/dev/validator.js — JS syntax validation
+ * cli/commands/dev/validator.js - JS syntax validation
  *
  * Pre-validates JavaScript files on save using Node's VM module.
  * Returns structured error descriptors with code frames compatible
@@ -19,9 +19,9 @@ const vm = require('vm');
  * Build a code frame showing ~4 lines of context around the error
  * with a caret pointer at the offending column.
  *
- * @param {string} source   — full file contents
- * @param {number} line     — 1-based line number
- * @param {number} column   — 1-based column number
+ * @param {string} source   - full file contents
+ * @param {number} line     - 1-based line number
+ * @param {number} column   - 1-based column number
  * @returns {string}
  */
 function generateCodeFrame(source, line, column) {
@@ -52,9 +52,9 @@ function generateCodeFrame(source, line, column) {
  * Strips ESM import/export statements (preserving line numbers) so the
  * VM can parse module-style code, then compiles via vm.Script.
  *
- * @param {string} filePath — absolute path to the file
- * @param {string} relPath  — display-friendly relative path
- * @returns {object|null}   — error descriptor, or null if valid
+ * @param {string} filePath - absolute path to the file
+ * @param {string} relPath  - display-friendly relative path
+ * @returns {object|null}   - error descriptor, or null if valid
  */
 function validateJS(filePath, relPath) {
   let source;

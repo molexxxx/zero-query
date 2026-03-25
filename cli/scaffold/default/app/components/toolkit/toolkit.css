@@ -1,4 +1,4 @@
-/* toolkit.css — scoped styles for the toolkit page component */
+/* toolkit.css - scoped styles for the toolkit page component */
 
 .tk-tabs       { display: flex; padding: .35rem;
                  background: var(--bg-surface);

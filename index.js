@@ -1,6 +1,6 @@
 /**
  * ┌---------------------------------------------------------┐
- * │  zQuery (zeroQuery) — Lightweight Frontend Library     │
+ * │  zQuery (zeroQuery) - Lightweight Frontend Library     │
  * │                                                         │
  * │  jQuery-like selectors · Reactive components            │
  * │  SPA router · State management · Zero dependencies      │
@@ -10,7 +10,7 @@
  */
 
 import { query, queryAll, ZQueryCollection } from './src/core.js';
-import { reactive, Signal, signal, computed, effect } from './src/reactive.js';
+import { reactive, Signal, signal, computed, effect, batch, untracked } from './src/reactive.js';
 import { component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style } from './src/component.js';
 import { createRouter, getRouter } from './src/router.js';
 import { createStore, getStore } from './src/store.js';
@@ -31,11 +31,11 @@ import { ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync
 
 
 // ---------------------------------------------------------------------------
-// $ — The main function & namespace
+// $ - The main function & namespace
 // ---------------------------------------------------------------------------
 
 /**
- * Main selector function — always returns a ZQueryCollection (like jQuery).
+ * Main selector function - always returns a ZQueryCollection (like jQuery).
  * 
  *   $('selector')         → ZQueryCollection (querySelectorAll)
  *   $('<div>hello</div>') → ZQueryCollection from created elements
@@ -98,6 +98,8 @@ $.Signal   = Signal;
 $.signal   = signal;
 $.computed = computed;
 $.effect   = effect;
+$.batch    = batch;
+$.untracked = untracked;
 
 // --- Components ------------------------------------------------------------
 $.component   = component;
@@ -208,7 +210,7 @@ export {
   $ as zQuery,
   ZQueryCollection,
   queryAll,
-  reactive, Signal, signal, computed, effect,
+  reactive, Signal, signal, computed, effect, batch, untracked,
   component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style,
   morph, morphElement,
   safeEval,

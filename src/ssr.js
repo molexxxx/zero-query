@@ -1,10 +1,10 @@
 /**
- * zQuery SSR — Server-side rendering to HTML string
+ * zQuery SSR - Server-side rendering to HTML string
  *
  * Renders registered components to static HTML strings for SEO,
  * initial page load performance, and static site generation.
  *
- * Works in Node.js — no DOM required for basic rendering.
+ * Works in Node.js - no DOM required for basic rendering.
  * Supports hydration markers for client-side takeover.
  *
  * Usage (Node.js):
@@ -67,7 +67,7 @@ class SSRComponent {
       }
     }
 
-    // Init lifecycle — guarded so a broken init doesn't crash the whole render
+    // Init lifecycle - guarded so a broken init doesn't crash the whole render
     if (definition.init) {
       try {
         definition.init.call(this);
@@ -85,7 +85,7 @@ class SSRComponent {
         return html;
       } catch (err) {
         reportError(ErrorCode.SSR_RENDER, 'Component render() threw during SSR', {}, err);
-        return `<!-- SSR render error: ${_escapeHtml(err.message)} -->`;
+        return `<!-- SSR render error -->`;
       }
     }
     return '';
@@ -123,7 +123,7 @@ function _escapeHtml(str) {
 }
 
 // ---------------------------------------------------------------------------
-// SSR App — component registry + renderer
+// SSR App - component registry + renderer
 // ---------------------------------------------------------------------------
 class SSRApp {
   constructor() {
@@ -158,12 +158,12 @@ class SSRApp {
   /**
    * Render a component to an HTML string.
    *
-   * @param {string} componentName — registered component name
-   * @param {object} [props] — props to pass
-   * @param {object} [options] — rendering options
-   * @param {boolean} [options.hydrate=true] — add hydration marker
-   * @param {string} [options.mode='html'] — 'html' (default) or 'fragment' (no wrapper tag)
-   * @returns {Promise<string>} — rendered HTML
+   * @param {string} componentName - registered component name
+   * @param {object} [props] - props to pass
+   * @param {object} [options] - rendering options
+   * @param {boolean} [options.hydrate=true] - add hydration marker
+   * @param {string} [options.mode='html'] - 'html' (default) or 'fragment' (no wrapper tag)
+   * @returns {Promise<string>} - rendered HTML
    */
   async renderToString(componentName, props = {}, options = {}) {
     const def = this._registry.get(componentName);
@@ -185,7 +185,7 @@ class SSRApp {
     html = html.replace(/\s*@[\w.]+="[^"]*"/g, ''); // Remove event bindings
     html = html.replace(/\s*z-on:[\w.]+="[^"]*"/g, '');
 
-    // Fragment mode — return inner HTML without wrapper tag
+    // Fragment mode - return inner HTML without wrapper tag
     if (options.mode === 'fragment') return html;
 
     const hydrate = options.hydrate !== false;
@@ -198,7 +198,7 @@ class SSRApp {
    * Render multiple components as a batch.
    *
    * @param {Array<{ name: string, props?: object, options?: object }>} entries
-   * @returns {Promise<string[]>} — array of rendered HTML strings
+   * @returns {Promise<string[]>} - array of rendered HTML strings
    */
   async renderBatch(entries) {
     return Promise.all(
@@ -210,18 +210,18 @@ class SSRApp {
    * Render a full HTML page with a component mounted in a shell.
    *
    * @param {object} options
-   * @param {string} options.component — component name to render
-   * @param {object} [options.props] — props
-   * @param {string} [options.title] — page title
-   * @param {string} [options.description] — meta description for SEO
-   * @param {string[]} [options.styles] — CSS file paths
-   * @param {string[]} [options.scripts] — JS file paths
-   * @param {string} [options.lang] — html lang attribute
-   * @param {string} [options.meta] — additional head content
-   * @param {string} [options.bodyAttrs] — extra body attributes
-   * @param {object} [options.head] — structured head options
-   * @param {string} [options.head.canonical] — canonical URL
-   * @param {object} [options.head.og] — Open Graph tags
+   * @param {string} options.component - component name to render
+   * @param {object} [options.props] - props
+   * @param {string} [options.title] - page title
+   * @param {string} [options.description] - meta description for SEO
+   * @param {string[]} [options.styles] - CSS file paths
+   * @param {string[]} [options.scripts] - JS file paths
+   * @param {string} [options.lang] - html lang attribute
+   * @param {string} [options.meta] - additional head content
+   * @param {string} [options.bodyAttrs] - extra body attributes
+   * @param {object} [options.head] - structured head options
+   * @param {string} [options.head.canonical] - canonical URL
+   * @param {object} [options.head.og] - Open Graph tags
    * @returns {Promise<string>}
    */
   async renderPage(options = {}) {
@@ -296,8 +296,8 @@ export function createSSRApp() {
 
 /**
  * Quick one-shot render of a component definition to string.
- * @param {object} definition — component definition
- * @param {object} [props] — props
+ * @param {object} definition - component definition
+ * @param {object} [props] - props
  * @returns {string}
  */
 export function renderToString(definition, props = {}) {
@@ -309,7 +309,7 @@ export function renderToString(definition, props = {}) {
 }
 
 /**
- * Escape HTML entities — exposed for use in SSR templates.
+ * Escape HTML entities - exposed for use in SSR templates.
  * @param {string} str
  * @returns {string}
  */

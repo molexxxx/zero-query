@@ -321,10 +321,10 @@ describe('isEqual', () => {
 });
 
 // ---------------------------------------------------------------------------
-// deepMerge — circular reference safety
+// deepMerge - circular reference safety
 // ---------------------------------------------------------------------------
 
-describe('deepMerge — circular reference safety', () => {
+describe('deepMerge - circular reference safety', () => {
   it('does not infinite-loop on circular source', () => {
     const a = { x: 1 };
     const b = { y: 2 };
@@ -541,14 +541,14 @@ describe('bus (event bus)', () => {
 describe('bus (EventBus)', () => {
   beforeEach(() => { bus.clear(); });
 
-  it('on/emit — fires handler for matching events', () => {
+  it('on/emit - fires handler for matching events', () => {
     const fn = vi.fn();
     bus.on('test', fn);
     bus.emit('test', 42);
     expect(fn).toHaveBeenCalledWith(42);
   });
 
-  it('off — removes handler', () => {
+  it('off - removes handler', () => {
     const fn = vi.fn();
     bus.on('test', fn);
     bus.off('test', fn);
@@ -564,7 +564,7 @@ describe('bus (EventBus)', () => {
     expect(fn).not.toHaveBeenCalled();
   });
 
-  it('once — fires handler only once', () => {
+  it('once - fires handler only once', () => {
     const fn = vi.fn();
     bus.once('test', fn);
     bus.emit('test', 'a');
@@ -573,7 +573,7 @@ describe('bus (EventBus)', () => {
     expect(fn).toHaveBeenCalledWith('a');
   });
 
-  it('clear — removes all handlers', () => {
+  it('clear - removes all handlers', () => {
     const fn = vi.fn();
     bus.on('a', fn);
     bus.on('b', fn);
@@ -590,10 +590,10 @@ describe('bus (EventBus)', () => {
 
 
 // ===========================================================================
-// throttle — window reset
+// throttle - window reset
 // ===========================================================================
 
-describe('throttle — edge cases', () => {
+describe('throttle - edge cases', () => {
   it('fires trailing call after wait period', async () => {
     vi.useFakeTimers();
     const fn = vi.fn();
@@ -612,10 +612,10 @@ describe('throttle — edge cases', () => {
 
 
 // ===========================================================================
-// deepClone — edge cases
+// deepClone - edge cases
 // ===========================================================================
 
-describe('deepClone — edge cases', () => {
+describe('deepClone - edge cases', () => {
   it('clones nested arrays', () => {
     const arr = [[1, 2], [3, 4]];
     const clone = deepClone(arr);
@@ -631,10 +631,10 @@ describe('deepClone — edge cases', () => {
 
 
 // ===========================================================================
-// deepMerge — multiple sources
+// deepMerge - multiple sources
 // ===========================================================================
 
-describe('deepMerge — edge cases', () => {
+describe('deepMerge - edge cases', () => {
   it('merges from multiple sources', () => {
     const result = deepMerge({}, { a: 1 }, { b: 2 }, { c: 3 });
     expect(result).toEqual({ a: 1, b: 2, c: 3 });
@@ -653,10 +653,10 @@ describe('deepMerge — edge cases', () => {
 
 
 // ===========================================================================
-// isEqual — deeply nested
+// isEqual - deeply nested
 // ===========================================================================
 
-describe('isEqual — edge cases', () => {
+describe('isEqual - edge cases', () => {
   it('deeply nested equal objects', () => {
     expect(isEqual({ a: { b: { c: 1 } } }, { a: { b: { c: 1 } } })).toBe(true);
   });
@@ -686,10 +686,10 @@ describe('isEqual — edge cases', () => {
 
 
 // ===========================================================================
-// camelCase / kebabCase — edge cases
+// camelCase / kebabCase - edge cases
 // ===========================================================================
 
-describe('camelCase / kebabCase — edge cases', () => {
+describe('camelCase / kebabCase - edge cases', () => {
   it('camelCase single word', () => {
     expect(camelCase('hello')).toBe('hello');
   });
@@ -709,10 +709,10 @@ describe('camelCase / kebabCase — edge cases', () => {
 
 
 // ===========================================================================
-// html tag — escaping
+// html tag - escaping
 // ===========================================================================
 
-describe('html tag — edge cases', () => {
+describe('html tag - edge cases', () => {
   it('handles null interp value', () => {
     const result = html`<div>${null}</div>`;
     expect(result).toBe('<div></div>');
@@ -734,10 +734,10 @@ describe('html tag — edge cases', () => {
 
 
 // ===========================================================================
-// storage — error handling
+// storage - error handling
 // ===========================================================================
 
-describe('storage — parse error fallback', () => {
+describe('storage - parse error fallback', () => {
   it('returns fallback when JSON.parse fails', () => {
     localStorage.setItem('bad', '{invalid json');
     expect(storage.get('bad', 'default')).toBe('default');
@@ -747,7 +747,7 @@ describe('storage — parse error fallback', () => {
 
 
 // ===========================================================================
-// NEW UTILITIES — Array
+// NEW UTILITIES - Array
 // ===========================================================================
 
 describe('range', () => {
@@ -866,7 +866,7 @@ describe('groupBy', () => {
 
 
 // ===========================================================================
-// NEW UTILITIES — Object
+// NEW UTILITIES - Object
 // ===========================================================================
 
 describe('pick', () => {
@@ -1012,7 +1012,7 @@ describe('isEmpty', () => {
 
 
 // ===========================================================================
-// NEW UTILITIES — String
+// NEW UTILITIES - String
 // ===========================================================================
 
 describe('capitalize', () => {
@@ -1066,7 +1066,7 @@ describe('truncate', () => {
 
 
 // ===========================================================================
-// NEW UTILITIES — Number
+// NEW UTILITIES - Number
 // ===========================================================================
 
 describe('clamp', () => {
@@ -1099,7 +1099,7 @@ describe('clamp', () => {
 
 
 // ===========================================================================
-// NEW UTILITIES — Function
+// NEW UTILITIES - Function
 // ===========================================================================
 
 describe('memoize', () => {
@@ -1154,7 +1154,7 @@ describe('memoize', () => {
 
 
 // ===========================================================================
-// NEW UTILITIES — Async
+// NEW UTILITIES - Async
 // ===========================================================================
 
 describe('retry', () => {
@@ -1236,5 +1236,142 @@ describe('timeout', () => {
     await timeout(Promise.resolve('ok'), 5000);
     expect(clearSpy).toHaveBeenCalled();
     clearSpy.mockRestore();
+  });
+});
+
+
+// ===========================================================================
+// memoize - LRU behaviour
+// ===========================================================================
+
+describe('memoize - LRU eviction', () => {
+  it('promotes recently-read entries so they survive eviction', () => {
+    const fn = vi.fn(x => x * 2);
+    const mem = memoize(fn, { maxSize: 3 });
+
+    mem(1); // cache: [1]
+    mem(2); // cache: [1, 2]
+    mem(3); // cache: [1, 2, 3]
+
+    // Access 1 to promote it (LRU moves it to newest)
+    mem(1); // cache: [2, 3, 1]
+    expect(fn).toHaveBeenCalledTimes(3); // still cached, no recompute
+
+    // Insert 4 -> should evict 2 (least recently used), NOT 1
+    mem(4); // cache: [3, 1, 4]
+    expect(fn).toHaveBeenCalledTimes(4);
+
+    // 1 should still be cached (was promoted)
+    mem(1);
+    expect(fn).toHaveBeenCalledTimes(4); // no recompute
+
+    // 2 should be evicted
+    mem(2);
+    expect(fn).toHaveBeenCalledTimes(5); // recomputation
+  });
+
+  it('evicts in LRU order, not insertion order', () => {
+    const fn = vi.fn(x => x);
+    const mem = memoize(fn, { maxSize: 2 });
+
+    mem('a'); // [a]
+    mem('b'); // [a, b]
+
+    // Read 'a' - makes 'b' the LRU
+    mem('a'); // [b, a]
+
+    // Insert 'c' - should evict 'b', not 'a'
+    mem('c'); // [a, c]
+
+    // 'a' still cached
+    mem('a');
+    expect(fn).toHaveBeenCalledTimes(3); // a, b, c
+
+    // 'b' was evicted
+    mem('b');
+    expect(fn).toHaveBeenCalledTimes(4);
+  });
+});
+
+
+// ===========================================================================
+// deepClone - enhanced types
+// ===========================================================================
+
+describe('deepClone - enhanced types', () => {
+  it('clones Date objects', () => {
+    const date = new Date('2024-01-15T12:00:00Z');
+    const clone = deepClone(date);
+    expect(clone).toEqual(date);
+    expect(clone).not.toBe(date);
+    expect(clone instanceof Date).toBe(true);
+    expect(clone.getTime()).toBe(date.getTime());
+  });
+
+  it('clones nested Dates', () => {
+    const obj = { created: new Date('2024-01-15T12:00:00Z'), meta: { updated: new Date('2024-06-15T12:00:00Z') } };
+    const clone = deepClone(obj);
+    clone.created.setFullYear(2000);
+    expect(obj.created.getFullYear()).toBe(2024);
+  });
+
+  it('clones RegExp', () => {
+    const re = /hello/gi;
+    const clone = deepClone(re);
+    expect(clone).toEqual(re);
+    expect(clone).not.toBe(re);
+    expect(clone.source).toBe('hello');
+    expect(clone.flags).toBe('gi');
+  });
+
+  it('clones Map', () => {
+    const map = new Map([['a', 1], ['b', { deep: true }]]);
+    const clone = deepClone(map);
+    expect(clone).not.toBe(map);
+    expect(clone.get('a')).toBe(1);
+    clone.get('b').deep = false;
+    expect(map.get('b').deep).toBe(true);
+  });
+
+  it('clones Set', () => {
+    const set = new Set([1, 2, { x: 3 }]);
+    const clone = deepClone(set);
+    expect(clone).not.toBe(set);
+    expect(clone.size).toBe(3);
+    expect(clone.has(1)).toBe(true);
+    expect(clone.has(2)).toBe(true);
+  });
+
+  it('handles undefined values in objects', () => {
+    const obj = { a: 1, b: undefined, c: 'hello' };
+    const clone = deepClone(obj);
+    expect(clone.b).toBeUndefined();
+    expect('b' in clone).toBe(true);
+  });
+
+  it('handles null values', () => {
+    const obj = { a: null, b: { c: null } };
+    const clone = deepClone(obj);
+    expect(clone.a).toBeNull();
+    expect(clone.b.c).toBeNull();
+  });
+
+  it('handles circular references', () => {
+    const obj = { a: 1 };
+    obj.self = obj;
+    const clone = deepClone(obj);
+    expect(clone.a).toBe(1);
+    expect(clone.self).toBe(clone);
+    expect(clone.self).not.toBe(obj);
+  });
+
+  it('handles nested circular references', () => {
+    const a = { name: 'a' };
+    const b = { name: 'b', ref: a };
+    a.ref = b;
+    const clone = deepClone(a);
+    expect(clone.name).toBe('a');
+    expect(clone.ref.name).toBe('b');
+    expect(clone.ref.ref).toBe(clone);
   });
 });

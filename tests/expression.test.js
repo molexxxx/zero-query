@@ -12,7 +12,7 @@ const eval_ = (expr, ...scopes) => safeEval(expr, scopes.length ? scopes : [{}])
 // Literals
 // ---------------------------------------------------------------------------
 
-describe('expression parser — literals', () => {
+describe('expression parser - literals', () => {
   it('numbers', () => {
     expect(eval_('42')).toBe(42);
     expect(eval_('3.14')).toBe(3.14);
@@ -44,7 +44,7 @@ describe('expression parser — literals', () => {
 // Arithmetic
 // ---------------------------------------------------------------------------
 
-describe('expression parser — arithmetic', () => {
+describe('expression parser - arithmetic', () => {
   it('basic operations', () => {
     expect(eval_('2 + 3')).toBe(5);
     expect(eval_('10 - 4')).toBe(6);
@@ -69,7 +69,7 @@ describe('expression parser — arithmetic', () => {
 // Comparison & logical
 // ---------------------------------------------------------------------------
 
-describe('expression parser — comparison', () => {
+describe('expression parser - comparison', () => {
   it('equality', () => {
     expect(eval_('1 === 1')).toBe(true);
     expect(eval_('1 !== 2')).toBe(true);
@@ -86,7 +86,7 @@ describe('expression parser — comparison', () => {
 });
 
 
-describe('expression parser — logical', () => {
+describe('expression parser - logical', () => {
   it('&& and ||', () => {
     expect(eval_('true && false')).toBe(false);
     expect(eval_('true || false')).toBe(true);
@@ -113,7 +113,7 @@ describe('expression parser — logical', () => {
 // Ternary
 // ---------------------------------------------------------------------------
 
-describe('expression parser — ternary', () => {
+describe('expression parser - ternary', () => {
   it('evaluates truthy branch', () => {
     expect(eval_("true ? 'yes' : 'no'")).toBe('yes');
   });
@@ -132,7 +132,7 @@ describe('expression parser — ternary', () => {
 // Property access & scope
 // ---------------------------------------------------------------------------
 
-describe('expression parser — property access', () => {
+describe('expression parser - property access', () => {
   it('reads scope variables', () => {
     expect(eval_('x', { x: 42 })).toBe(42);
     expect(eval_('name', { name: 'Tony' })).toBe('Tony');
@@ -163,7 +163,7 @@ describe('expression parser — property access', () => {
 // Method calls
 // ---------------------------------------------------------------------------
 
-describe('expression parser — method calls', () => {
+describe('expression parser - method calls', () => {
   it('string methods', () => {
     expect(eval_("'hello'.toUpperCase()")).toBe('HELLO');
     expect(eval_("'hello world'.split(' ')")).toEqual(['hello', 'world']);
@@ -187,7 +187,7 @@ describe('expression parser — method calls', () => {
 // Built-in globals
 // ---------------------------------------------------------------------------
 
-describe('expression parser — built-in globals', () => {
+describe('expression parser - built-in globals', () => {
   it('Math', () => {
     expect(eval_('Math.PI')).toBeCloseTo(3.14159);
     expect(eval_('Math.max(1, 5, 3)')).toBe(5);
@@ -214,7 +214,7 @@ describe('expression parser — built-in globals', () => {
 // Template literals
 // ---------------------------------------------------------------------------
 
-describe('expression parser — template literals', () => {
+describe('expression parser - template literals', () => {
   it('simple interpolation', () => {
     expect(eval_('`Hello ${name}`', { name: 'Tony' })).toBe('Hello Tony');
   });
@@ -233,7 +233,7 @@ describe('expression parser — template literals', () => {
 // Array & object literals
 // ---------------------------------------------------------------------------
 
-describe('expression parser — array/object literals', () => {
+describe('expression parser - array/object literals', () => {
   it('array literal', () => {
     expect(eval_('[1, 2, 3]')).toEqual([1, 2, 3]);
     expect(eval_('[]')).toEqual([]);
@@ -253,7 +253,7 @@ describe('expression parser — array/object literals', () => {
 // Arrow functions
 // ---------------------------------------------------------------------------
 
-describe('expression parser — arrow functions', () => {
+describe('expression parser - arrow functions', () => {
   it('single-param arrow', () => {
     const fn = eval_('x => x * 2');
     expect(fn(3)).toBe(6);
@@ -280,7 +280,7 @@ describe('expression parser — arrow functions', () => {
 // typeof
 // ---------------------------------------------------------------------------
 
-describe('expression parser — typeof', () => {
+describe('expression parser - typeof', () => {
   it('typeof string', () => {
     expect(eval_("typeof 'hello'")).toBe('string');
   });
@@ -299,7 +299,7 @@ describe('expression parser — typeof', () => {
 // Safety / security
 // ---------------------------------------------------------------------------
 
-describe('expression parser — safety', () => {
+describe('expression parser - safety', () => {
   it('blocks constructor access', () => {
     expect(eval_("''.constructor")).toBe(undefined);
   });
@@ -323,7 +323,7 @@ describe('expression parser — safety', () => {
 // Multi-scope resolution
 // ---------------------------------------------------------------------------
 
-describe('expression parser — multi-scope', () => {
+describe('expression parser - multi-scope', () => {
   it('checks scope layers in order', () => {
     expect(safeEval('x', [{ x: 'first' }, { x: 'second' }])).toBe('first');
   });
@@ -338,7 +338,7 @@ describe('expression parser — multi-scope', () => {
 // in operator
 // ---------------------------------------------------------------------------
 
-describe('expression parser — in operator', () => {
+describe('expression parser - in operator', () => {
   it('checks property existence', () => {
     expect(eval_("'x' in obj", { obj: { x: 1 } })).toBe(true);
     expect(eval_("'y' in obj", { obj: { x: 1 } })).toBe(false);
@@ -350,7 +350,7 @@ describe('expression parser — in operator', () => {
 // instanceof operator
 // ---------------------------------------------------------------------------
 
-describe('expression parser — instanceof', () => {
+describe('expression parser - instanceof', () => {
   it('checks instanceOf', () => {
     expect(eval_('arr instanceof Array', { arr: [1, 2] })).toBe(true);
     expect(eval_('obj instanceof Array', { obj: {} })).toBe(false);
@@ -362,7 +362,7 @@ describe('expression parser — instanceof', () => {
 // Nested ternary
 // ---------------------------------------------------------------------------
 
-describe('expression parser — nested ternary', () => {
+describe('expression parser - nested ternary', () => {
   it('evaluates simple ternary correctly', () => {
     expect(eval_("x > 10 ? 'big' : 'small'", { x: 12 })).toBe('big');
     expect(eval_("x > 10 ? 'big' : 'small'", { x: 2 })).toBe('small');
@@ -374,7 +374,7 @@ describe('expression parser — nested ternary', () => {
 // Chained method calls
 // ---------------------------------------------------------------------------
 
-describe('expression parser — chained calls', () => {
+describe('expression parser - chained calls', () => {
   it('chains array methods', () => {
     expect(eval_('items.filter(x => x > 1).map(x => x * 2)', { items: [1, 2, 3] })).toEqual([4, 6]);
   });
@@ -389,8 +389,8 @@ describe('expression parser — chained calls', () => {
 // Spread operator
 // ---------------------------------------------------------------------------
 
-describe('expression parser — spread / rest', () => {
-  it('spread is not supported — returns gracefully', () => {
+describe('expression parser - spread / rest', () => {
+  it('spread is not supported - returns gracefully', () => {
     // The parser does not support spread syntax; verify it doesn't throw
     const result = eval_('[...items, 4]', { items: [1, 2, 3] });
     expect(result).toBeDefined();
@@ -402,7 +402,7 @@ describe('expression parser — spread / rest', () => {
 // Destructuring assignment in arrow body
 // ---------------------------------------------------------------------------
 
-describe('expression parser — complex arrow', () => {
+describe('expression parser - complex arrow', () => {
   it('arrow as callback in array method', () => {
     const items = [{ n: 'a' }, { n: 'b' }];
     expect(eval_('items.map(x => x.n)', { items })).toEqual(['a', 'b']);
@@ -420,8 +420,8 @@ describe('expression parser — complex arrow', () => {
 // Bitwise operators
 // ---------------------------------------------------------------------------
 
-describe('expression parser — bitwise', () => {
-  it('bitwise operators are not supported — does not throw', () => {
+describe('expression parser - bitwise', () => {
+  it('bitwise operators are not supported - does not throw', () => {
     // The expression parser does not implement bitwise operators
     // Verify graceful fallback rather than crashes
     expect(() => eval_('5 | 3')).not.toThrow();
@@ -435,8 +435,8 @@ describe('expression parser — bitwise', () => {
 // Comma expressions
 // ---------------------------------------------------------------------------
 
-describe('expression parser — comma', () => {
-  it('comma expressions are not supported — does not throw', () => {
+describe('expression parser - comma', () => {
+  it('comma expressions are not supported - does not throw', () => {
     // The parser does not support comma expressions
     expect(() => eval_('(1, 2, 3)')).not.toThrow();
   });
@@ -447,7 +447,7 @@ describe('expression parser — comma', () => {
 // Edge cases
 // ---------------------------------------------------------------------------
 
-describe('expression parser — edge cases', () => {
+describe('expression parser - edge cases', () => {
   it('handles very long dot chains', () => {
     const data = { a: { b: { c: { d: { e: 42 } } } } };
     expect(eval_('a.b.c.d.e', data)).toBe(42);
@@ -470,7 +470,7 @@ describe('expression parser — edge cases', () => {
     expect(eval_('-1 + -2')).toBe(-3);
   });
 
-  it('exponentiation ** is not supported — does not throw', () => {
+  it('exponentiation ** is not supported - does not throw', () => {
     // The parser does not implement ** operator
     expect(() => eval_('2 ** 3')).not.toThrow();
   });
@@ -486,7 +486,7 @@ describe('expression parser — edge cases', () => {
 // Optional chaining edge cases
 // ---------------------------------------------------------------------------
 
-describe('expression parser — optional chaining edge cases', () => {
+describe('expression parser - optional chaining edge cases', () => {
   it('returns undefined for null base with ?.', () => {
     expect(eval_('a?.b', { a: null })).toBeUndefined();
   });
@@ -519,7 +519,7 @@ describe('expression parser — optional chaining edge cases', () => {
 // Complex property access
 // ---------------------------------------------------------------------------
 
-describe('expression parser — complex property access', () => {
+describe('expression parser - complex property access', () => {
   it('accesses deeply nested objects', () => {
     const scope = { a: { b: { c: { d: { e: 'deep' } } } } };
     expect(eval_('a.b.c.d.e', scope)).toBe('deep');
@@ -548,7 +548,7 @@ describe('expression parser — complex property access', () => {
 // Arrow function edge cases
 // ---------------------------------------------------------------------------
 
-describe('expression parser — arrow function edge cases', () => {
+describe('expression parser - arrow function edge cases', () => {
   it('no-param arrow function', () => {
     const fn = eval_('() => 42');
     expect(fn()).toBe(42);
@@ -581,7 +581,7 @@ describe('expression parser — arrow function edge cases', () => {
 // Template literal edge cases
 // ---------------------------------------------------------------------------
 
-describe('expression parser — template literal edge cases', () => {
+describe('expression parser - template literal edge cases', () => {
   it('template with no interpolation', () => {
     expect(eval_('`hello world`')).toBe('hello world');
   });
@@ -612,7 +612,7 @@ describe('expression parser — template literal edge cases', () => {
 // Nullish coalescing edge cases
 // ---------------------------------------------------------------------------
 
-describe('expression parser — nullish coalescing edge cases', () => {
+describe('expression parser - nullish coalescing edge cases', () => {
   it('returns left side for 0', () => {
     expect(eval_('x ?? 10', { x: 0 })).toBe(0);
   });
@@ -643,7 +643,7 @@ describe('expression parser — nullish coalescing edge cases', () => {
 // Typeof edge cases
 // ---------------------------------------------------------------------------
 
-describe('expression parser — typeof edge cases', () => {
+describe('expression parser - typeof edge cases', () => {
   it('typeof undefined variable returns "undefined"', () => {
     expect(eval_('typeof x')).toBe('undefined');
   });
@@ -678,7 +678,7 @@ describe('expression parser — typeof edge cases', () => {
 // Array/Object literal edge cases
 // ---------------------------------------------------------------------------
 
-describe('expression parser — array/object literal edge cases', () => {
+describe('expression parser - array/object literal edge cases', () => {
   it('array with trailing expression', () => {
     expect(eval_('[1, 2, 3].length')).toBe(3);
   });
@@ -709,7 +709,7 @@ describe('expression parser — array/object literal edge cases', () => {
 // Method call edge cases
 // ---------------------------------------------------------------------------
 
-describe('expression parser — method call edge cases', () => {
+describe('expression parser - method call edge cases', () => {
   it('chained string methods', () => {
     expect(eval_('"Hello World".toLowerCase().split(" ")')).toEqual(['hello', 'world']);
   });
@@ -758,7 +758,7 @@ describe('expression parser — method call edge cases', () => {
 // Multi-scope resolution
 // ---------------------------------------------------------------------------
 
-describe('expression parser — multi-scope resolution', () => {
+describe('expression parser - multi-scope resolution', () => {
   it('resolves from first scope when available', () => {
     expect(eval_('x', { x: 1 }, { x: 2 })).toBe(1);
   });
@@ -777,7 +777,7 @@ describe('expression parser — multi-scope resolution', () => {
 // Security: blocked access
 // ---------------------------------------------------------------------------
 
-describe('expression parser — security', () => {
+describe('expression parser - security', () => {
   it('blocks constructor access', () => {
     expect(() => eval_('"".constructor')).not.toThrow();
   });
@@ -790,11 +790,11 @@ describe('expression parser — security', () => {
     expect(() => eval_('++++')).not.toThrow();
   });
 
-  it('global access is sandboxed — no window', () => {
+  it('global access is sandboxed - no window', () => {
     expect(eval_('typeof window')).toBe('undefined');
   });
 
-  it('global access is sandboxed — no document', () => {
+  it('global access is sandboxed - no document', () => {
     expect(eval_('typeof document')).toBe('undefined');
   });
 });
@@ -804,7 +804,7 @@ describe('expression parser — security', () => {
 // Comparison edge cases
 // ---------------------------------------------------------------------------
 
-describe('expression parser — comparison edge cases', () => {
+describe('expression parser - comparison edge cases', () => {
   it('strict equality with type mismatch', () => {
     expect(eval_('1 === "1"')).toBe(false);
   });
@@ -833,7 +833,7 @@ describe('expression parser — comparison edge cases', () => {
 // Grouping / precedence
 // ---------------------------------------------------------------------------
 
-describe('expression parser — grouping and precedence', () => {
+describe('expression parser - grouping and precedence', () => {
   it('parentheses override precedence', () => {
     expect(eval_('(2 + 3) * 4')).toBe(20);
   });
@@ -857,10 +857,10 @@ describe('expression parser — grouping and precedence', () => {
 
 
 // ===========================================================================
-// new keyword — safe constructors
+// new keyword - safe constructors
 // ===========================================================================
 
-describe('safeEval — new keyword', () => {
+describe('safeEval - new keyword', () => {
   it('creates new Date (no args)', () => {
     const result = eval_('new Date');
     expect(result).toBeInstanceOf(Date);
@@ -871,14 +871,19 @@ describe('safeEval — new keyword', () => {
     expect(result).toBeInstanceOf(Array);
   });
 
-  it('Map/Set/RegExp in globals — new creates instances', () => {
-    // Map, Set, RegExp are now exposed as globals and whitelisted as safe constructors
+  it('Map/Set in globals - new creates instances', () => {
+    // Map, Set are exposed as globals and whitelisted as safe constructors
     expect(eval_('new Map')).toBeInstanceOf(Map);
     expect(eval_('new Set')).toBeInstanceOf(Set);
-    expect(eval_('new RegExp')).toBeInstanceOf(RegExp);
   });
 
-  it('new with args — parser correctly passes args to constructor', () => {
+  it('RegExp blocked - ReDoS prevention', () => {
+    // RegExp is no longer exposed or allowed as constructor to prevent ReDoS attacks
+    expect(eval_('new RegExp')).toBeUndefined();
+    expect(eval_('RegExp')).toBeUndefined();
+  });
+
+  it('new with args - parser correctly passes args to constructor', () => {
     const result = eval_('new Date(2024, 0, 1)');
     expect(result).toBeInstanceOf(Date);
     expect(result.getFullYear()).toBe(2024);
@@ -897,7 +902,7 @@ describe('safeEval — new keyword', () => {
 // void operator
 // ===========================================================================
 
-describe('safeEval — void operator', () => {
+describe('safeEval - void operator', () => {
   it('returns undefined', () => {
     expect(eval_('void 0')).toBeUndefined();
   });
@@ -912,7 +917,7 @@ describe('safeEval — void operator', () => {
 // AST cache
 // ===========================================================================
 
-describe('safeEval — AST cache', () => {
+describe('safeEval - AST cache', () => {
   it('returns same result on repeated evaluation (cache hit)', () => {
     const r1 = eval_('1 + 2');
     const r2 = eval_('1 + 2');
@@ -933,7 +938,7 @@ describe('safeEval — AST cache', () => {
 // Optional call ?.()
 // ===========================================================================
 
-describe('safeEval — optional call ?.()', () => {
+describe('safeEval - optional call ?.()', () => {
   it('calls function when not null', () => {
     expect(eval_('fn?.()', { fn: () => 42 })).toBe(42);
   });
@@ -952,7 +957,7 @@ describe('safeEval — optional call ?.()', () => {
 // Global builtins
 // ===========================================================================
 
-describe('safeEval — global builtins', () => {
+describe('safeEval - global builtins', () => {
   it('accesses Date constructor', () => {
     expect(eval_('Date.now()')).toBeGreaterThan(0);
   });
@@ -1016,7 +1021,7 @@ describe('safeEval — global builtins', () => {
 // Number methods
 // ===========================================================================
 
-describe('safeEval — number methods', () => {
+describe('safeEval - number methods', () => {
   it('calls toFixed', () => {
     expect(eval_('x.toFixed(2)', { x: 3.14159 })).toBe('3.14');
   });
@@ -1031,7 +1036,7 @@ describe('safeEval — number methods', () => {
 // Empty/edge expressions
 // ===========================================================================
 
-describe('safeEval — edge cases', () => {
+describe('safeEval - edge cases', () => {
   it('returns undefined for empty string', () => {
     expect(eval_('')).toBeUndefined();
   });

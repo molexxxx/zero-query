@@ -1,5 +1,5 @@
 /**
- * zQuery Store — Global reactive state management
+ * zQuery Store - Global reactive state management
  * 
  * A lightweight Redux/Vuex-inspired store with:
  *   - Reactive state via Proxy
@@ -38,22 +38,22 @@ class Store {
     this._history = [];              // action log
     this._maxHistory = config.maxHistory || 1000;
     this._debug = config.debug || false;
+    this._batching = false;
+    this._batchQueue = [];           // pending notifications during batch
+    this._undoStack = [];
+    this._redoStack = [];
+    this._maxUndo = config.maxUndo || 50;
 
-    // Create reactive state
+    // Store initial state for reset
     const initial = typeof config.state === 'function' ? config.state() : { ...(config.state || {}) };
+    this._initialState = JSON.parse(JSON.stringify(initial));
 
     this.state = reactive(initial, (key, value, old) => {
-      // Notify key-specific subscribers
-      const subs = this._subscribers.get(key);
-      if (subs) subs.forEach(fn => {
-        try { fn(value, old, key); }
-        catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, `Subscriber for "${key}" threw`, { key }, err); }
-      });
-      // Notify wildcard subscribers
-      this._wildcards.forEach(fn => {
-        try { fn(key, value, old); }
-        catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, 'Wildcard subscriber threw', { key }, err); }
-      });
+      if (this._batching) {
+        this._batchQueue.push({ key, value, old });
+        return;
+      }
+      this._notifySubscribers(key, value, old);
     });
 
     // Build getters as computed properties
@@ -66,10 +66,90 @@ class Store {
     }
   }
 
+  /** @private Notify key-specific and wildcard subscribers */
+  _notifySubscribers(key, value, old) {
+    const subs = this._subscribers.get(key);
+    if (subs) subs.forEach(fn => {
+      try { fn(key, value, old); }
+      catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, `Subscriber for "${key}" threw`, { key }, err); }
+    });
+    this._wildcards.forEach(fn => {
+      try { fn(key, value, old); }
+      catch (err) { reportError(ErrorCode.STORE_SUBSCRIBE, 'Wildcard subscriber threw', { key }, err); }
+    });
+  }
+
+  /**
+   * Batch multiple state changes - subscribers fire once at the end
+   * with only the latest value per key.
+   */
+  batch(fn) {
+    this._batching = true;
+    this._batchQueue = [];
+    try {
+      fn(this.state);
+    } finally {
+      this._batching = false;
+      // Deduplicate: keep only the last change per key
+      const last = new Map();
+      for (const entry of this._batchQueue) {
+        last.set(entry.key, entry);
+      }
+      this._batchQueue = [];
+      for (const { key, value, old } of last.values()) {
+        this._notifySubscribers(key, value, old);
+      }
+    }
+  }
+
+  /**
+   * Save a snapshot for undo. Call before making changes you want to be undoable.
+   */
+  checkpoint() {
+    const snap = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    this._undoStack.push(snap);
+    if (this._undoStack.length > this._maxUndo) {
+      this._undoStack.splice(0, this._undoStack.length - this._maxUndo);
+    }
+    this._redoStack = [];
+  }
+
+  /**
+   * Undo to the last checkpoint
+   * @returns {boolean} true if undo was performed
+   */
+  undo() {
+    if (this._undoStack.length === 0) return false;
+    const current = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    this._redoStack.push(current);
+    const prev = this._undoStack.pop();
+    this.replaceState(prev);
+    return true;
+  }
+
+  /**
+   * Redo the last undone state change
+   * @returns {boolean} true if redo was performed
+   */
+  redo() {
+    if (this._redoStack.length === 0) return false;
+    const current = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    this._undoStack.push(current);
+    const next = this._redoStack.pop();
+    this.replaceState(next);
+    return true;
+  }
+
+  /** Check if undo is available */
+  get canUndo() { return this._undoStack.length > 0; }
+
+  /** Check if redo is available */
+  get canRedo() { return this._redoStack.length > 0; }
+
   /**
    * Dispatch a named action
-   * @param {string} name — action name
-   * @param  {...any} args — payload
+   * @param {string} name - action name
+   * @param  {...any} args - payload
    */
   dispatch(name, ...args) {
     const action = this._actions[name];
@@ -108,13 +188,13 @@ class Store {
 
   /**
    * Subscribe to changes on a specific state key
-   * @param {string|Function} keyOrFn — state key, or function for all changes
-   * @param {Function} [fn] — callback (value, oldValue, key)
-   * @returns {Function} — unsubscribe
+   * @param {string|Function} keyOrFn - state key, or function for all changes
+   * @param {Function} [fn] - callback (key, value, oldValue)
+   * @returns {Function} - unsubscribe
    */
   subscribe(keyOrFn, fn) {
     if (typeof keyOrFn === 'function') {
-      // Wildcard — listen to all changes
+      // Wildcard - listen to all changes
       this._wildcards.add(keyOrFn);
       return () => this._wildcards.delete(keyOrFn);
     }
@@ -160,11 +240,13 @@ class Store {
   }
 
   /**
-   * Reset state to initial values
+   * Reset state to initial values. If no argument, resets to the original state.
    */
   reset(initialState) {
-    this.replaceState(initialState);
+    this.replaceState(initialState || JSON.parse(JSON.stringify(this._initialState)));
     this._history = [];
+    this._undoStack = [];
+    this._redoStack = [];
   }
 }
 

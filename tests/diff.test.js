@@ -22,7 +22,7 @@ function morphAndGet(oldHTML, newHTML) {
 // Basic morphing
 // ---------------------------------------------------------------------------
 
-describe('morph — basic', () => {
+describe('morph - basic', () => {
   it('updates text content', () => {
     const root = morphAndGet('<p>old</p>', '<p>new</p>');
     expect(root.innerHTML).toBe('<p>new</p>');
@@ -87,7 +87,7 @@ describe('morph — basic', () => {
 // Attribute morphing
 // ---------------------------------------------------------------------------
 
-describe('morph — attributes', () => {
+describe('morph - attributes', () => {
   it('adds new attributes', () => {
     const root = morphAndGet('<div></div>', '<div class="active"></div>');
     expect(root.children[0].className).toBe('active');
@@ -133,7 +133,7 @@ describe('morph — attributes', () => {
 // Keyed reconciliation
 // ---------------------------------------------------------------------------
 
-describe('morph — keyed', () => {
+describe('morph - keyed', () => {
   it('matches elements by z-key', () => {
     const root = el('<div z-key="a">A</div><div z-key="b">B</div>');
     morph(root, '<div z-key="b">B-updated</div><div z-key="a">A-updated</div>');
@@ -206,7 +206,7 @@ describe('morph — keyed', () => {
 // Input / form element handling
 // ---------------------------------------------------------------------------
 
-describe('morph — form elements', () => {
+describe('morph - form elements', () => {
   it('syncs input value', () => {
     const root = el('<input value="old">');
     morph(root, '<input value="new">');
@@ -253,7 +253,7 @@ describe('morph — form elements', () => {
 // Text and comment nodes
 // ---------------------------------------------------------------------------
 
-describe('morph — text nodes', () => {
+describe('morph - text nodes', () => {
   it('updates text nodes', () => {
     const root = document.createElement('div');
     root.textContent = 'old';
@@ -283,7 +283,7 @@ describe('morph — text nodes', () => {
 // Nested children
 // ---------------------------------------------------------------------------
 
-describe('morph — nested', () => {
+describe('morph - nested', () => {
   it('recursively morphs nested elements', () => {
     const root = morphAndGet(
       '<ul><li>a</li><li>b</li></ul>',
@@ -329,7 +329,7 @@ describe('morph — nested', () => {
 // Preserves unchanged nodes (identity)
 // ---------------------------------------------------------------------------
 
-describe('morph — preservation', () => {
+describe('morph - preservation', () => {
   it('does not replace elements that have not changed', () => {
     const root = el('<p>same</p><p>will-change</p>');
     const firstP = root.children[0];
@@ -351,7 +351,7 @@ describe('morph — preservation', () => {
 // z-skip directive
 // ---------------------------------------------------------------------------
 
-describe('morph — z-skip', () => {
+describe('morph - z-skip', () => {
   it('skips subtrees with z-skip attribute', () => {
     const root = el('<div z-skip><p>original</p></div>');
     const p = root.querySelector('p');
@@ -374,7 +374,7 @@ describe('morph — z-skip', () => {
 // isEqualNode fast bail-out
 // ---------------------------------------------------------------------------
 
-describe('morph — fast bail-out', () => {
+describe('morph - fast bail-out', () => {
   it('uses isEqualNode to skip identical elements', () => {
     const root = el('<div><p class="a" id="b">text</p></div>');
     const p = root.querySelector('p');
@@ -389,7 +389,7 @@ describe('morph — fast bail-out', () => {
 // Edge cases & stress
 // ---------------------------------------------------------------------------
 
-describe('morph — edge cases', () => {
+describe('morph - edge cases', () => {
   it('handles whitespace-only text nodes', () => {
     const root = morphAndGet('<div>  </div>', '<div>text</div>');
     expect(root.children[0].textContent).toBe('text');
@@ -432,7 +432,7 @@ describe('morph — edge cases', () => {
 // Auto-keyed reconciliation (id / data-id / data-key)
 // ---------------------------------------------------------------------------
 
-describe('morph — auto-keyed via id attribute', () => {
+describe('morph - auto-keyed via id attribute', () => {
   it('reorders elements by id without z-key', () => {
     const root = el(
       '<div id="a">A</div><div id="b">B</div><div id="c">C</div>'
@@ -440,7 +440,7 @@ describe('morph — auto-keyed via id attribute', () => {
     const refA = root.children[0];
     const refB = root.children[1];
     morph(root, '<div id="c">C</div><div id="a">A</div><div id="b">B</div>');
-    // Node identity preserved — same DOM nodes, different order
+    // Node identity preserved - same DOM nodes, different order
     expect(root.children[1]).toBe(refA);
     expect(root.children[2]).toBe(refB);
     expect([...root.children].map(c => c.id)).toEqual(['c', 'a', 'b']);
@@ -486,7 +486,7 @@ describe('morph — auto-keyed via id attribute', () => {
 
 
 // ---------------------------------------------------------------------------
-// morphElement — single-element morph
+// morphElement - single-element morph
 // ---------------------------------------------------------------------------
 
 describe('morphElement', () => {
@@ -529,7 +529,7 @@ describe('morphElement', () => {
 // Deep keyed reconciliation edge cases
 // ---------------------------------------------------------------------------
 
-describe('morph — keyed edge cases', () => {
+describe('morph - keyed edge cases', () => {
   it('handles single keyed element swap', () => {
     const root = el('<div z-key="a">A</div>');
     const nodeA = root.children[0];
@@ -620,7 +620,7 @@ describe('morph — keyed edge cases', () => {
 // Boolean attribute morphing
 // ---------------------------------------------------------------------------
 
-describe('morph — boolean attributes', () => {
+describe('morph - boolean attributes', () => {
   it('adds hidden attribute', () => {
     const root = morphAndGet('<div></div>', '<div hidden></div>');
     expect(root.children[0].hasAttribute('hidden')).toBe(true);
@@ -654,7 +654,7 @@ describe('morph — boolean attributes', () => {
 // Complex form element morphing
 // ---------------------------------------------------------------------------
 
-describe('morph — complex form elements', () => {
+describe('morph - complex form elements', () => {
   it('syncs input type change', () => {
     const root = morphAndGet('<input type="text" value="hello">', '<input type="password" value="secret">');
     const input = root.querySelector('input');
@@ -706,7 +706,7 @@ describe('morph — complex form elements', () => {
 // Text / comment node edge cases
 // ---------------------------------------------------------------------------
 
-describe('morph — text and comment edge cases', () => {
+describe('morph - text and comment edge cases', () => {
   it('morphs comment to text node', () => {
     const root = document.createElement('div');
     root.appendChild(document.createComment('comment'));
@@ -750,7 +750,7 @@ describe('morph — text and comment edge cases', () => {
 // Nested structure edge cases
 // ---------------------------------------------------------------------------
 
-describe('morph — nested structure edge cases', () => {
+describe('morph - nested structure edge cases', () => {
   it('handles 5-level deep nesting change', () => {
     const root = morphAndGet(
       '<div><div><div><div><div>deep old</div></div></div></div></div>',
@@ -800,7 +800,7 @@ describe('morph — nested structure edge cases', () => {
 // z-skip with keyed children
 // ---------------------------------------------------------------------------
 
-describe('morph — z-skip + keyed interactions', () => {
+describe('morph - z-skip + keyed interactions', () => {
   it('z-skip on parent skips entire keyed children', () => {
     const root = el('<div z-skip><p z-key="a">A</p><p z-key="b">B</p></div>');
     const pA = root.querySelector('p[z-key="a"]');
@@ -827,7 +827,7 @@ describe('morph — z-skip + keyed interactions', () => {
 // morphElement advanced cases
 // ---------------------------------------------------------------------------
 
-describe('morphElement — advanced', () => {
+describe('morphElement - advanced', () => {
   it('morphs only attributes without child changes', () => {
     const root = el('<p class="old" data-x="1">text</p>');
     const target = root.children[0];
@@ -862,7 +862,7 @@ describe('morphElement — advanced', () => {
 // Stress tests
 // ---------------------------------------------------------------------------
 
-describe('morph — stress tests', () => {
+describe('morph - stress tests', () => {
   it('handles 500 unkeyed children update', () => {
     const oldItems = Array.from({ length: 500 }, (_, i) => `<span>${i}</span>`).join('');
     const newItems = Array.from({ length: 500 }, (_, i) => `<span>${i + 1}</span>`).join('');
@@ -914,7 +914,7 @@ describe('morph — stress tests', () => {
 // BUG FIX: keyed morph cursor after node replacement
 // ---------------------------------------------------------------------------
 
-describe('morph — keyed cursor after replaceChild', () => {
+describe('morph - keyed cursor after replaceChild', () => {
   it('correctly positions nodes when tag changes during keyed morph', () => {
     const root = el(
       '<div z-key="a">A</div>' +
@@ -942,7 +942,7 @@ describe('morph — keyed cursor after replaceChild', () => {
 // BUG FIX: attribute removal on live NamedNodeMap
 // ---------------------------------------------------------------------------
 
-describe('morph — attribute removal stability', () => {
+describe('morph - attribute removal stability', () => {
   it('removes multiple stale attributes without index errors', () => {
     const root = el('<div class="a" data-x="1" data-y="2" data-z="3" id="t1">hi</div>');
     morph(root, '<div id="t1">hi</div>');
@@ -967,10 +967,10 @@ describe('morph — attribute removal stability', () => {
 
 
 // ---------------------------------------------------------------------------
-// Round 3 — Extended coverage
+// Round 3 - Extended coverage
 // ---------------------------------------------------------------------------
 
-describe('morph — __zqMorphHook performance hook', () => {
+describe('morph - __zqMorphHook performance hook', () => {
   it('calls the hook with root element and elapsed time for morph()', () => {
     const calls = [];
     window.__zqMorphHook = (el, ms) => calls.push({ el, ms });
@@ -1018,7 +1018,7 @@ describe('morph — __zqMorphHook performance hook', () => {
   });
 });
 
-describe('morph — element to text node type change', () => {
+describe('morph - element to text node type change', () => {
   it('replaces element with text node at same position', () => {
     const root = el('<p>hello</p><div>world</div>');
     morph(root, 'just text');
@@ -1047,7 +1047,7 @@ describe('morph — element to text node type change', () => {
   });
 });
 
-describe('morph — attributes fast-path bypass', () => {
+describe('morph - attributes fast-path bypass', () => {
   it('skips attribute update when count and values are identical but children differ', () => {
     const root = el('<div class="a" data-x="1"><p>old child</p></div>');
     const child = root.firstElementChild;
@@ -1071,7 +1071,7 @@ describe('morph — attributes fast-path bypass', () => {
   });
 });
 
-describe('morph — textarea edge cases', () => {
+describe('morph - textarea edge cases', () => {
   it('syncs textarea with null-like textContent', () => {
     const root = el('<textarea>old value</textarea>');
     morph(root, '<textarea></textarea>');
@@ -1085,7 +1085,7 @@ describe('morph — textarea edge cases', () => {
   });
 });
 
-describe('morph — select value sync', () => {
+describe('morph - select value sync', () => {
   it('syncs select value after morphing options', () => {
     const root = el('<select><option value="a">A</option><option value="b">B</option></select>');
     root.querySelector('select').value = 'a';
@@ -1101,7 +1101,7 @@ describe('morph — select value sync', () => {
   });
 });
 
-describe('morph — input sync edge cases', () => {
+describe('morph - input sync edge cases', () => {
   it('syncs input value when new element has no value attribute', () => {
     const root = el('<input type="text" value="old">');
     morph(root, '<input type="text">');
@@ -1133,7 +1133,7 @@ describe('morph — input sync edge cases', () => {
   });
 });
 
-describe('morph — keyed with multiple unkeyed leftover', () => {
+describe('morph - keyed with multiple unkeyed leftover', () => {
   it('consumes some unkeyed and removes remaining', () => {
     const root = el(
       '<div z-key="a">A</div><p>unkeyed1</p><p>unkeyed2</p><p>unkeyed3</p><div z-key="b">B</div>'
@@ -1160,7 +1160,7 @@ describe('morph — keyed with multiple unkeyed leftover', () => {
   });
 });
 
-describe('morph — LIS edge cases', () => {
+describe('morph - LIS edge cases', () => {
   it('handles all entries being unmatched (-1)', () => {
     // All new keyed elements with no matching old keys
     const root = el('<div z-key="x">X</div><div z-key="y">Y</div>');
@@ -1184,7 +1184,7 @@ describe('morph — LIS edge cases', () => {
     morph(root,
       '<div z-key="a">A2</div><div z-key="b">B2</div><div z-key="c">C2</div>'
     );
-    // All in order — identity preserved, no moves
+    // All in order - identity preserved, no moves
     expect(root.children[0]).toBe(refs[0]);
     expect(root.children[1]).toBe(refs[1]);
     expect(root.children[2]).toBe(refs[2]);
@@ -1204,7 +1204,7 @@ describe('morph — LIS edge cases', () => {
   });
 });
 
-describe('morph — mixed content type transitions', () => {
+describe('morph - mixed content type transitions', () => {
   it('morphs from elements to mixed text and elements', () => {
     const root = el('<p>one</p><p>two</p>');
     morph(root, 'text<p>element</p>more text');
@@ -1230,7 +1230,7 @@ describe('morph — mixed content type transitions', () => {
   });
 });
 
-describe('morph — deeply nested keyed reorder', () => {
+describe('morph - deeply nested keyed reorder', () => {
   it('reorders keyed elements inside a nested structure', () => {
     const root = el('<ul><li z-key="c">C</li><li z-key="a">A</li><li z-key="b">B</li></ul>');
     const ul = root.querySelector('ul');
@@ -1244,7 +1244,7 @@ describe('morph — deeply nested keyed reorder', () => {
   });
 });
 
-describe('morph — large scale stress tests', () => {
+describe('morph - large scale stress tests', () => {
   it('handles 1000 unkeyed elements', () => {
     const genItems = n => Array.from({ length: n }, (_, i) => `<li>${i}</li>`).join('');
     const root = el(genItems(1000));
@@ -1273,7 +1273,7 @@ describe('morph — large scale stress tests', () => {
   });
 });
 
-describe('morph — auto-key edge cases', () => {
+describe('morph - auto-key edge cases', () => {
   it('handles mixed auto-key types (id, data-id, data-key)', () => {
     const root = el(
       '<div id="x">X</div><div data-id="y">Y</div><div data-key="z">Z</div>'
@@ -1295,7 +1295,7 @@ describe('morph — auto-key edge cases', () => {
   });
 });
 
-describe('morph — whitespace and boundary edge cases', () => {
+describe('morph - whitespace and boundary edge cases', () => {
   it('handles only whitespace in new HTML', () => {
     const root = el('<p>content</p>');
     morph(root, '   \n\t  ');
@@ -1316,7 +1316,7 @@ describe('morph — whitespace and boundary edge cases', () => {
   });
 });
 
-describe('morph — z-skip edge cases', () => {
+describe('morph - z-skip edge cases', () => {
   it('preserves z-skip subtree even when parent changes', () => {
     const root = el('<div class="outer"><div z-skip>KEEP ME</div><p>old</p></div>');
     const skipDiv = root.querySelector('[z-skip]');
@@ -1337,7 +1337,7 @@ describe('morph — z-skip edge cases', () => {
   });
 });
 
-describe('morph — morphElement edge cases', () => {
+describe('morph - morphElement edge cases', () => {
   it('handles morphElement with complex nested content', () => {
     const node = document.createElement('div');
     node.innerHTML = '<ul><li>a</li><li>b</li></ul>';
@@ -1375,7 +1375,7 @@ describe('morph — morphElement edge cases', () => {
   });
 });
 
-describe('morph — keyed nodes with tag changes during reorder', () => {
+describe('morph - keyed nodes with tag changes during reorder', () => {
   it('handles keyed nodes where matched node has different tag (replaceChild path)', () => {
     // This tests the cursor stability fix: capture nextSibling before _morphNode
     const root = el(
@@ -1391,7 +1391,7 @@ describe('morph — keyed nodes with tag changes during reorder', () => {
   });
 });
 
-describe('morph — identity preservation across morphs', () => {
+describe('morph - identity preservation across morphs', () => {
   it('preserves element identity through multiple consecutive morphs', () => {
     const root = el('<div id="target"><p>v1</p></div>');
     const target = root.firstElementChild;

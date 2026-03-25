@@ -1,4 +1,4 @@
-// app.js — Client entry point
+// app.js - Client entry point
 //
 // Imports shared component definitions and registers them with zQuery.
 // The SSR server imports the same definitions via createSSRApp().
@@ -15,7 +15,6 @@ $.component('not-found',  notFound);
 
 // Client-side router
 const router = $.router({
-  el: '#app',
   routes,
   fallback: 'not-found',
   mode: 'history'

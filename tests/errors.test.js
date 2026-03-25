@@ -143,7 +143,7 @@ describe('ErrorCode', () => {
 
 
 // ---------------------------------------------------------------------------
-// onError / reportError — multi-handler support
+// onError / reportError - multi-handler support
 // ---------------------------------------------------------------------------
 
 describe('reportError', () => {
@@ -236,10 +236,10 @@ describe('reportError', () => {
 
 
 // ---------------------------------------------------------------------------
-// onError — clearing and edge cases
+// onError - clearing and edge cases
 // ---------------------------------------------------------------------------
 
-describe('onError — edge cases', () => {
+describe('onError - edge cases', () => {
   afterEach(() => onError(null));
 
   it('passing null clears all handlers', () => {
@@ -291,10 +291,10 @@ describe('onError — edge cases', () => {
 
 
 // ---------------------------------------------------------------------------
-// reportError — cause handling
+// reportError - cause handling
 // ---------------------------------------------------------------------------
 
-describe('reportError — cause handling', () => {
+describe('reportError - cause handling', () => {
   let errorSpy;
   beforeEach(() => {
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});

@@ -1,4 +1,4 @@
-// not-found.js — 404 fallback page
+// not-found.js - 404 fallback page
 //
 // Uses $.getRouter() to display the unmatched path.
 

@@ -1,5 +1,5 @@
 /**
- * Component system — define, mount, and manage reactive components.
+ * Component system - define, mount, and manage reactive components.
  *
  * @module component
  */
@@ -21,7 +21,7 @@ export interface ComponentDefinition {
    */
   render?(this: ComponentInstance): string;
 
-  /** CSS string — scoped to the component root on first render. */
+  /** CSS string - scoped to the component root on first render. */
   styles?: string;
 
   /**
@@ -55,7 +55,7 @@ export interface ComponentDefinition {
   destroyed?(this: ComponentInstance): void;
 
   /**
-   * Computed properties — lazy getters derived from state.
+   * Computed properties - lazy getters derived from state.
    * Each function receives the raw state as its argument.
    * Access via `this.computed.name` in methods and templates.
    */
@@ -100,7 +100,7 @@ export interface ComponentInstance {
   templates: Record<string, string>;
 
   /**
-   * Computed properties — lazy getters derived from state.
+   * Computed properties - lazy getters derived from state.
    * Defined via `computed` in the component definition.
    */
   readonly computed: Record<string, any>;
@@ -116,7 +116,7 @@ export interface ComponentInstance {
 
   /**
    * Manually queue a re-render (microtask-batched).
-   * Safe to call from anywhere — state mutations during render are coalesced.
+   * Safe to call from anywhere - state mutations during render are coalesced.
    */
   _scheduleUpdate(): void;
 

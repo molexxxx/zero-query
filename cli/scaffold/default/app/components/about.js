@@ -1,11 +1,11 @@
-// about.js — About page with theme switcher
+// about.js - About page with theme switcher
 //
 // Features used:
-//   $.storage        — localStorage wrapper (get / set)
-//   $.version        — library version string
-//   $.unitTests      — build-time test results object
-//   $.bus.emit       — toast notifications
-//   data-theme attr  — dark / light theming
+//   $.storage        - localStorage wrapper (get / set)
+//   $.version        - library version string
+//   $.unitTests      - build-time test results object
+//   $.bus.emit       - toast notifications
+//   data-theme attr  - dark / light theming
 
 $.component('about-page', {
   styles: `
@@ -100,7 +100,7 @@ $.component('about-page', {
       'Directives': [
         ['z-if / z-for / z-show', 'Structural directives for conditional & list rendering'],
         ['z-bind / z-class / z-style', 'Dynamic attributes, classes, and inline styles'],
-        ['z-debounce', 'Debounced model updates — z-model z-debounce="300"'],
+        ['z-debounce', 'Debounced model updates - z-model z-debounce="300"'],
         ['z-lowercase / z-uppercase', 'Auto-transform text input on contacts email'],
         ['z-html', 'Trusted HTML injection in the playground'],
         ['templateUrl / styleUrl', 'External templates and CSS with auto-scoping'],
@@ -109,7 +109,7 @@ $.component('about-page', {
         ['@click.stop / .prevent', 'Event modifiers for fine-grained control'],
         ['@click.self / .once', 'Self-only and one-shot handlers in modals'],
         ['@click.outside', 'Outside-click detection for dropdowns'],
-        ['@keydown.escape', 'Key modifiers — Escape to close forms'],
+        ['@keydown.escape', 'Key modifiers - Escape to close forms'],
       ],
       'Reactive Primitives': [
         ['$.signal() / $.computed()', 'Fine-grained reactive primitives for derived state'],
@@ -136,7 +136,7 @@ $.component('about-page', {
       <div class="about-hero">
         <span class="ver">v${$.version}</span>
         <h1>zQuery</h1>
-        <p>A zero-dependency frontend micro-library — reactive components, routing, state management, and more in <strong>${$.libSize}</strong> minified.</p>
+        <p>A zero-dependency frontend micro-library - reactive components, routing, state management, and more in <strong>${$.libSize}</strong> minified.</p>
       </div>
 
       <div class="about-stats">
