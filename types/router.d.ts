@@ -163,3 +163,28 @@ export function createRouter(config: RouterConfig): RouterInstance;
 
 /** Get the currently active router instance. */
 export function getRouter(): RouterInstance | null;
+
+/** Result of matching a URL path against route definitions. */
+export interface RouteMatch {
+  /** The matched component name, or the fallback if nothing matched. */
+  component: string;
+  /** Parsed `:param` values from the URL. */
+  params: Record<string, string>;
+}
+
+/**
+ * Match a pathname against an array of route definitions.
+ * Returns `{ component, params }`. If no route matches, returns the
+ * fallback component (default `'not-found'`).
+ *
+ * DOM-free — works on both server and client.
+ *
+ * @param routes - Array of route definitions with `path` and `component`.
+ * @param pathname - URL path to match, e.g. `'/blog/my-post'`.
+ * @param fallback - Component name when nothing matches (default `'not-found'`).
+ */
+export function matchRoute(
+  routes: RouteDefinition[],
+  pathname: string,
+  fallback?: string,
+): RouteMatch;

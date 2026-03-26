@@ -18,6 +18,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [z-to-top](#z-to-top---scroll-to-top-on-navigation)
   - [z-active-route](#z-active-route---active-route-class)
   - [$.getRouter()](#getrouter)
+  - [$.matchRoute()](#matchroute)
 - [Component System](#component-system)
   - [$.component()](#componentname-definition)
   - [Component Definition Options](#component-definition-options)
@@ -94,6 +95,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [renderToString()](#rendertostringdefinition-props)
   - [app.renderToString()](#apprendertostringname-props-options)
   - [app.renderPage()](#apprenderpageoptions)
+  - [app.renderShell()](#apprendershellshell-options)
   - [app.renderBatch()](#apprenderbatchentries)
   - [app.has()](#apphasname)
   - [escapeHtml()](#escapehtmlstr)
@@ -969,6 +971,36 @@ Get the currently active router instance.
 const router = $.getRouter();
 router.navigate('/settings');
 ```
+
+### `matchRoute()`
+
+Match a URL pathname against an array of route definitions. DOM-free — works on both server and client. This is the same matching logic the client-side router uses internally.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `routes` | `RouteDefinition[]` | — | Array of route objects with `path` and `component` |
+| `pathname` | `string` | — | URL path to match (e.g. `'/blog/my-post'`) |
+| `fallback` | `string` | `'not-found'` | Component name when no route matches |
+
+**Returns:** `{ component: string, params: Record<string, string> }`
+
+```js
+import { matchRoute } from 'zero-query/ssr';  // or from 'zero-query'
+
+const routes = [
+  { path: '/',           component: 'home-page' },
+  { path: '/blog',       component: 'blog-list' },
+  { path: '/blog/:slug', component: 'blog-post' },
+];
+
+matchRoute(routes, '/blog/hello');
+// → { component: 'blog-post', params: { slug: 'hello' } }
+
+matchRoute(routes, '/nope');
+// → { component: 'not-found', params: {} }
+```
+
+Ideal for SSR servers that need to resolve which component to render for a given URL without depending on the DOM-based router.
 
 ---
 
@@ -2835,7 +2867,7 @@ const data = await safeFetch('/api/data');
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator - parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
 | `$.libSize` | Minified library size string (e.g. `'~100 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'1.0.2'`). |
+| `$.version` | Library version string (e.g. `'1.0.5'`). |
 | `$.unitTests` | Build-time test results object - `{ passed, failed, total, suites, duration, ok }`. Injected at build time by the CLI. |
 | `$.meta` | Build metadata object - populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.TrustedHTML` | `TrustedHTML` constructor class - wrap strings to bypass `$.html` escaping. Create instances via `$.trust()` or `new $.TrustedHTML(str)`. |
@@ -2910,6 +2942,7 @@ app.component('hello-world', {
 | `app.has(name)` | Check if a component is registered (returns boolean) |
 | `app.renderToString(name, props?, options?)` | Render a component to an HTML string |
 | `app.renderPage(options?)` | Render a full HTML document with a component embedded |
+| `app.renderShell(shell, options?)` | Render a component into an existing HTML shell (your `index.html`) |
 | `app.renderBatch(entries)` | Render multiple components in parallel |
 
 ### `renderToString(definition, props?)`
@@ -3004,6 +3037,52 @@ const results = await app.renderBatch([
 | `name` | `string` | Component name |
 | `props` | `object` | Props (optional) |
 | `options` | `object` | Same options as `renderToString` (optional) |
+
+### `app.renderShell(shell, options?)`
+
+Render a component into an existing HTML shell template. Unlike `renderPage()` which generates a full HTML document from scratch, `renderShell()` takes your own `index.html` (with nav, footer, custom markup) and injects the SSR-rendered component plus metadata into it.
+
+Handles:
+- Component rendering into `<z-outlet>`
+- `<title>` replacement
+- `<meta name="description">` replacement
+- Open Graph meta tag replacement/injection
+- `window.__SSR_DATA__` hydration script injection
+
+```js
+const shell = await readFile('index.html', 'utf-8');
+
+const html = await app.renderShell(shell, {
+  component: 'blog-post',
+  props: { post },
+  title: `${post.title} — MyApp`,
+  description: post.summary,
+  og: {
+    title: `${post.title} — MyApp`,
+    description: post.summary,
+    type: 'article',
+  },
+  ssrData: { component, params, props },
+});
+```
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `component` | `string` | Registered component name to render into `<z-outlet>` |
+| `props` | `object` | Props passed to the component |
+| `title` | `string` | Page title — replaces `<title>` tag |
+| `description` | `string` | Meta description — replaces `<meta name="description">` |
+| `og` | `object` | Open Graph tags to replace or inject (e.g. `{ title, description, type, image }`) |
+| `ssrData` | `any` | Data embedded as `window.__SSR_DATA__` before `</head>` for client hydration |
+| `renderOptions` | `object` | Options passed through to `renderToString` (`hydrate`, `mode`) |
+
+> **renderPage vs renderShell:** Use `renderPage()` when you want zQuery to generate the entire HTML document (quick prototypes, static site generation). Use `renderShell()` when you have your own `index.html` with custom layout, nav, footer, and just need the SSR body + metadata injected into it.
+
+**Security:** All injected values are hardened against injection attacks:
+- Title, description, and OG values are HTML-escaped via `escapeHtml()`
+- OG keys are sanitized to `[a-zA-Z0-9_:-]` and regex-escaped (prevents ReDoS and attribute injection)
+- `ssrData` JSON escapes `</script>` and `<!--` sequences (prevents script-tag breakout XSS)
+- All `.replace()` calls use replacer functions (prevents `$1`, `$'`, `` $` `` substitution pattern corruption)
 
 ### `app.has(name)`
 
@@ -3123,7 +3202,7 @@ import {
   reactive, Signal, signal, computed, effect, batch, untracked,
   component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style,
   morph, morphElement, safeEval,
-  createRouter, getRouter,
+  createRouter, getRouter, matchRoute,
   createStore, getStore,
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, formatError, validate,

@@ -12,7 +12,7 @@ import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createSSRApp } from 'zero-query/ssr';
+import { createSSRApp, matchRoute } from 'zero-query/ssr';
 
 // Shared component definitions - same ones the client registers
 import { homePage }  from '../app/components/home.js';
@@ -37,29 +37,6 @@ app.component('about-page', aboutPage);
 app.component('blog-list',  blogList);
 app.component('blog-post',  blogPost);
 app.component('not-found',  notFound);
-
-// --- Route matching ---------------------------------------------------------
-
-/**
- * Match a pathname to a route definition. Supports :param segments.
- * Returns { component, params } or the not-found fallback.
- */
-function matchRoute(pathname) {
-  for (const route of routes) {
-    const paramNames = [];
-    const pattern = route.path.replace(/:(\w+)/g, (_, name) => {
-      paramNames.push(name);
-      return '([^/]+)';
-    });
-    const match = new RegExp(`^${pattern}$`).exec(pathname);
-    if (match) {
-      const params = {};
-      paramNames.forEach((name, i) => { params[name] = match[i + 1]; });
-      return { component: route.component, params };
-    }
-  }
-  return { component: 'not-found', params: {} };
-}
 
 // --- Server-side data fetching ----------------------------------------------
 
@@ -141,7 +118,7 @@ function getMetaForRoute(component, params, props) {
 
 // Read the index.html shell once at startup — it already has z-link nav,
 // client scripts (zquery.min.js + app/app.js), and the <z-outlet> tag.
-// On each request we just inject the SSR body into <z-outlet>.
+// On each request we render the matched component into the shell.
 let shellCache = null;
 async function getShell() {
   if (!shellCache) shellCache = await readFile(join(ROOT, 'index.html'), 'utf-8');
@@ -149,45 +126,22 @@ async function getShell() {
 }
 
 async function render(pathname) {
-  const { component, params } = matchRoute(pathname);
+  const { component, params } = matchRoute(routes, pathname);
   const props = getPropsForRoute(component, params);
   const meta = getMetaForRoute(component, params, props);
 
-  // SSR render — pass server-fetched data as props to the component
-  const body = await app.renderToString(component, props);
-  const shell = await getShell();
-
-  // Inject SSR content into <z-outlet …>
-  let html = shell.replace(/(<z-outlet[^>]*>)(<\/z-outlet>)?/, `$1${body}</z-outlet>`);
-
-  // Inject page-specific <title> and meta tags for SEO / social sharing
-  html = html.replace(/<title>[^<]*<\/title>/, `<title>${meta.title}</title>`);
-  html = html.replace(
-    /<meta name="description" content="[^"]*">/,
-    `<meta name="description" content="${meta.description}">`
-  );
-  html = html.replace(
-    /<meta property="og:title" content="[^"]*">/,
-    `<meta property="og:title" content="${meta.title}">`
-  );
-  html = html.replace(
-    /<meta property="og:description" content="[^"]*">/,
-    `<meta property="og:description" content="${meta.description}">`
-  );
-  html = html.replace(
-    /<meta property="og:type" content="[^"]*">/,
-    `<meta property="og:type" content="${meta.ogType}">`
-  );
-
-  // Embed server data so the client can hydrate without re-fetching.
-  // Also include meta so client can update document.title on navigation.
-  const ssrData = JSON.stringify({ component, params, props, meta });
-  html = html.replace(
-    '</head>',
-    `<script>window.__SSR_DATA__=${ssrData};</script>\n</head>`
-  );
-
-  return html;
+  return app.renderShell(await getShell(), {
+    component,
+    props,
+    title: meta.title,
+    description: meta.description,
+    og: {
+      title: meta.title,
+      description: meta.description,
+      type: meta.ogType,
+    },
+    ssrData: { component, params, props, meta },
+  });
 }
 
 // --- Static files -----------------------------------------------------------

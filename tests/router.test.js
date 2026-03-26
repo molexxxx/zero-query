@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createRouter, getRouter } from '../src/router.js';
+import { createRouter, getRouter, matchRoute } from '../src/router.js';
 import { component } from '../src/component.js';
 
 // Register stub components used in route definitions so mount() doesn't throw
@@ -805,6 +805,70 @@ describe('Router - navigation chaining', () => {
 
   it('go() returns the router', () => {
     expect(router.go(0)).toBe(router);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// matchRoute - standalone route matcher (DOM-free)
+// ---------------------------------------------------------------------------
+
+describe('matchRoute', () => {
+  const routes = [
+    { path: '/',            component: 'home-page'  },
+    { path: '/blog',        component: 'blog-list'  },
+    { path: '/blog/:slug',  component: 'blog-post'  },
+    { path: '/user/:id',    component: 'user-page'  },
+    { path: '/files/*',     component: 'file-browser' },
+  ];
+
+  it('matches a static route', () => {
+    expect(matchRoute(routes, '/')).toEqual({ component: 'home-page', params: {} });
+    expect(matchRoute(routes, '/blog')).toEqual({ component: 'blog-list', params: {} });
+  });
+
+  it('matches a parameterized route', () => {
+    expect(matchRoute(routes, '/blog/hello-world')).toEqual({
+      component: 'blog-post',
+      params: { slug: 'hello-world' },
+    });
+  });
+
+  it('matches multiple params', () => {
+    const r = [{ path: '/user/:id/post/:pid', component: 'user-post' }];
+    expect(matchRoute(r, '/user/42/post/7')).toEqual({
+      component: 'user-post',
+      params: { id: '42', pid: '7' },
+    });
+  });
+
+  it('matches wildcard routes', () => {
+    const result = matchRoute(routes, '/files/docs/readme.md');
+    expect(result.component).toBe('file-browser');
+  });
+
+  it('returns fallback when nothing matches', () => {
+    expect(matchRoute(routes, '/nope')).toEqual({ component: 'not-found', params: {} });
+  });
+
+  it('accepts a custom fallback component name', () => {
+    expect(matchRoute(routes, '/nope', '404-page')).toEqual({ component: '404-page', params: {} });
+  });
+
+  it('matches first route when multiple could match', () => {
+    const r = [
+      { path: '/a', component: 'first' },
+      { path: '/a', component: 'second' },
+    ];
+    expect(matchRoute(r, '/a').component).toBe('first');
+  });
+
+  it('handles per-route fallback aliases', () => {
+    const r = [
+      { path: '/docs/:section', component: 'docs-page', fallback: '/docs' },
+    ];
+    expect(matchRoute(r, '/docs/intro')).toEqual({ component: 'docs-page', params: { section: 'intro' } });
+    expect(matchRoute(r, '/docs')).toEqual({ component: 'docs-page', params: {} });
   });
 });
 

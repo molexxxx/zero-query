@@ -29,9 +29,9 @@
 | **Selectors & DOM** | jQuery-like chainable selectors, traversal, DOM manipulation, events, animation |
 | **HTTP** | Fetch wrapper with auto-JSON, interceptors (with unsubscribe & clear), HEAD requests, parallel requests (`http.all`), config inspection (`getConfig`), timeout/abort, base URL |
 | **Utils** | debounce, throttle, pipe, once, sleep, memoize (LRU), escapeHtml, stripHtml, uuid, capitalize, truncate, range, chunk, groupBy, unique, pick, omit, getPath/setPath, isEmpty, clamp, retry, timeout, deepClone (enhanced fallback), deepMerge (prototype-pollution safe), storage/session wrappers, event bus |
-| **Security** | XSS-safe template expressions (`{{}}` auto-escaping), sandboxed expression evaluator (blocks `window`, `Function`, `eval`, `RegExp`, `Error`, prototype chains), prototype pollution prevention in `deepMerge`/`setPath`, `z-link` protocol validation, SSR error sanitization |
+| **Security** | XSS-safe template expressions (`{{}}` auto-escaping), sandboxed expression evaluator (blocks `window`, `Function`, `eval`, `RegExp`, `Error`, prototype chains), prototype pollution prevention in `deepMerge`/`setPath`, `z-link` protocol validation, SSR error sanitization, `renderShell()` metadata injection hardening (script-tag breakout prevention, ReDoS-safe OG keys, safe `.replace()` patterns) |
 | **Dev Tools** | CLI dev server with live-reload, CSS hot-swap, full-screen error overlay, floating toolbar, dark-themed inspector panel (Router view, DOM tree, network log, component viewer, performance dashboard), fetch interceptor, render instrumentation, CLI bundler for single-file production builds |
-| **SSR** | Server-side rendering to HTML strings in Node.js - `createSSRApp()`, `renderToString()`, `renderPage()` with SEO/Open Graph support, `renderBatch()` for parallel rendering, fragment mode, hydration markers, graceful error handling, `escapeHtml()` utility |
+| **SSR** | Server-side rendering to HTML strings in Node.js - `createSSRApp()`, `renderToString()`, `renderPage()` with SEO/Open Graph support, `renderShell()` for injecting SSR into custom HTML shells, `renderBatch()` for parallel rendering, fragment mode, hydration markers, graceful error handling, `escapeHtml()` utility |
 
 ---
 
@@ -43,7 +43,7 @@ The fastest way to develop with zQuery is via the built-in **CLI dev server** wi
 
 ```bash
 # Install (per-project or globally)
-npm install zero-query --save-dev   # or: npm install zero-query -g
+npm install zero-query   # or: npm install zero-query -g
 ```
 
 Scaffold a new project and start the server:

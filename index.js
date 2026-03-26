@@ -12,7 +12,7 @@
 import { query, queryAll, ZQueryCollection } from './src/core.js';
 import { reactive, Signal, signal, computed, effect, batch, untracked } from './src/reactive.js';
 import { component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style } from './src/component.js';
-import { createRouter, getRouter } from './src/router.js';
+import { createRouter, getRouter, matchRoute } from './src/router.js';
 import { createStore, getStore } from './src/store.js';
 import { http } from './src/http.js';
 import { morph, morphElement } from './src/diff.js';
@@ -115,8 +115,9 @@ $.morphElement = morphElement;
 $.safeEval    = safeEval;
 
 // --- Router ----------------------------------------------------------------
-$.router    = createRouter;
-$.getRouter = getRouter;
+$.router     = createRouter;
+$.getRouter  = getRouter;
+$.matchRoute = matchRoute;
 
 // --- Store -----------------------------------------------------------------
 $.store    = createStore;
@@ -214,7 +215,7 @@ export {
   component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style,
   morph, morphElement,
   safeEval,
-  createRouter, getRouter,
+  createRouter, getRouter, matchRoute,
   createStore, getStore,
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError,

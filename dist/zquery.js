@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v1.0.2
+ * zQuery (zeroQuery) v1.0.5
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -4470,24 +4470,15 @@ class Router {
 
   add(route) {
     // Compile path pattern into regex
-    const keys = [];
-    const pattern = route.path
-      .replace(/:(\w+)/g, (_, key) => { keys.push(key); return '([^/]+)'; })
-      .replace(/\*/g, '(.*)');
-    const regex = new RegExp(`^${pattern}$`);
-
+    const { regex, keys } = compilePath(route.path);
     this._routes.push({ ...route, _regex: regex, _keys: keys });
 
     // Per-route fallback: register an alias path for the same component.
     // e.g. { path: '/docs/:section', fallback: '/docs', component: 'docs-page' }
     // When matched via fallback, missing params are undefined.
     if (route.fallback) {
-      const fbKeys = [];
-      const fbPattern = route.fallback
-        .replace(/:(\w+)/g, (_, key) => { fbKeys.push(key); return '([^/]+)'; })
-        .replace(/\*/g, '(.*)');
-      const fbRegex = new RegExp(`^${fbPattern}$`);
-      this._routes.push({ ...route, path: route.fallback, _regex: fbRegex, _keys: fbKeys });
+      const fb = compilePath(route.fallback);
+      this._routes.push({ ...route, path: route.fallback, _regex: fb.regex, _keys: fb.keys });
     }
 
     return this;
@@ -4983,6 +4974,64 @@ class Router {
   }
 }
 
+
+// ---------------------------------------------------------------------------
+// Path compilation (shared by Router.add and matchRoute)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compile a route path pattern into a RegExp and param key list.
+ * Supports `:param` segments and `*` wildcard.
+ * @param {string} path - e.g. '/user/:id' or '/files/*'
+ * @returns {{ regex: RegExp, keys: string[] }}
+ */
+function compilePath(path) {
+  const keys = [];
+  const pattern = path
+    .replace(/:(\w+)/g, (_, key) => { keys.push(key); return '([^/]+)'; })
+    .replace(/\*/g, '(.*)');
+  return { regex: new RegExp(`^${pattern}$`), keys };
+}
+
+// ---------------------------------------------------------------------------
+// Standalone route matcher (DOM-free — usable on server and client)
+// ---------------------------------------------------------------------------
+
+/**
+ * Match a pathname against an array of route definitions.
+ * Returns `{ component, params }`.  If no route matches, falls back to the
+ * `fallback` component name (default `'not-found'`).
+ *
+ * This is the same matching logic the client-side router uses internally,
+ * extracted so SSR servers can resolve URLs without the DOM.
+ *
+ * @param {Array<{ path: string, component: string, fallback?: string }>} routes
+ * @param {string} pathname - URL path to match, e.g. '/blog/my-post'
+ * @param {string} [fallback='not-found'] - Component name when nothing matches
+ * @returns {{ component: string, params: Record<string, string> }}
+ */
+function matchRoute(routes, pathname, fallback = 'not-found') {
+  for (const route of routes) {
+    const { regex, keys } = compilePath(route.path);
+    const m = pathname.match(regex);
+    if (m) {
+      const params = {};
+      keys.forEach((key, i) => { params[key] = m[i + 1]; });
+      return { component: route.component, params };
+    }
+    // Per-route fallback alias (same as Router.add)
+    if (route.fallback) {
+      const fb = compilePath(route.fallback);
+      const fbm = pathname.match(fb.regex);
+      if (fbm) {
+        const params = {};
+        fb.keys.forEach((key, i) => { params[key] = fbm[i + 1]; });
+        return { component: route.component, params };
+      }
+    }
+  }
+  return { component: fallback, params: {} };
+}
 
 // ---------------------------------------------------------------------------
 // Factory
@@ -6139,8 +6188,9 @@ $.morphElement = morphElement;
 $.safeEval    = safeEval;
 
 // --- Router ----------------------------------------------------------------
-$.router    = createRouter;
-$.getRouter = getRouter;
+$.router     = createRouter;
+$.getRouter  = getRouter;
+$.matchRoute = matchRoute;
 
 // --- Store -----------------------------------------------------------------
 $.store    = createStore;
@@ -6204,9 +6254,9 @@ $.validate       = validate;
 $.formatError    = formatError;
 
 // --- Meta ------------------------------------------------------------------
-$.version   = '1.0.2';
+$.version   = '1.0.5';
 $.libSize   = '~107 KB';
-$.unitTests = {"passed":1906,"failed":0,"total":1906,"suites":521,"duration":3744,"ok":true};
+$.unitTests = {"passed":1931,"failed":0,"total":1931,"suites":523,"duration":3815,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 $.noConflict = () => {

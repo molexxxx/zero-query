@@ -51,6 +51,36 @@ export interface SSRApp {
       og?: Record<string, string>;
     };
   }): Promise<string>;
+
+  /**
+   * Render a component into an existing HTML shell template.
+   *
+   * Unlike `renderPage()` which generates a full document from scratch,
+   * `renderShell()` takes your own `index.html` (with nav, footer, custom
+   * markup) and injects the SSR-rendered component body plus metadata.
+   *
+   * Handles `<z-outlet>` injection, `<title>` replacement, meta description,
+   * Open Graph tags, and `window.__SSR_DATA__` hydration data.
+   *
+   * @param shell - HTML template string (your index.html content).
+   * @param options - Rendering and metadata options.
+   */
+  renderShell(shell: string, options?: {
+    /** Registered component name to render into `<z-outlet>`. */
+    component?: string;
+    /** Props passed to the component. */
+    props?: Record<string, any>;
+    /** Page title — replaces `<title>`. */
+    title?: string;
+    /** Meta description — replaces `<meta name="description">`. */
+    description?: string;
+    /** Open Graph tags to replace or inject (e.g. `{ title, description, type, image }`). */
+    og?: Record<string, string>;
+    /** Data embedded as `window.__SSR_DATA__` for client-side hydration. */
+    ssrData?: any;
+    /** Options passed through to `renderToString()` (hydrate, mode). */
+    renderOptions?: { hydrate?: boolean; mode?: 'html' | 'fragment' };
+  }): Promise<string>;
 }
 
 /** Create an SSR application instance. */
@@ -67,3 +97,6 @@ export function renderToString(definition: ComponentDefinition, props?: Record<s
  * Escape HTML entities - exposed for use in SSR templates.
  */
 export function escapeHtml(str: string): string;
+
+// Re-exported from router for SSR server convenience
+export { matchRoute, RouteMatch } from './router';
