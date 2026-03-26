@@ -165,15 +165,37 @@ export function safeEval(expr: string, scope: object[]): any;
 /**
  * Supported event modifier strings for `@event` and `z-on:event` bindings.
  * Modifiers are appended to the event name with dots, e.g. `@click.prevent.stop`.
+ *
+ * **Key modifiers** — named shortcuts (`.enter`, `.escape`, `.tab`, `.space`,
+ * `.delete`, `.up`, `.down`, `.left`, `.right`) plus any arbitrary key matched
+ * case-insensitively against `KeyboardEvent.key` (e.g. `.a`, `.f1`, `.+`).
+ *
+ * **System modifiers** — `.ctrl`, `.shift`, `.alt`, `.meta` require the
+ * corresponding modifier key to be held.
  */
 export type EventModifier =
   | 'prevent'
   | 'stop'
   | 'self'
   | 'once'
+  | 'outside'
   | 'capture'
   | 'passive'
   | `debounce`
   | `debounce.${number}`
   | `throttle`
-  | `throttle.${number}`;
+  | `throttle.${number}`
+  | 'enter'
+  | 'escape'
+  | 'tab'
+  | 'space'
+  | 'delete'
+  | 'up'
+  | 'down'
+  | 'left'
+  | 'right'
+  | 'ctrl'
+  | 'shift'
+  | 'alt'
+  | 'meta'
+  | (string & {});

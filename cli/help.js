@@ -12,7 +12,8 @@ function showHelp() {
       --minimal, -m            Use the minimal template (home, counter, about)
                                instead of the full-featured default scaffold
       --ssr, -s                Use the SSR template - includes server/index.js
-                               SSR HTTP server with shared component definitions
+                               SSR HTTP server with shared component definitions,
+                               blog with param routing, JSON API, and SEO metadata
 
     dev [root]                 Start a dev server with live-reload
       --port, -p <number>     Port number (default: 3100)

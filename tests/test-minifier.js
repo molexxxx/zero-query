@@ -8,7 +8,7 @@ function minifyCSS(css) {
 }
 
 const tests = [
-  // Pseudo-classes with descendant combinator (the bug we fixed)
+  // Pseudo-classes with descendant combinator (the bug was that the space before :not() was being removed, which is incorrect)
   ['.docs-section :not(pre) > code { color: red }',     'space before :not()'],
   ['.foo :has(.bar) { color: red }',                     'space before :has()'],
   ['.foo :is(.a, .b) { color: red }',                    'space before :is()'],
@@ -18,12 +18,12 @@ const tests = [
   ['.foo::before { content: "x" }',                      '::before'],
   ['.foo ::after { content: "x" }',                      'space before ::after'],
 
-  // Pseudo-classes directly on element (no space — should stay compact)
+  // Pseudo-classes directly on element (no space - should stay compact)
   ['a:hover { color: red }',                             ':hover no space'],
   ['li:nth-child(2n + 1) { color: red }',                ':nth-child()'],
   ['input:focus-visible { outline: 1px }',               ':focus-visible'],
 
-  // calc() — spaces around operators are significant!
+  // calc() - spaces around operators are significant!
   ['.foo { width: calc(100% - 20px) }',                  'calc() spaces'],
   ['.foo { width: calc(50vw + 2rem) }',                  'calc() addition'],
   ['.foo { font-size: clamp(1rem, 2vw, 3rem) }',         'clamp()'],
@@ -145,7 +145,7 @@ assert('.bar :not(.a):not(.b) { color: red }',
 // Edge case: content with double spaces inside quotes
 const dblSpace = minifyCSS('.foo::before { content: "a  b" }');
 if (dblSpace.includes('content:"a b"')) {
-  console.log('WARN content double space — "a  b" collapsed to "a b" (cosmetic, not functional)');
+  console.log('WARN content double space - "a  b" collapsed to "a b" (cosmetic, not functional)');
 } else {
   console.log('PASS content double space preserved');
 }

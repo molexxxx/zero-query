@@ -24,6 +24,8 @@
   --radius:      8px;
   --radius-lg:   12px;
   --sidebar-w:   240px;
+  --sidebar-bg:  var(--bg-surface);
+  --sidebar-border: var(--border);
   --topbar-h:    56px;
   --font:        'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
@@ -41,6 +43,8 @@
   --accent-hover:#0550ae;
   --accent-soft: rgba(9,105,218,0.08);
   --accent-glow: rgba(9,105,218,0.04);
+  --sidebar-bg:  #eef2f9;
+  --sidebar-border: rgba(9, 105, 218, 0.12);
   --success:     #1a7f37;
   --danger:      #cf222e;
   --info:        #0969da;
@@ -73,8 +77,8 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
   position: fixed;
   top: 0; left: 0; bottom: 0;
   width: var(--sidebar-w);
-  background: var(--bg-surface);
-  border-right: 1px solid var(--border);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
   z-index: 100;
@@ -132,6 +136,11 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
   border-top: 1px solid var(--border);
   color: var(--text-muted);
   font-size: 0.8rem;
+}
+
+[data-theme="light"] .sidebar {
+  background: var(--sidebar-bg);
+  border-right-color: var(--sidebar-border);
 }
 
 /* -- Sidebar Contacts (live status) -- */
@@ -350,7 +359,7 @@ code { background: var(--bg-hover); padding: 2px 6px; border-radius: 4px; font-s
   margin-left: auto;
   margin-right: auto;
   padding: 2.5rem 3rem 2.5rem calc(var(--sidebar-w) + 3rem);
-  max-width: calc(1010px + var(--sidebar-w));
+  max-width: calc(1200px + var(--sidebar-w));
   min-height: 100vh;
 }
 

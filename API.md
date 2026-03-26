@@ -1537,8 +1537,9 @@ If no parentheses are used (e.g. `@click="handler"`), the native event is automa
 | `.shift` | System key - requires `Shift` held |
 | `.alt` | System key - requires `Alt` held |
 | `.meta` | System key - requires `Meta` (⌘/⊞) held |
+| `.{key}` | Any key - matched case-insensitively against `e.key`. E.g. `.a`, `.f1`, `.pagedown`, `.home`, `.+`, `.0` |
 
-Key and system modifiers are combinable: `@keyup.ctrl.enter="save"` requires Ctrl + Enter.
+Key and system modifiers are combinable: `@keyup.ctrl.enter="save"` requires Ctrl + Enter. Beyond the named shortcuts, any unrecognised modifier is matched case-insensitively against `e.key`, so `@keydown.ctrl.s.prevent="save"` works without any extra configuration.
 
 ```html
 <form @submit.prevent="save">...</form>
@@ -1548,6 +1549,9 @@ Key and system modifiers are combinable: `@keyup.ctrl.enter="save"` requires Ctr
 <button @click.once="initialize">Init</button>
 <input @keyup.enter="submit">
 <div @keydown.escape="close">...</div>
+<input @keydown.a="onLetterA">
+<div @keydown.ctrl.s.prevent="save">...</div>
+<div @keydown.f1.prevent="showHelp">...</div>
 <textarea @keyup.ctrl.enter="send">...</textarea>
 <div @click.outside="closeDropdown">...</div>
 ```
@@ -2831,7 +2835,7 @@ const data = await safeFetch('/api/data');
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator - parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
 | `$.libSize` | Minified library size string (e.g. `'~100 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'1.0.1'`). |
+| `$.version` | Library version string (e.g. `'1.0.2'`). |
 | `$.unitTests` | Build-time test results object - `{ passed, failed, total, suites, duration, ok }`. Injected at build time by the CLI. |
 | `$.meta` | Build metadata object - populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.TrustedHTML` | `TrustedHTML` constructor class - wrap strings to bypass `$.html` escaping. Create instances via `$.trust()` or `new $.TrustedHTML(str)`. |
@@ -2871,7 +2875,17 @@ Scaffold an SSR-ready project with the CLI:
 npx zquery create my-app --ssr    # or: -s
 ```
 
-This generates a working client-side SPA plus a `server/index.js` SSR HTTP server. Component definitions in `app/components/` are shared - the client registers them with `$.component()` and the server imports the same files with `app.component()`. Run `npx zquery dev my-app` for the client SPA or `node my-app/server/index.js` for the SSR server at `http://localhost:3000`.
+This generates a working client-side SPA plus a `server/index.js` SSR HTTP server. Component definitions in `app/components/` are shared - the client registers them with `$.component()` and the server imports the same files with `app.component()`.
+
+The scaffold includes:
+- A **blog** with param-based routing (`/blog/:slug`) as a folder component (`blog/index.js`, `blog/post.js`)
+- **Per-route SEO metadata** — `<title>`, `<meta description>`, Open Graph tags injected during SSR
+- **JSON API endpoints** at `/api/posts` and `/api/posts/:slug`
+- **`window.__SSR_DATA__`** hydration — server-fetched data embedded in the page for client reuse
+- **`z-active-route`** nav highlighting on all links
+- Sample blog data in `server/data/posts.js`
+
+Run `npx zquery dev my-app` for the client SPA or `node my-app/server/index.js` for the SSR server at `http://localhost:3000`.
 
 ### `createSSRApp()`
 

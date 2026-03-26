@@ -2743,6 +2743,486 @@ describe('component - combined key + system modifiers', () => {
 
 
 // ===========================================================================
+// Dynamic key modifiers - arbitrary keys matched against e.key
+// ===========================================================================
+
+describe('component - dynamic key modifier: single letter keys', () => {
+  it('.a fires only on "a" key (case-insensitive)', () => {
+    let count = 0;
+    component('dkey-a', {
+      handler() { count++; },
+      render() { return '<input @keydown.a="handler">'; },
+    });
+    document.body.innerHTML = '<dkey-a id="dka"></dkey-a>';
+    mount('#dka', 'dkey-a');
+    const input = document.querySelector('#dka input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    expect(count).toBe(1);
+
+    // Uppercase A should also match (case-insensitive)
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'A', bubbles: true }));
+    expect(count).toBe(2);
+
+    // Other keys must NOT fire
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(count).toBe(2);
+  });
+
+  it('.z fires only on "z" key', () => {
+    let count = 0;
+    component('dkey-z', {
+      handler() { count++; },
+      render() { return '<input @keydown.z="handler">'; },
+    });
+    document.body.innerHTML = '<dkey-z id="dkz"></dkey-z>';
+    mount('#dkz', 'dkey-z');
+    const input = document.querySelector('#dkz input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', bubbles: true }));
+    expect(count).toBe(1);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Z', bubbles: true }));
+    expect(count).toBe(2);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    expect(count).toBe(2);
+  });
+});
+
+describe('component - dynamic key modifier: function keys', () => {
+  it('.f1 fires only on F1', () => {
+    let count = 0;
+    component('dkey-f1', {
+      handler() { count++; },
+      render() { return '<div @keydown.f1="handler" tabindex="0">x</div>'; },
+    });
+    document.body.innerHTML = '<dkey-f1 id="dkf1"></dkey-f1>';
+    mount('#dkf1', 'dkey-f1');
+    const el = document.querySelector('#dkf1 div');
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1', bubbles: true }));
+    expect(count).toBe(1);
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true }));
+    expect(count).toBe(1);
+  });
+
+  it('.f12 fires only on F12', () => {
+    let count = 0;
+    component('dkey-f12', {
+      handler() { count++; },
+      render() { return '<div @keydown.f12="handler" tabindex="0">x</div>'; },
+    });
+    document.body.innerHTML = '<dkey-f12 id="dkf12"></dkey-f12>';
+    mount('#dkf12', 'dkey-f12');
+    const el = document.querySelector('#dkf12 div');
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'F12', bubbles: true }));
+    expect(count).toBe(1);
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'F1', bubbles: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component - dynamic key modifier: numeric keys', () => {
+  it('.0 fires only on "0" key (not confused with debounce/throttle ms)', () => {
+    let count = 0;
+    component('dkey-zero', {
+      handler() { count++; },
+      render() { return '<input @keydown.0="handler">'; },
+    });
+    document.body.innerHTML = '<dkey-zero id="dk0"></dkey-zero>';
+    mount('#dk0', 'dkey-zero');
+    const input = document.querySelector('#dk0 input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: '0', bubbles: true }));
+    expect(count).toBe(1);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: '1', bubbles: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component - dynamic key modifier: special/punctuation keys', () => {
+  it('.+ fires on "+" key', () => {
+    let count = 0;
+    component('dkey-plus', {
+      handler() { count++; },
+      render() { return '<div @keydown.+="handler" tabindex="0">x</div>'; },
+    });
+    document.body.innerHTML = '<dkey-plus id="dkplus"></dkey-plus>';
+    mount('#dkplus', 'dkey-plus');
+    const el = document.querySelector('#dkplus div');
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: '+', bubbles: true }));
+    expect(count).toBe(1);
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: '-', bubbles: true }));
+    expect(count).toBe(1);
+  });
+
+  it('.- fires on "-" key', () => {
+    let count = 0;
+    component('dkey-minus', {
+      handler() { count++; },
+      render() { return '<div @keydown.-="handler" tabindex="0">x</div>'; },
+    });
+    document.body.innerHTML = '<dkey-minus id="dkminus"></dkey-minus>';
+    mount('#dkminus', 'dkey-minus');
+    const el = document.querySelector('#dkminus div');
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: '-', bubbles: true }));
+    expect(count).toBe(1);
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: '+', bubbles: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component - dynamic key modifier combined with system modifiers', () => {
+  it('.ctrl.s fires only on Ctrl+S', () => {
+    let count = 0;
+    component('dkey-ctrl-s', {
+      handler() { count++; },
+      render() { return '<div @keydown.ctrl.s="handler" tabindex="0">x</div>'; },
+    });
+    document.body.innerHTML = '<dkey-ctrl-s id="dkcs"></dkey-ctrl-s>';
+    mount('#dkcs', 'dkey-ctrl-s');
+    const el = document.querySelector('#dkcs div');
+
+    // S without Ctrl → no fire
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 's', bubbles: true, ctrlKey: false }));
+    expect(count).toBe(0);
+
+    // Ctrl without S → no fire
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, ctrlKey: true }));
+    expect(count).toBe(0);
+
+    // Ctrl+S → fire
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 's', bubbles: true, ctrlKey: true }));
+    expect(count).toBe(1);
+
+    // Ctrl+Shift+S (uppercase) → also fires (case insensitive)
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'S', bubbles: true, ctrlKey: true }));
+    expect(count).toBe(2);
+  });
+
+  it('.meta.k fires only on Meta+K', () => {
+    let count = 0;
+    component('dkey-meta-k', {
+      handler() { count++; },
+      render() { return '<div @keydown.meta.k="handler" tabindex="0">x</div>'; },
+    });
+    document.body.innerHTML = '<dkey-meta-k id="dkmk"></dkey-meta-k>';
+    mount('#dkmk', 'dkey-meta-k');
+    const el = document.querySelector('#dkmk div');
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', bubbles: true, metaKey: false }));
+    expect(count).toBe(0);
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', bubbles: true, metaKey: true }));
+    expect(count).toBe(1);
+  });
+
+  it('.alt.shift.f fires only on Alt+Shift+F', () => {
+    let count = 0;
+    component('dkey-alt-sf', {
+      handler() { count++; },
+      render() { return '<div @keydown.alt.shift.f="handler" tabindex="0">x</div>'; },
+    });
+    document.body.innerHTML = '<dkey-alt-sf id="dkas"></dkey-alt-sf>';
+    mount('#dkas', 'dkey-alt-sf');
+    const el = document.querySelector('#dkas div');
+
+    // Missing shift
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true, altKey: true, shiftKey: false }));
+    expect(count).toBe(0);
+
+    // Missing alt
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true, altKey: false, shiftKey: true }));
+    expect(count).toBe(0);
+
+    // Both held
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true, altKey: true, shiftKey: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component - dynamic key modifier combined with behaviour modifiers', () => {
+  it('.a.prevent calls preventDefault only on "a" key', () => {
+    component('dkey-a-prev', {
+      handler() {},
+      render() { return '<input @keydown.a.prevent="handler">'; },
+    });
+    document.body.innerHTML = '<dkey-a-prev id="dkap"></dkey-a-prev>';
+    mount('#dkap', 'dkey-a-prev');
+    const input = document.querySelector('#dkap input');
+
+    const aEvt = new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true });
+    vi.spyOn(aEvt, 'preventDefault');
+    input.dispatchEvent(aEvt);
+    expect(aEvt.preventDefault).toHaveBeenCalled();
+
+    const bEvt = new KeyboardEvent('keydown', { key: 'b', bubbles: true, cancelable: true });
+    vi.spyOn(bEvt, 'preventDefault');
+    input.dispatchEvent(bEvt);
+    expect(bEvt.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('.ctrl.s.prevent.stop calls both preventDefault and stopPropagation', () => {
+    component('dkey-cs-ps', {
+      handler() {},
+      render() { return '<div @keydown.ctrl.s.prevent.stop="handler" tabindex="0">x</div>'; },
+    });
+    document.body.innerHTML = '<dkey-cs-ps id="dkcsps"></dkey-cs-ps>';
+    mount('#dkcsps', 'dkey-cs-ps');
+    const el = document.querySelector('#dkcsps div');
+
+    const evt = new KeyboardEvent('keydown', { key: 's', bubbles: true, cancelable: true, ctrlKey: true });
+    vi.spyOn(evt, 'preventDefault');
+    vi.spyOn(evt, 'stopPropagation');
+    el.dispatchEvent(evt);
+    expect(evt.preventDefault).toHaveBeenCalled();
+    expect(evt.stopPropagation).toHaveBeenCalled();
+  });
+});
+
+describe('component - dynamic key modifier: named shortcuts still work', () => {
+  it('named shortcuts take priority over dynamic matching', () => {
+    // .space maps to ' ' (literal space char) via _keyMap, NOT "space" string
+    let count = 0;
+    component('dkey-space-prio', {
+      handler() { count++; },
+      render() { return '<button @keydown.space="handler">x</button>'; },
+    });
+    document.body.innerHTML = '<dkey-space-prio id="dksp"></dkey-space-prio>';
+    mount('#dksp', 'dkey-space-prio');
+    const btn = document.querySelector('#dksp button');
+
+    // ' ' is the actual e.key for Space
+    btn.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    expect(count).toBe(1);
+
+    // 'space' is NOT the e.key - should NOT fire because .space uses _keyMap
+    btn.dispatchEvent(new KeyboardEvent('keydown', { key: 'space', bubbles: true }));
+    expect(count).toBe(1);
+  });
+
+  it('.delete still matches both Delete and Backspace', () => {
+    let count = 0;
+    component('dkey-del-prio', {
+      handler() { count++; },
+      render() { return '<input @keydown.delete="handler">'; },
+    });
+    document.body.innerHTML = '<dkey-del-prio id="dkdp"></dkey-del-prio>';
+    mount('#dkdp', 'dkey-del-prio');
+    const input = document.querySelector('#dkdp input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+    expect(count).toBe(1);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+    expect(count).toBe(2);
+  });
+});
+
+describe('component - dynamic key modifier: no-key events are not filtered', () => {
+  it('click events pass through dynamic key modifiers without e.key', () => {
+    // A .prevent on a click should not be treated as a key filter
+    let count = 0;
+    component('dkey-click-ok', {
+      handler() { count++; },
+      render() { return '<button @click.prevent="handler">x</button>'; },
+    });
+    document.body.innerHTML = '<dkey-click-ok id="dkco"></dkey-click-ok>';
+    mount('#dkco', 'dkey-click-ok');
+    const btn = document.querySelector('#dkco button');
+
+    btn.click();
+    expect(count).toBe(1);
+  });
+});
+
+describe('component - dynamic key modifier: debounce/throttle ms values not treated as keys', () => {
+  it('.debounce.300 does not treat "300" as a key filter', async () => {
+    let count = 0;
+    component('dkey-deb-num', {
+      handler() { count++; },
+      render() { return '<input @input.debounce.300="handler">'; },
+    });
+    document.body.innerHTML = '<dkey-deb-num id="dkdn"></dkey-deb-num>';
+    mount('#dkdn', 'dkey-deb-num');
+    const input = document.querySelector('#dkdn input');
+
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    // Should be debounced, not blocked by "300" key filter
+    await new Promise(r => setTimeout(r, 350));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component - dynamic key modifier: multiple dynamic keys on separate bindings', () => {
+  it('separate @keydown.a and @keydown.b fire independently', () => {
+    let aCount = 0, bCount = 0;
+    component('dkey-ab', {
+      handlerA() { aCount++; },
+      handlerB() { bCount++; },
+      render() { return '<input @keydown.a="handlerA" @keydown.b="handlerB">'; },
+    });
+    document.body.innerHTML = '<dkey-ab id="dkab"></dkey-ab>';
+    mount('#dkab', 'dkey-ab');
+    const input = document.querySelector('#dkab input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    expect(aCount).toBe(1);
+    expect(bCount).toBe(0);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true }));
+    expect(aCount).toBe(1);
+    expect(bCount).toBe(1);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', bubbles: true }));
+    expect(aCount).toBe(1);
+    expect(bCount).toBe(1);
+  });
+});
+
+describe('component - dynamic key modifier: keyup vs keydown', () => {
+  it('.a works on keyup events too', () => {
+    let downCount = 0, upCount = 0;
+    component('dkey-updown', {
+      onDown() { downCount++; },
+      onUp() { upCount++; },
+      render() { return '<input @keydown.a="onDown" @keyup.a="onUp">'; },
+    });
+    document.body.innerHTML = '<dkey-updown id="dkud"></dkey-updown>';
+    mount('#dkud', 'dkey-updown');
+    const input = document.querySelector('#dkud input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    expect(downCount).toBe(1);
+    expect(upCount).toBe(0);
+
+    input.dispatchEvent(new KeyboardEvent('keyup', { key: 'a', bubbles: true }));
+    expect(downCount).toBe(1);
+    expect(upCount).toBe(1);
+
+    // Wrong key on both → neither fires
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true }));
+    input.dispatchEvent(new KeyboardEvent('keyup', { key: 'b', bubbles: true }));
+    expect(downCount).toBe(1);
+    expect(upCount).toBe(1);
+  });
+});
+
+describe('component - dynamic key modifier: edge cases with e.key', () => {
+  it('event without e.key property does not fire dynamic key handler', () => {
+    let count = 0;
+    component('dkey-nokey', {
+      handler() { count++; },
+      render() { return '<div @keydown.a="handler" tabindex="0">x</div>'; },
+    });
+    document.body.innerHTML = '<dkey-nokey id="dknk"></dkey-nokey>';
+    mount('#dknk', 'dkey-nokey');
+    const el = document.querySelector('#dknk div');
+
+    // KeyboardEvent with no key specified → e.key is empty string
+    el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
+    expect(count).toBe(0);
+  });
+
+  it('case-insensitive match for multi-char keys like PageDown', () => {
+    let count = 0;
+    component('dkey-pgdn', {
+      handler() { count++; },
+      render() { return '<div @keydown.pagedown="handler" tabindex="0">x</div>'; },
+    });
+    document.body.innerHTML = '<dkey-pgdn id="dkpd"></dkey-pgdn>';
+    mount('#dkpd', 'dkey-pgdn');
+    const el = document.querySelector('#dkpd div');
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', bubbles: true }));
+    expect(count).toBe(1);
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageUp', bubbles: true }));
+    expect(count).toBe(1);
+  });
+
+  it('.home and .end match Home / End keys', () => {
+    let homeCount = 0, endCount = 0;
+    component('dkey-homeend', {
+      onHome() { homeCount++; },
+      onEnd() { endCount++; },
+      render() { return '<input @keydown.home="onHome" @keydown.end="onEnd">'; },
+    });
+    document.body.innerHTML = '<dkey-homeend id="dkhe"></dkey-homeend>';
+    mount('#dkhe', 'dkey-homeend');
+    const input = document.querySelector('#dkhe input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    expect(homeCount).toBe(1);
+    expect(endCount).toBe(0);
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    expect(homeCount).toBe(1);
+    expect(endCount).toBe(1);
+  });
+
+  it('.insert matches Insert key', () => {
+    let count = 0;
+    component('dkey-ins', {
+      handler() { count++; },
+      render() { return '<input @keydown.insert="handler">'; },
+    });
+    document.body.innerHTML = '<dkey-ins id="dkins"></dkey-ins>';
+    mount('#dkins', 'dkey-ins');
+    const input = document.querySelector('#dkins input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Insert', bubbles: true }));
+    expect(count).toBe(1);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+    expect(count).toBe(1);
+  });
+});
+
+describe('component - dynamic key modifier: non-interfering with existing modifiers', () => {
+  it('.once still works with dynamic key', () => {
+    let count = 0;
+    component('dkey-once-a', {
+      handler() { count++; },
+      render() { return '<input @keydown.a.once="handler">'; },
+    });
+    document.body.innerHTML = '<dkey-once-a id="dkoa"></dkey-once-a>';
+    mount('#dkoa', 'dkey-once-a');
+    const input = document.querySelector('#dkoa input');
+
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    expect(count).toBe(1);
+
+    // Second press should NOT fire (.once)
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    expect(count).toBe(1);
+  });
+
+  it('.self still works with dynamic key', () => {
+    let count = 0;
+    component('dkey-self-a', {
+      handler() { count++; },
+      render() { return '<div @keydown.a.self="handler" tabindex="0"><span>child</span></div>'; },
+    });
+    document.body.innerHTML = '<dkey-self-a id="dksa"></dkey-self-a>';
+    mount('#dksa', 'dkey-self-a');
+    const div = document.querySelector('#dksa div');
+    const span = document.querySelector('#dksa span');
+
+    // Fire on div itself → should work
+    div.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    expect(count).toBe(1);
+
+    // Fire from child → should NOT fire (.self)
+    span.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    expect(count).toBe(1);
+  });
+});
+
+
+// ===========================================================================
 // .outside modifier - fire when event target is outside the element
 // ===========================================================================
 
