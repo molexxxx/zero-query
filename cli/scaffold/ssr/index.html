@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{NAME}}</title>
+  <meta name="description" content="">
+  <meta property="og:title" content="{{NAME}}">
+  <meta property="og:description" content="">
+  <meta property="og:type" content="website">
+  <meta name="robots" content="index, follow">
   <base href="/">
   <link rel="stylesheet" href="global.css">
   <script src="zquery.min.js"></script>
@@ -15,8 +20,9 @@
   <nav class="navbar">
     <span class="brand">⚡ {{NAME}}</span>
     <div class="nav-links">
-      <a z-link="/" class="nav-link">Home</a>
-      <a z-link="/about" class="nav-link">About</a>
+      <a z-link="/" class="nav-link" z-active-route="/" z-active-exact>Home</a>
+      <a z-link="/blog" class="nav-link" z-active-route="/blog">Blog</a>
+      <a z-link="/about" class="nav-link" z-active-route="/about">About</a>
     </div>
   </nav>
 

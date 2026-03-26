@@ -678,13 +678,28 @@ class Component {
             if (el.contains(e.target)) continue;
           }
 
-          // Key modifiers - filter keyboard events by key
+          // Key modifiers - filter keyboard events by key.
+          // Named shortcuts map common names to their e.key values.
+          // Any modifier not recognised as a built-in behaviour, timing,
+          // or system modifier is matched against e.key (case-insensitive)
+          // so that arbitrary keys work: .a, .f1, .+, .0, .arrowup, etc.
           const _keyMap = { enter: 'Enter', escape: 'Escape', tab: 'Tab', space: ' ', delete: 'Delete|Backspace', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+          const _nonKeyMods = new Set(['prevent','stop','self','once','outside','capture','passive','debounce','throttle','ctrl','shift','alt','meta']);
           let keyFiltered = false;
-          for (const mod of modifiers) {
+          for (let mi = 0; mi < modifiers.length; mi++) {
+            const mod = modifiers[mi];
             if (_keyMap[mod]) {
               const keys = _keyMap[mod].split('|');
               if (!e.key || !keys.includes(e.key)) { keyFiltered = true; break; }
+            } else if (_nonKeyMods.has(mod)) {
+              continue;
+            } else if (/^\d+$/.test(mod) && mi > 0 && (modifiers[mi - 1] === 'debounce' || modifiers[mi - 1] === 'throttle')) {
+              // Numeric value following debounce/throttle — skip (it's a ms parameter)
+              continue;
+            } else {
+              // Dynamic key match — compare modifier against e.key
+              // Case-insensitive: .a matches 'a' and 'A', .f1 matches 'F1'
+              if (!e.key || e.key.toLowerCase() !== mod.toLowerCase()) { keyFiltered = true; break; }
             }
           }
           if (keyFiltered) continue;

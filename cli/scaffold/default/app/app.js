@@ -42,9 +42,6 @@ router.afterEach((to) => {
 
 // Highlight the active nav link on every route change
 router.onChange((to) => {
-  $.all('.nav-link').removeClass('active');
-  $(`.nav-link[z-link="${to.path}"]`).addClass('active');
-
   // Close mobile menu on navigate
   closeMobileMenu();
 });
@@ -161,9 +158,9 @@ $.ready(() => {
     if (current === 'system') applyTheme('system');
   });
 
-  // Set active link on initial load
-  const current = window.location.pathname;
-  $.all(`.nav-link[z-link="${current}"]`).addClass('active');
+  // Highlight the active link on initial load is handled by z-active-route
+
+  console.log('⚡ {{NAME}} - powered by zQuery v' + $.version);
 
   // Stats panel: restore open/closed from $.storage (defaults to open)
   const statsOpen = $.storage.get('statsOpen');

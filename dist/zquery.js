@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v1.0.1
+ * zQuery (zeroQuery) v1.0.2
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -3498,13 +3498,28 @@ class Component {
             if (el.contains(e.target)) continue;
           }
 
-          // Key modifiers - filter keyboard events by key
+          // Key modifiers - filter keyboard events by key.
+          // Named shortcuts map common names to their e.key values.
+          // Any modifier not recognised as a built-in behaviour, timing,
+          // or system modifier is matched against e.key (case-insensitive)
+          // so that arbitrary keys work: .a, .f1, .+, .0, .arrowup, etc.
           const _keyMap = { enter: 'Enter', escape: 'Escape', tab: 'Tab', space: ' ', delete: 'Delete|Backspace', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight' };
+          const _nonKeyMods = new Set(['prevent','stop','self','once','outside','capture','passive','debounce','throttle','ctrl','shift','alt','meta']);
           let keyFiltered = false;
-          for (const mod of modifiers) {
+          for (let mi = 0; mi < modifiers.length; mi++) {
+            const mod = modifiers[mi];
             if (_keyMap[mod]) {
               const keys = _keyMap[mod].split('|');
               if (!e.key || !keys.includes(e.key)) { keyFiltered = true; break; }
+            } else if (_nonKeyMods.has(mod)) {
+              continue;
+            } else if (/^\d+$/.test(mod) && mi > 0 && (modifiers[mi - 1] === 'debounce' || modifiers[mi - 1] === 'throttle')) {
+              // Numeric value following debounce/throttle — skip (it's a ms parameter)
+              continue;
+            } else {
+              // Dynamic key match — compare modifier against e.key
+              // Case-insensitive: .a matches 'a' and 'A', .f1 matches 'F1'
+              if (!e.key || e.key.toLowerCase() !== mod.toLowerCase()) { keyFiltered = true; break; }
             }
           }
           if (keyFiltered) continue;
@@ -6189,9 +6204,9 @@ $.validate       = validate;
 $.formatError    = formatError;
 
 // --- Meta ------------------------------------------------------------------
-$.version   = '1.0.1';
-$.libSize   = '~106 KB';
-$.unitTests = {"passed":1882,"failed":0,"total":1882,"suites":508,"duration":3681,"ok":true};
+$.version   = '1.0.2';
+$.libSize   = '~107 KB';
+$.unitTests = {"passed":1906,"failed":0,"total":1906,"suites":521,"duration":3744,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 $.noConflict = () => {

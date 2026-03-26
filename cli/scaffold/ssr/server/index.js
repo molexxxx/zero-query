@@ -17,8 +17,13 @@ import { createSSRApp } from 'zero-query/ssr';
 // Shared component definitions - same ones the client registers
 import { homePage }  from '../app/components/home.js';
 import { aboutPage } from '../app/components/about.js';
+import { blogList }  from '../app/components/blog/index.js';
+import { blogPost }  from '../app/components/blog/post.js';
 import { notFound }  from '../app/components/not-found.js';
 import { routes }    from '../app/routes.js';
+
+// Server-side data — simulates a database or CMS
+import { getAllPosts, getPostBySlug } from './data/posts.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -29,13 +34,107 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 const app = createSSRApp();
 app.component('home-page',  homePage);
 app.component('about-page', aboutPage);
+app.component('blog-list',  blogList);
+app.component('blog-post',  blogPost);
 app.component('not-found',  notFound);
 
 // --- Route matching ---------------------------------------------------------
 
+/**
+ * Match a pathname to a route definition. Supports :param segments.
+ * Returns { component, params } or the not-found fallback.
+ */
 function matchRoute(pathname) {
-  const route = routes.find(r => r.path === pathname);
-  return route ? route.component : 'not-found';
+  for (const route of routes) {
+    const paramNames = [];
+    const pattern = route.path.replace(/:(\w+)/g, (_, name) => {
+      paramNames.push(name);
+      return '([^/]+)';
+    });
+    const match = new RegExp(`^${pattern}$`).exec(pathname);
+    if (match) {
+      const params = {};
+      paramNames.forEach((name, i) => { params[name] = match[i + 1]; });
+      return { component: route.component, params };
+    }
+  }
+  return { component: 'not-found', params: {} };
+}
+
+// --- Server-side data fetching ----------------------------------------------
+
+/**
+ * Fetch data for a matched route. This is where you'd query a database,
+ * call an API, or read from the filesystem in a real application.
+ * The returned object is passed as props to the component during SSR.
+ */
+function getPropsForRoute(component, params) {
+  switch (component) {
+    case 'blog-list':
+      return { posts: getAllPosts() };
+    case 'blog-post':
+      return { post: getPostBySlug(params.slug) || null };
+    default:
+      return {};
+  }
+}
+
+// --- SEO metadata per route -------------------------------------------------
+
+/**
+ * Return page-specific metadata for SEO, social sharing, and browser tabs.
+ * The server injects these into the HTML shell's <head> before sending.
+ *
+ * In a real app you'd pull this from a CMS or database alongside the content.
+ * Open Graph tags ensure rich link previews on social media.
+ */
+function getMetaForRoute(component, params, props) {
+  const base = {
+    title: '{{NAME}}',
+    description: 'A zQuery SSR application.',
+    ogType: 'website',
+  };
+
+  switch (component) {
+    case 'home-page':
+      return {
+        ...base,
+        title: '{{NAME}} — Home',
+        description: 'A server-rendered application built with zQuery. Fast first paint, SEO-friendly, zero dependencies.',
+      };
+
+    case 'blog-list':
+      return {
+        ...base,
+        title: 'Blog — {{NAME}}',
+        description: 'Articles on server-side rendering, hydration, shared components, and modern web architecture.',
+      };
+
+    case 'blog-post': {
+      const post = props.post;
+      if (!post) return { ...base, title: 'Post Not Found — {{NAME}}' };
+      return {
+        ...base,
+        title: `${post.title} — {{NAME}}`,
+        description: post.summary,
+        ogType: 'article',
+      };
+    }
+
+    case 'about-page':
+      return {
+        ...base,
+        title: 'About — {{NAME}}',
+        description: 'Learn about zQuery — a zero-dependency frontend micro-library for reactive components, routing, SSR, and state management.',
+      };
+
+    default:
+      return {
+        ...base,
+        title: 'Page Not Found — {{NAME}}',
+        description: 'The page you\'re looking for doesn\'t exist.',
+      };
+  }
 }
 
 // --- Render a full HTML page ------------------------------------------------
@@ -50,20 +149,42 @@ async function getShell() {
 }
 
 async function render(pathname) {
-  const component = matchRoute(pathname);
-  const body = await app.renderToString(component);
+  const { component, params } = matchRoute(pathname);
+  const props = getPropsForRoute(component, params);
+  const meta = getMetaForRoute(component, params, props);
+
+  // SSR render — pass server-fetched data as props to the component
+  const body = await app.renderToString(component, props);
   const shell = await getShell();
 
-  // Inject SSR content into <z-outlet …> and add active class to nav
+  // Inject SSR content into <z-outlet …>
   let html = shell.replace(/(<z-outlet[^>]*>)(<\/z-outlet>)?/, `$1${body}</z-outlet>`);
 
-  // Mark the active nav link for the current route
+  // Inject page-specific <title> and meta tags for SEO / social sharing
+  html = html.replace(/<title>[^<]*<\/title>/, `<title>${meta.title}</title>`);
   html = html.replace(
-    /(<a\s+z-link="([^"]*)"[^>]*class="nav-link)(">)/g,
-    (match, before, href, after) =>
-      href === pathname
-        ? `${before} active${after}`
-        : `${before}${after}`
+    /<meta name="description" content="[^"]*">/,
+    `<meta name="description" content="${meta.description}">`
+  );
+  html = html.replace(
+    /<meta property="og:title" content="[^"]*">/,
+    `<meta property="og:title" content="${meta.title}">`
+  );
+  html = html.replace(
+    /<meta property="og:description" content="[^"]*">/,
+    `<meta property="og:description" content="${meta.description}">`
+  );
+  html = html.replace(
+    /<meta property="og:type" content="[^"]*">/,
+    `<meta property="og:type" content="${meta.ogType}">`
+  );
+
+  // Embed server data so the client can hydrate without re-fetching.
+  // Also include meta so client can update document.title on navigation.
+  const ssrData = JSON.stringify({ component, params, props, meta });
+  html = html.replace(
+    '</head>',
+    `<script>window.__SSR_DATA__=${ssrData};</script>\n</head>`
   );
 
   return html;
@@ -99,6 +220,25 @@ createServer(async (req, res) => {
 
   // Static assets (CSS, images, etc.)
   if (pathname !== '/' && await serveStatic(res, pathname)) return;
+
+  // --- JSON API for client-side navigation ----------------------------------
+  // The client fetches data here when navigating via SPA (after initial SSR).
+  // In a real app, these would query a database or external API.
+
+  if (pathname === '/api/posts') {
+    const json = JSON.stringify(getAllPosts());
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(json);
+    return;
+  }
+
+  const postMatch = /^\/api\/posts\/([^/]+)$/.exec(pathname);
+  if (postMatch) {
+    const post = getPostBySlug(postMatch[1]) || null;
+    res.writeHead(post ? 200 : 404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(post));
+    return;
+  }
 
   // SSR route
   try {

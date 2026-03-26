@@ -21,7 +21,7 @@
 
 | Module | Highlights |
 | --- | --- |
-| **Components** | Reactive state, template literals, `@event` delegation (22 modifiers - key filters, system keys, `.outside`, timing, and more), `z-model` two-way binding (with `z-trim`, `z-number`, `z-lazy`, `z-debounce`, `z-uppercase`, `z-lowercase`), computed properties, watch callbacks, slot-based content projection, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip`), DOM morphing engine with LIS-based keyed reconciliation (no innerHTML rebuild), CSP-safe expression evaluation with AST caching, scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles |
+| **Components** | Reactive state, template literals, `@event` delegation (key filters for any key via `KeyboardEvent.key`, system keys, `.outside`, timing, behavior modifiers, and more), `z-model` two-way binding (with `z-trim`, `z-number`, `z-lazy`, `z-debounce`, `z-uppercase`, `z-lowercase`), computed properties, watch callbacks, slot-based content projection, directives (`z-if`/`z-else-if`/`z-else`, `z-for`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip`), DOM morphing engine with LIS-based keyed reconciliation (no innerHTML rebuild), CSP-safe expression evaluation with AST caching, scoped styles, external templates (`templateUrl` / `styleUrl`), lifecycle hooks, auto-injected base styles |
 | **Router** | History & hash mode, route params (`:id`), wildcards, guards (`beforeEach`/`afterEach`), lazy loading, `z-link` navigation with `z-link-params`, `z-to-top` scroll modifier (`instant`/`smooth`), `z-active-route` active-link class directive, `<z-outlet>` declarative mount point, sub-route history substates (`pushSubstate`/`onSubstate`) |
 | **Directives** | `z-if`, `z-else-if`, `z-else`, `z-for`, `z-model`, `z-show`, `z-bind`/`:attr`, `z-class`, `z-style`, `z-text`, `z-html`, `z-ref`, `z-cloak`, `z-pre`, `z-key`, `z-skip`, `@event`/`z-on` &mdash; 17 built-in template directives |
 | **Reactive** | Deep proxy reactivity, Signals (`.value`, `.peek()`), computed values, effects (auto-tracked with dispose), `batch()` for deferred notifications, `untracked()` for dependency-free reads |
@@ -212,8 +212,9 @@ Use `--ssr` for a project with server-side rendering:
 
 ```
 my-app/                          ← SSR scaffold (npx zquery create my-app --ssr)
-  index.html                     ← client HTML shell
+  index.html                     ← client HTML shell (meta tags, z-link nav)
   global.css
+  package.json
   app/
     app.js                       ← client entry - registers shared components
     routes.js                    ← shared route definitions
@@ -221,12 +222,17 @@ my-app/                          ← SSR scaffold (npx zquery create my-app --ss
       home.js                    ← shared component (SSR + client)
       about.js
       not-found.js
+      blog/                      ← folder component - param routing
+        index.js                 ← blog list (/blog)
+        post.js                  ← blog detail (/blog/:slug)
   server/
-    index.js                     ← SSR HTTP server
+    index.js                     ← SSR HTTP server with JSON API
+    data/
+      posts.js                   ← sample blog data
   assets/
 ```
 
-Components in `app/components/` export plain definition objects - the client registers them with `$.component()`, the server with `app.component()`. The `--ssr` flag handles everything automatically - installs dependencies, starts the server at `http://localhost:3000`, and opens the browser.
+Components in `app/components/` export plain definition objects - the client registers them with `$.component()`, the server with `app.component()`. The scaffold includes a blog with param-based routing (`/blog/:slug`), per-route SEO metadata, JSON API endpoints (`/api/posts`), and `window.__SSR_DATA__` hydration. The `--ssr` flag handles everything automatically - installs dependencies, starts the server at `http://localhost:3000`, and opens the browser.
 
 - One component per file inside `components/`.
 - Names **must contain a hyphen** (Web Component convention): `home-page`, `app-counter`, etc.
