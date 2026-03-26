@@ -280,6 +280,103 @@ class SSRApp {
   </body>
 </html>`;
   }
+
+  /**
+   * Render a component into an existing HTML shell template.
+   *
+   * Unlike renderPage() which generates a full HTML document from scratch,
+   * renderShell() takes your own index.html (with nav, footer, custom markup)
+   * and injects the SSR-rendered component body plus metadata into it.
+   *
+   * Handles:
+   *   - Component rendering into <z-outlet>
+   *   - <title> replacement
+   *   - <meta name="description"> replacement
+   *   - Open Graph meta tag replacement (og:title, og:description, og:type, etc.)
+   *   - window.__SSR_DATA__ hydration script injection
+   *
+   * @param {string} shell - HTML template string (your index.html)
+   * @param {object} options
+   * @param {string} options.component - registered component name to render
+   * @param {object} [options.props] - props passed to the component
+   * @param {string} [options.title] - page title (replaces <title>)
+   * @param {string} [options.description] - meta description (replaces <meta name="description">)
+   * @param {object} [options.og] - Open Graph tags to replace (e.g. { title, description, type, image })
+   * @param {any}    [options.ssrData] - data to embed as window.__SSR_DATA__ for client hydration
+   * @param {object} [options.renderOptions] - options passed to renderToString (hydrate, mode)
+   * @returns {Promise<string>} - the shell with SSR content and metadata injected
+   */
+  async renderShell(shell, options = {}) {
+    const {
+      component: comp,
+      props = {},
+      title,
+      description,
+      og,
+      ssrData,
+      renderOptions,
+    } = options;
+
+    // Render the component
+    let body = '';
+    if (comp) {
+      try {
+        body = await this.renderToString(comp, props, renderOptions);
+      } catch (err) {
+        reportError(ErrorCode.SSR_PAGE, `renderShell failed for component "${comp}"`, { component: comp }, err);
+        body = `<!-- SSR error: ${_escapeHtml(err.message)} -->`;
+      }
+    }
+
+    let html = shell;
+
+    // Inject SSR body into <z-outlet>
+    // Use a replacer function to avoid $ substitution patterns in body
+    html = html.replace(/(<z-outlet[^>]*>)([\s\S]*?)(<\/z-outlet>)?/, (_, open) => `${open}${body}</z-outlet>`);
+
+    // Replace <title>
+    if (title != null) {
+      const safeTitle = _escapeHtml(title);
+      html = html.replace(/<title>[^<]*<\/title>/, () => `<title>${safeTitle}</title>`);
+    }
+
+    // Replace <meta name="description">
+    if (description != null) {
+      const safeDesc = _escapeHtml(description);
+      html = html.replace(
+        /<meta\s+name="description"\s+content="[^"]*">/,
+        () => `<meta name="description" content="${safeDesc}">`
+      );
+    }
+
+    // Replace Open Graph meta tags
+    if (og) {
+      for (const [key, value] of Object.entries(og)) {
+        // Sanitize key: allow only safe OG property characters (alphanumeric, hyphens, underscores, colons)
+        const safeKey = key.replace(/[^a-zA-Z0-9_:\-]/g, '');
+        if (!safeKey) continue;
+        const escaped = _escapeHtml(String(value));
+        // Escape key for use in RegExp to prevent ReDoS
+        const escapedKey = safeKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = new RegExp(`<meta\\s+property="og:${escapedKey}"\\s+content="[^"]*">`);
+        if (pattern.test(html)) {
+          html = html.replace(pattern, () => `<meta property="og:${safeKey}" content="${escaped}">`);
+        } else {
+          // Tag doesn't exist — inject before </head>
+          html = html.replace('</head>', () => `<meta property="og:${safeKey}" content="${escaped}">\n</head>`);
+        }
+      }
+    }
+
+    // Inject hydration data as window.__SSR_DATA__
+    if (ssrData !== undefined) {
+      // Escape </script> and <!-- sequences to prevent breaking out of the script tag
+      const json = JSON.stringify(ssrData).replace(/<\//g, '<\\/').replace(/<!--/g, '<\\!--');
+      html = html.replace('</head>', () => `<script>window.__SSR_DATA__=${json};</script>\n</head>`);
+    }
+
+    return html;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -316,3 +413,6 @@ export function renderToString(definition, props = {}) {
 export function escapeHtml(str) {
   return _escapeHtml(String(str));
 }
+
+// Re-export matchRoute so SSR servers can import from 'zero-query/ssr'
+export { matchRoute } from './router.js';

@@ -693,3 +693,178 @@ describe('escapeHtml (exported)', () => {
     expect(escapeHtml(42)).toBe('42');
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// SSRApp - renderShell
+// ---------------------------------------------------------------------------
+
+describe('SSRApp - renderShell', () => {
+  const shell = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Default Title</title>
+  <meta name="description" content="default desc">
+  <meta property="og:title" content="Default OG">
+  <meta property="og:description" content="">
+  <meta property="og:type" content="website">
+</head>
+<body>
+  <z-outlet></z-outlet>
+</body>
+</html>`;
+
+  let app;
+  beforeEach(() => {
+    app = createSSRApp();
+    app.component('test-page', {
+      state: () => ({ greeting: 'Hello' }),
+      render() { return `<h1>${this.state.greeting}</h1>`; }
+    });
+  });
+
+  it('renders a component into <z-outlet>', async () => {
+    const html = await app.renderShell(shell, { component: 'test-page' });
+    expect(html).toContain('<z-outlet><test-page data-zq-ssr><h1>Hello</h1></test-page></z-outlet>');
+  });
+
+  it('replaces the <title> tag', async () => {
+    const html = await app.renderShell(shell, { component: 'test-page', title: 'My App — Home' });
+    expect(html).toContain('<title>My App — Home</title>');
+    expect(html).not.toContain('Default Title');
+  });
+
+  it('replaces the meta description', async () => {
+    const html = await app.renderShell(shell, { component: 'test-page', description: 'A great page' });
+    expect(html).toContain('<meta name="description" content="A great page">');
+    expect(html).not.toContain('default desc');
+  });
+
+  it('replaces existing Open Graph tags', async () => {
+    const html = await app.renderShell(shell, {
+      component: 'test-page',
+      og: { title: 'OG Title', description: 'OG Desc', type: 'article' },
+    });
+    expect(html).toContain('<meta property="og:title" content="OG Title">');
+    expect(html).toContain('<meta property="og:description" content="OG Desc">');
+    expect(html).toContain('<meta property="og:type" content="article">');
+  });
+
+  it('injects new OG tags when they do not exist in the shell', async () => {
+    const html = await app.renderShell(shell, {
+      component: 'test-page',
+      og: { image: 'https://example.com/img.png' },
+    });
+    expect(html).toContain('<meta property="og:image" content="https://example.com/img.png">');
+  });
+
+  it('injects window.__SSR_DATA__ when ssrData is provided', async () => {
+    const data = { component: 'test-page', params: {}, props: {} };
+    const html = await app.renderShell(shell, { component: 'test-page', ssrData: data });
+    expect(html).toContain('window.__SSR_DATA__=');
+    expect(html).toContain('"component":"test-page"');
+    // Script is injected before </head>
+    expect(html.indexOf('__SSR_DATA__')).toBeLessThan(html.indexOf('</head>'));
+  });
+
+  it('does not inject ssrData when not provided', async () => {
+    const html = await app.renderShell(shell, { component: 'test-page' });
+    expect(html).not.toContain('__SSR_DATA__');
+  });
+
+  it('escapes title and description for XSS safety', async () => {
+    const html = await app.renderShell(shell, {
+      component: 'test-page',
+      title: '<script>alert("xss")</script>',
+      description: '"injected" & <dangerous>',
+    });
+    expect(html).toContain('&lt;script&gt;');
+    expect(html).toContain('&quot;injected&quot; &amp; &lt;dangerous&gt;');
+    expect(html).not.toContain('<script>alert');
+  });
+
+  it('leaves title and description alone when not provided', async () => {
+    const html = await app.renderShell(shell, { component: 'test-page' });
+    expect(html).toContain('<title>Default Title</title>');
+    expect(html).toContain('content="default desc"');
+  });
+
+  it('passes props to the rendered component', async () => {
+    app.component('greeting-page', {
+      render() { return `<p>Hi ${this.props.name}</p>`; }
+    });
+    const html = await app.renderShell(shell, { component: 'greeting-page', props: { name: 'Tony' } });
+    expect(html).toContain('<p>Hi Tony</p>');
+  });
+
+  it('passes renderOptions through to renderToString', async () => {
+    const html = await app.renderShell(shell, {
+      component: 'test-page',
+      renderOptions: { hydrate: false },
+    });
+    expect(html).toContain('<test-page><h1>Hello</h1></test-page>');
+    expect(html).not.toContain('data-zq-ssr');
+  });
+
+  it('handles a missing component gracefully', async () => {
+    const html = await app.renderShell(shell, { component: 'nonexistent' });
+    expect(html).toContain('<!-- SSR error:');
+  });
+
+  it('returns the shell untouched when no options are provided', async () => {
+    const html = await app.renderShell(shell);
+    expect(html).toContain('<title>Default Title</title>');
+    expect(html).toContain('<z-outlet></z-outlet>');
+  });
+
+  it('escapes </script> in ssrData to prevent script injection', async () => {
+    const html = await app.renderShell(shell, {
+      component: 'test-page',
+      ssrData: { payload: '</script><script>alert(1)</script>' },
+    });
+    expect(html).not.toContain('</script><script>alert(1)');
+    expect(html).toContain('<\\/script>');
+    // The JSON should still be parseable when unescaped
+    const match = html.match(/window\.__SSR_DATA__=(.+?);/);
+    expect(match).toBeTruthy();
+  });
+
+  it('escapes <!-- in ssrData to prevent HTML comment injection', async () => {
+    const html = await app.renderShell(shell, {
+      component: 'test-page',
+      ssrData: { payload: '<!-- injected -->' },
+    });
+    expect(html).not.toContain('<!-- injected');
+    expect(html).toContain('<\\!--');
+  });
+
+  it('sanitizes OG keys to prevent ReDoS and attribute injection', async () => {
+    const html = await app.renderShell(shell, {
+      component: 'test-page',
+      og: {
+        'title" onload="alert(1)': 'attack',   // attribute breakout attempt
+        'valid-key': 'safe value',
+        '': 'empty key should be skipped',       // empty after sanitization
+      },
+    });
+    // Attribute injection should be neutralized (quotes stripped from key)
+    expect(html).not.toContain('onload=');
+    expect(html).toContain('og:titleonloadalert1');
+    // Valid key should work fine
+    expect(html).toContain('og:valid-key');
+    expect(html).toContain('safe value');
+    // Empty key should be skipped
+    const emptyOgCount = (html.match(/og:""/g) || []).length;
+    expect(emptyOgCount).toBe(0);
+  });
+
+  it('handles $ substitution patterns in component output safely', async () => {
+    app.component('dollar-page', {
+      render() { return "<p>Price: $1.00 and $' and $` tricks</p>"; }
+    });
+    const html = await app.renderShell(shell, { component: 'dollar-page' });
+    expect(html).toContain("$1.00");
+    expect(html).toContain("$'");
+    expect(html).toContain("$`");
+  });
+});

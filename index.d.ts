@@ -4,7 +4,7 @@
  * Lightweight modern frontend library - jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 1.0.2
+ * @version 1.0.5
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -46,8 +46,10 @@ export {
   NavigationContext,
   RouterConfig,
   RouterInstance,
+  RouteMatch,
   createRouter,
   getRouter,
+  matchRoute,
 } from './types/router';
 
 export {
@@ -146,7 +148,7 @@ export {
 import type { ZQueryCollection } from './types/collection';
 import type { reactive, Signal, signal, computed, effect, batch, untracked } from './types/reactive';
 import type { component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style } from './types/component';
-import type { createRouter, getRouter } from './types/router';
+import type { createRouter, getRouter, matchRoute } from './types/router';
 import type { createStore, getStore } from './types/store';
 import type { HttpClient } from './types/http';
 import type {
@@ -264,6 +266,7 @@ interface ZQueryStatic {
   // -- Router --------------------------------------------------------------
   router: typeof createRouter;
   getRouter: typeof getRouter;
+  matchRoute: typeof matchRoute;
 
   // -- Store ---------------------------------------------------------------
   store: typeof createStore;

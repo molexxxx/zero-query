@@ -35,7 +35,7 @@ const router = $.router({
 });
 
 // Update document.title on client-side navigations
-router.onChange(({ component }) => {
-  const title = routeTitles[component];
+router.onChange(({ route }) => {
+  const title = routeTitles[route.component];
   if (title) document.title = title;
 });

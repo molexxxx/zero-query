@@ -34,6 +34,7 @@ export const blogPost = {
     if (ssrData && ssrData.component === 'blog-post' && ssrData.params.slug === slug) {
       this.state.post = ssrData.props.post;
       this.state.loaded = true;
+      if (ssrData.meta && ssrData.meta.title) document.title = ssrData.meta.title;
       window.__SSR_DATA__ = null;
       return;
     }
@@ -44,6 +45,13 @@ export const blogPost = {
       this.state.post = await res.json();
     }
     this.state.loaded = true;
+
+    // Update page title for client-side navigations
+    if (this.state.post) {
+      document.title = `${this.state.post.title} — {{NAME}}`;
+    } else {
+      document.title = 'Post Not Found — {{NAME}}';
+    }
   },
 
   render() {
