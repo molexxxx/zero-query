@@ -108,13 +108,15 @@ npx zquery build
 // app/app.js
 import './components/home.js';
 import './components/about.js';
-import './components/contacts/contacts.js';
+import './components/not-found.js';
 import { routes } from './routes.js';
 
 $.router({ routes, fallback: 'not-found' });
 ```
 
 ### Define a Component
+
+One component per file — each self-registers via `$.component()` when imported:
 
 ```js
 // app/components/home.js
@@ -126,6 +128,24 @@ $.component('home-page', {
       <h1>Home</h1>
       <p>Count: ${this.state.count}</p>
       <button @click="increment">+1</button>
+    `;
+  }
+});
+```
+
+The router's `fallback` component handles unmatched routes — same pattern. Use `$.getRouter().current?.path` to show the requested URL:
+
+```js
+// app/components/not-found.js
+$.component('not-found', {
+  render() {
+    const router = $.getRouter();
+    return `
+      <div class="card">
+        <h2>404</h2>
+        <p>The page <code>${$.escapeHtml(router.current?.path || '')}</code> was not found.</p>
+        <a z-link="/">Go Home</a>
+      </div>
     `;
   }
 });
@@ -290,7 +310,22 @@ location / {
 }
 ```
 
-**Sub-path deployment** (e.g. `/my-app/`): set `<base href="/my-app/">` in your HTML - the router auto-detects it.
+**Sub-path deployment** (e.g. `/my-app/`): add `<base href="/my-app/">` to your `<head>` — the router auto-detects it:
+
+```html
+<head>
+  <base href="/my-app/">
+  <meta charset="UTF-8">
+  <title>My App</title>
+  ...
+</head>
+```
+
+Or pass `base` directly in JavaScript:
+
+```js
+$.router({ base: '/my-app', routes });
+```
 
 ---
 
