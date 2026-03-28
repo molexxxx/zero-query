@@ -92,7 +92,8 @@ async function createServer({ root, htmlEntry, port, noIntercept }) {
     zeroHttp = require('zero-http');
   }
 
-  const { createApp, static: serveStatic } = zeroHttp;
+  const { createApp, static: serveStatic, debug } = zeroHttp;
+  debug.level('silent');
 
   const app  = createApp();
   const pool = new SSEPool();

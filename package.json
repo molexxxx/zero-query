@@ -1,6 +1,6 @@
 {
   "name": "zero-query",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "description": "Lightweight modern frontend library - jQuery-like selectors, reactive components, SPA router, and state management with zero dependencies.",
   "main": "index.js",
   "types": "index.d.ts",
@@ -64,6 +64,6 @@
   "devDependencies": {
     "jsdom": "^28.1.0",
     "vitest": "^4.0.18",
-    "zero-http": "^0.2.3"
+    "zero-http": "^0.3.1"
   }
 }
