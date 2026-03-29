@@ -2867,7 +2867,7 @@ const data = await safeFetch('/api/data');
 | `$.prefetch(name)` | Pre-load external templates and styles for a registered component. Resolves when cached. The router calls this automatically; call manually for advance prefetching. |
 | `$.safeEval(expr, scope)` | CSP-safe expression evaluator - parse and evaluate a JavaScript-like expression without `eval()` or `new Function()`. |
 | `$.libSize` | Minified library size string (e.g. `'~100 KB'`), injected at build time. |
-| `$.version` | Library version string (e.g. `'1.0.7'`). |
+| `$.version` | Library version string (e.g. `'1.0.8'`). |
 | `$.unitTests` | Build-time test results object - `{ passed, failed, total, suites, duration, ok }`. Injected at build time by the CLI. |
 | `$.meta` | Build metadata object - populated at build time by the CLI bundler. Empty `{}` by default. |
 | `$.TrustedHTML` | `TrustedHTML` constructor class - wrap strings to bypass `$.html` escaping. Create instances via `$.trust()` or `new $.TrustedHTML(str)`. |
