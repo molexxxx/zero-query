@@ -15,7 +15,7 @@
 
 </p>
 
-> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit - all in a single ~91 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
+> **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit - all in a single ~108 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
 
 ## Features
 
@@ -77,7 +77,7 @@ If you prefer **zero tooling**, download `dist/zquery.min.js` from the [dist/ fo
 git clone https://github.com/tonywied17/zero-query.git
 cd zero-query
 npx zquery build
-# → dist/zquery.min.js  (~91 KB)
+# → dist/zquery.min.js  (~108 KB)
 ```
 
 ### Include in HTML
@@ -363,7 +363,7 @@ $.router({ base: '/my-app', routes });
 | `$.storage` `$.session` | Storage wrappers |
 | `$.EventBus` `$.bus` | Event bus |
 | `$.onError` `$.ZQueryError` `$.ErrorCode` `$.guardCallback` `$.guardAsync` `$.formatError` `$.validate` | Error handling |
-| `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~91 KB\"`) |
+| `$.version` | Library version |\n| `$.libSize` | Minified bundle size string (e.g. `\"~108 KB\"`) |
 | `$.unitTests` | Build-time test results `{ passed, failed, total, suites, duration, ok }` |
 | `$.meta` | Build metadata (populated by CLI bundler) |
 | `$.noConflict` | Release `$` global |
