@@ -87,7 +87,7 @@ export function effect(fn: () => void): () => void;
  *   b.value = 2;
  * }); // effects run once with both values updated
  */
-export function batch(fn: () => void): void;
+export function batch<R = void>(fn: () => R): R;
 
 /**
  * Execute a function without tracking signal reads as dependencies.

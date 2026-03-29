@@ -86,8 +86,9 @@ class Store {
   batch(fn) {
     this._batching = true;
     this._batchQueue = [];
+    let result;
     try {
-      fn(this.state);
+      result = fn(this.state);
     } finally {
       this._batching = false;
       // Deduplicate: keep only the last change per key
@@ -100,6 +101,7 @@ class Store {
         this._notifySubscribers(key, value, old);
       }
     }
+    return result;
   }
 
   /**
