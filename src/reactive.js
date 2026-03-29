@@ -206,13 +206,13 @@ export function effect(fn) {
 export function batch(fn) {
   if (Signal._batching) {
     // Already inside a batch, just run
-    fn();
-    return;
+    return fn();
   }
   Signal._batching = true;
   Signal._batchQueue.clear();
+  let result;
   try {
-    fn();
+    result = fn();
   } finally {
     Signal._batching = false;
     // Collect all unique subscribers across all queued signals
@@ -231,6 +231,7 @@ export function batch(fn) {
       }
     }
   }
+  return result;
 }
 
 

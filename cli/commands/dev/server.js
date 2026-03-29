@@ -4,6 +4,13 @@
  * Creates the zero-http app, serves static files, injects the
  * error-overlay snippet into HTML responses, and manages the
  * SSE connection pool for live-reload events.
+ *
+ * Uses zero-http middleware:
+ *   - helmet()   → security headers (relaxed CSP for dev inline scripts)
+ *   - compress() → brotli/gzip/deflate response compression
+ *   - cors()     → allow cross-origin requests in development
+ *   - serveStatic() → static file serving with ETag & Cache-Control
+ *   - SSE with keepAlive, retry, pad for proxy compatibility
  */
 
 'use strict';
@@ -22,6 +29,7 @@ class SSEPool {
     this._clients = new Set();
   }
 
+  /** @param {import('zero-http').SSEStream} sse */
   add(sse) {
     this._clients.add(sse);
     sse.on('close', () => this._clients.delete(sse));
@@ -32,6 +40,9 @@ class SSEPool {
       try { sse.event(eventType, data || ''); } catch { this._clients.delete(sse); }
     }
   }
+
+  /** Number of connected SSE clients. */
+  get size() { return this._clients.size; }
 
   closeAll() {
     for (const sse of this._clients) {
@@ -92,15 +103,54 @@ async function createServer({ root, htmlEntry, port, noIntercept }) {
     zeroHttp = require('zero-http');
   }
 
-  const { createApp, static: serveStatic, debug } = zeroHttp;
+  const {
+    createApp,
+    static: serveStatic,
+    helmet,
+    compress,
+    cors,
+    debug,
+  } = zeroHttp;
+
   debug.level('silent');
 
   const app  = createApp();
   const pool = new SSEPool();
 
+  // ---- Security headers (dev-friendly CSP) ----
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc:  ["'self'"],
+        scriptSrc:   ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc:    ["'self'", "'unsafe-inline'"],
+        imgSrc:      ["'self'", 'data:', 'blob:'],
+        connectSrc:  ["'self'", 'ws:', 'wss:'],
+        fontSrc:     ["'self'", 'data:'],
+      },
+    },
+    // SPA dev server runs over plain HTTP
+    hsts: false,
+    // Allow framing for devtools panel
+    frameguard: false,
+  }));
+
+  // ---- CORS (allow cross-origin during development) ----
+  app.use(cors());
+
+  // ---- Compression (brotli > gzip > deflate) ----
+  app.use(compress({
+    threshold: 1024,
+  }));
+
   // ---- SSE endpoint ----
   app.get('/__zq_reload', (req, res) => {
-    const sse = res.sse({ keepAlive: 30000, keepAliveComment: 'ping' });
+    const sse = res.sse({
+      keepAlive: 30000,
+      keepAliveComment: 'ping',
+      retry: 3000,
+      pad: 2048,
+    });
     pool.add(sse);
   });
 
@@ -158,7 +208,10 @@ async function createServer({ root, htmlEntry, port, noIntercept }) {
   });
 
   function listen(cb) {
-    app.listen(port, cb);
+    const server = app.listen(port, cb);
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout   = 66000;
+    return server;
   }
 
   return { app, pool, listen };

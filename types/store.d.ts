@@ -98,8 +98,9 @@ export interface StoreInstance<
   /**
    * Batch multiple state changes - subscribers fire once at the end
    * with only the latest value per key.
+   * @returns The callback's return value.
    */
-  batch(fn: (state: S) => void): void;
+  batch<R = void>(fn: (state: S) => R): R;
 
   /**
    * Save a state snapshot for undo. Call before making changes you want to be undoable.

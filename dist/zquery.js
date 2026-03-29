@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v1.0.9
+ * zQuery (zeroQuery) v1.1.0
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -426,13 +426,13 @@ function effect(fn) {
 function batch(fn) {
   if (Signal._batching) {
     // Already inside a batch, just run
-    fn();
-    return;
+    return fn();
   }
   Signal._batching = true;
   Signal._batchQueue.clear();
+  let result;
   try {
-    fn();
+    result = fn();
   } finally {
     Signal._batching = false;
     // Collect all unique subscribers across all queued signals
@@ -451,6 +451,7 @@ function batch(fn) {
       }
     }
   }
+  return result;
 }
 
 
@@ -5135,8 +5136,9 @@ class Store {
   batch(fn) {
     this._batching = true;
     this._batchQueue = [];
+    let result;
     try {
-      fn(this.state);
+      result = fn(this.state);
     } finally {
       this._batching = false;
       // Deduplicate: keep only the last change per key
@@ -5149,6 +5151,7 @@ class Store {
         this._notifySubscribers(key, value, old);
       }
     }
+    return result;
   }
 
   /**
@@ -6254,9 +6257,9 @@ $.validate       = validate;
 $.formatError    = formatError;
 
 // --- Meta ------------------------------------------------------------------
-$.version   = '1.0.9';
+$.version   = '1.1.0';
 $.libSize   = '~108 KB';
-$.unitTests = {"passed":1965,"failed":0,"total":1965,"suites":525,"duration":3752,"ok":true};
+$.unitTests = {"passed":2231,"failed":0,"total":2231,"suites":554,"duration":4648,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 $.noConflict = () => {

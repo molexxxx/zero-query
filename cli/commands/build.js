@@ -111,13 +111,35 @@ function buildLibrary() {
   console.log(`  ✓ dist/zquery.min.js (${sizeKB(fs.readFileSync(MIN_FILE))} KB)`);
   console.log(`  Done in ${elapsed}ms\n`);
 
-  // --- Create dist/zquery.dist.zip -----------------------------------------
+  // --- Generate API.md before zipping --------------------------------------
   const root = process.cwd();
+  try {
+    const buildApi = require('./build-api');
+    // buildApi() is async (dynamic imports), so we run it synchronously via
+    // a child process to keep the build function synchronous.
+    execSync('node cli/commands/build-api.js', {
+      cwd: root,
+      stdio: 'inherit',
+      timeout: 60000,
+    });
+  } catch (err) {
+    console.log('  ⚠ API.md generation skipped:', err.message || 'unknown error');
+  }
+
+  // --- Copy API.md into dist -----------------------------------------------
+  const apiSrc  = path.join(root, 'API.md');
+  const apiDist = path.join(DIST, 'API.md');
+  if (fs.existsSync(apiSrc)) {
+    fs.copyFileSync(apiSrc, apiDist);
+    console.log(`  ✓ dist/API.md (${sizeKB(fs.readFileSync(apiDist))} KB)`);
+  }
+
+  // --- Create dist/zquery.dist.zip -----------------------------------------
   const zipFiles = [
     { src: OUT_FILE,                        name: 'zquery.js' },
     { src: MIN_FILE,                        name: 'zquery.min.js' },
     { src: path.join(root, 'LICENSE'),      name: 'LICENSE' },
-    { src: path.join(root, 'API.md'),       name: 'API.md' },
+    { src: apiDist,                         name: 'API.md' },
     { src: path.join(root, 'README.md'),    name: 'README.md' },
   ];
 

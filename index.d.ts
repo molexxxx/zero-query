@@ -4,7 +4,7 @@
  * Lightweight modern frontend library - jQuery-like selectors, reactive
  * components, SPA router, state management, HTTP client & utilities.
  *
- * @version 1.0.9
+ * @version 1.1.0
  * @license MIT
  * @see https://z-query.com/docs
  */
@@ -153,7 +153,7 @@ import type { createStore, getStore } from './types/store';
 import type { HttpClient } from './types/http';
 import type {
   debounce, throttle, pipe, once, sleep,
-  escapeHtml, stripHtml, html, trust, uuid, camelCase, kebabCase,
+  escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,
   StorageWrapper, EventBus,
   range, unique, chunk, groupBy,
@@ -161,7 +161,7 @@ import type {
   capitalize, truncate, clamp,
   MemoizedFunction, memoize, RetryOptions, retry, timeout,
 } from './types/utils';
-import type { onError, ZQueryError, ErrorCode, guardCallback, validate } from './types/errors';
+import type { onError, ZQueryError, ErrorCode, guardCallback, guardAsync, validate, formatError } from './types/errors';
 import type { morph, morphElement, safeEval } from './types/misc';
 
 /**
@@ -279,6 +279,7 @@ interface ZQueryStatic {
   put: HttpClient['put'];
   patch: HttpClient['patch'];
   delete: HttpClient['delete'];
+  head: HttpClient['head'];
 
   // -- Error Handling ------------------------------------------------------
   /** Register a global error handler (or pass `null` to remove). */
@@ -289,8 +290,12 @@ interface ZQueryStatic {
   ErrorCode: typeof ErrorCode;
   /** Wrap a callback so thrown errors are caught and reported via the global handler. */
   guardCallback: typeof guardCallback;
+  /** Wrap an async function so thrown errors are caught and reported via the global handler. */
+  guardAsync: typeof guardAsync;
   /** Validate a required value is defined and of the expected type. */
   validate: typeof validate;
+  /** Format a ZQueryError into a structured plain object. */
+  formatError: typeof formatError;
 
   // -- Utilities -----------------------------------------------------------
   debounce: typeof debounce;
@@ -303,6 +308,7 @@ interface ZQueryStatic {
   stripHtml: typeof stripHtml;
   html: typeof html;
   trust: typeof trust;
+  TrustedHTML: typeof TrustedHTML;
   uuid: typeof uuid;
   camelCase: typeof camelCase;
   kebabCase: typeof kebabCase;
