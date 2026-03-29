@@ -2,6 +2,269 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 
 // ---------------------------------------------------------------------------
+// CLI bundle - stripModuleSyntax
+// ---------------------------------------------------------------------------
+
+describe('CLI - stripModuleSyntax', () => {
+  let stripModuleSyntax;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    const mod = await import('../cli/commands/bundle.js');
+    stripModuleSyntax = mod.stripModuleSyntax;
+  });
+
+  // -- Import stripping ---------------------------------------------------
+
+  it('strips named import from module', () => {
+    const result = stripModuleSyntax("import { foo } from './mod.js';\nconst x = 1;");
+    expect(result.code.trim()).toBe('const x = 1;');
+  });
+
+  it('strips default import from module', () => {
+    const result = stripModuleSyntax("import foo from './mod.js';\nconst x = 1;");
+    expect(result.code.trim()).toBe('const x = 1;');
+  });
+
+  it('strips side-effect import', () => {
+    const result = stripModuleSyntax("import './mod.js';\nconst x = 1;");
+    expect(result.code.trim()).toBe('const x = 1;');
+  });
+
+  it('strips multi-line import', () => {
+    const input = "import {\n  a,\n  b,\n  c\n} from './mod.js';\nconst x = 1;";
+    const result = stripModuleSyntax(input);
+    expect(result.code.trim()).toBe('const x = 1;');
+  });
+
+  // -- export default -----------------------------------------------------
+
+  it('strips export default keyword', () => {
+    const result = stripModuleSyntax('export default function foo() {}');
+    expect(result.code.trim()).toBe('function foo() {}');
+  });
+
+  // -- export const/let/var → var -----------------------------------------
+
+  it('converts export const to var', () => {
+    const result = stripModuleSyntax('export const x = 1;');
+    expect(result.code.trim()).toBe('var x = 1;');
+  });
+
+  it('converts export let to var', () => {
+    const result = stripModuleSyntax('export let y = 2;');
+    expect(result.code.trim()).toBe('var y = 2;');
+  });
+
+  it('converts export var (keeps var)', () => {
+    const result = stripModuleSyntax('export var z = 3;');
+    expect(result.code.trim()).toBe('var z = 3;');
+  });
+
+  // -- export function → var assignment -----------------------------------
+
+  it('converts export function to var assignment', () => {
+    const result = stripModuleSyntax('export function greet(name) { return name; }');
+    expect(result.code.trim()).toBe('var greet = function greet(name) { return name; }');
+  });
+
+  it('converts export async function to var assignment', () => {
+    const result = stripModuleSyntax('export async function fetchData() {}');
+    expect(result.code.trim()).toBe('var fetchData = async function fetchData() {}');
+  });
+
+  // -- export class → var assignment --------------------------------------
+
+  it('converts export class to var assignment', () => {
+    const result = stripModuleSyntax('export class MyComponent {}');
+    expect(result.code.trim()).toBe('var MyComponent = class MyComponent {}');
+  });
+
+  // -- bare export block: export { a, b } ---------------------------------
+
+  it('converts bare exported function declarations to var', () => {
+    const input = 'function buildIndex() {}\nexport { buildIndex };';
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('var buildIndex = function buildIndex()');
+    expect(result.code).not.toContain('export');
+    expect(result.bareExportNames).toEqual([{ local: 'buildIndex', exported: 'buildIndex' }]);
+  });
+
+  it('converts bare exported async function to var', () => {
+    const input = 'async function load() {}\nexport { load };';
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('var load = async function load()');
+  });
+
+  it('converts bare exported const/let declarations to var', () => {
+    const input = 'const MAX = 10;\nlet count = 0;\nexport { MAX, count };';
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('var MAX');
+    expect(result.code).toContain('var count');
+    expect(result.code).not.toContain('const MAX');
+    expect(result.code).not.toContain('let count');
+  });
+
+  it('handles multi-line bare export block', () => {
+    const input = 'function a() {}\nfunction b() {}\nexport {\n  a,\n  b\n};';
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('var a = function a()');
+    expect(result.code).toContain('var b = function b()');
+    expect(result.bareExportNames).toHaveLength(2);
+  });
+
+  // -- export { local as exported } aliasing ------------------------------
+
+  it('creates alias for export { local as exported }', () => {
+    const input = 'function foo() {}\nexport { foo as bar };';
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('var foo = function foo()');
+    expect(result.code).toContain('var bar = foo;');
+    expect(result.bareExportNames).toEqual([{ local: 'foo', exported: 'bar' }]);
+  });
+
+  it('creates multiple aliases when needed', () => {
+    const input = 'function a() {}\nfunction b() {}\nexport { a as x, b as y };';
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('var x = a;');
+    expect(result.code).toContain('var y = b;');
+  });
+
+  it('does not create alias when local equals exported', () => {
+    const input = 'function foo() {}\nexport { foo };';
+    const result = stripModuleSyntax(input);
+    expect(result.code).not.toContain('var foo = foo;');
+  });
+
+  it('handles mix of aliased and non-aliased exports', () => {
+    const input = 'function a() {}\nfunction b() {}\nexport { a, b as c };';
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('var a = function a()');
+    expect(result.code).toContain('var b = function b()');
+    expect(result.code).not.toContain('var a = a;');
+    expect(result.code).toContain('var c = b;');
+  });
+
+  // -- Template literal preservation --------------------------------------
+
+  it('preserves export keyword inside template literal', () => {
+    const input = "const example = `export const x = 1;`;\nexport const y = 2;";
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('`export const x = 1;`');
+    expect(result.code).toContain('var y = 2;');
+  });
+
+  it('preserves export class inside template literal', () => {
+    const input = "const code = `export class Counter {}`;\nexport class Real {}";
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('`export class Counter {}`');
+    expect(result.code).toContain('var Real = class Real');
+  });
+
+  it('preserves nested template literal content', () => {
+    const input = "const x = `outer ${`inner export const a = 1;`} end`;\nexport const b = 2;";
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('inner export const a = 1;');
+    expect(result.code).toContain('var b = 2;');
+  });
+
+  it('handles deeply nested template literals', () => {
+    const input = "const x = `a ${y ? `b ${`c`}` : ''} d`;\nexport const z = 1;";
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('var z = 1;');
+    // Nested templates should be preserved without corruption
+    expect(result.code).toContain('`a ${');
+  });
+
+  // -- Edge cases ---------------------------------------------------------
+
+  it('returns empty bareExportNames when no bare exports', () => {
+    const result = stripModuleSyntax('export const x = 1;');
+    expect(result.bareExportNames).toEqual([]);
+  });
+
+  it('handles code with no imports or exports', () => {
+    const input = 'const x = 1;\nfunction foo() {}';
+    const result = stripModuleSyntax(input);
+    expect(result.code.trim()).toBe(input);
+    expect(result.bareExportNames).toEqual([]);
+  });
+
+  it('preserves indentation', () => {
+    const result = stripModuleSyntax('  export const x = 1;');
+    expect(result.code).toContain('  var x = 1;');
+  });
+
+  it('handles export inside string (not template)', () => {
+    const input = 'const s = "export const x = 1;";\nexport const y = 2;';
+    const result = stripModuleSyntax(input);
+    expect(result.code).toContain('"export const x = 1;"');
+    expect(result.code).toContain('var y = 2;');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// CLI - minify ASI preservation
+// ---------------------------------------------------------------------------
+
+describe('CLI - minify ASI preservation', () => {
+  let minify;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    const mod = await import('../cli/utils.js');
+    minify = mod.minify;
+  });
+
+  it('preserves newline between } and var', () => {
+    const input = 'var x = function() {}\nvar y = 1;';
+    const result = minify(input, '');
+    expect(result).toContain('}\nvar');
+    expect(result).not.toContain('}var');
+  });
+
+  it('preserves newline between } and identifier', () => {
+    const input = 'function a() {}\nfunction b() {}';
+    const result = minify(input, '');
+    expect(result).toContain('}\nfunction');
+    expect(result).not.toContain('}function');
+  });
+
+  it('preserves newline between } and const', () => {
+    const input = 'if (true) {}\nconst x = 1;';
+    const result = minify(input, '');
+    expect(result).toContain('}\nconst');
+  });
+
+  it('preserves newline between } and let', () => {
+    const input = 'if (true) {}\nlet x = 1;';
+    const result = minify(input, '');
+    expect(result).toContain('}\nlet');
+  });
+
+  it('does not add newline where none existed', () => {
+    const input = 'if(x){a()} else{b()}';
+    const result = minify(input, '');
+    // } followed by else on same line — no newline needed
+    expect(result).not.toContain('}\n');
+  });
+
+  it('handles }\\n followed by underscore-prefixed identifier', () => {
+    const input = 'var x = function() {}\n_init();';
+    const result = minify(input, '');
+    expect(result).toContain('}\n_init');
+  });
+
+  it('handles }\\n followed by $-prefixed identifier', () => {
+    const input = 'var x = function() {}\n$el.show();';
+    const result = minify(input, '');
+    expect(result).toContain('}\n$el');
+  });
+});
+
+
+// ---------------------------------------------------------------------------
 // CLI utils - stripComments
 // ---------------------------------------------------------------------------
 

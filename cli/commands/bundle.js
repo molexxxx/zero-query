@@ -87,14 +87,137 @@ function walkImportGraph(entry) {
   return order;
 }
 
-/** Strip ES module import/export syntax, keeping declarations. */
+/**
+ * Strip ES module import/export syntax, keeping declarations.
+ * Exported const/let are converted to var so they hoist past the per-module
+ * block scope and remain accessible to downstream modules.
+ * Exported function/class are converted to var assignments for the same reason.
+ * Non-exported declarations stay as-is and remain block-scoped (private).
+ *
+ * Template literals are temporarily hidden via a character-level scanner
+ * (handles nested backtick expressions) so that code examples inside
+ * backtick strings aren't accidentally rewritten.
+ */
 function stripModuleSyntax(code) {
+  // -- Hide template literals (supports nesting) -------------------------
+  const templates = [];
+
+  function scanTemplateLiteral(str, start) {
+    let i = start + 1; // skip opening backtick
+    while (i < str.length) {
+      const ch = str[i];
+      if (ch === '\\') { i += 2; continue; }
+      if (ch === '`')  { return i + 1; }          // end of template
+      if (ch === '$' && str[i + 1] === '{') {
+        i += 2;                                    // skip ${
+        let depth = 1;
+        while (i < str.length && depth > 0) {
+          const c = str[i];
+          if (c === '{') { depth++; i++; }
+          else if (c === '}') { depth--; i++; }
+          else if (c === '`') { i = scanTemplateLiteral(str, i); }
+          else if (c === "'" || c === '"') { i = skipString(str, i); }
+          else if (c === '/' && str[i + 1] === '/') { while (i < str.length && str[i] !== '\n') i++; }
+          else if (c === '/' && str[i + 1] === '*') { i += 2; while (i < str.length - 1 && !(str[i] === '*' && str[i + 1] === '/')) i++; i += 2; }
+          else { i++; }
+        }
+        continue;
+      }
+      i++;
+    }
+    return i;
+  }
+
+  function skipString(str, start) {
+    const q = str[start];
+    let i = start + 1;
+    while (i < str.length) {
+      if (str[i] === '\\') { i += 2; continue; }
+      if (str[i] === q)    { return i + 1; }
+      i++;
+    }
+    return i;
+  }
+
+  let hidden = '';
+  let pos = 0;
+  while (pos < code.length) {
+    const ch = code[pos];
+    if (ch === "'" || ch === '"') {
+      const end = skipString(code, pos);
+      hidden += code.substring(pos, end);
+      pos = end;
+    } else if (ch === '/' && code[pos + 1] === '/') {
+      let end = pos;
+      while (end < code.length && code[end] !== '\n') end++;
+      hidden += code.substring(pos, end);
+      pos = end;
+    } else if (ch === '/' && code[pos + 1] === '*') {
+      let end = pos + 2;
+      while (end < code.length - 1 && !(code[end] === '*' && code[end + 1] === '/')) end++;
+      end += 2;
+      hidden += code.substring(pos, end);
+      pos = end;
+    } else if (ch === '`') {
+      const end = scanTemplateLiteral(code, pos);
+      templates.push(code.substring(pos, end));
+      hidden += `__TPL_${templates.length - 1}__`;
+      pos = end;
+    } else {
+      hidden += ch;
+      pos++;
+    }
+  }
+
+  // -- Apply import / export transforms -----------------------------------
+  code = hidden;
   code = code.replace(/^\s*import\s+[\s\S]*?from\s+['"].*?['"];?\s*$/gm, '');
   code = code.replace(/^\s*import\s+['"].*?['"];?\s*$/gm, '');
   code = code.replace(/^(\s*)export\s+default\s+/gm, '$1');
-  code = code.replace(/^(\s*)export\s+(const|let|var|function|class|async\s+function)\s/gm, '$1$2 ');
-  code = code.replace(/^\s*export\s*\{[\s\S]*?\};?\s*$/gm, '');
-  return code;
+  // Convert exported const/let/var to var (hoists past block scope)
+  code = code.replace(/^(\s*)export\s+(const|let|var)\s/gm, '$1var ');
+  // Convert exported function/async function to var assignment (hoists past block scope)
+  code = code.replace(/^(\s*)export\s+async\s+function\s+(\w+)/gm, '$1var $2 = async function $2');
+  code = code.replace(/^(\s*)export\s+function\s+(\w+)/gm, '$1var $2 = function $2');
+  // Convert exported class to var assignment
+  code = code.replace(/^(\s*)export\s+class\s+(\w+)/gm, '$1var $2 = class $2');
+  // Collect names from bare export blocks: export { a, b, c };
+  // These names are declared elsewhere (function/const/let) and need to be
+  // hoisted past the per-module block scope.  We collect them here and
+  // the caller converts their declarations to var-based forms.
+  const bareExportNames = [];
+  code = code.replace(/^\s*export\s*\{([^}]+)\};?\s*$/gm, (_, names) => {
+    for (const n of names.split(',')) {
+      const parts = n.trim().split(/\s+as\s+/);
+      if (parts[0]) bareExportNames.push({ local: parts[0].trim(), exported: (parts[1] || parts[0]).trim() });
+    }
+    return '';
+  });
+
+  // For every bare-exported name, convert its block-scoped declaration to a
+  // var-based form so it hoists past the per-module { } wrapper:
+  //   function foo(…) { … }  →  var foo = function foo(…) { … }
+  //   async function foo(…)  →  var foo = async function foo(…)
+  //   const/let foo = …      →  var foo = …
+  for (const { local } of bareExportNames) {
+    const fnRe = new RegExp(`^(\\s*)function\\s+${local}\\s*\\(`, 'gm');
+    code = code.replace(fnRe, `$1var ${local} = function ${local}(`);
+    const asyncFnRe = new RegExp(`^(\\s*)async\\s+function\\s+${local}\\s*\\(`, 'gm');
+    code = code.replace(asyncFnRe, `$1var ${local} = async function ${local}(`);
+    const constLetRe = new RegExp(`^(\\s*)(const|let)\\s+${local}\\b`, 'gm');
+    code = code.replace(constLetRe, `$1var ${local}`);
+  }
+
+  // Create aliases for "export { local as exported }" where the names differ
+  for (const { local, exported } of bareExportNames) {
+    if (exported !== local) {
+      code += `\nvar ${exported} = ${local};`;
+    }
+  }
+
+  // -- Restore template literals ------------------------------------------
+  code = code.replace(/__TPL_(\d+)__/g, (_, i) => templates[i]);
+  return { code, bareExportNames };
 }
 
 /** Replace import.meta.url with a runtime equivalent. */
@@ -381,8 +504,8 @@ function collectInlineResources(files, projectRoot) {
 
     // styleUrl:
     const styleUrlRe = /styleUrl\s*:\s*['"]([^'"]+)['"]/g;
-    const styleMatch = styleUrlRe.exec(code);
-    if (styleMatch) {
+    let styleMatch;
+    while ((styleMatch = styleUrlRe.exec(code)) !== null) {
       const stylePath = path.join(fileDir, styleMatch[1]);
       if (fs.existsSync(stylePath)) {
         const relKey = path.relative(projectRoot, stylePath).replace(/\\/g, '/');
@@ -877,12 +1000,13 @@ function bundleApp() {
 
   const sections = files.map(file => {
     let code = fs.readFileSync(file, 'utf-8');
-    code = stripModuleSyntax(code);
+    const stripped = stripModuleSyntax(code);
+    code = stripped.code;
     code = replaceImportMeta(code, file, projectRoot);
     code = rewriteResourceUrls(code, file, projectRoot);
     code = minifyTemplateLiterals(code);
     const rel = path.relative(projectRoot, file);
-    return `// --- ${rel} ${'-'.repeat(Math.max(1, 60 - rel.length))}\n${code.trim()}`;
+    return `// --- ${rel} ${'-'.repeat(Math.max(1, 60 - rel.length))}\n{\n${code.trim()}\n}`;
   });
 
   // Embed zquery.min.js
@@ -1056,3 +1180,4 @@ function bundleApp() {
 }
 
 module.exports = bundleApp;
+module.exports.stripModuleSyntax = stripModuleSyntax;

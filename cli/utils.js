@@ -206,9 +206,18 @@ function _minifyBody(code) {
 
     // ── Whitespace: collapse ────────────────────────────────────
     if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
-      while (i < code.length && (code[i] === ' ' || code[i] === '\t' || code[i] === '\n' || code[i] === '\r')) i++;
+      let hasNewline = ch === '\n' || ch === '\r';
+      while (i < code.length && (code[i] === ' ' || code[i] === '\t' || code[i] === '\n' || code[i] === '\r')) {
+        if (code[i] === '\n' || code[i] === '\r') hasNewline = true;
+        i++;
+      }
       const before = out[out.length - 1];
       const after  = code[i];
+      // After '}', a newline may be needed for ASI (e.g. var x=function(){}⏎var y).
+      // A space alone doesn't trigger ASI, so preserve ';\n' when '}' precedes
+      // an identifier-start character and the original whitespace had a newline.
+      const afterIsId = after && ((after >= 'a' && after <= 'z') || (after >= 'A' && after <= 'Z') || after === '_' || after === '$');
+      if (before === '}' && afterIsId && hasNewline) { out += '\n'; continue; }
       if (_needsSpace(before, after)) out += ' ';
       continue;
     }
