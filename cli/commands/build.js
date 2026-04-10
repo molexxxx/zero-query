@@ -24,6 +24,15 @@ function buildLibrary() {
     'src/utils.js',
   ];
 
+  // Guard: ensure we're inside the zero-query source repo
+  const missing = modules.filter(m => !fs.existsSync(path.join(process.cwd(), m)));
+  if (missing.length > 0) {
+    console.error(`  ✗ "zquery build" must be run from the zero-query source repository.`);
+    console.error(`    Missing source files: ${missing.join(', ')}`);
+    console.error(`    To bundle your app for production, use "zquery bundle" instead.\n`);
+    process.exit(1);
+  }
+
   const DIST     = path.join(process.cwd(), 'dist');
   const OUT_FILE = path.join(DIST, 'zquery.js');
   const MIN_FILE = path.join(DIST, 'zquery.min.js');

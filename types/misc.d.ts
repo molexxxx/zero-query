@@ -56,7 +56,7 @@ export function safeEval(expr: string, scope: object[]): any;
 // HTML files. All expressions evaluate in the component's state context
 // (bare names resolve to `this.state.*`; `props` and `refs` also available).
 //
-// ─── Structural Directives ──────────────────────────────────────────────
+// --- Structural Directives ----------------------------------------------
 //
 //   z-if="expression"          Conditional rendering - element removed when falsy.
 //   z-else-if="expression"     Else-if branch (must be immediate sibling of z-if).
@@ -75,7 +75,7 @@ export function safeEval(expr: string, scope: object[]): any;
 //
 //   z-show="expression"        Toggle `display: none` (element stays in DOM).
 //
-// ─── Attribute Directives ───────────────────────────────────────────────
+// --- Attribute Directives -----------------------------------------------
 //
 //   z-bind:attr="expression"   Dynamic attribute binding.
 //   :attr="expression"         Shorthand for z-bind:attr.
@@ -94,7 +94,7 @@ export function safeEval(expr: string, scope: object[]): any;
 //   z-html="expression"        Set innerHTML from expression (use trusted content only).
 //   z-text="expression"        Set textContent from expression (safe, no HTML).
 //
-// ─── Form & Reference Directives ────────────────────────────────────────
+// --- Form & Reference Directives ----------------------------------------
 //
 //   z-model="stateKey"         Two-way binding for form elements.
 //     Supports: input, textarea, select, select[multiple], contenteditable.
@@ -106,7 +106,7 @@ export function safeEval(expr: string, scope: object[]): any;
 //
 //   z-ref="name"               Element reference → this.refs.name.
 //
-// ─── Event Directives ───────────────────────────────────────────────────
+// --- Event Directives ---------------------------------------------------
 //
 //   @event="method"            Event binding with delegation (shorthand).
 //   z-on:event="method"        Event binding with delegation (full syntax).
@@ -123,7 +123,7 @@ export function safeEval(expr: string, scope: object[]): any;
 //     .debounce.{ms}           Debounce: delay until {ms}ms idle (default 250).
 //     .throttle.{ms}           Throttle: invoke at most once per {ms}ms (default 250).
 //
-// ─── Special Directives ─────────────────────────────────────────────────
+// --- Special Directives -------------------------------------------------
 //
 //   z-cloak                    Hidden until rendered (auto-removed after mount).
 //                              Global CSS: [z-cloak] { display: none !important }.
@@ -132,7 +132,7 @@ export function safeEval(expr: string, scope: object[]): any;
 //   z-pre                      Skip all directive processing for this element
 //                              and its descendants.
 //
-// ─── Slot System ────────────────────────────────────────────────────────
+// --- Slot System --------------------------------------------------------
 //
 //   <slot>                     Default slot - replaced with child content
 //                              passed by the parent component.
@@ -146,7 +146,7 @@ export function safeEval(expr: string, scope: object[]): any;
 //       <p>Body text</p>               (→ default slot)
 //     </my-component>
 //
-// ─── Processing Order ───────────────────────────────────────────────────
+// --- Processing Order ---------------------------------------------------
 //
 //   1. z-for        (pre-innerHTML expansion)
 //   2. z-if chain   (DOM removal)

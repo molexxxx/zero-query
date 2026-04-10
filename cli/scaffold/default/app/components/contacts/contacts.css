@@ -4,7 +4,7 @@
  * to the contacts-page component by zQuery.
  */
 
-/* ── Toolbar ── */
+/* -- Toolbar -- */
 .ct-bar {
   display: flex;
   align-items: center;
@@ -75,7 +75,7 @@
   box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.1);
 }
 
-/* ── Filter chips ── */
+/* -- Filter chips -- */
 .ct-chips {
   display: flex;
   gap: 0.35rem;
@@ -108,7 +108,7 @@
   font-weight: 600;
 }
 
-/* ── Buttons ── */
+/* -- Buttons -- */
 .ct-btn {
   display: inline-flex;
   align-items: center;
@@ -166,7 +166,7 @@
   font-size: 0.78rem;
 }
 
-/* ── Contact Grid ── */
+/* -- Contact Grid -- */
 .ct-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -314,7 +314,7 @@
   opacity: 1;
 }
 
-/* ── Empty ── */
+/* -- Empty -- */
 .ct-empty-card {
   text-align: center;
   padding: 3rem 1rem;
@@ -405,7 +405,7 @@
   color: #fff;
 }
 
-/* ── Add-contact modal heading ── */
+/* -- Add-contact modal heading -- */
 .ct-modal-heading {
   padding: 1.25rem 1.5rem 0;
 }
@@ -421,7 +421,7 @@
   color: var(--text-muted);
 }
 
-/* ── Form inside modal ── */
+/* -- Form inside modal -- */
 .ct-form {
   display: flex;
   flex-direction: column;
@@ -488,7 +488,7 @@
   padding-top: 0.35rem;
 }
 
-/* ── Detail modal: profile ── */
+/* -- Detail modal: profile -- */
 .ct-modal-profile {
   display: flex;
   flex-direction: column;
@@ -608,7 +608,7 @@
   font-weight: 500;
 }
 
-/* ── Responsive ── */
+/* -- Responsive -- */
 @media (max-width: 768px) {
   .ct-bar {
     flex-direction: column;

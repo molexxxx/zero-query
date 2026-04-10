@@ -105,7 +105,7 @@ $.component('toolkit-page', {
     this.state.storeHistory = null;
   },
 
-  /* ── HTTP demos ───────────────────────────────────────────── */
+  /* -- HTTP demos --------------------------------------------- */
 
   async doGet() {
     this._updateHttpMeta('GET', '/posts/1');
@@ -165,7 +165,7 @@ $.component('toolkit-page', {
     } finally { this.state.searchLoading = false; }
   },
 
-  /* ── Utility demos ─────────────────────────────────────────── */
+  /* -- Utility demos ------------------------------------------- */
 
   runUtil(name) {
     this.state.activeUtil = name;
@@ -197,7 +197,7 @@ $.component('toolkit-page', {
           `$.memoize(fibonacci)`,
           ``,
           `fib(35) = ${result}`,
-          `────────────────────────────`,
+          `----------------------------`,
           `No memoize:  ${slowTime.toFixed(1)} ms`,
           `Memoized:    ${fastTime.toFixed(3)} ms`,
           `Cached:      ${cachedTime.toFixed(4)} ms  ⚡`,
@@ -264,7 +264,7 @@ $.component('toolkit-page', {
     this.state.utilOutput = result;
   },
 
-  /* ── Store demos ──────────────────────────────────────────── */
+  /* -- Store demos -------------------------------------------- */
 
   takeSnapshot() {
     this.state.storeSnap = JSON.stringify($.getStore('main').snapshot(), null, 2);

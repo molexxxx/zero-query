@@ -102,7 +102,7 @@
 .pg-vpill:hover    { border-color: var(--accent); color: var(--text); }
 .pg-vpill.on       { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-/* ── Responsive ── */
+/* -- Responsive -- */
 @media (max-width: 768px) {
   .pg-variant-box    { min-width: 0; flex: 1 1 100%; }
   .pg-variant-row    { flex-direction: column; }
