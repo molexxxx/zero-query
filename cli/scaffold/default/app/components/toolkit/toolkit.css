@@ -87,7 +87,7 @@
                  border: 1px solid rgba(88,166,255,.1); }
 .tk-stat-val   { font-weight: 700; color: var(--accent); }
 
-/* ── Responsive: tabs ── */
+/* -- Responsive: tabs -- */
 @media (max-width: 768px) {
   .tk-tabs       { flex-wrap: wrap; }
   .tk-tab        { flex: 1 1 auto; min-width: 0; padding: .5rem .6rem; font-size: .8rem; }

@@ -305,6 +305,27 @@ function minifyCSS(css) {
 }
 
 /**
+ * Heuristic: is the next '/' the start of a regex literal (vs division)?
+ * Used by minifyTemplateLiterals to avoid misinterpreting backticks
+ * inside regex patterns as template literal delimiters.
+ */
+function _isRegexCtxTpl(out) {
+  let end = out.length - 1;
+  while (end >= 0 && (out[end] === ' ' || out[end] === '\t' || out[end] === '\n' || out[end] === '\r')) end--;
+  if (end < 0) return true;
+  const last = out[end];
+  if ('=({[,;:!&|?~+-*/%^>'.includes(last)) return true;
+  const tail = out.substring(Math.max(0, end - 7), end + 1);
+  for (const kw of ['return', 'typeof', 'case', 'in', 'delete', 'void', 'throw', 'new']) {
+    if (tail.endsWith(kw)) {
+      const pos = end - kw.length;
+      if (pos < 0 || !/[a-zA-Z0-9_$]/.test(out[pos])) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Walk JS source and minify the HTML/CSS inside template literals.
  * Handles ${…} interpolations (with nesting) and preserves <pre> blocks.
  * Only trims whitespace sequences that appear between/around HTML tags.
@@ -337,6 +358,25 @@ function minifyTemplateLiterals(code) {
       out += '/*'; i += 2;
       while (i < code.length && !(code[i] === '*' && code[i + 1] === '/')) out += code[i++];
       out += '*/'; i += 2;
+      continue;
+    }
+
+    // Regex literal: copy verbatim (prevents backticks inside regex from
+    // being mistaken for template literals, e.g. /`([^`]+)`/g)
+    if (ch === '/' && _isRegexCtxTpl(out)) {
+      out += ch; i++;
+      let inCharClass = false;
+      while (i < code.length) {
+        const rc = code[i];
+        if (rc === '\\') { out += rc + (code[i + 1] || ''); i += 2; continue; }
+        if (rc === '[') inCharClass = true;
+        if (rc === ']') inCharClass = false;
+        out += rc; i++;
+        if (rc === '/' && !inCharClass) {
+          while (i < code.length && /[gimsuy]/.test(code[i])) { out += code[i]; i++; }
+          break;
+        }
+      }
       continue;
     }
 
@@ -1181,3 +1221,4 @@ function bundleApp() {
 
 module.exports = bundleApp;
 module.exports.stripModuleSyntax = stripModuleSyntax;
+module.exports.minifyTemplateLiterals = minifyTemplateLiterals;

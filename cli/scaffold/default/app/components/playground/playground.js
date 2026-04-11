@@ -10,7 +10,7 @@
 //   z-skip                          - morph opt-out
 //   templateUrl / styleUrl          - external files
 
-// ── $.fn Plugins ─────────────────────────────────────────────────
+// -- $.fn Plugins -------------------------------------------------
 $.fn.highlight = function (color = 'var(--accent)') {
   this.css({ boxShadow: `0 0 0 3px ${color}`, transition: 'box-shadow .3s ease' });
   const self = this;

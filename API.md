@@ -13,6 +13,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Config Options](#config-options)
   - [Routing Modes](#routing-modes)
   - [Route Definitions](#route-definitions)
+  - [Keep-Alive Routes](#keep-alive-routes)
   - [Route Matching](#route-matching)
   - [Navigation](#navigation)
   - [Navigation Links - z-link](#navigation-links-z-link)
@@ -41,8 +42,11 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Events & Forms](#events-forms)
   - [Lifecycle](#lifecycle)
   - [Props & Communication](#props-communication)
+  - [Reactive Props Schema](#reactive-props-schema)
+  - [Store Connectors](#store-connectors)
   - [Scoped Styles](#scoped-styles)
   - [DOM Morphing](#dom-morphing)
+  - [Transitions](#transitions)
   - [Mounting & Instance API](#mounting-instance-api)
   - [Quick Reference](#quick-reference)
 - [Directives](#directives)
@@ -61,6 +65,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [z-cloak](#z-cloak)
   - [z-pre](#z-pre)
   - [z-skip](#z-skip)
+  - [z-transition](#z-transition)
   - [Expression Context](#expression-context)
   - [External Templates](#external-templates)
   - [Processing Order](#processing-order)
@@ -69,6 +74,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Dispatching Actions](#dispatching-actions)
   - [Reading State & Getters](#reading-state-getters)
   - [Subscriptions](#subscriptions)
+  - [Multi-Key Subscriptions](#multi-key-subscriptions)
   - [Middleware](#middleware)
   - [Named Stores](#named-stores)
   - [Async Actions](#async-actions)
@@ -77,6 +83,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [State Utilities](#state-utilities)
   - [Error Resilience](#error-resilience)
   - [Using Store in Components](#using-store-in-components)
+  - [connectStore()](#connectstore)
   - [Quick Reference](#quick-reference)
 - [HTTP Client](#http-client)
   - [Request Methods](#request-methods)
@@ -157,6 +164,10 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Route Link Validation](#route-link-validation)
   - [SSR Error Sanitization](#ssr-error-sanitization)
   - [Best Practices](#best-practices)
+  - [Quick Reference](#quick-reference)
+- [Environment Detection](#environment-detection)
+  - [Environment Properties](#environment-properties)
+  - [Platform Detection](#platform-detection)
   - [Quick Reference](#quick-reference)
 
 ---
@@ -252,6 +263,7 @@ $.router({ el: '#my-container', routes: [...] });
 | `component` | `string \| function` | Yes | Registered component name, or a render function `(route) => htmlString`. |
 | `load` | `() => Promise` | No | Lazy-load function called before mounting (see **Lazy Loading**). |
 | `fallback` | `string` | No | An additional bare path that also mounts the same component. Useful when a `:param` route should also match without the param. |
+| `keepAlive` | `boolean` | No | Cache the component instance instead of destroying it on navigation. Hidden with `display: none` and restored on return. |
 
   
 
@@ -268,6 +280,64 @@ $.router({ el: '#my-container', routes: [...] });
 { path: '/preview',        component: (route) =>              // render function
                             `<h1>Preview: ${route.path}</h1>` }
 ```
+
+  
+### Keep-Alive Routes
+
+  
+Set `keepAlive: true` on a route to cache the component instance instead of destroying it when the user navigates away. The cached component is hidden with `display: none` and restored instantly when the user returns:
+
+  
+
+```javascript
+const router = $.router({
+  routes: [
+    { path: '/',        component: 'home-page' },
+    { path: '/editor',  component: 'code-editor',  keepAlive: true },
+    { path: '/preview', component: 'live-preview', keepAlive: true },
+  ]
+});
+```
+
+  
+**How it works:**
+
+  
+1. **First visit:** Component is mounted normally and stored in the keep-alive cache
+2. **Navigate away:** Instead of calling `destroyed()`, the container is hidden and `deactivated()` fires
+3. **Return visit:** The cached container is shown instantly and `activated()` fires — no re-mount, no state loss
+4. **Router destroy:** All cached instances are properly destroyed and cleaned up
+
+  
+| Hook | When It Fires | Use Case |
+| --- | --- | --- |
+| `activated()` | Component becomes visible (first mount + every cache restore) | Resume timers, refresh data, re-focus inputs |
+| `deactivated()` | Component is hidden (navigated away from) | Pause timers, save scroll position, release resources |
+
+  
+
+```javascript
+$.component('code-editor', {
+  state: { content: '', cursor: 0 },
+  activated() {
+    console.log('Editor activated — restoring focus');
+    this.refs.editor?.focus();
+  },
+  deactivated() {
+    console.log('Editor deactivated — pausing autosave');
+    this.state.cursor = this.refs.editor?.selectionStart || 0;
+  },
+  render() {
+    return \`<textarea z-ref="editor" z-model="content"></textarea>\`;
+  }
+});
+```
+
+  
+> **Tip:** Keep-alive is ideal for heavy components like editors, dashboards, or media players where re-mounting is expensive. The full DOM tree, component state, scroll position, and event listeners are all preserved.
+
+  
+> **Warning:** Keep-alive components are never destroyed until the router itself is destroyed. Use `deactivated()` to release resources (WebSocket connections, intervals) that shouldn’t run while hidden.
 
   
 ### Route Matching
@@ -1248,6 +1318,8 @@ $.component('contact-form', {
 | `mounted()` | First render complete, element in DOM | DOM queries, timers, third-party libs |
 | `updated()` | Re-render complete | Re-init plugins on new DOM |
 | `destroyed()` | Component removed from DOM | Timers, listeners, subscriptions cleanup |
+| `activated()` | Keep-alive component becomes visible | Resume timers, refresh data |
+| `deactivated()` | Keep-alive component is hidden | Pause timers, save positions |
 
   
 
@@ -1387,6 +1459,92 @@ $.component('modal-dialog', {
 
   
 > **Tip:** If you need to query projected content, do so in `updated()` or with a `requestAnimationFrame` in `mounted()`.
+
+  
+### Reactive Props Schema
+
+  
+Define props as an object with type validation and defaults. Props are automatically coerced, validated, and reactive to parent attribute changes:
+
+  
+
+```javascript
+$.component('user-badge', {
+  props: {
+    name:  { type: String,  default: 'Guest' },
+    level: { type: Number,  default: 1 },
+    admin: { type: Boolean, default: false }
+  },
+  render() {
+    return \`<span class="\$\{this.props.admin ? 'admin' : ''}">
+      \$\{this.props.name} (Lv. \$\{this.props.level})
+    </span>\`;
+  }
+});
+```
+
+  
+
+```html
+<!-- All three syntaxes work -->
+<user-badge name="Alice" level="5" admin="true"></user-badge>
+<user-badge :name="state.userName" :level="state.userLevel"></user-badge>
+<user-badge></user-badge>  <!-- uses defaults: Guest, 1, false -->
+```
+
+  
+| Schema Key | Type | Description |
+| --- | --- | --- |
+| `type` | `String \| Number \| Boolean \| Object \| Array` | Constructor for type coercion |
+| `default` | `any \| function` | Default value (or factory function for objects/arrays) |
+
+  
+| Type | Coercion Rule |
+| --- | --- |
+| `Number` | `Number(raw)` |
+| `Boolean` | `raw !== "false" && raw !== "0" && raw !== ""` |
+| `Object` / `Array` | `JSON.parse(raw)` (falls back to raw string) |
+| `String` | No coercion — raw string |
+
+  
+**Resolution priority:** passed props → dynamic `:prop` attribute → static attribute → default value
+
+  
+> **Tip:** When using object-style props, a `MutationObserver` automatically watches the element for attribute changes from parent re-renders. Props are re-resolved and the component updates reactively.
+
+  
+> **Tip:** You can also use the shorthand `{ name: String }` which is equivalent to `{ name: { type: String } }`.
+
+  
+### Store Connectors
+
+  
+Declaratively bind store state to a component using `connectStore()` and the `stores` config key. This replaces manual subscribe/unsubscribe boilerplate:
+
+  
+
+```javascript
+import { connectStore } from 'zero-query';
+import { appStore } from '../../store.js';
+
+$.component('status-bar', {
+  stores: {
+    app: connectStore(appStore, ['user', 'notifications'])
+  },
+  render() {
+    return \`<div class="status-bar">
+      <span>\$\{this.stores.app.user}</span>
+      <span>\$\{this.stores.app.notifications.length} new</span>
+    </div>\`;
+  }
+});
+```
+
+  
+The `stores` config creates automatic multi-key subscriptions. When any listed key changes, `this.stores.` is updated and the component re-renders. All subscriptions are cleaned up on `destroyed()`.
+
+  
+> **Tip:** See Store › connectStore() for full details on the connector API.
 
   
 ### Scoped Styles
@@ -1574,6 +1732,83 @@ $.morphElement($.id('panel'), newEl);
 **Auto-Key Detection:** zQuery automatically detects `z-key` attributes in child lists and switches to keyed reconciliation. If any child has `z-key`, the entire sibling group is reconciled as a keyed list.
 
   
+### Transitions
+
+  
+Add enter/leave CSS transitions to elements controlled by `z-if` or `z-show` using the `z-transition` attribute:
+
+  
+
+```html
+<div z-if="state.visible" z-transition="fade">Hello!</div>
+```
+
+  
+zQuery automatically applies CSS classes during enter and leave phases:
+
+  
+| Phase | Classes Applied | Timing |
+| --- | --- | --- |
+| Enter start | `{name}-enter-from` + `{name}-enter-active` | Before element is shown |
+| Enter end | `{name}-enter-active` + `{name}-enter-to` | After reflow (one frame later) |
+| Leave start | `{name}-leave-from` + `{name}-leave-active` | Before element is hidden |
+| Leave end | `{name}-leave-active` + `{name}-leave-to` | After reflow (one frame later) |
+
+  
+
+```css
+/* Example: fade transition */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+/* Example: slide transition */
+.slide-enter-active, .slide-leave-active {
+  transition: transform 0.3s ease;
+}
+.slide-enter-from {
+  transform: translateX(-100%);
+}
+.slide-leave-to {
+  transform: translateX(100%);
+}
+```
+
+  
+Classes are removed automatically when the `transitionend` or `animationend` event fires.
+
+  
+#### Component-Level Transition Config
+
+  
+Alternatively, define transitions at the component level with explicit class names and optional duration:
+
+  
+
+```javascript
+$.component('fade-panel', {
+  transition: {
+    enter: 'animate-in',
+    leave: 'animate-out',
+    duration: 200             // ms (optional - overrides transitionend detection)
+  },
+  state: { show: true },
+  render() {
+    return \`<div z-if="state.show" z-transition="fade">Content</div>\`;
+  }
+});
+```
+
+  
+> **Tip:** The `z-transition` directive works with both `z-if` (insert/remove) and `z-show` (show/hide). CSS classes are identical in both cases.
+
+  
+> **Tip:** See Directives › z-transition for the directive reference.
+
+  
 ### Mounting & Instance API
 
   
@@ -1598,6 +1833,7 @@ $.mount('#header', 'user-badge', { name: 'Alice' });
 | `this.state` | Reactive state proxy - mutate to trigger re-render |
 | `this.computed` | Access computed properties |
 | `this.props` | Frozen object of HTML attributes / parent-passed props |
+| `this.stores` | Connected store data from `connectStore()` config |
 | `this._el` | The component’s root DOM element |
 | `this.refs` | Map of `z-ref` elements |
 | `this.setState(partial)` | Merge partial state and re-render (pass `{}` to force re-render) |
@@ -1619,6 +1855,11 @@ $.mount('#header', 'user-badge', { name: 'Alice' });
 | `mounted()` | function | After first render (DOM ready) |
 | `updated()` | function | After re-render |
 | `destroyed()` | function | Component removed from DOM |
+| `activated()` | function | Keep-alive component becomes visible |
+| `deactivated()` | function | Keep-alive component is hidden |
+| `props` | object | Reactive props schema `{ name: { type, default } }` |
+| `stores` | object | Store connectors via `connectStore()` |
+| `transition` | object | Transition config `{ enter, leave, duration }` |
 | `styles` | string | Inline CSS string (auto-scoped) |
 | `styleUrl` | string | External CSS file (scoped) |
 | `base` | string | Base path for templateUrl / styleUrl |
@@ -1730,6 +1971,8 @@ __CODEBLOCK_9__
 | `mounted()` | First render complete, element in DOM | DOM queries, timers, third-party libs |
 | `updated()` | Re-render complete | Re-init plugins on new DOM |
 | `destroyed()` | Component removed from DOM | Timers, listeners, subscriptions cleanup |
+| `activated()` | Keep-alive component becomes visible | Resume timers, refresh data |
+| `deactivated()` | Keep-alive component is hidden | Pause timers, save positions |
 
   
 __CODEBLOCK_10__
@@ -1798,13 +2041,63 @@ __CODEBLOCK_15__
 > **Tip:** If you need to query projected content, do so in `updated()` or with a `requestAnimationFrame` in `mounted()`.
 
   
+### Reactive Props Schema
+
+  
+Define props as an object with type validation and defaults. Props are automatically coerced, validated, and reactive to parent attribute changes:
+
+  
+__CODEBLOCK_16__
+
+  
+__CODEBLOCK_17__
+
+  
+| Schema Key | Type | Description |
+| --- | --- | --- |
+| `type` | `String \| Number \| Boolean \| Object \| Array` | Constructor for type coercion |
+| `default` | `any \| function` | Default value (or factory function for objects/arrays) |
+
+  
+| Type | Coercion Rule |
+| --- | --- |
+| `Number` | `Number(raw)` |
+| `Boolean` | `raw !== "false" && raw !== "0" && raw !== ""` |
+| `Object` / `Array` | `JSON.parse(raw)` (falls back to raw string) |
+| `String` | No coercion — raw string |
+
+  
+**Resolution priority:** passed props → dynamic `:prop` attribute → static attribute → default value
+
+  
+> **Tip:** When using object-style props, a `MutationObserver` automatically watches the element for attribute changes from parent re-renders. Props are re-resolved and the component updates reactively.
+
+  
+> **Tip:** You can also use the shorthand `{ name: String }` which is equivalent to `{ name: { type: String } }`.
+
+  
+### Store Connectors
+
+  
+Declaratively bind store state to a component using `connectStore()` and the `stores` config key. This replaces manual subscribe/unsubscribe boilerplate:
+
+  
+__CODEBLOCK_18__
+
+  
+The `stores` config creates automatic multi-key subscriptions. When any listed key changes, `this.stores.` is updated and the component re-renders. All subscriptions are cleaned up on `destroyed()`.
+
+  
+> **Tip:** See Store › connectStore() for full details on the connector API.
+
+  
 ### Scoped Styles
 
   
 Keep styles local to a component with the `styles` key or `styleUrl` for external CSS:
 
   
-__CODEBLOCK_16__
+__CODEBLOCK_19__
 
   
 Styles are scoped using an auto-generated attribute, so they never leak. You can also use `styleUrl` for external CSS files. `@media`, `@keyframes`, and `@font-face` rules are preserved as-is (not scoped).
@@ -1816,7 +2109,7 @@ Styles are scoped using an auto-generated attribute, so they never leak. You can
 Load global (unscoped) CSS into the page. Returns a handle with a `.ready` promise and a `.remove()` method:
 
   
-__CODEBLOCK_17__
+__CODEBLOCK_20__
 
   
 | Option | Default | Description |
@@ -1825,7 +2118,7 @@ __CODEBLOCK_17__
 | `bg` | `"#0d1117"` | Background color of the loading overlay. |
 
   
-__CODEBLOCK_18__
+__CODEBLOCK_21__
 
   
 > **Tip:** Duplicate URLs are ignored — calling `$.style("theme.css")` twice only loads it once.
@@ -1876,7 +2169,7 @@ zQuery re-renders by **morphing** the real DOM against the new template HTML —
 zQuery uses a **Longest Increasing Subsequence (LIS)** algorithm to reconcile keyed lists with the minimum number of DOM moves:
 
   
-__CODEBLOCK_19__
+__CODEBLOCK_22__
 
   
 | Mode | Behavior |
@@ -1891,7 +2184,7 @@ __CODEBLOCK_19__
 Mark a subtree as “hands off” — the morph engine will never touch it. Useful for third-party widgets, ``, or syntax-highlighted code blocks:
 
   
-__CODEBLOCK_20__
+__CODEBLOCK_23__
 
   
 #### Manual Morph API
@@ -1903,7 +2196,7 @@ __CODEBLOCK_20__
 | `$.morphElement(oldEl, newEl)` | Morph by comparing two live DOM elements |
 
   
-__CODEBLOCK_21__
+__CODEBLOCK_24__
 
   
 > **Tip:** When you use `$()` to set `.html()` on a component root, auto-morph kicks in automatically — no manual call needed.
@@ -1912,13 +2205,54 @@ __CODEBLOCK_21__
 **Auto-Key Detection:** zQuery automatically detects `z-key` attributes in child lists and switches to keyed reconciliation. If any child has `z-key`, the entire sibling group is reconciled as a keyed list.
 
   
+### Transitions
+
+  
+Add enter/leave CSS transitions to elements controlled by `z-if` or `z-show` using the `z-transition` attribute:
+
+  
+__CODEBLOCK_25__
+
+  
+zQuery automatically applies CSS classes during enter and leave phases:
+
+  
+| Phase | Classes Applied | Timing |
+| --- | --- | --- |
+| Enter start | `{name}-enter-from` + `{name}-enter-active` | Before element is shown |
+| Enter end | `{name}-enter-active` + `{name}-enter-to` | After reflow (one frame later) |
+| Leave start | `{name}-leave-from` + `{name}-leave-active` | Before element is hidden |
+| Leave end | `{name}-leave-active` + `{name}-leave-to` | After reflow (one frame later) |
+
+  
+__CODEBLOCK_26__
+
+  
+Classes are removed automatically when the `transitionend` or `animationend` event fires.
+
+  
+#### Component-Level Transition Config
+
+  
+Alternatively, define transitions at the component level with explicit class names and optional duration:
+
+  
+__CODEBLOCK_27__
+
+  
+> **Tip:** The `z-transition` directive works with both `z-if` (insert/remove) and `z-show` (show/hide). CSS classes are identical in both cases.
+
+  
+> **Tip:** See Directives › z-transition for the directive reference.
+
+  
 ### Mounting & Instance API
 
   
 Mount your app entry point or standalone components with these helpers:
 
   
-__CODEBLOCK_22__
+__CODEBLOCK_28__
 
   
 | Property / Method | Description |
@@ -1926,6 +2260,7 @@ __CODEBLOCK_22__
 | `this.state` | Reactive state proxy - mutate to trigger re-render |
 | `this.computed` | Access computed properties |
 | `this.props` | Frozen object of HTML attributes / parent-passed props |
+| `this.stores` | Connected store data from `connectStore()` config |
 | `this._el` | The component’s root DOM element |
 | `this.refs` | Map of `z-ref` elements |
 | `this.setState(partial)` | Merge partial state and re-render (pass `{}` to force re-render) |
@@ -1947,6 +2282,11 @@ __CODEBLOCK_22__
 | `mounted()` | function | After first render (DOM ready) |
 | `updated()` | function | After re-render |
 | `destroyed()` | function | Component removed from DOM |
+| `activated()` | function | Keep-alive component becomes visible |
+| `deactivated()` | function | Keep-alive component is hidden |
+| `props` | object | Reactive props schema `{ name: { type, default } }` |
+| `stores` | object | Store connectors via `connectStore()` |
+| `transition` | object | Transition config `{ enter, leave, duration }` |
 | `styles` | string | Inline CSS string (auto-scoped) |
 | `styleUrl` | string | External CSS file (scoped) |
 | `base` | string | Base path for templateUrl / styleUrl |
@@ -1988,6 +2328,7 @@ Directives are special HTML attributes that add reactive behavior to your templa
 | `z-cloak` |  | Hide until component renders |
 | `z-pre` |  | Skip directive processing |
 | `z-skip` |  | Skip morph for subtree |
+| `z-transition` |  | Enter/leave CSS transitions for z-if and z-show |
 | `z-to-top` |  | Scroll to top on click — see **Router** section |
 | `z-link` |  | Client-side SPA link — see **Router** section |
 
@@ -2687,6 +3028,50 @@ Tell the morph engine to skip this subtree entirely during re-renders:
 > `z-to-top` and `z-link` are router attributes — see the **Router** documentation section for full usage, values, and examples.
 
   
+### z-transition
+
+  
+Add CSS enter/leave transitions to elements controlled by `z-if` or `z-show`:
+
+  
+
+```html
+<!-- Fade transition -->
+<div z-if="state.visible" z-transition="fade">Content</div>
+
+<!-- Slide transition -->
+<div z-show="state.open" z-transition="slide">Panel</div>
+```
+
+  
+zQuery applies CSS classes automatically during enter and leave phases:
+
+  
+| Phase | Classes Applied |
+| --- | --- |
+| Enter start (before reflow) | `{name}-enter-from` + `{name}-enter-active` |
+| Enter end (after reflow) | `{name}-enter-active` + `{name}-enter-to` |
+| Leave start (before reflow) | `{name}-leave-from` + `{name}-leave-active` |
+| Leave end (after reflow) | `{name}-leave-active` + `{name}-leave-to` |
+
+  
+
+```css
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+```
+
+  
+Classes are removed automatically on `transitionend` or `animationend`. Works with both CSS transitions and CSS animations.
+
+  
+> **Tip:** See Components › Transitions for the component-level transition config alternative.
+
+  
 ### Expression Context
 
   
@@ -2851,12 +3236,14 @@ React to state changes anywhere in your app:
 | --- | --- |
 | Key-specific subscriber | React when a single state key changes |
 | Wildcard subscriber | Logging, analytics, persistence (all changes) |
+| Multi-key subscriber | React when any of several keys change |
 | Component-bound | Re-render component on store change |
 
   
 | Signature | Callback Args | Use Case |
 | --- | --- | --- |
 | `subscribe(key, fn)` | `(key, value, oldValue)` | React to a single state key |
+| `subscribe([keys], fn)` | `(key, value, oldValue)` | React to multiple specific keys |
 | `subscribe(fn)` | `(key, value, oldValue)` | React to all state changes |
 
   
@@ -2874,11 +3261,37 @@ const unsub = store.subscribe('count', (key, value, oldValue) => {
 const unsubAll = store.subscribe((key, value, oldValue) => {
   console.log(\`[Store] \$\{key}: \$\{oldValue} → \$\{value}\`);
 });
-
+// Subscribe to MULTIPLE keys at once
+const unsubMulti = store.subscribe(['count', 'theme'], (key, value, oldValue) => {
+  console.log(\`[Multi] ${key}: ${oldValue} → ${value}\`);
+});
 // Unsubscribe later
 unsub();
 unsubAll();
+unsubMulti();
 ```
+
+  
+### Multi-Key Subscriptions
+
+  
+Subscribe to multiple state keys at once by passing an array. The callback fires only when one of the listed keys changes:
+
+  
+
+```javascript
+const unsub = store.subscribe(['count', 'theme'], (key, value, oldValue) => {
+  console.log(\`\$\{key} changed: \$\{oldValue} → \$\{value}\`);
+});
+
+// Fires when 'count' or 'theme' changes, ignores other keys
+store.dispatch('increment');        // → callback fires (count changed)
+store.dispatch('setTheme', 'dark'); // → callback fires (theme changed)
+store.dispatch('login', 'Alice');   // → callback does NOT fire
+```
+
+  
+> **Tip:** Multi-key subscriptions are implemented as filtered wildcard listeners — lightweight and efficient. The unsubscribe function works exactly like single-key subscriptions.
 
   
 ### Middleware
@@ -3166,6 +3579,49 @@ $.component('user-status', {
 > **Warning:** Always call the unsubscribe function in `destroyed()` to avoid memory leaks.
 
   
+### connectStore()
+
+  
+Declaratively connect a store to a component using the `stores` config. This eliminates manual subscribe/unsubscribe boilerplate:
+
+  
+
+```javascript
+import { connectStore } from 'zero-query';
+import { appStore } from '../../store.js';
+
+$.component('file-list', {
+  stores: {
+    app: connectStore(appStore, ['files', 'isProcessing'])
+  },
+  render() {
+    if (this.stores.app.isProcessing) return \`<p>Loading…</p>\`;
+    return \`<ul>\$\{this.stores.app.files.map(f =>
+      \`<li>\$\{f.name}</li>\`
+    ).join('')}</ul>\`;
+  }
+});
+```
+
+  
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `store` | `Store` | The store instance to connect |
+| `keys` | `string[]` | State keys to sync into the component |
+
+  
+**How it works:**
+
+  
+1. At mount time, the component snapshots the listed keys from `store.state`
+2. A multi-key subscription is created automatically
+3. When any listed key changes, `this.stores..` is updated and the component re-renders
+4. All subscriptions are cleaned up automatically on `destroyed()`
+
+  
+> **Tip:** Access connected store data in templates via `this.stores.app.files`. The connector uses multi-key subscriptions under the hood, so the component only re-renders when the listed keys change.
+
+  
 ### Quick Reference
 
   
@@ -3177,8 +3633,10 @@ $.component('user-status', {
 | `store.state` | Reactive state proxy — read/write triggers subscriptions |
 | `store.getters` | Computed derived values (lazy, re-evaluated on access) |
 | `store.dispatch(name, ...args)` | Run a named action through middleware → returns action result |
-| `store.subscribe(key, fn)` | Listen to one key — `fn(value, old, key)` |
+| `store.subscribe(key, fn)` | Listen to one key — `fn(key, value, old)` |
+| `store.subscribe([keys], fn)` | Listen to multiple keys — `fn(key, value, old)` |
 | `store.subscribe(fn)` | Listen to all keys — `fn(key, value, old)` |
+| `connectStore(store, keys)` | Create a store connector for component `stores` config |
 | `store.use(fn)` | Add middleware (chainable) — return `false` to block |
 | `store.batch(fn)` | Group mutations — subscribers fire once per key with final value |
 | `store.checkpoint()` | Snapshot state onto undo stack (clears redo) |
@@ -5994,6 +6452,71 @@ zQuery’s SSR already strips error details from HTML output. Apply the same pri
 
 ---
 
+## Environment Detection
+
+  
+zQuery exposes runtime environment properties on the global `$` object for Electron, browser, and Node.js detection. These are set once at initialization and are read-only.
+
+  
+### Environment Properties
+
+  
+| Property | Type | Description |
+| --- | --- | --- |
+| `$.isElectron` | `boolean` | `true` when running inside Electron (detected via `navigator.userAgent` or `process.versions.electron`) |
+| `$.platform` | `string` | Current runtime: `"electron"`, `"browser"`, or `"node"` |
+
+  
+
+```javascript
+console.log($.isElectron);  // true or false
+console.log($.platform);    // 'electron', 'browser', or 'node'
+```
+
+  
+### Platform Detection
+
+  
+Use these properties to conditionally load platform-specific code:
+
+  
+
+```javascript
+// Electron-specific features
+if ($.isElectron) {
+  const { ipcRenderer } = require('electron');
+  ipcRenderer.send('app-ready');
+}
+
+// Platform-aware routing
+$.router({
+  mode: $.platform === 'electron' ? 'hash' : 'history',
+  routes: [...]
+});
+
+// Conditional API base
+const API_BASE = $.platform === 'electron'
+  ? 'http://localhost:3000'
+  : '/api';
+```
+
+  
+> **Detection logic:** Electron is detected by checking `navigator.userAgent` for the `Electron` string, or by checking `process.versions.electron`. The `$.platform` value is derived from `$.isElectron` and the presence of `window`.
+
+  
+> **Tip:** These properties are available immediately — no async detection or initialization needed. They are set when zQuery loads.
+
+  
+### Quick Reference
+
+  
+| API | Returns | Description |
+| --- | --- | --- |
+| `$.isElectron` | `boolean` | `true` if running in Electron |
+| `$.platform` | `string` | `"electron"` \| `"browser"` \| `"node"` |
+
+---
+
 ## ES Module Exports (for npm/bundler usage)
 
 When used as an ES module (not the built bundle), the library provides named exports for every public API:
@@ -6027,6 +6550,7 @@ import {
   matchRoute,
   createStore,
   getStore,
+  connectStore,
   http,
   ZQueryError,
   ErrorCode,

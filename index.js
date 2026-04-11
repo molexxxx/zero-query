@@ -13,7 +13,7 @@ import { query, queryAll, ZQueryCollection } from './src/core.js';
 import { reactive, Signal, signal, computed, effect, batch, untracked } from './src/reactive.js';
 import { component, mount, mountAll, getInstance, destroy, getRegistry, prefetch, style } from './src/component.js';
 import { createRouter, getRouter, matchRoute } from './src/router.js';
-import { createStore, getStore } from './src/store.js';
+import { createStore, getStore, connectStore } from './src/store.js';
 import { http } from './src/http.js';
 import { morph, morphElement } from './src/diff.js';
 import { safeEval } from './src/expression.js';
@@ -122,6 +122,7 @@ $.matchRoute = matchRoute;
 // --- Store -----------------------------------------------------------------
 $.store    = createStore;
 $.getStore = getStore;
+$.connectStore = connectStore;
 
 // --- HTTP ------------------------------------------------------------------
 $.http   = http;
@@ -186,6 +187,13 @@ $.libSize   = '__LIB_SIZE__';
 $.unitTests = '__UNIT_TESTS__';
 $.meta      = {};              // populated at build time by CLI bundler
 
+// --- Environment detection -------------------------------------------------
+$.isElectron = typeof navigator !== 'undefined' && /Electron/i.test(navigator.userAgent)
+  || typeof process !== 'undefined' && process.versions != null && !!process.versions.electron;
+$.platform = $.isElectron ? 'electron'
+  : typeof window !== 'undefined' ? 'browser'
+  : 'node';
+
 $.noConflict = () => {
   if (typeof window !== 'undefined' && window.$ === $) {
     delete window.$;
@@ -216,7 +224,7 @@ export {
   morph, morphElement,
   safeEval,
   createRouter, getRouter, matchRoute,
-  createStore, getStore,
+  createStore, getStore, connectStore,
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError,
   debounce, throttle, pipe, once, sleep,

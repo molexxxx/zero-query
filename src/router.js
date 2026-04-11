@@ -47,6 +47,9 @@ class Router {
     const isFile = typeof location !== 'undefined' && location.protocol === 'file:';
     this._mode = isFile ? 'hash' : (config.mode || 'history');
 
+    // Keep-alive cache: component name → { container, instance }
+    this._keepAliveCache = new Map();
+
     // Base path for sub-path deployments
     // Priority: explicit config.base → window.__ZQ_BASE → <base href> tag
     let rawBase = config.base;
@@ -604,34 +607,96 @@ class Router {
         await prefetch(matched.component);
       }
 
-      // Destroy previous
-      if (this._instance) {
+      const isKeepAlive = !!matched.keepAlive;
+      const componentName = typeof matched.component === 'string' ? matched.component : null;
+
+      // Deactivate previous keep-alive instance (hide instead of destroy)
+      if (this._instance && this._currentKeepAlive && this._currentComponentName) {
+        const cached = this._keepAliveCache.get(this._currentComponentName);
+        if (cached) {
+          cached.container.style.display = 'none';
+          // Call deactivated() lifecycle hook
+          if (cached.instance._def.deactivated) {
+            try { cached.instance._def.deactivated.call(cached.instance); }
+            catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${this._currentComponentName}" deactivated() threw`, { component: this._currentComponentName }, err); }
+          }
+        }
+        this._instance = null;
+      } else if (this._instance) {
+        // Destroy previous non-keepAlive instance
         this._instance.destroy();
         this._instance = null;
       }
 
-      // Create container
       const _routeStart = typeof window !== 'undefined' && window.__zqRenderHook ? performance.now() : 0;
-      this._el.innerHTML = '';
 
       // Pass route params and query as props
       const props = { ...params, $route: to, $query: query, $params: params };
 
+      // Keep-alive: reuse cached instance
+      if (isKeepAlive && componentName && this._keepAliveCache.has(componentName)) {
+        const cached = this._keepAliveCache.get(componentName);
+        // Hide all children, show the cached one
+        [...this._el.children].forEach(c => { c.style.display = 'none'; });
+        cached.container.style.display = '';
+        this._instance = cached.instance;
+        this._currentKeepAlive = true;
+        this._currentComponentName = componentName;
+        // Call activated() lifecycle hook
+        if (cached.instance._def.activated) {
+          try { cached.instance._def.activated.call(cached.instance); }
+          catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${componentName}" activated() threw`, { component: componentName }, err); }
+        }
+        if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', componentName);
+      }
       // If component is a string (registered name), mount it
-      if (typeof matched.component === 'string') {
-        const container = document.createElement(matched.component);
+      else if (componentName) {
+        // Hide all keep-alive cached children (don't destroy)
+        [...this._el.children].forEach(c => {
+          if (c.dataset.zqKeepAlive) {
+            c.style.display = 'none';
+          }
+        });
+        // Remove non-keep-alive children
+        [...this._el.children].forEach(c => {
+          if (!c.dataset.zqKeepAlive) c.remove();
+        });
+
+        const container = document.createElement(componentName);
+        if (isKeepAlive) container.dataset.zqKeepAlive = componentName;
         this._el.appendChild(container);
         try {
-          this._instance = mount(container, matched.component, props);
+          this._instance = mount(container, componentName, props);
         } catch (err) {
           reportError(ErrorCode.COMP_NOT_FOUND, `Failed to mount component for route "${matched.path}"`, { component: matched.component, path: matched.path }, err);
           return;
         }
-        if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', matched.component);
+
+        if (isKeepAlive) {
+          this._keepAliveCache.set(componentName, { container, instance: this._instance });
+          // Call activated() on first mount
+          if (this._instance._def.activated) {
+            try { this._instance._def.activated.call(this._instance); }
+            catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${componentName}" activated() threw`, { component: componentName }, err); }
+          }
+        }
+
+        this._currentKeepAlive = isKeepAlive;
+        this._currentComponentName = componentName;
+        if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', componentName);
       }
       // If component is a render function
       else if (typeof matched.component === 'function') {
-        this._el.innerHTML = matched.component(to);
+        // Clear non-keepAlive content
+        [...this._el.children].forEach(c => {
+          if (c.dataset.zqKeepAlive) c.style.display = 'none';
+          else c.remove();
+        });
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = matched.component(to);
+        while (wrapper.firstChild) this._el.appendChild(wrapper.firstChild);
+        this._currentKeepAlive = false;
+        this._currentComponentName = null;
         if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', to);
       }
     }
@@ -690,6 +755,11 @@ class Router {
       document.removeEventListener('click', this._onLinkClick);
       this._onLinkClick = null;
     }
+    // Destroy all keep-alive cached instances
+    for (const [, cached] of this._keepAliveCache) {
+      cached.instance.destroy();
+    }
+    this._keepAliveCache.clear();
     if (this._instance) this._instance.destroy();
     this._listeners.clear();
     this._substateListeners = [];

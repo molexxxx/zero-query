@@ -149,7 +149,7 @@ function _minifyBody(code) {
     const ch = code[i];
     const nx = code[i + 1];
 
-    // ── Regular string literal: copy verbatim ─────────────────
+    // -- Regular string literal: copy verbatim -----------------
     if (ch === '"' || ch === "'") {
       const q = ch;
       out += ch; i++;
@@ -162,14 +162,14 @@ function _minifyBody(code) {
       continue;
     }
 
-    // ── Template literal: copy verbatim with ${…} nesting ───────
+    // -- Template literal: copy verbatim with ${…} nesting -------
     if (ch === '`') {
       const tpl = _copyTemplateLiteral(code, i);
       out += tpl.text; i = tpl.end;
       continue;
     }
 
-    // ── Block comment: skip ─────────────────────────────────────
+    // -- Block comment: skip -------------------------------------
     if (ch === '/' && nx === '*') {
       i += 2;
       while (i < code.length && !(code[i] === '*' && code[i + 1] === '/')) i++;
@@ -177,14 +177,14 @@ function _minifyBody(code) {
       continue;
     }
 
-    // ── Line comment: skip ──────────────────────────────────────
+    // -- Line comment: skip --------------------------------------
     if (ch === '/' && nx === '/') {
       i += 2;
       while (i < code.length && code[i] !== '\n') i++;
       continue;
     }
 
-    // ── Regex literal: copy verbatim ────────────────────────────
+    // -- Regex literal: copy verbatim ----------------------------
     if (ch === '/') {
       if (_isRegexCtx(out)) {
         out += ch; i++;
@@ -204,7 +204,7 @@ function _minifyBody(code) {
       }
     }
 
-    // ── Whitespace: collapse ────────────────────────────────────
+    // -- Whitespace: collapse ------------------------------------
     if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r') {
       let hasNewline = ch === '\n' || ch === '\r';
       while (i < code.length && (code[i] === ' ' || code[i] === '\t' || code[i] === '\n' || code[i] === '\r')) {

@@ -16,7 +16,7 @@
   <button class="tk-tab {{activeTab === 'store' ? 'active' : ''}}" @click="setTab('store')">◈ Store</button>
 </div>
 
-<!-- ── HTTP Tab ───────────────────────────────────── -->
+<!-- -- HTTP Tab ------------------------------------- -->
 <div z-if="activeTab === 'http'">
   <div class="card">
     <h3>CRUD Operations</h3>
@@ -61,7 +61,7 @@
   </div>
 </div>
 
-<!-- ── Utilities Tab ──────────────────────────────── -->
+<!-- -- Utilities Tab -------------------------------- -->
 <div z-else-if="activeTab === 'utils'">
   <div class="card">
     <h3>Utility Belt</h3>
@@ -98,7 +98,7 @@
   </div>
 </div>
 
-<!-- ── Store Tab ──────────────────────────────────── -->
+<!-- -- Store Tab ------------------------------------ -->
 <div z-else>
   <div class="card" style="margin-bottom:.75rem;">
     <h3>Store Inspector</h3>

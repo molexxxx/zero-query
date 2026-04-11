@@ -1021,3 +1021,83 @@ describe('CLI - createProject', () => {
     spy.mockRestore();
   });
 });
+
+
+// ===========================================================================
+// minifyTemplateLiterals - regex literal awareness
+// ===========================================================================
+
+describe('CLI - minifyTemplateLiterals regex handling', () => {
+  let minifyTemplateLiterals;
+
+  beforeEach(async () => {
+    const mod = await import('../cli/commands/bundle.js');
+    minifyTemplateLiterals = mod.minifyTemplateLiterals;
+  });
+
+  it('preserves code after regex containing backtick characters', () => {
+    // Simulates: h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+    // The backtick inside the regex must not be mistaken for a template literal.
+    const input = "h = h.replace(/\x60([^\x60]+)\x60/g, '<code>$1</code>');\nreturn h;";
+    const result = minifyTemplateLiterals(input);
+    expect(result).toContain('return h');
+    expect(result).toContain('<code>$1</code>');
+  });
+
+  it('does not eat closing braces after backtick-in-regex', () => {
+    const input = [
+      "var fmt = {",
+      "  md(raw) {",
+      "    let h = raw;",
+      "    h = h.replace(/\x60([^\x60]+)\x60/g, '<code>$1</code>');",
+      "    h = h.replace(/^[\\-\\*] (.+)$/gm, '<li>$1</li>');",
+      "    return h;",
+      "  }",
+      "};",
+      "var canvas = document.getElementById('bg-canvas');",
+    ].join('\n');
+    const result = minifyTemplateLiterals(input);
+    expect(result).toContain('return h;');
+    expect(result).toContain('};');
+    expect(result).toContain("getElementById('bg-canvas')");
+  });
+
+  it('handles regex with single backtick', () => {
+    const input = "x.replace(/\x60/g, \"'\");\nvar y = 1;";
+    const result = minifyTemplateLiterals(input);
+    expect(result).toContain('var y = 1');
+  });
+
+  it('handles regex backtick in character class', () => {
+    const input = "x.match(/[\x60'\"]/g);\nvar z = 2;";
+    const result = minifyTemplateLiterals(input);
+    expect(result).toContain('var z = 2');
+  });
+
+  it('does not confuse division operator with regex', () => {
+    // After a number or identifier, / is division, not regex start
+    const input = "var x = a / b;\nvar t = \x60hello\x60;";
+    const result = minifyTemplateLiterals(input);
+    expect(result).toContain('a / b');
+    expect(result).toContain('\x60hello\x60');
+  });
+
+  it('still minifies real template literals correctly', () => {
+    const input = "var html = \x60<div>  <span>  text  </span>  </div>\x60;";
+    const result = minifyTemplateLiterals(input);
+    // Template whitespace should be collapsed
+    expect(result).not.toContain('  <span>  ');
+  });
+
+  it('handles regex after return keyword', () => {
+    const input = "return /\x60test\x60/g;\nvar after = 1;";
+    const result = minifyTemplateLiterals(input);
+    expect(result).toContain('var after = 1');
+  });
+
+  it('handles regex after assignment operator', () => {
+    const input = "var re = /\x60([^\x60]+)\x60/gi;\nvar next = true;";
+    const result = minifyTemplateLiterals(input);
+    expect(result).toContain('var next = true');
+  });
+});
