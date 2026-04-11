@@ -67,16 +67,16 @@ function assertSection(sec) {
 // ===========================================================================
 describe('Documentation sections structure', () => {
 
-  it('exports SECTIONS array with all 16 sections', () => {
+  it('exports SECTIONS array with all 17 sections', () => {
     expect(Array.isArray(SECTIONS)).toBe(true);
-    expect(SECTIONS.length).toBe(16);
+    expect(SECTIONS.length).toBe(17);
   });
 
   const expectedIds = [
     'getting-started', 'dev-workflow', 'devtools', 'error-handling',
     'cli-bundler', 'project-structure', 'router', 'components',
     'directives', 'store', 'reactive', 'selectors', 'ssr',
-    'http', 'utils', 'security',
+    'http', 'utils', 'security', 'environment',
   ];
 
   it.each(expectedIds)('section "%s" exists with valid structure', (id) => {

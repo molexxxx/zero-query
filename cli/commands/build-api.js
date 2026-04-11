@@ -29,6 +29,7 @@ const API_SECTIONS = [
   { id: 'error-handling', file: 'error-handling.js',   exportName: 'errorHandling'},
   { id: 'ssr',            file: 'ssr.js',              exportName: 'ssr'          },
   { id: 'security',       file: 'security.js',         exportName: 'security'     },
+  { id: 'environment',   file: 'environment.js',      exportName: 'environment'  },
 ];
 
 
