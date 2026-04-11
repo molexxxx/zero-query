@@ -189,8 +189,14 @@ class Store {
   }
 
   /**
-   * Subscribe to changes on a specific state key
-   * @param {string|Function} keyOrFn - state key, or function for all changes
+   * Subscribe to changes on a specific state key, multiple keys, or all changes.
+   *
+   * Signatures:
+   *   subscribe(callback)             → wildcard, fires on every change
+   *   subscribe('key', callback)      → fires when 'key' changes
+   *   subscribe(['a','b'], callback)  → fires when any listed key changes
+   *
+   * @param {string|string[]|Function} keyOrFn - state key, array of keys, or function for all changes
    * @param {Function} [fn] - callback (key, value, oldValue)
    * @returns {Function} - unsubscribe
    */
@@ -199,6 +205,16 @@ class Store {
       // Wildcard - listen to all changes
       this._wildcards.add(keyOrFn);
       return () => this._wildcards.delete(keyOrFn);
+    }
+
+    // Multi-key subscription: subscribe(['files', 'isProcessing'], callback)
+    if (Array.isArray(keyOrFn)) {
+      const keys = keyOrFn;
+      const handler = (key, value, old) => {
+        if (keys.includes(key)) fn(key, value, old);
+      };
+      this._wildcards.add(handler);
+      return () => this._wildcards.delete(handler);
     }
 
     if (!this._subscribers.has(keyOrFn)) {
@@ -271,4 +287,32 @@ export function createStore(name, config) {
 
 export function getStore(name = 'default') {
   return _stores.get(name) || null;
+}
+
+
+// ---------------------------------------------------------------------------
+// Store-Component Connector
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a store connector descriptor for use in component definitions.
+ * When used in a component's `stores` config, auto-subscribes to the
+ * listed keys on mount and cleans up on destroy.
+ *
+ * Usage:
+ *   $.component('my-comp', {
+ *     stores: {
+ *       app: connectStore(appStore, ['files', 'isProcessing']),
+ *     },
+ *     render() {
+ *       return `<div>${this.stores.app.files.length} files</div>`;
+ *     }
+ *   });
+ *
+ * @param {Store} store - the store instance to connect
+ * @param {string[]} keys - state keys to sync
+ * @returns {{ _zqConnector: true, store: Store, keys: string[] }}
+ */
+export function connectStore(store, keys) {
+  return { _zqConnector: true, store, keys };
 }
