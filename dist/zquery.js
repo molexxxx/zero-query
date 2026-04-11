@@ -3031,8 +3031,58 @@ class Component {
       this._slotContent['default'] = defaultSlotNodes.join('');
     }
 
-    // Props (read-only from parent)
-    this.props = Object.freeze({ ...props });
+    // Props - reactive when definition.props is defined, frozen otherwise
+    if (definition.props && typeof definition.props === 'object' && !Array.isArray(definition.props)) {
+      // Reactive props with type coercion and defaults
+      this.props = this._resolveReactiveProps(definition.props, props);
+      // MutationObserver to re-read props when parent re-renders and changes attributes
+      this._propObserver = new MutationObserver((mutations) => {
+        if (this._destroyed) return;
+        let changed = false;
+        for (const mut of mutations) {
+          if (mut.type === 'attributes') {
+            const attrName = mut.attributeName;
+            // Skip internal attributes
+            if (attrName.startsWith('z-') || attrName.startsWith('@') || attrName.startsWith(':') || attrName.startsWith('data-zq')) continue;
+            // Check if this is a defined prop (attribute names are lowercase)
+            const propName = attrName.startsWith(':') ? attrName.slice(1) : attrName;
+            if (propName in definition.props) {
+              changed = true;
+            }
+          }
+        }
+        if (changed) {
+          this.props = this._resolveReactiveProps(definition.props, {});
+          this._scheduleUpdate();
+        }
+      });
+      this._propObserver.observe(el, { attributes: true });
+    } else {
+      // Legacy: frozen props from parent
+      this.props = Object.freeze({ ...props });
+    }
+
+    // Store connectors - auto-subscribe to store keys
+    this._storeCleanups = [];
+    this.stores = {};
+    if (definition.stores && typeof definition.stores === 'object') {
+      for (const [alias, connector] of Object.entries(definition.stores)) {
+        if (!connector || !connector._zqConnector) continue;
+        const { store, keys } = connector;
+        // Initialize snapshot
+        const snap = {};
+        for (const key of keys) {
+          snap[key] = store.state[key];
+        }
+        this.stores[alias] = snap;
+        // Subscribe to changes
+        const unsub = store.subscribe(keys, (key, value) => {
+          this.stores[alias][key] = value;
+          if (!this._destroyed) this._scheduleUpdate();
+        });
+        this._storeCleanups.push(unsub);
+      }
+    }
 
     // Reactive state
     const initialState = typeof definition.state === 'function'
@@ -3109,6 +3159,61 @@ class Component {
         this._updateQueued = false;
       }
     });
+  }
+
+  /**
+   * Resolve reactive props from the definition's prop schema.
+   * Reads from element attributes, applies type coercion and defaults.
+   * Passed props (from mount) override attributes.
+   * @param {object} propDefs - { propName: { type, default } }
+   * @param {object} passedProps - props passed programmatically from mount()
+   * @returns {object} resolved props (frozen)
+   */
+  _resolveReactiveProps(propDefs, passedProps) {
+    const resolved = {};
+    for (const [name, schema] of Object.entries(propDefs)) {
+      const def = typeof schema === 'object' && schema !== null ? schema : { type: schema };
+      const type = def.type;
+      const defaultVal = def.default;
+
+      // Priority: passed props > dynamic :prop attribute > static attribute > default
+      if (name in passedProps) {
+        resolved[name] = passedProps[name];
+        continue;
+      }
+
+      // Check for dynamic :prop attribute (already evaluated by parent mount)
+      let rawAttr = this._el.getAttribute(':' + name);
+      let hasAttr = rawAttr !== null;
+      if (!hasAttr) {
+        rawAttr = this._el.getAttribute(name);
+        hasAttr = rawAttr !== null;
+      }
+
+      if (hasAttr && rawAttr !== null) {
+        resolved[name] = this._coercePropValue(rawAttr, type);
+      } else if (defaultVal !== undefined) {
+        resolved[name] = typeof defaultVal === 'function' ? defaultVal() : defaultVal;
+      } else {
+        resolved[name] = undefined;
+      }
+    }
+    return Object.freeze(resolved);
+  }
+
+  /**
+   * Coerce a raw attribute string to the specified type.
+   * @param {string} raw - attribute value string
+   * @param {Function} type - String, Number, Boolean, Object, or Array
+   * @returns {*}
+   */
+  _coercePropValue(raw, type) {
+    if (type === Number) return Number(raw);
+    if (type === Boolean) return raw !== 'false' && raw !== '0' && raw !== '';
+    if (type === Object || type === Array) {
+      try { return JSON.parse(raw); } catch { return raw; }
+    }
+    return raw; // String or unspecified
   }
 
   // Load external templateUrl / styleUrl if specified (once per definition)
@@ -3873,8 +3978,20 @@ class Component {
           item.el.removeAttribute('z-if');
           item.el.removeAttribute('z-else-if');
           item.el.removeAttribute('z-else');
+          // Transition enter for z-if elements becoming visible
+          const transName = item.el.getAttribute('z-transition');
+          if (transName) {
+            item.el.removeAttribute('z-transition');
+            this._transitionEnter(item.el, transName);
+          }
         } else {
-          item.el.remove();
+          // Transition leave for z-if elements being removed
+          const transName = item.el.getAttribute('z-transition');
+          if (transName) {
+            this._transitionLeave(item.el, transName, () => item.el.remove());
+          } else {
+            item.el.remove();
+          }
         }
       }
     }
@@ -3883,8 +4000,31 @@ class Component {
     this._el.querySelectorAll('[z-show]').forEach(el => {
       if (el.closest('[z-pre]')) return;
       const show = !!this._evalExpr(el.getAttribute('z-show'));
-      el.style.display = show ? '' : 'none';
-      el.removeAttribute('z-show');
+      const transName = el.getAttribute('z-transition');
+      const wasHidden = el.style.display === 'none' || el.hasAttribute('data-zq-hidden');
+
+      if (transName) {
+        el.removeAttribute('z-show');
+        if (show && wasHidden) {
+          // Entering: was hidden, now showing
+          el.style.display = '';
+          el.removeAttribute('data-zq-hidden');
+          this._transitionEnter(el, transName);
+        } else if (!show && !wasHidden) {
+          // Leaving: was visible, now hiding
+          el.setAttribute('data-zq-hidden', '');
+          this._transitionLeave(el, transName, () => {
+            el.style.display = 'none';
+          });
+        } else {
+          el.style.display = show ? '' : 'none';
+          if (!show) el.setAttribute('data-zq-hidden', '');
+          else el.removeAttribute('data-zq-hidden');
+        }
+      } else {
+        el.style.display = show ? '' : 'none';
+        el.removeAttribute('z-show');
+      }
     });
 
     // -- z-bind:attr / :attr (dynamic attribute binding) -----------
@@ -3959,6 +4099,93 @@ class Component {
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Transition helpers - CSS class-based enter/leave animations
+  //
+  //   z-transition="fade" generates:
+  //     Enter: .fade-enter-from → .fade-enter-active + .fade-enter-to
+  //     Leave: .fade-leave-from → .fade-leave-active + .fade-leave-to
+  //
+  //   Or component-level transition config:
+  //     transition: { enter: 'animate-in', leave: 'animate-out', duration: 200 }
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Run an enter transition on an element.
+   * @param {Element} el - target element
+   * @param {string} name - transition name (e.g. 'fade')
+   */
+  _transitionEnter(el, name) {
+    // Check for component-level transition config
+    const cfg = this._def.transition;
+    if (cfg && cfg.enter) {
+      el.classList.add(cfg.enter);
+      const duration = cfg.duration || 0;
+      const cleanup = () => el.classList.remove(cfg.enter);
+      if (duration > 0) {
+        setTimeout(cleanup, duration);
+      } else {
+        el.addEventListener('transitionend', cleanup, { once: true });
+        el.addEventListener('animationend', cleanup, { once: true });
+      }
+      return;
+    }
+
+    // CSS class-based transition pattern
+    el.classList.add(`${name}-enter-from`, `${name}-enter-active`);
+    // Force reflow so the browser registers the initial state
+    void el.offsetHeight;
+    requestAnimationFrame(() => {
+      el.classList.remove(`${name}-enter-from`);
+      el.classList.add(`${name}-enter-to`);
+      const onEnd = () => {
+        el.classList.remove(`${name}-enter-active`, `${name}-enter-to`);
+      };
+      el.addEventListener('transitionend', onEnd, { once: true });
+      el.addEventListener('animationend', onEnd, { once: true });
+    });
+  }
+
+  /**
+   * Run a leave transition on an element, then call done().
+   * @param {Element} el - target element
+   * @param {string} name - transition name (e.g. 'fade')
+   * @param {Function} done - callback when transition completes
+   */
+  _transitionLeave(el, name, done) {
+    // Check for component-level transition config
+    const cfg = this._def.transition;
+    if (cfg && cfg.leave) {
+      el.classList.add(cfg.leave);
+      const duration = cfg.duration || 0;
+      const cleanup = () => {
+        el.classList.remove(cfg.leave);
+        done();
+      };
+      if (duration > 0) {
+        setTimeout(cleanup, duration);
+      } else {
+        el.addEventListener('transitionend', cleanup, { once: true });
+        el.addEventListener('animationend', cleanup, { once: true });
+      }
+      return;
+    }
+
+    // CSS class-based transition pattern
+    el.classList.add(`${name}-leave-from`, `${name}-leave-active`);
+    void el.offsetHeight;
+    requestAnimationFrame(() => {
+      el.classList.remove(`${name}-leave-from`);
+      el.classList.add(`${name}-leave-to`);
+      const onEnd = () => {
+        el.classList.remove(`${name}-leave-active`, `${name}-leave-to`);
+        done();
+      };
+      el.addEventListener('transitionend', onEnd, { once: true });
+      el.addEventListener('animationend', onEnd, { once: true });
+    });
+  }
+
   // Programmatic state update (batch-friendly)
   // Passing an empty object forces a re-render (useful for external state changes).
   setState(partial) {
@@ -3981,6 +4208,16 @@ class Component {
     if (this._def.destroyed) {
       try { this._def.destroyed.call(this); }
       catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${this._def._name}" destroyed() threw`, { component: this._def._name }, err); }
+    }
+    // Clean up prop observer
+    if (this._propObserver) {
+      this._propObserver.disconnect();
+      this._propObserver = null;
+    }
+    // Clean up store connectors
+    if (this._storeCleanups) {
+      this._storeCleanups.forEach(fn => fn());
+      this._storeCleanups = [];
     }
     this._listeners.forEach(({ event, handler }) => this._el.removeEventListener(event, handler));
     this._listeners = [];
@@ -4016,7 +4253,7 @@ class Component {
 const _reservedKeys = new Set([
   'state', 'render', 'styles', 'init', 'mounted', 'updated', 'destroyed', 'props',
   'templateUrl', 'styleUrl', 'templates', 'base',
-  'computed', 'watch'
+  'computed', 'watch', 'stores', 'transition', 'activated', 'deactivated'
 ]);
 
 
@@ -4322,6 +4559,9 @@ class Router {
     // file:// protocol can't use pushState - always force hash mode
     const isFile = typeof location !== 'undefined' && location.protocol === 'file:';
     this._mode = isFile ? 'hash' : (config.mode || 'history');
+
+    // Keep-alive cache: component name → { container, instance }
+    this._keepAliveCache = new Map();
 
     // Base path for sub-path deployments
     // Priority: explicit config.base → window.__ZQ_BASE → <base href> tag
@@ -4880,34 +5120,96 @@ class Router {
         await prefetch(matched.component);
       }
 
-      // Destroy previous
-      if (this._instance) {
+      const isKeepAlive = !!matched.keepAlive;
+      const componentName = typeof matched.component === 'string' ? matched.component : null;
+
+      // Deactivate previous keep-alive instance (hide instead of destroy)
+      if (this._instance && this._currentKeepAlive && this._currentComponentName) {
+        const cached = this._keepAliveCache.get(this._currentComponentName);
+        if (cached) {
+          cached.container.style.display = 'none';
+          // Call deactivated() lifecycle hook
+          if (cached.instance._def.deactivated) {
+            try { cached.instance._def.deactivated.call(cached.instance); }
+            catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${this._currentComponentName}" deactivated() threw`, { component: this._currentComponentName }, err); }
+          }
+        }
+        this._instance = null;
+      } else if (this._instance) {
+        // Destroy previous non-keepAlive instance
         this._instance.destroy();
         this._instance = null;
       }
 
-      // Create container
       const _routeStart = typeof window !== 'undefined' && window.__zqRenderHook ? performance.now() : 0;
-      this._el.innerHTML = '';
 
       // Pass route params and query as props
       const props = { ...params, $route: to, $query: query, $params: params };
 
+      // Keep-alive: reuse cached instance
+      if (isKeepAlive && componentName && this._keepAliveCache.has(componentName)) {
+        const cached = this._keepAliveCache.get(componentName);
+        // Hide all children, show the cached one
+        [...this._el.children].forEach(c => { c.style.display = 'none'; });
+        cached.container.style.display = '';
+        this._instance = cached.instance;
+        this._currentKeepAlive = true;
+        this._currentComponentName = componentName;
+        // Call activated() lifecycle hook
+        if (cached.instance._def.activated) {
+          try { cached.instance._def.activated.call(cached.instance); }
+          catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${componentName}" activated() threw`, { component: componentName }, err); }
+        }
+        if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', componentName);
+      }
       // If component is a string (registered name), mount it
-      if (typeof matched.component === 'string') {
-        const container = document.createElement(matched.component);
+      else if (componentName) {
+        // Hide all keep-alive cached children (don't destroy)
+        [...this._el.children].forEach(c => {
+          if (c.dataset.zqKeepAlive) {
+            c.style.display = 'none';
+          }
+        });
+        // Remove non-keep-alive children
+        [...this._el.children].forEach(c => {
+          if (!c.dataset.zqKeepAlive) c.remove();
+        });
+
+        const container = document.createElement(componentName);
+        if (isKeepAlive) container.dataset.zqKeepAlive = componentName;
         this._el.appendChild(container);
         try {
-          this._instance = mount(container, matched.component, props);
+          this._instance = mount(container, componentName, props);
         } catch (err) {
           reportError(ErrorCode.COMP_NOT_FOUND, `Failed to mount component for route "${matched.path}"`, { component: matched.component, path: matched.path }, err);
           return;
         }
-        if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', matched.component);
+
+        if (isKeepAlive) {
+          this._keepAliveCache.set(componentName, { container, instance: this._instance });
+          // Call activated() on first mount
+          if (this._instance._def.activated) {
+            try { this._instance._def.activated.call(this._instance); }
+            catch (err) { reportError(ErrorCode.COMP_LIFECYCLE, `Component "${componentName}" activated() threw`, { component: componentName }, err); }
+          }
+        }
+
+        this._currentKeepAlive = isKeepAlive;
+        this._currentComponentName = componentName;
+        if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', componentName);
       }
       // If component is a render function
       else if (typeof matched.component === 'function') {
-        this._el.innerHTML = matched.component(to);
+        // Clear non-keepAlive content
+        [...this._el.children].forEach(c => {
+          if (c.dataset.zqKeepAlive) c.style.display = 'none';
+          else c.remove();
+        });
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = matched.component(to);
+        while (wrapper.firstChild) this._el.appendChild(wrapper.firstChild);
+        this._currentKeepAlive = false;
+        this._currentComponentName = null;
         if (_routeStart) window.__zqRenderHook(this._el, performance.now() - _routeStart, 'route', to);
       }
     }
@@ -4966,6 +5268,11 @@ class Router {
       document.removeEventListener('click', this._onLinkClick);
       this._onLinkClick = null;
     }
+    // Destroy all keep-alive cached instances
+    for (const [, cached] of this._keepAliveCache) {
+      cached.instance.destroy();
+    }
+    this._keepAliveCache.clear();
     if (this._instance) this._instance.destroy();
     this._listeners.clear();
     this._substateListeners = [];
@@ -5239,8 +5546,14 @@ class Store {
   }
 
   /**
-   * Subscribe to changes on a specific state key
-   * @param {string|Function} keyOrFn - state key, or function for all changes
+   * Subscribe to changes on a specific state key, multiple keys, or all changes.
+   *
+   * Signatures:
+   *   subscribe(callback)             → wildcard, fires on every change
+   *   subscribe('key', callback)      → fires when 'key' changes
+   *   subscribe(['a','b'], callback)  → fires when any listed key changes
+   *
+   * @param {string|string[]|Function} keyOrFn - state key, array of keys, or function for all changes
    * @param {Function} [fn] - callback (key, value, oldValue)
    * @returns {Function} - unsubscribe
    */
@@ -5249,6 +5562,16 @@ class Store {
       // Wildcard - listen to all changes
       this._wildcards.add(keyOrFn);
       return () => this._wildcards.delete(keyOrFn);
+    }
+
+    // Multi-key subscription: subscribe(['files', 'isProcessing'], callback)
+    if (Array.isArray(keyOrFn)) {
+      const keys = keyOrFn;
+      const handler = (key, value, old) => {
+        if (keys.includes(key)) fn(key, value, old);
+      };
+      this._wildcards.add(handler);
+      return () => this._wildcards.delete(handler);
     }
 
     if (!this._subscribers.has(keyOrFn)) {
@@ -5321,6 +5644,34 @@ function createStore(name, config) {
 
 function getStore(name = 'default') {
   return _stores.get(name) || null;
+}
+
+
+// ---------------------------------------------------------------------------
+// Store-Component Connector
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a store connector descriptor for use in component definitions.
+ * When used in a component's `stores` config, auto-subscribes to the
+ * listed keys on mount and cleans up on destroy.
+ *
+ * Usage:
+ *   $.component('my-comp', {
+ *     stores: {
+ *       app: connectStore(appStore, ['files', 'isProcessing']),
+ *     },
+ *     render() {
+ *       return `<div>${this.stores.app.files.length} files</div>`;
+ *     }
+ *   });
+ *
+ * @param {Store} store - the store instance to connect
+ * @param {string[]} keys - state keys to sync
+ * @returns {{ _zqConnector: true, store: Store, keys: string[] }}
+ */
+function connectStore(store, keys) {
+  return { _zqConnector: true, store, keys };
 }
 
 // --- src/http.js -------------------------------------------------
@@ -6198,6 +6549,7 @@ $.matchRoute = matchRoute;
 // --- Store -----------------------------------------------------------------
 $.store    = createStore;
 $.getStore = getStore;
+$.connectStore = connectStore;
 
 // --- HTTP ------------------------------------------------------------------
 $.http   = http;
@@ -6258,9 +6610,16 @@ $.formatError    = formatError;
 
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.1.1';
-$.libSize   = '~108 KB';
-$.unitTests = {"passed":2239,"failed":0,"total":2239,"suites":555,"duration":4951,"ok":true};
+$.libSize   = '~115 KB';
+$.unitTests = {"passed":2281,"failed":0,"total":2281,"suites":565,"duration":6088,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
+
+// --- Environment detection -------------------------------------------------
+$.isElectron = typeof navigator !== 'undefined' && /Electron/i.test(navigator.userAgent)
+  || typeof process !== 'undefined' && process.versions != null && !!process.versions.electron;
+$.platform = $.isElectron ? 'electron'
+  : typeof window !== 'undefined' ? 'browser'
+  : 'node';
 
 $.noConflict = () => {
   if (typeof window !== 'undefined' && window.$ === $) {
