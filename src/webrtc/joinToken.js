@@ -114,6 +114,6 @@ function _base64UrlDecode(segment) {
         return new TextDecoder().decode(bytes);
     }
     // Node fallback.
-    // eslint-disable-next-line no-undef
+     
     return Buffer.from(b64, 'base64').toString('utf8');
 }
