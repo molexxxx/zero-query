@@ -6539,8 +6539,6 @@ const API_BASE = $.platform === 'electron'
   
 zQuery ships a complete WebRTC client that speaks the wire protocol of `@zero-server/webrtc` — from a low-level `SignalingClient` + perfect-negotiation `Peer` up to a reactive multi-peer `Room` with composables, TURN credential rotation, SFrame end-to-end encryption, mediasoup & LiveKit SFU adapters, join-token decoding, and `getStats()` observability. The `z-stream` directive binds remote `MediaStream`s straight to `` / `` elements — no `URL.createObjectURL` dance.
 
-  BrowserZero depsReactiveSFU-ready
-
   
 ### Overview
 

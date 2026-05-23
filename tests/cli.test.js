@@ -771,14 +771,24 @@ describe('CLI - createProject', () => {
     expect(html).toContain('video-room');
   });
 
-  it('webrtc scaffold has app/components/video-room.js using $.webrtc.join', () => {
+  it('webrtc scaffold has app/components/video-room.js wired to LocalRoom', () => {
     const src = fs.readFileSync(
       path.resolve(__dirname, '..', 'cli', 'scaffold', 'webrtc', 'app', 'components', 'video-room.js'),
       'utf-8'
     );
-    expect(src).toContain('$.webrtc.join');
+    expect(src).toContain('LocalRoom');
     expect(src).toContain('z-stream');
     expect(src).toContain('video-room');
+  });
+
+  it('webrtc scaffold ships a BroadcastChannel-based LocalRoom helper', () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, '..', 'cli', 'scaffold', 'webrtc', 'app', 'lib', 'room.js'),
+      'utf-8'
+    );
+    expect(src).toContain('BroadcastChannel');
+    expect(src).toContain('class LocalRoom');
+    expect(src).toContain('$.Peer');
   });
 
   // -- default scaffold contains expected files --
