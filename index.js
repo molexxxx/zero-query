@@ -38,6 +38,8 @@ import {
   deriveSFrameKey, generateSFrameKey, SFrameContext,
   encryptFrame, decryptFrame, attachE2ee,
   loadSfuAdapter,
+  decodeJoinToken, isJoinTokenExpired,
+  samplePeerStats, createStatsSampler, classifyStats,
   parseSdp, validateSdp,
   parseCandidate, stringifyCandidate, filterCandidates,
   isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
@@ -217,6 +219,11 @@ $.decryptFrame       = decryptFrame;
 $.attachE2ee         = attachE2ee;
 $.loadSfuAdapter     = loadSfuAdapter;
 $.SfuError           = SfuError;
+$.decodeJoinToken    = decodeJoinToken;
+$.isJoinTokenExpired = isJoinTokenExpired;
+$.samplePeerStats    = samplePeerStats;
+$.createStatsSampler = createStatsSampler;
+$.classifyStats      = classifyStats;
 $.parseSdp           = parseSdp;
 $.validateSdp        = validateSdp;
 $.parseCandidate     = parseCandidate;
@@ -285,6 +292,8 @@ export {
   deriveSFrameKey, generateSFrameKey, SFrameContext,
   encryptFrame, decryptFrame, attachE2ee,
   loadSfuAdapter, SfuError,
+  decodeJoinToken, isJoinTokenExpired,
+  samplePeerStats, createStatsSampler, classifyStats,
   parseSdp, validateSdp,
   parseCandidate, stringifyCandidate, filterCandidates,
   isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,

@@ -19,7 +19,7 @@ function buildLibrary() {
 
   const modules = [
     'src/errors.js',
-    'src/webrtc/errors.js', 'src/webrtc/sdp.js', 'src/webrtc/ice.js', 'src/webrtc/signaling.js', 'src/webrtc/peer.js', 'src/webrtc/room.js', 'src/webrtc/reactive.js', 'src/webrtc/turn.js', 'src/webrtc/e2ee.js', 'src/webrtc/sfu/mediasoup.js', 'src/webrtc/sfu/livekit.js', 'src/webrtc/sfu/index.js', 'src/webrtc/index.js',
+    'src/webrtc/errors.js', 'src/webrtc/sdp.js', 'src/webrtc/ice.js', 'src/webrtc/signaling.js', 'src/webrtc/peer.js', 'src/webrtc/room.js', 'src/webrtc/reactive.js', 'src/webrtc/turn.js', 'src/webrtc/e2ee.js', 'src/webrtc/joinToken.js', 'src/webrtc/observe.js', 'src/webrtc/sfu/mediasoup.js', 'src/webrtc/sfu/livekit.js', 'src/webrtc/sfu/index.js', 'src/webrtc/index.js',
     'src/reactive.js', 'src/diff.js', 'src/core.js', 'src/expression.js',
     'src/component.js', 'src/router.js', 'src/store.js', 'src/http.js',
     'src/utils.js',

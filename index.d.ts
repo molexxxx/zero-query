@@ -178,6 +178,13 @@ export {
   decryptFrame,
   attachE2ee,
   loadSfuAdapter,
+  decodeJoinToken,
+  isJoinTokenExpired,
+  DecodedJoinToken,
+  samplePeerStats,
+  createStatsSampler,
+  classifyStats,
+  PeerStatsSample,
   FetchTurnOptions,
   TurnRefresher,
   TurnRefresherOptions,
@@ -250,6 +257,11 @@ import type {
   decryptFrame,
   attachE2ee,
   loadSfuAdapter,
+  decodeJoinToken,
+  isJoinTokenExpired,
+  samplePeerStats,
+  createStatsSampler,
+  classifyStats,
   WebRtcError,
   SignalingError,
   IceError,
@@ -486,6 +498,16 @@ interface ZQueryStatic {
   attachE2ee: typeof attachE2ee;
   /** Load an optional SFU adapter (peer-dep). */
   loadSfuAdapter: typeof loadSfuAdapter;
+  /** UX-only decode of a server-issued join token. */
+  decodeJoinToken: typeof decodeJoinToken;
+  /** Returns `true` if a decoded token's `exp` is in the past. */
+  isJoinTokenExpired: typeof isJoinTokenExpired;
+  /** One-shot reduced `getStats()` snapshot. */
+  samplePeerStats: typeof samplePeerStats;
+  /** Periodic `getStats()` sampler. */
+  createStatsSampler: typeof createStatsSampler;
+  /** Bucket a reduced sample into a connection-quality label. */
+  classifyStats: typeof classifyStats;
   /** Parse an SDP document into a structured `ParsedSdp`. */
   parseSdp: typeof parseSdp;
   /** Parse + enforce server-side SDP constraints. */

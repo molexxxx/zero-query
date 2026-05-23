@@ -507,22 +507,77 @@ export interface SfuAdapter {
     name: 'mediasoup' | 'livekit';
     /** Underlying adapter-specific device (mediasoup `Device`, etc.). */
     device?: any;
-    /** Has `load()` completed at least once? */
+    /** Underlying livekit-client `Room` instance (LiveKit adapter only). */
+    room?: any;
+    /** Has `load()` completed at least once (mediasoup) / has `connect()` resolved (livekit)? */
     readonly loaded?: boolean;
-    /** Load the device with the SFU router's RTP capabilities. */
+    readonly connected?: boolean;
+    /** Load the device with the SFU router's RTP capabilities (mediasoup). */
     load?(routerRtpCapabilities: any): Promise<void>;
     canProduce?(kind: 'audio' | 'video'): boolean;
     createSendTransport?(params: any): any;
     createRecvTransport?(params: any): any;
-    /** Higher-level join (signaling-dependent; not yet implemented for mediasoup). */
+    /** Connect to a LiveKit server (livekit adapter only). */
+    connect?(url: string, token: string, connectOpts?: any): Promise<void>;
+    /** Disconnect from a LiveKit server (livekit adapter only). */
+    disconnect?(): Promise<void>;
+    /** Higher-level join (signaling-dependent; not yet implemented). */
     join(opts: any): Promise<Room>;
 }
 
 /** Load an SFU adapter by name. Peer dependency must be installed. */
 export function loadSfuAdapter(
     name: 'mediasoup' | 'livekit',
-    opts?: { client?: any; deviceOptions?: any },
+    opts?: { client?: any; deviceOptions?: any; roomOptions?: any },
 ): Promise<SfuAdapter>;
+
+/** Decoded payload of a server-issued join token (UX-only; the server re-validates). */
+export interface DecodedJoinToken {
+    user: { id: string; [k: string]: any } | null;
+    room: string | null;
+    exp:  number | null;
+    raw:  any;
+}
+
+/** UX-only decode of a `signJoinToken(...)` payload. */
+export function decodeJoinToken(token: string): DecodedJoinToken;
+
+/** `true` if `decoded.exp` (seconds since epoch) is in the past. */
+export function isJoinTokenExpired(
+    decoded: { exp: number | null } | DecodedJoinToken,
+    opts?: { nowMs?: number; skewMs?: number },
+): boolean;
+
+/** Reduced `getStats()` snapshot returned by `samplePeerStats()`. */
+export interface PeerStatsSample {
+    report: any;
+    inboundRtp:  any[];
+    outboundRtp: any[];
+    candidatePair: any | null;
+    summary: {
+        rttMs: number | null;
+        lossPct: number;
+        bytesSent: number;
+        bytesReceived: number;
+    };
+}
+
+/** One-shot reduced `getStats()` snapshot. */
+export function samplePeerStats(pc: RTCPeerConnection): Promise<PeerStatsSample>;
+
+/** Periodic stats sampler. */
+export function createStatsSampler(
+    pc: RTCPeerConnection,
+    opts?: {
+        intervalMs?: number;
+        onSample?:  (s: PeerStatsSample) => void;
+        onError?:   (err: Error) => void;
+        immediate?: boolean;
+    },
+): { stop(): void; getLatest(): PeerStatsSample | null };
+
+/** Coarse connection-quality bucket from a reduced sample. */
+export function classifyStats(sample: PeerStatsSample | null): 'good' | 'fair' | 'poor' | 'unknown';
 
 /** The `$.webrtc` namespace. */
 export interface WebRtcNamespace {
@@ -568,7 +623,15 @@ export interface WebRtcNamespace {
     /** Load an optional SFU adapter (peer-dep). */
     loadSfuAdapter: typeof loadSfuAdapter;
     /** UX-only decode of a `signJoinToken(...)` payload (server validates). */
-    decodeJoinToken?(token: string): { user: { id: string }; room: string; exp: number };
+    decodeJoinToken: typeof decodeJoinToken;
+    /** `true` if a decoded token's `exp` is in the past. */
+    isJoinTokenExpired: typeof isJoinTokenExpired;
+    /** One-shot `getStats()` snapshot. */
+    samplePeerStats: typeof samplePeerStats;
+    /** Periodic `getStats()` sampler. */
+    createStatsSampler: typeof createStatsSampler;
+    /** Bucket a reduced sample into a connection-quality label. */
+    classifyStats: typeof classifyStats;
     /** Resolve a `Room` from either a URL (calls `join`) or an existing `Room`. */
     useRoom(urlOrRoom: string | Room, opts?: JoinOptions): Promise<Room>;
     /** Reactive handle that tracks a remote peer by id. */

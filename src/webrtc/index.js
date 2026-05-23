@@ -28,6 +28,8 @@ import {
     encryptFrame, decryptFrame, attachE2ee,
 } from './e2ee.js';
 import { loadSfuAdapter } from './sfu/index.js';
+import { decodeJoinToken, isJoinTokenExpired } from './joinToken.js';
+import { samplePeerStats, createStatsSampler, classifyStats } from './observe.js';
 import {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError, SfuError,
 } from './errors.js';
@@ -57,6 +59,8 @@ export {
 export { loadSfuAdapter } from './sfu/index.js';
 export { createMediasoupAdapter } from './sfu/mediasoup.js';
 export { createLivekitAdapter } from './sfu/livekit.js';
+export { decodeJoinToken, isJoinTokenExpired } from './joinToken.js';
+export { samplePeerStats, createStatsSampler, classifyStats } from './observe.js';
 export {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError, SfuError,
 } from './errors.js';
@@ -95,6 +99,15 @@ export const webrtc = {
 
     // SFU adapters
     loadSfuAdapter,
+
+    // Join tokens
+    decodeJoinToken,
+    isJoinTokenExpired,
+
+    // Observability
+    samplePeerStats,
+    createStatsSampler,
+    classifyStats,
 
     // SDP / ICE helpers
     parseSdp,
