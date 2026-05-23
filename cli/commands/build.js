@@ -107,14 +107,18 @@ function buildLibrary() {
   const minified = minify(bundle, banner);
   fs.writeFileSync(MIN_FILE, minified, 'utf-8');
 
-  // Inject actual minified library size into both outputs
+  // Inject actual minified library size into both outputs.
+  // The unminified bundle keeps single quotes; esbuild rewrites the minified
+  // output with double quotes, so we tolerate both.
   const libSizeKB = Math.round(Buffer.from(minified).length / 1024);
   const libSizeStr = `~${libSizeKB} KB`;
   const testObj = JSON.stringify(testResults);
-  let outContent = fs.readFileSync(OUT_FILE, 'utf-8').replace("'__LIB_SIZE__'", `'${libSizeStr}'`);
-  let minContent = minified.replace("'__LIB_SIZE__'", `'${libSizeStr}'`);
-  outContent = outContent.replace("'__UNIT_TESTS__'", testObj);
-  minContent = minContent.replace("'__UNIT_TESTS__'", testObj);
+  const libRe  = /(['"])__LIB_SIZE__\1/g;
+  const testRe = /(['"])__UNIT_TESTS__\1/g;
+  let outContent = fs.readFileSync(OUT_FILE, 'utf-8').replace(libRe, `'${libSizeStr}'`);
+  let minContent = minified.replace(libRe, JSON.stringify(libSizeStr));
+  outContent = outContent.replace(testRe, testObj);
+  minContent = minContent.replace(testRe, testObj);
   fs.writeFileSync(OUT_FILE, outContent, 'utf-8');
   fs.writeFileSync(MIN_FILE, minContent, 'utf-8');
 
