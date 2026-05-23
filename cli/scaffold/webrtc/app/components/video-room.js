@@ -11,6 +11,7 @@ $.component('video-room', {
         status: 'Idle. Enter a signaling URL + room and click Join.',
         error: '',
         peers: [],
+        localStream: null,
         connected: false,
     }),
 
@@ -30,6 +31,7 @@ $.component('video-room', {
         this.setState({ status: 'Requesting camera + microphone...', error: '' });
         try {
             this._localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            this.setState({ localStream: this._localStream });
         } catch (err) {
             this.setState({ status: 'getUserMedia failed', error: String(err && err.message || err) });
             return;
@@ -50,7 +52,15 @@ $.component('video-room', {
 
         // Track peer roster — re-render every time it changes.
         const peers = this._room.peers;
-        const refresh = () => this.setState({ peers: peers.value, status: 'Connected as ' + this.state.user });
+        const refresh = () => {
+            // peers.value is a Map<id, PeerInfo>; flatten to a plain array
+            // of { id, stream } so the template can render and so updated()
+            // can re-bind srcObject after each render.
+            const list = Array.from(peers.value.values()).map((p) => ({
+                id: p.id, stream: p.stream,
+            }));
+            this.setState({ peers: list, status: 'Connected as ' + this.state.user });
+        };
         this._unsubPeers = peers.subscribe(refresh);
         refresh();
 
@@ -66,6 +76,7 @@ $.component('video-room', {
         if (this._unsubPeers) { try { this._unsubPeers(); } catch (_) {} this._unsubPeers = null; }
         if (this._room)       { try { await this._room.leave(); } catch (_) {} this._room = null; }
         await this._stopLocal();
+        this.setState({ localStream: null });
     },
 
     async _stopLocal() {
@@ -81,9 +92,9 @@ $.component('video-room', {
     render() {
         const { url, room, user, status, error, peers, connected } = this.state;
 
-        const peerTiles = peers.map((p) => `
+        const peerTiles = peers.map((p, i) => `
             <div class="tile">
-                <video z-stream="${p.id}" autoplay playsinline></video>
+                <video z-stream="peers[${i}].stream" autoplay playsinline></video>
                 <div class="label">${$.escapeHtml(p.id)}</div>
             </div>
         `).join('');
@@ -104,7 +115,7 @@ $.component('video-room', {
 
             <div class="tiles">
                 <div class="tile">
-                    <video id="local-video" autoplay playsinline muted></video>
+                    <video z-stream="localStream" autoplay playsinline muted></video>
                     <div class="label">You (${$.escapeHtml(user)})</div>
                 </div>
                 ${peerTiles}
@@ -113,12 +124,7 @@ $.component('video-room', {
     },
 
     updated() {
-        // Bind the local stream to the local <video> tile after each render.
-        if (this._localStream) {
-            const el = this.$el && this.$el.querySelector ? this.$el.querySelector('#local-video') : null;
-            if (el && el.srcObject !== this._localStream) {
-                el.srcObject = this._localStream;
-            }
-        }
+        // No-op: z-stream handles both local and remote video binding
+        // after every render. Kept as a hook for future enhancements.
     },
 });
