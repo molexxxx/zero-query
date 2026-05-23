@@ -113,6 +113,66 @@ export class SignalingClient {
 
 
 // ---------------------------------------------------------------------------
+// Peer (RTCPeerConnection wrapper + perfect negotiation)
+// ---------------------------------------------------------------------------
+
+/** Options accepted by the `Peer` constructor. */
+export interface PeerOptions {
+    /** Perfect-negotiation polite flag (defaults to `false`). */
+    polite?: boolean;
+    /** STUN/TURN servers forwarded to the underlying `RTCPeerConnection`. */
+    iceServers?: RTCIceServer[];
+    /** RTCPeerConnection constructor override (tests / non-browser shims). */
+    RTCPeerConnection?: typeof RTCPeerConnection;
+    /** Hard cap on trickled ICE candidates per peer. Default `30`. */
+    maxIceCandidates?: number;
+    /** Extra `RTCConfiguration` fields merged into the PC config. */
+    rtcConfig?: RTCConfiguration;
+}
+
+/** Lifecycle event names emitted by a `Peer`. */
+export type PeerEvent =
+    | 'track'
+    | 'datachannel'
+    | 'connectionstatechange'
+    | 'close'
+    | 'error';
+
+/** Per-remote-peer wrapper around `RTCPeerConnection` with perfect negotiation. */
+export class Peer {
+    /** Remote peer id (matches `from`/`to` on the wire). */
+    readonly id: string;
+    /** Shared signaling client. */
+    readonly signaling: SignalingClient;
+    /** Perfect-negotiation polite flag (set at construction). */
+    readonly polite: boolean;
+    /** Underlying `RTCPeerConnection`. */
+    readonly pc: RTCPeerConnection;
+    /** `true` once `.close()` has been called. */
+    readonly closed: boolean;
+
+    constructor(peerId: string, signaling: SignalingClient, options?: PeerOptions);
+
+    /** Add a local track. Returns the underlying `RTCRtpSender`. */
+    addTrack(track: MediaStreamTrack, ...streams: MediaStream[]): RTCRtpSender;
+    /** Remove a previously-added sender. */
+    removeTrack(sender: RTCRtpSender): void;
+    /** Create a data channel on this peer. */
+    createDataChannel(label: string, init?: RTCDataChannelInit): RTCDataChannel;
+    /** Force an ICE restart - negotiation kicks off via `negotiationneeded`. */
+    restartIce(): void;
+
+    /** Subscribe to a Peer-level event. */
+    on(event: PeerEvent, cb: (payload: any) => void): () => void;
+    /** Remove a previously registered listener. */
+    off(event: PeerEvent, cb: (payload: any) => void): void;
+
+    /** Close the underlying connection and detach signaling listeners. */
+    close(): void;
+}
+
+
+// ---------------------------------------------------------------------------
 // High-level surface (declared for forward compatibility - implementation
 // lands in subsequent passes; most members throw at runtime today)
 // ---------------------------------------------------------------------------
@@ -169,6 +229,7 @@ export interface SfuAdapter {
 /** The `$.webrtc` namespace. */
 export interface WebRtcNamespace {
     SignalingClient: typeof SignalingClient;
+    Peer:            typeof Peer;
     WebRtcError:     typeof WebRtcError;
     SignalingError:  typeof SignalingError;
     IceError:        typeof IceError;

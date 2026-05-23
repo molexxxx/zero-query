@@ -172,6 +172,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
 - [WebRTC](#webrtc)
   - [Status](#status)
   - [SignalingClient](#signalingclient)
+  - [Peer (Perfect Negotiation)](#peer-perfect-negotiation)
   - [Error Family](#error-family)
   - [Wire Protocol](#wire-protocol)
 
@@ -6537,6 +6538,7 @@ zQuery ships a small WebRTC client that talks the wire protocol of `@zero-server
 | Surface | Available |
 | --- | --- |
 | `$.SignalingClient` / `$.webrtc.SignalingClient` | Yes |
+| `$.Peer` / `$.webrtc.Peer` | Yes |
 | `$.WebRtcError`, `$.SignalingError`, `$.IceError`, `$.SdpError`, `$.TurnError`, `$.E2eeError` | Yes |
 | `$.webrtc.join(url, opts)` | Throws — lands in a later release |
 | `$.webrtc.useRoom()` / `usePeer()` / `useTracks()` / `useDataChannel()` | Planned |
@@ -6587,6 +6589,59 @@ client.close();
 | `.close()` | `void` | Send `bye` and stop reconnecting. |
 | `.peerId` | `string \| null` | Server-assigned peer id (set after first `hello`). |
 | `.connected` | `boolean` | `true` while the underlying WebSocket is open. |
+
+  
+### Peer (Perfect Negotiation)
+
+  
+The `Peer` class wraps a single `RTCPeerConnection` and routes JSEP messages through a shared `SignalingClient` for one remote peer. It implements the W3C **perfect-negotiation** pattern, so simultaneous `negotiationneeded` events on both ends resolve deterministically based on the locally-assigned `polite` flag — no glare, no manual rollback.
+
+  
+
+```javascript
+import { SignalingClient, Peer } from 'zero-query';
+
+const signaling = new SignalingClient('wss://api.example.com/rtc');
+await signaling.connect();
+signaling.send('join', { room: 'lobby' });
+
+signaling.on('peer-joined', ({ id }) => {
+    // Decide polite/impolite however you like - lexicographic id is fine
+    const polite = signaling.peerId < id;
+    const peer = new Peer(id, signaling, {
+        polite,
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    });
+
+    peer.on('track', (ev) => attachToVideoEl(ev.streams[0]));
+    peer.on('connectionstatechange', (state) => console.log(state));
+    peer.on('error', (err) => console.warn(err.code, err.message));
+
+    // Push local media
+    for (const track of localStream.getTracks()) {
+        peer.addTrack(track, localStream);
+    }
+});
+
+signaling.on('peer-left', ({ id }) => peers.get(id)?.close());
+```
+
+  
+| Member | Type | Description |
+| --- | --- | --- |
+| `new Peer(peerId, signaling, opts?)` |  | Construct (creates the underlying `RTCPeerConnection` eagerly). |
+| `opts.polite` | `boolean` | Perfect-negotiation polite flag. Polite peers yield on collision; impolite peers stand their ground. |
+| `opts.iceServers` | `RTCIceServer[]` | STUN/TURN servers forwarded to `RTCPeerConnection`. |
+| `opts.maxIceCandidates` | `number` | Hard cap on trickled candidates per peer (default `30`, matching the server's SDP cap). |
+| `.addTrack(track, ...streams)` | `RTCRtpSender` | Add a local track. Triggers `negotiationneeded`. |
+| `.createDataChannel(label, init?)` | `RTCDataChannel` | Open a data channel; remote peer observes a `datachannel` event. |
+| `.restartIce()` | `void` | Force ICE restart (also fires automatically on `connectionState = "failed"`). |
+| `.on(event, cb)` | `() => void` | Subscribe to `track` / `datachannel` / `connectionstatechange` / `close` / `error`. |
+| `.close()` | `void` | Close the underlying connection and detach signaling listeners. Idempotent. |
+| `.pc` | `RTCPeerConnection` | Escape hatch for direct access (stats, sender params, etc.). |
+
+  
+> mDNS (`*.local`) candidates are filtered before send, and trickled candidates are capped per-peer so we stay inside the server's `a=candidate:` ceiling.
 
   
 ### Error Family
@@ -6678,6 +6733,7 @@ import {
   formatError,
   webrtc,
   SignalingClient,
+  Peer,
   WebRtcError,
   SignalingError,
   IceError,

@@ -31,6 +31,7 @@ import { ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync
 import {
   webrtc,
   SignalingClient,
+  Peer,
   WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './src/webrtc/index.js';
 
@@ -189,6 +190,7 @@ $.formatError    = formatError;
 // --- WebRTC ----------------------------------------------------------------
 $.webrtc           = webrtc;
 $.SignalingClient  = SignalingClient;
+$.Peer             = Peer;
 $.WebRtcError      = WebRtcError;
 $.SignalingError   = SignalingError;
 $.IceError         = IceError;
@@ -242,7 +244,7 @@ export {
   createStore, getStore, connectStore,
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError,
-  webrtc, SignalingClient,
+  webrtc, SignalingClient, Peer,
   WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,

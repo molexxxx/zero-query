@@ -152,6 +152,9 @@ export {
   SignalingClient,
   SignalingClientOptions,
   SignalingReconnectOptions,
+  Peer,
+  PeerOptions,
+  PeerEvent,
   JoinOptions,
   PeerInfo,
   Room,
@@ -186,6 +189,7 @@ import type { morph, morphElement, safeEval } from './types/misc';
 import type {
   WebRtcNamespace,
   SignalingClient,
+  Peer,
   WebRtcError,
   SignalingError,
   IceError,
@@ -376,6 +380,8 @@ interface ZQueryStatic {
   webrtc: WebRtcNamespace;
   /** Low-level WebSocket signaling client (speaks `@zero-server/webrtc` wire). */
   SignalingClient: typeof SignalingClient;
+  /** Per-remote-peer `RTCPeerConnection` wrapper with perfect negotiation. */
+  Peer: typeof Peer;
   /** Base WebRTC error. */
   WebRtcError: typeof WebRtcError;
   /** Signaling-channel error. */
