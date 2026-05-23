@@ -162,6 +162,26 @@ export {
   SfuAdapter,
   WebRtcNamespace,
   webrtc,
+  parseSdp,
+  validateSdp,
+  SDP_DIRECTIONS,
+  ParsedSdp,
+  SdpMedia,
+  SdpAttribute,
+  SdpFingerprint,
+  SdpRtpMap,
+  ParseSdpOptions,
+  parseCandidate,
+  stringifyCandidate,
+  filterCandidates,
+  isPrivateIp,
+  isLoopbackIp,
+  isLinkLocalIp,
+  isMdnsHostname,
+  IceCandidate,
+  CandidateFilterPolicy,
+  CANDIDATE_TYPES,
+  TCP_TYPES,
 } from './types/webrtc';
 
 // ---------------------------------------------------------------------------
@@ -196,6 +216,15 @@ import type {
   SdpError,
   TurnError,
   E2eeError,
+  parseSdp,
+  validateSdp,
+  parseCandidate,
+  stringifyCandidate,
+  filterCandidates,
+  isPrivateIp,
+  isLoopbackIp,
+  isLinkLocalIp,
+  isMdnsHostname,
 } from './types/webrtc';
 
 /**
@@ -382,6 +411,24 @@ interface ZQueryStatic {
   SignalingClient: typeof SignalingClient;
   /** Per-remote-peer `RTCPeerConnection` wrapper with perfect negotiation. */
   Peer: typeof Peer;
+  /** Parse an SDP document into a structured `ParsedSdp`. */
+  parseSdp: typeof parseSdp;
+  /** Parse + enforce server-side SDP constraints. */
+  validateSdp: typeof validateSdp;
+  /** Parse a single `candidate:` line. */
+  parseCandidate: typeof parseCandidate;
+  /** Serialize a parsed candidate back to canonical line form. */
+  stringifyCandidate: typeof stringifyCandidate;
+  /** Filter candidates against a privacy / policy filter. */
+  filterCandidates: typeof filterCandidates;
+  /** True for RFC 1918 / 6598 / IPv6 ULA addresses. */
+  isPrivateIp: typeof isPrivateIp;
+  /** True for `127.0.0.0/8` and `::1`. */
+  isLoopbackIp: typeof isLoopbackIp;
+  /** True for `169.254/16` and `fe80::/10`. */
+  isLinkLocalIp: typeof isLinkLocalIp;
+  /** True for `.local` mDNS hostnames. */
+  isMdnsHostname: typeof isMdnsHostname;
   /** Base WebRTC error. */
   WebRtcError: typeof WebRtcError;
   /** Signaling-channel error. */

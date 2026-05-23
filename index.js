@@ -32,6 +32,9 @@ import {
   webrtc,
   SignalingClient,
   Peer,
+  parseSdp, validateSdp,
+  parseCandidate, stringifyCandidate, filterCandidates,
+  isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
   WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './src/webrtc/index.js';
 
@@ -188,15 +191,24 @@ $.validate       = validate;
 $.formatError    = formatError;
 
 // --- WebRTC ----------------------------------------------------------------
-$.webrtc           = webrtc;
-$.SignalingClient  = SignalingClient;
-$.Peer             = Peer;
-$.WebRtcError      = WebRtcError;
-$.SignalingError   = SignalingError;
-$.IceError         = IceError;
-$.SdpError         = SdpError;
-$.TurnError        = TurnError;
-$.E2eeError        = E2eeError;
+$.webrtc             = webrtc;
+$.SignalingClient    = SignalingClient;
+$.Peer               = Peer;
+$.parseSdp           = parseSdp;
+$.validateSdp        = validateSdp;
+$.parseCandidate     = parseCandidate;
+$.stringifyCandidate = stringifyCandidate;
+$.filterCandidates   = filterCandidates;
+$.isPrivateIp        = isPrivateIp;
+$.isLoopbackIp       = isLoopbackIp;
+$.isLinkLocalIp      = isLinkLocalIp;
+$.isMdnsHostname     = isMdnsHostname;
+$.WebRtcError        = WebRtcError;
+$.SignalingError     = SignalingError;
+$.IceError           = IceError;
+$.SdpError           = SdpError;
+$.TurnError          = TurnError;
+$.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
 $.version   = '__VERSION__';
@@ -245,6 +257,9 @@ export {
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError,
   webrtc, SignalingClient, Peer,
+  parseSdp, validateSdp,
+  parseCandidate, stringifyCandidate, filterCandidates,
+  isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
   WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,

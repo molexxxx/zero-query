@@ -15,12 +15,28 @@
 import { SignalingClient } from './signaling.js';
 import { Peer } from './peer.js';
 import {
+    parseSdp, validateSdp, SDP_DIRECTIONS,
+} from './sdp.js';
+import {
+    parseCandidate, stringifyCandidate, filterCandidates,
+    isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
+    CANDIDATE_TYPES, TCP_TYPES,
+} from './ice.js';
+import {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './errors.js';
 
 
 export { SignalingClient } from './signaling.js';
 export { Peer } from './peer.js';
+export {
+    parseSdp, validateSdp, SDP_DIRECTIONS,
+} from './sdp.js';
+export {
+    parseCandidate, stringifyCandidate, filterCandidates,
+    isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
+    CANDIDATE_TYPES, TCP_TYPES,
+} from './ice.js';
 export {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './errors.js';
@@ -46,6 +62,15 @@ export {
 export const webrtc = {
     SignalingClient,
     Peer,
+    parseSdp,
+    validateSdp,
+    parseCandidate,
+    stringifyCandidate,
+    filterCandidates,
+    isPrivateIp,
+    isLoopbackIp,
+    isLinkLocalIp,
+    isMdnsHostname,
     WebRtcError,
     SignalingError,
     IceError,

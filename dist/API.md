@@ -173,6 +173,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Status](#status)
   - [SignalingClient](#signalingclient)
   - [Peer (Perfect Negotiation)](#peer-perfect-negotiation)
+  - [SDP + ICE Helpers](#sdp-ice-helpers)
   - [Error Family](#error-family)
   - [Wire Protocol](#wire-protocol)
 
@@ -6539,6 +6540,8 @@ zQuery ships a small WebRTC client that talks the wire protocol of `@zero-server
 | --- | --- |
 | `$.SignalingClient` / `$.webrtc.SignalingClient` | Yes |
 | `$.Peer` / `$.webrtc.Peer` | Yes |
+| `$.parseSdp`, `$.validateSdp` | Yes |
+| `$.parseCandidate`, `$.stringifyCandidate`, `$.filterCandidates` | Yes |
 | `$.WebRtcError`, `$.SignalingError`, `$.IceError`, `$.SdpError`, `$.TurnError`, `$.E2eeError` | Yes |
 | `$.webrtc.join(url, opts)` | Throws — lands in a later release |
 | `$.webrtc.useRoom()` / `usePeer()` / `useTracks()` / `useDataChannel()` | Planned |
@@ -6644,6 +6647,50 @@ signaling.on('peer-left', ({ id }) => peers.get(id)?.close());
 > mDNS (`*.local`) candidates are filtered before send, and trickled candidates are capped per-peer so we stay inside the server's `a=candidate:` ceiling.
 
   
+### SDP + ICE Helpers
+
+  
+Zero-dependency, read-only ports of the parser surface from `@zero-server/webrtc`. Useful for sanity-checking an SDP before sending it through signaling, lifting structured fields out for stats / debugging, and filtering ICE candidates against a local privacy policy. All errors derive from `SdpError` / `IceError`.
+
+  
+
+```javascript
+import {
+    parseSdp, validateSdp,
+    parseCandidate, filterCandidates, isMdnsHostname,
+} from 'zero-query';
+
+// Parse + validate the SDP server-side rules apply (UDP/TLS/RTP/SAVPF,
+// ice-ufrag, ice-pwd, fingerprint). Throws SdpError if any required
+// attribute is missing on a non-rejected m-line.
+const desc = validateSdp(offer.sdp);
+console.log(desc.media[0].iceUfrag, desc.media[0].fingerprint);
+
+// Filter a raw candidate batch against a local privacy policy:
+const safe = filterCandidates(offer.candidates, {
+    blockPrivate: true,
+    blockMdns:    true,
+    allowedTypes: ['srflx', 'relay'],
+    maxCandidates: 30,
+});
+
+// Parse a single candidate line:
+const c = parseCandidate('candidate:1 1 udp 2122194687 1.2.3.4 50001 typ srflx raddr 192.168.1.5 rport 50000');
+if (c.type === 'relay') console.log('via TURN');
+if (isMdnsHostname(c.address)) console.log('mDNS - skip');
+```
+
+  
+| Helper | Returns | Throws |
+| --- | --- | --- |
+| `parseSdp(text, opts?)` | `ParsedSdp` | `SdpError` |
+| `validateSdp(text)` | `ParsedSdp` | `SdpError` |
+| `parseCandidate(line)` | `IceCandidate` | `IceError` |
+| `stringifyCandidate(c)` | `string` | `IceError` |
+| `filterCandidates(list, policy?)` | same shape as input | — |
+| `isPrivateIp / isLoopbackIp / isLinkLocalIp / isMdnsHostname` | `boolean` | — |
+
+  
 ### Error Family
 
   
@@ -6734,6 +6781,15 @@ import {
   webrtc,
   SignalingClient,
   Peer,
+  parseSdp,
+  validateSdp,
+  parseCandidate,
+  stringifyCandidate,
+  filterCandidates,
+  isPrivateIp,
+  isLoopbackIp,
+  isLinkLocalIp,
+  isMdnsHostname,
   WebRtcError,
   SignalingError,
   IceError,
