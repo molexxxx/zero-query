@@ -35,6 +35,8 @@ import {
   Room, join as webrtcJoin,
   useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
   fetchTurnCredentials, mergeIceServers, createTurnRefresher,
+  deriveSFrameKey, generateSFrameKey, SFrameContext,
+  encryptFrame, decryptFrame, attachE2ee,
   parseSdp, validateSdp,
   parseCandidate, stringifyCandidate, filterCandidates,
   isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
@@ -206,6 +208,12 @@ $.useConnectionQuality = useConnectionQuality;
 $.fetchTurnCredentials = fetchTurnCredentials;
 $.mergeIceServers    = mergeIceServers;
 $.createTurnRefresher = createTurnRefresher;
+$.deriveSFrameKey    = deriveSFrameKey;
+$.generateSFrameKey  = generateSFrameKey;
+$.SFrameContext      = SFrameContext;
+$.encryptFrame       = encryptFrame;
+$.decryptFrame       = decryptFrame;
+$.attachE2ee         = attachE2ee;
 $.parseSdp           = parseSdp;
 $.validateSdp        = validateSdp;
 $.parseCandidate     = parseCandidate;
@@ -271,6 +279,8 @@ export {
   webrtc, SignalingClient, Peer, Room, webrtcJoin,
   useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
   fetchTurnCredentials, mergeIceServers, createTurnRefresher,
+  deriveSFrameKey, generateSFrameKey, SFrameContext,
+  encryptFrame, decryptFrame, attachE2ee,
   parseSdp, validateSdp,
   parseCandidate, stringifyCandidate, filterCandidates,
   isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,

@@ -170,6 +170,12 @@ export {
   fetchTurnCredentials,
   mergeIceServers,
   createTurnRefresher,
+  deriveSFrameKey,
+  generateSFrameKey,
+  SFrameContext,
+  encryptFrame,
+  decryptFrame,
+  attachE2ee,
   FetchTurnOptions,
   TurnRefresher,
   TurnRefresherOptions,
@@ -235,6 +241,12 @@ import type {
   fetchTurnCredentials,
   mergeIceServers,
   createTurnRefresher,
+  deriveSFrameKey,
+  generateSFrameKey,
+  SFrameContext,
+  encryptFrame,
+  decryptFrame,
+  attachE2ee,
   WebRtcError,
   SignalingError,
   IceError,
@@ -456,6 +468,18 @@ interface ZQueryStatic {
   mergeIceServers: typeof mergeIceServers;
   /** Schedule automatic TURN-credential refresh ahead of expiry. */
   createTurnRefresher: typeof createTurnRefresher;
+  /** Derive an AES-GCM-128 SFrame key from a shared passphrase + salt. */
+  deriveSFrameKey: typeof deriveSFrameKey;
+  /** Generate a random AES-GCM-128 SFrame key. */
+  generateSFrameKey: typeof generateSFrameKey;
+  /** SFrame epoch / key holder. */
+  SFrameContext: typeof SFrameContext;
+  /** Encrypt a single frame with the current SFrame epoch's key. */
+  encryptFrame: typeof encryptFrame;
+  /** Decrypt a frame previously produced by `encryptFrame()`. */
+  decryptFrame: typeof decryptFrame;
+  /** Install SFrame encrypt/decrypt transforms on a peer connection. */
+  attachE2ee: typeof attachE2ee;
   /** Parse an SDP document into a structured `ParsedSdp`. */
   parseSdp: typeof parseSdp;
   /** Parse + enforce server-side SDP constraints. */
