@@ -177,6 +177,132 @@ export class Peer {
 // lands in subsequent passes; most members throw at runtime today)
 // ---------------------------------------------------------------------------
 
+
+// ---------------------------------------------------------------------------
+// SDP + ICE helpers (read-only port of the server-side parsers)
+// ---------------------------------------------------------------------------
+
+/** Frozen list of valid SDP direction attributes. */
+export const SDP_DIRECTIONS: ReadonlyArray<'sendrecv' | 'sendonly' | 'recvonly' | 'inactive'>;
+
+/** Single `a=` line preserved verbatim. */
+export interface SdpAttribute {
+    key: string;
+    value: string;
+}
+
+/** `a=fingerprint:<alg> <value>`. */
+export interface SdpFingerprint {
+    algorithm: string;
+    value: string;
+}
+
+/** Single `a=rtpmap:<pt> <codec>/<rate>[/<channels>]` entry. */
+export interface SdpRtpMap {
+    payload: number;
+    codec: string;
+    clockRate: number;
+    channels?: number;
+}
+
+/** Parsed SDP `m=` section with the WebRTC-relevant keys lifted to named fields. */
+export interface SdpMedia {
+    kind: string;
+    port: number;
+    proto: string;
+    fmts: string[];
+    mid?: string;
+    iceUfrag?: string;
+    icePwd?: string;
+    fingerprint?: SdpFingerprint;
+    setup?: string;
+    direction?: 'sendrecv' | 'sendonly' | 'recvonly' | 'inactive';
+    rtcpMux: boolean;
+    candidates: string[];
+    rtpmaps: SdpRtpMap[];
+    attributes: SdpAttribute[];
+}
+
+/** Parsed top-level SDP document. */
+export interface ParsedSdp {
+    version: number;
+    origin: {
+        username: string;
+        sessionId: string;
+        sessionVersion: number;
+        netType: string;
+        addrType: string;
+        address: string;
+    } | null;
+    sessionName: string;
+    attributes: SdpAttribute[];
+    media: SdpMedia[];
+}
+
+/** Options accepted by `parseSdp`. */
+export interface ParseSdpOptions {
+    /** Reject payloads larger than this many bytes. Default `65536`. */
+    maxBytes?: number;
+}
+
+/** Parse an SDP document into a structured `ParsedSdp`. Throws `SdpError` on bad input. */
+export function parseSdp(text: string, opts?: ParseSdpOptions): ParsedSdp;
+
+/** Parse + enforce the constraints the server-side hub validates. Throws `SdpError`. */
+export function validateSdp(text: string): ParsedSdp;
+
+
+/** Recognized ICE candidate types (RFC 5245). */
+export const CANDIDATE_TYPES: ReadonlyArray<'host' | 'srflx' | 'prflx' | 'relay'>;
+
+/** Recognized TCP candidate types (RFC 6544 §4.5). */
+export const TCP_TYPES: ReadonlyArray<'active' | 'passive' | 'so'>;
+
+/** Parsed ICE candidate line. */
+export interface IceCandidate {
+    foundation: string;
+    component: number;
+    transport: string;
+    priority: number;
+    address: string;
+    port: number;
+    type: 'host' | 'srflx' | 'prflx' | 'relay';
+    relatedAddress?: string;
+    relatedPort?: number;
+    tcpType?: string;
+    extensions: Record<string, string>;
+}
+
+/** Parse a single `candidate:` line (with or without `a=` prefix). Throws `IceError`. */
+export function parseCandidate(line: string): IceCandidate;
+
+/** Serialize a parsed candidate back to its canonical `candidate:...` line. */
+export function stringifyCandidate(c: IceCandidate): string;
+
+/** Address classifiers. */
+export function isPrivateIp(addr: string): boolean;
+export function isLoopbackIp(addr: string): boolean;
+export function isLinkLocalIp(addr: string): boolean;
+export function isMdnsHostname(host: string): boolean;
+
+/** Policy accepted by `filterCandidates`. */
+export interface CandidateFilterPolicy {
+    blockPrivate?: boolean;
+    blockLoopback?: boolean;
+    blockLinkLocal?: boolean;
+    blockMdns?: boolean;
+    blockTcp?: boolean;
+    allowedTypes?: ReadonlyArray<'host' | 'srflx' | 'prflx' | 'relay'>;
+    maxCandidates?: number;
+    predicate?: (c: IceCandidate) => boolean;
+}
+
+/** Filter a list of candidate lines / parsed objects against a policy. */
+export function filterCandidates<T extends string | IceCandidate>(
+    candidates: T[],
+    policy?: CandidateFilterPolicy,
+): T[];
+
 /** Options accepted by `webrtc.join()` once it lands. */
 export interface JoinOptions {
     room: string;
@@ -230,6 +356,15 @@ export interface SfuAdapter {
 export interface WebRtcNamespace {
     SignalingClient: typeof SignalingClient;
     Peer:            typeof Peer;
+    parseSdp:        typeof parseSdp;
+    validateSdp:     typeof validateSdp;
+    parseCandidate:  typeof parseCandidate;
+    stringifyCandidate: typeof stringifyCandidate;
+    filterCandidates: typeof filterCandidates;
+    isPrivateIp:     typeof isPrivateIp;
+    isLoopbackIp:    typeof isLoopbackIp;
+    isLinkLocalIp:   typeof isLinkLocalIp;
+    isMdnsHostname:  typeof isMdnsHostname;
     WebRtcError:     typeof WebRtcError;
     SignalingError:  typeof SignalingError;
     IceError:        typeof IceError;
