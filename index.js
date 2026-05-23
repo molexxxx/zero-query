@@ -28,6 +28,11 @@ import {
   memoize, retry, timeout,
 } from './src/utils.js';
 import { ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError } from './src/errors.js';
+import {
+  webrtc,
+  SignalingClient,
+  WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
+} from './src/webrtc/index.js';
 
 
 // ---------------------------------------------------------------------------
@@ -181,6 +186,16 @@ $.guardAsync     = guardAsync;
 $.validate       = validate;
 $.formatError    = formatError;
 
+// --- WebRTC ----------------------------------------------------------------
+$.webrtc           = webrtc;
+$.SignalingClient  = SignalingClient;
+$.WebRtcError      = WebRtcError;
+$.SignalingError   = SignalingError;
+$.IceError         = IceError;
+$.SdpError         = SdpError;
+$.TurnError        = TurnError;
+$.E2eeError        = E2eeError;
+
 // --- Meta ------------------------------------------------------------------
 $.version   = '__VERSION__';
 $.libSize   = '__LIB_SIZE__';
@@ -227,6 +242,8 @@ export {
   createStore, getStore, connectStore,
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError,
+  webrtc, SignalingClient,
+  WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,

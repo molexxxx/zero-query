@@ -169,6 +169,11 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Environment Properties](#environment-properties)
   - [Platform Detection](#platform-detection)
   - [Quick Reference](#quick-reference)
+- [WebRTC](#webrtc)
+  - [Status](#status)
+  - [SignalingClient](#signalingclient)
+  - [Error Family](#error-family)
+  - [Wire Protocol](#wire-protocol)
 
 ---
 
@@ -6517,6 +6522,117 @@ const API_BASE = $.platform === 'electron'
 
 ---
 
+## WebRTC
+
+  
+zQuery ships a small WebRTC client that talks the wire protocol of `@zero-server/webrtc`. The high-level `$.webrtc.join()` helper, room/peer surface, reactive composables, TURN client, SFrame E2EE, and SFU adapters land in upcoming releases. This release exposes the low-level `SignalingClient` and the error family.
+
+  
+### Status
+
+  
+> **Under construction.** Only the low-level `SignalingClient` and the WebRTC error classes are wired in this release. `$.webrtc.join()` currently throws `WebRtcError('ZQ_WEBRTC_NOT_IMPLEMENTED')` — use `new SignalingClient(url)` directly until the high-level `Room` API lands.
+
+  
+| Surface | Available |
+| --- | --- |
+| `$.SignalingClient` / `$.webrtc.SignalingClient` | Yes |
+| `$.WebRtcError`, `$.SignalingError`, `$.IceError`, `$.SdpError`, `$.TurnError`, `$.E2eeError` | Yes |
+| `$.webrtc.join(url, opts)` | Throws — lands in a later release |
+| `$.webrtc.useRoom()` / `usePeer()` / `useTracks()` / `useDataChannel()` | Planned |
+| `$.webrtc.fetchTurnCredentials()` | Planned |
+| `$.webrtc.loadSfuAdapter('mediasoup' \| 'livekit')` | Planned |
+
+  
+### SignalingClient
+
+  
+Lightweight WebSocket client that handles connect, exponential-backoff reconnect, the server's initial `hello` handshake, and outbound ICE coalescing (so trickle bursts don't trip the server's per-peer rate cap).
+
+  
+
+```javascript
+import { SignalingClient } from 'zero-query';
+
+const client = new SignalingClient('wss://api.example.com/rtc', {
+    // Exponential backoff between reconnect attempts (defaults shown)
+    reconnect: { baseMs: 250, capMs: 8000, maxRetries: 10 },
+    // ICE coalescing window: at most 10 frames per 200ms
+    iceFlushMs: 200,
+    iceBatch:   10,
+});
+
+client.on('hello',       ({ peerId })          => console.log('I am', peerId));
+client.on('joined',      ({ room, peers })     => console.log(room, peers));
+client.on('peer-joined', ({ id })              => console.log('peer-joined', id));
+client.on('offer',       ({ from, sdp })       => /* accept + answer */);
+client.on('ice',         ({ from, candidate }) => /* addIceCandidate */);
+client.on('error',       (err) => console.warn(err.code, err.message));
+
+await client.connect();
+client.send('join', { room: 'lobby' });
+// trickle - auto-batched into safe-rate windows
+client.send('ice', { to: 'peer-x', candidate: '...' });
+client.close();
+```
+
+  
+| Member | Type | Description |
+| --- | --- | --- |
+| `new SignalingClient(url, opts?)` |  | Construct (does not open the socket). |
+| `.connect()` | `Promise` | Open the socket; resolves on first `open`. |
+| `.send(type, payload?)` | `void` | Send a frame; `ice` frames are coalesced. |
+| `.on(type, cb)` | `() => void` | Subscribe to a server frame type or lifecycle event (`open`, `close`, `reconnect`, `error`). |
+| `.off(type, cb)` | `void` | Unsubscribe. |
+| `.close()` | `void` | Send `bye` and stop reconnecting. |
+| `.peerId` | `string \| null` | Server-assigned peer id (set after first `hello`). |
+| `.connected` | `boolean` | `true` while the underlying WebSocket is open. |
+
+  
+### Error Family
+
+  
+Every WebRTC error derives from `WebRtcError`, which itself derives from the shared `ZQueryError`. They participate in `$.onError(handler)` like any other library error and carry a stable `code` string.
+
+  
+| Class | Default Code |
+| --- | --- |
+| `WebRtcError` | `ZQ_WEBRTC` |
+| `SignalingError` | `ZQ_WEBRTC_SIGNALING` |
+| `IceError` | `ZQ_WEBRTC_ICE` |
+| `SdpError` | `ZQ_WEBRTC_SDP` |
+| `TurnError` | `ZQ_WEBRTC_TURN` |
+| `E2eeError` | `ZQ_WEBRTC_E2EE` |
+
+  
+
+```javascript
+import { WebRtcError, SignalingError } from 'zero-query';
+
+try {
+    await client.connect();
+} catch (err) {
+    if (err instanceof SignalingError) {
+        console.warn('signaling failed:', err.code, err.message);
+    } else if (err instanceof WebRtcError) {
+        console.warn('webrtc failed:', err.code, err.message);
+    } else {
+        throw err;
+    }
+}
+```
+
+  
+### Wire Protocol
+
+  
+The `SignalingClient` speaks the JSON-over-WebSocket protocol of `@zero-server/webrtc`. The first server message after a successful connect is always `{ type: 'hello', peerId }`; everything else is type-tagged (`join`, `joined`, `peer-joined`, `peer-left`, `offer`, `answer`, `ice`, `mute`, `unmute`, `bye`, `e2ee-key`, `error`).
+
+  
+> Frames missing the required `type` field, the initial `hello`, or with malformed JSON raise a `SignalingError` on the `error` event — matching the server's own validation contract.
+
+---
+
 ## ES Module Exports (for npm/bundler usage)
 
 When used as an ES module (not the built bundle), the library provides named exports for every public API:
@@ -6560,6 +6676,14 @@ import {
   guardAsync,
   validate,
   formatError,
+  webrtc,
+  SignalingClient,
+  WebRtcError,
+  SignalingError,
+  IceError,
+  SdpError,
+  TurnError,
+  E2eeError,
   debounce,
   throttle,
   pipe,
