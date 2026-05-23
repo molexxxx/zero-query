@@ -179,6 +179,8 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [TURN Credentials](#turn-credentials)
   - [End-to-End Encryption (SFrame)](#end-to-end-encryption-sframe)
   - [SFU Adapters](#sfu-adapters)
+  - [Join Tokens](#join-tokens)
+  - [Observability (getStats)](#observability-getstats)
   - [SDP + ICE Helpers](#sdp-ice-helpers)
   - [Error Family](#error-family)
   - [Wire Protocol](#wire-protocol)
@@ -6883,6 +6885,56 @@ import { loadSfuAdapter } from 'zero-query/webrtc';
 > All SFU errors derive from `SfuError`: `ZQ_WEBRTC_SFU_UNKNOWN`, `ZQ_WEBRTC_SFU_PEER_MISSING`, `ZQ_WEBRTC_SFU_BAD_MODULE`, `ZQ_WEBRTC_SFU_DEVICE_FAILED`, `ZQ_WEBRTC_SFU_ROOM_FAILED`, `ZQ_WEBRTC_SFU_BAD_RTP_CAPS`, `ZQ_WEBRTC_SFU_BAD_URL`, `ZQ_WEBRTC_SFU_BAD_TOKEN`, `ZQ_WEBRTC_SFU_LOAD_FAILED`, `ZQ_WEBRTC_SFU_CONNECT_FAILED`, `ZQ_WEBRTC_SFU_NOT_LOADED`, `ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE`.
 
   
+### Join Tokens
+
+  
+`decodeJoinToken(token)` is a UX-only helper that base64url-decodes the payload of a server-issued join token (as minted by `signJoinToken({ secret, user, room, exp })` in `@zero-server/webrtc`). The client **never trusts** the payload — the server re-validates the signature on every `join` — but the decoded fields are useful for UI like "expires in 5 minutes" or showing the user's display name before sending. Tokens may be 1-, 2-, or 3-segment (JWT-like).
+
+  
+
+```javascript
+import { decodeJoinToken, isJoinTokenExpired } from 'zero-query';
+
+  const t = decodeJoinToken(tokenFromServer);
+  // { user: { id: 'u1', name: 'Ada' }, room: 'lobby', exp: 1700000000, raw: {...} }
+
+  if (isJoinTokenExpired(t)) {
+      // refresh token before calling `join`
+  }
+```
+
+  
+> Errors derive from `WebRtcError`: `ZQ_WEBRTC_TOKEN_BAD_INPUT`, `ZQ_WEBRTC_TOKEN_BAD_SHAPE`, `ZQ_WEBRTC_TOKEN_BAD_PAYLOAD`.
+
+  
+### Observability (getStats)
+
+  
+Low-level `RTCPeerConnection.getStats()` helpers, useful for dashboards, logging, and feeding the reactive `useConnectionQuality` composable. `samplePeerStats(pc)` reduces a getStats report to a flat summary (`bytesSent`, `bytesReceived`, `rttMs`, `lossPct`) plus the raw `inboundRtp` / `outboundRtp` / `candidatePair` arrays. `createStatsSampler(pc, opts)` polls on an interval and forwards each sample to `onSample` (and errors to `onError`). `classifyStats(sample)` buckets a sample into `'good' | 'fair' | 'poor' | 'unknown'`.
+
+  
+
+```javascript
+import { samplePeerStats, createStatsSampler, classifyStats } from 'zero-query';
+
+  // One-shot snapshot:
+  const s = await samplePeerStats(pc);
+  console.log(s.summary, classifyStats(s));
+
+  // Periodic sampler:
+  const sampler = createStatsSampler(pc, {
+      intervalMs: 2000,
+      onSample: (s) => dashboardSignal.value = s.summary,
+      onError:  (err) => console.warn('stats failed', err.code, err.message),
+  });
+  // ... later
+  sampler.stop();
+```
+
+  
+> Errors derive from `WebRtcError`: `ZQ_WEBRTC_OBSERVE_BAD_PC`, `ZQ_WEBRTC_OBSERVE_GETSTATS_FAILED`.
+
+  
 ### SDP + ICE Helpers
 
   
@@ -7035,6 +7087,11 @@ import {
   attachE2ee,
   loadSfuAdapter,
   SfuError,
+  decodeJoinToken,
+  isJoinTokenExpired,
+  samplePeerStats,
+  createStatsSampler,
+  classifyStats,
   parseSdp,
   validateSdp,
   parseCandidate,

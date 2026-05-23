@@ -3142,6 +3142,297 @@ function _maybeEncodedStreams(senderOrReceiver) {
     return null;
 }
 
+// --- src/webrtc/joinToken.js -------------------------------------
+/**
+ * src/webrtc/joinToken.js
+ *
+ * UX-only decoder for the opaque join tokens minted server-side by
+ * `signJoinToken({ secret, user, room, exp, ... })` in
+ * `@zero-server/webrtc`. The client never trusts the payload — the
+ * server re-validates the signature on every `join` — but it's useful to
+ * surface things like "expires in 5 minutes" or "room name preview" in
+ * the UI before sending the token.
+ *
+ * Supported formats (all base64url-encoded segments separated by `.`):
+ *   - 1 segment : `<payload>`
+ *   - 2 segments: `<payload>.<sig>`
+ *   - 3 segments: `<header>.<payload>.<sig>` (JWT-like)
+ */
+
+
+/**
+ * Decode a join token issued by the server.
+ *
+ * @param {string} token
+ * @returns {{ user: { id: string } | null, room: string | null, exp: number | null, raw: any }}
+ */
+function decodeJoinToken(token) {
+    if (typeof token !== 'string' || !token) {
+        throw new WebRtcError('decodeJoinToken(token): token must be a non-empty string', {
+            code: 'ZQ_WEBRTC_TOKEN_BAD_INPUT',
+        });
+    }
+
+    const segments = token.split('.');
+    if (segments.length < 1 || segments.length > 3) {
+        throw new WebRtcError(`decodeJoinToken(token): expected 1-3 base64url segments, got ${segments.length}`, {
+            code: 'ZQ_WEBRTC_TOKEN_BAD_SHAPE',
+            context: { segments: segments.length },
+        });
+    }
+
+    const payloadSegment = segments.length === 3 ? segments[1] : segments[0];
+    let payload;
+    try {
+        const json = _base64UrlDecode(payloadSegment);
+        payload = JSON.parse(json);
+    } catch (cause) {
+        throw new WebRtcError('decodeJoinToken(token): payload is not valid base64url-encoded JSON', {
+            code: 'ZQ_WEBRTC_TOKEN_BAD_PAYLOAD',
+            cause,
+        });
+    }
+
+    if (!payload || typeof payload !== 'object') {
+        throw new WebRtcError('decodeJoinToken(token): payload must be a JSON object', {
+            code: 'ZQ_WEBRTC_TOKEN_BAD_PAYLOAD',
+        });
+    }
+
+    return {
+        user: _readUser(payload),
+        room: typeof payload.room === 'string' ? payload.room : null,
+        exp:  typeof payload.exp  === 'number' ? payload.exp  : null,
+        raw:  payload,
+    };
+}
+
+
+/**
+ * `true` if the token's `exp` (seconds since epoch) is in the past.
+ * Tokens without an `exp` are reported as not expired. Clock skew defaults to 0.
+ *
+ * @param {{ exp: number | null }} decoded   Output of `decodeJoinToken()`.
+ * @param {{ nowMs?: number, skewMs?: number }} [opts]
+ * @returns {boolean}
+ */
+function isJoinTokenExpired(decoded, opts = {}) {
+    if (!decoded || typeof decoded !== 'object') return false;
+    if (typeof decoded.exp !== 'number') return false;
+    const nowMs  = typeof opts.nowMs  === 'number' ? opts.nowMs  : Date.now();
+    const skewMs = typeof opts.skewMs === 'number' ? opts.skewMs : 0;
+    return (decoded.exp * 1000) <= (nowMs - skewMs);
+}
+
+
+// ---------------------------------------------------------------------------
+// Internals
+// ---------------------------------------------------------------------------
+
+function _readUser(payload) {
+    const u = payload.user;
+    if (u && typeof u === 'object' && typeof u.id === 'string') {
+        return { id: u.id, ...u };
+    }
+    if (typeof payload.sub === 'string') {
+        return { id: payload.sub };
+    }
+    return null;
+}
+
+
+function _base64UrlDecode(segment) {
+    // Restore standard base64 alphabet + padding.
+    let b64 = segment.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4;
+    if (pad === 2)      b64 += '==';
+    else if (pad === 3) b64 += '=';
+    else if (pad === 1) throw new Error('invalid base64url length');
+
+    if (typeof atob === 'function') {
+        const bin = atob(b64);
+        // Decode as UTF-8.
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return new TextDecoder().decode(bytes);
+    }
+    // Node fallback.
+    // eslint-disable-next-line no-undef
+    return Buffer.from(b64, 'base64').toString('utf8');
+}
+
+// --- src/webrtc/observe.js ---------------------------------------
+/**
+ * src/webrtc/observe.js
+ *
+ * Low-level WebRTC observability helpers built on top of
+ * `RTCPeerConnection.getStats()`. The reactive layer
+ * (`useConnectionQuality`) is built on top of these — keeping the raw
+ * sampler separate makes it easy to plug stats into logging, dev tools,
+ * or telemetry without spinning up the reactive runtime.
+ */
+
+
+/**
+ * Take a one-shot getStats() snapshot and reduce it to a flat summary
+ * suitable for logging, dashboards, or feeding into `classifyStats()`.
+ *
+ * @param {RTCPeerConnection} pc
+ * @returns {Promise<{
+ *   report: any,
+ *   inboundRtp: any[],
+ *   outboundRtp: any[],
+ *   candidatePair: any | null,
+ *   summary: { rttMs: number | null, lossPct: number, bytesSent: number, bytesReceived: number }
+ * }>}
+ */
+async function samplePeerStats(pc) {
+    if (!pc || typeof pc.getStats !== 'function') {
+        throw new WebRtcError('samplePeerStats(pc): RTCPeerConnection required', {
+            code: 'ZQ_WEBRTC_OBSERVE_BAD_PC',
+        });
+    }
+    let report;
+    try {
+        report = await pc.getStats();
+    } catch (cause) {
+        throw new WebRtcError('samplePeerStats(pc): getStats() failed', {
+            code: 'ZQ_WEBRTC_OBSERVE_GETSTATS_FAILED',
+            cause,
+        });
+    }
+    return _reduce(report);
+}
+
+
+/**
+ * Start a periodic getStats() sampler.
+ *
+ * @param {RTCPeerConnection} pc
+ * @param {{
+ *   intervalMs?: number,
+ *   onSample?:  (sample: Awaited<ReturnType<typeof samplePeerStats>>) => void,
+ *   onError?:   (err: Error) => void,
+ *   immediate?: boolean,
+ * }} [opts]
+ * @returns {{
+ *   stop: () => void,
+ *   getLatest: () => Awaited<ReturnType<typeof samplePeerStats>> | null,
+ * }}
+ */
+function createStatsSampler(pc, opts = {}) {
+    if (!pc || typeof pc.getStats !== 'function') {
+        throw new WebRtcError('createStatsSampler(pc): RTCPeerConnection required', {
+            code: 'ZQ_WEBRTC_OBSERVE_BAD_PC',
+        });
+    }
+    const intervalMs = typeof opts.intervalMs === 'number' && opts.intervalMs > 0 ? opts.intervalMs : 2000;
+    const immediate  = opts.immediate !== false;
+    const onSample   = typeof opts.onSample === 'function' ? opts.onSample : null;
+    const onError    = typeof opts.onError  === 'function' ? opts.onError  : null;
+
+    let latest  = null;
+    let stopped = false;
+
+    const tick = async () => {
+        if (stopped) return;
+        try {
+            const s = await samplePeerStats(pc);
+            if (stopped) return;
+            latest = s;
+            if (onSample) {
+                try { onSample(s); } catch (_) { /* user callback errors are swallowed */ }
+            }
+        } catch (err) {
+            if (onError) {
+                try { onError(err); } catch (_) { /* user callback errors are swallowed */ }
+            }
+        }
+    };
+
+    if (immediate) tick();
+    const timer = setInterval(tick, intervalMs);
+
+    return {
+        stop() {
+            if (stopped) return;
+            stopped = true;
+            clearInterval(timer);
+        },
+        getLatest() { return latest; },
+    };
+}
+
+
+/**
+ * Bucket a reduced sample into a coarse quality label.
+ *
+ * @param {{ summary: { rttMs: number | null, lossPct: number } } | null} sample
+ * @returns {'good' | 'fair' | 'poor' | 'unknown'}
+ */
+function classifyStats(sample) {
+    if (!sample || !sample.summary) return 'unknown';
+    const { rttMs, lossPct } = sample.summary;
+    if (rttMs == null && lossPct === 0) return 'unknown';
+    if (lossPct > 5 || (rttMs != null && rttMs > 400)) return 'poor';
+    if (lossPct > 1 || (rttMs != null && rttMs > 200)) return 'fair';
+    return 'good';
+}
+
+
+// ---------------------------------------------------------------------------
+// Internals
+// ---------------------------------------------------------------------------
+
+function _reduce(report) {
+    const inboundRtp  = [];
+    const outboundRtp = [];
+    let candidatePair = null;
+
+    const visit = (s) => {
+        if (!s || typeof s !== 'object') return;
+        if (s.type === 'inbound-rtp')  inboundRtp.push(s);
+        if (s.type === 'outbound-rtp') outboundRtp.push(s);
+        if (s.type === 'candidate-pair' && (s.nominated || s.state === 'succeeded')) {
+            if (!candidatePair) candidatePair = s;
+        }
+    };
+
+    if (report && typeof report.forEach === 'function') {
+        report.forEach(visit);
+    } else if (report && typeof report === 'object') {
+        for (const k of Object.keys(report)) visit(report[k]);
+    }
+
+    let bytesSent = 0;
+    let bytesReceived = 0;
+    let lostTotal = 0;
+    let recvTotal = 0;
+    for (const s of outboundRtp) {
+        if (typeof s.bytesSent === 'number') bytesSent += s.bytesSent;
+    }
+    for (const s of inboundRtp) {
+        if (typeof s.bytesReceived === 'number') bytesReceived += s.bytesReceived;
+        if (typeof s.packetsLost     === 'number') lostTotal += s.packetsLost;
+        if (typeof s.packetsReceived === 'number') recvTotal += s.packetsReceived;
+    }
+    const total = lostTotal + recvTotal;
+    const lossPct = total > 0 ? (lostTotal / total) * 100 : 0;
+
+    let rttMs = null;
+    if (candidatePair && typeof candidatePair.currentRoundTripTime === 'number') {
+        rttMs = candidatePair.currentRoundTripTime * 1000;
+    }
+
+    return {
+        report,
+        inboundRtp,
+        outboundRtp,
+        candidatePair,
+        summary: { rttMs, lossPct, bytesSent, bytesReceived },
+    };
+}
+
 // --- src/webrtc/sfu/mediasoup.js ---------------------------------
 /**
  * src/webrtc/sfu/mediasoup.js
@@ -3485,6 +3776,8 @@ async function loadSfuAdapter(name, opts = {}) {
 
 
 
+
+
 { SignalingClient } from './signaling.js';
 { Peer } from './peer.js';
 {
@@ -3509,6 +3802,8 @@ async function loadSfuAdapter(name, opts = {}) {
 { loadSfuAdapter } from './sfu/index.js';
 { createMediasoupAdapter } from './sfu/mediasoup.js';
 { createLivekitAdapter } from './sfu/livekit.js';
+{ decodeJoinToken, isJoinTokenExpired } from './joinToken.js';
+{ samplePeerStats, createStatsSampler, classifyStats } from './observe.js';
 {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError, SfuError,
 } from './errors.js';
@@ -3547,6 +3842,15 @@ const webrtc = {
 
     // SFU adapters
     loadSfuAdapter,
+
+    // Join tokens
+    decodeJoinToken,
+    isJoinTokenExpired,
+
+    // Observability
+    samplePeerStats,
+    createStatsSampler,
+    classifyStats,
 
     // SDP / ICE helpers
     parseSdp,
@@ -9999,6 +10303,11 @@ $.decryptFrame       = decryptFrame;
 $.attachE2ee         = attachE2ee;
 $.loadSfuAdapter     = loadSfuAdapter;
 $.SfuError           = SfuError;
+$.decodeJoinToken    = decodeJoinToken;
+$.isJoinTokenExpired = isJoinTokenExpired;
+$.samplePeerStats    = samplePeerStats;
+$.createStatsSampler = createStatsSampler;
+$.classifyStats      = classifyStats;
 $.parseSdp           = parseSdp;
 $.validateSdp        = validateSdp;
 $.parseCandidate     = parseCandidate;
@@ -10017,8 +10326,8 @@ $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.1.1';
-$.libSize   = '~167 KB';
-$.unitTests = {"passed":2481,"failed":0,"total":2481,"suites":610,"duration":6038,"ok":true};
+$.libSize   = '~172 KB';
+$.unitTests = {"passed":2504,"failed":0,"total":2504,"suites":617,"duration":5969,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------
