@@ -141,6 +141,79 @@ export {
   renderToString,
 } from './types/ssr';
 
+export {
+  WebRtcError,
+  SignalingError,
+  IceError,
+  SdpError,
+  TurnError,
+  E2eeError,
+  SfuError,
+  WebRtcErrorOptions,
+  SignalingClient,
+  SignalingClientOptions,
+  SignalingReconnectOptions,
+  Peer,
+  PeerOptions,
+  PeerEvent,
+  JoinOptions,
+  PeerInfo,
+  Room,
+  RoomDataChannel,
+  ReactiveHandle,
+  DataChannelMessage,
+  join,
+  useRoom,
+  usePeer,
+  useTracks,
+  useDataChannel,
+  useConnectionQuality,
+  fetchTurnCredentials,
+  mergeIceServers,
+  createTurnRefresher,
+  deriveSFrameKey,
+  generateSFrameKey,
+  SFrameContext,
+  encryptFrame,
+  decryptFrame,
+  attachE2ee,
+  loadSfuAdapter,
+  decodeJoinToken,
+  isJoinTokenExpired,
+  DecodedJoinToken,
+  samplePeerStats,
+  createStatsSampler,
+  classifyStats,
+  PeerStatsSample,
+  FetchTurnOptions,
+  TurnRefresher,
+  TurnRefresherOptions,
+  TurnCredentials,
+  SfuAdapter,
+  WebRtcNamespace,
+  webrtc,
+  parseSdp,
+  validateSdp,
+  SDP_DIRECTIONS,
+  ParsedSdp,
+  SdpMedia,
+  SdpAttribute,
+  SdpFingerprint,
+  SdpRtpMap,
+  ParseSdpOptions,
+  parseCandidate,
+  stringifyCandidate,
+  filterCandidates,
+  isPrivateIp,
+  isLoopbackIp,
+  isLinkLocalIp,
+  isMdnsHostname,
+  IceCandidate,
+  CandidateFilterPolicy,
+  CANDIDATE_TYPES,
+  TCP_TYPES,
+} from './types/webrtc';
+
 // ---------------------------------------------------------------------------
 // $ - Main function & namespace
 // ---------------------------------------------------------------------------
@@ -163,6 +236,49 @@ import type {
 } from './types/utils';
 import type { onError, ZQueryError, ErrorCode, guardCallback, guardAsync, validate, formatError } from './types/errors';
 import type { morph, morphElement, safeEval } from './types/misc';
+import type {
+  WebRtcNamespace,
+  SignalingClient,
+  Peer,
+  Room,
+  join as webrtcJoin,
+  useRoom,
+  usePeer,
+  useTracks,
+  useDataChannel,
+  useConnectionQuality,
+  fetchTurnCredentials,
+  mergeIceServers,
+  createTurnRefresher,
+  deriveSFrameKey,
+  generateSFrameKey,
+  SFrameContext,
+  encryptFrame,
+  decryptFrame,
+  attachE2ee,
+  loadSfuAdapter,
+  decodeJoinToken,
+  isJoinTokenExpired,
+  samplePeerStats,
+  createStatsSampler,
+  classifyStats,
+  WebRtcError,
+  SignalingError,
+  IceError,
+  SdpError,
+  TurnError,
+  E2eeError,
+  SfuError,
+  parseSdp,
+  validateSdp,
+  parseCandidate,
+  stringifyCandidate,
+  filterCandidates,
+  isPrivateIp,
+  isLoopbackIp,
+  isLinkLocalIp,
+  isMdnsHostname,
+} from './types/webrtc';
 
 /**
  * Main selector / DOM-ready function - always returns a `ZQueryCollection` (like jQuery).
@@ -340,6 +456,89 @@ interface ZQueryStatic {
   memoize: typeof memoize;
   retry: typeof retry;
   timeout: typeof timeout;
+
+  // -- WebRTC --------------------------------------------------------------
+  /** WebRTC namespace - low-level `SignalingClient`, error family, and (future) high-level helpers. */
+  webrtc: WebRtcNamespace;
+  /** Low-level WebSocket signaling client (speaks `@zero-server/webrtc` wire). */
+  SignalingClient: typeof SignalingClient;
+  /** Per-remote-peer `RTCPeerConnection` wrapper with perfect negotiation. */
+  Peer: typeof Peer;
+  /** High-level multi-peer room handle. */
+  Room: typeof Room;
+  /** Join a room over the given signaling URL. */
+  webrtcJoin: typeof webrtcJoin;
+  /** Resolve a `Room` from a URL or pass-through an existing one. */
+  useRoom: typeof useRoom;
+  /** Reactive handle that tracks a remote peer by id. */
+  usePeer: typeof usePeer;
+  /** Reactive handle exposing the live track list for a peer. */
+  useTracks: typeof useTracks;
+  /** Reactive multiplexed data channel keyed by `label`. */
+  useDataChannel: typeof useDataChannel;
+  /** Reactive connection-quality bucket from periodic `getStats()`. */
+  useConnectionQuality: typeof useConnectionQuality;
+  /** Fetch TURN credentials from the app's HTTP endpoint. */
+  fetchTurnCredentials: typeof fetchTurnCredentials;
+  /** Merge TURN credentials with a base `iceServers[]`. */
+  mergeIceServers: typeof mergeIceServers;
+  /** Schedule automatic TURN-credential refresh ahead of expiry. */
+  createTurnRefresher: typeof createTurnRefresher;
+  /** Derive an AES-GCM-128 SFrame key from a shared passphrase + salt. */
+  deriveSFrameKey: typeof deriveSFrameKey;
+  /** Generate a random AES-GCM-128 SFrame key. */
+  generateSFrameKey: typeof generateSFrameKey;
+  /** SFrame epoch / key holder. */
+  SFrameContext: typeof SFrameContext;
+  /** Encrypt a single frame with the current SFrame epoch's key. */
+  encryptFrame: typeof encryptFrame;
+  /** Decrypt a frame previously produced by `encryptFrame()`. */
+  decryptFrame: typeof decryptFrame;
+  /** Install SFrame encrypt/decrypt transforms on a peer connection. */
+  attachE2ee: typeof attachE2ee;
+  /** Load an optional SFU adapter (peer-dep). */
+  loadSfuAdapter: typeof loadSfuAdapter;
+  /** UX-only decode of a server-issued join token. */
+  decodeJoinToken: typeof decodeJoinToken;
+  /** Returns `true` if a decoded token's `exp` is in the past. */
+  isJoinTokenExpired: typeof isJoinTokenExpired;
+  /** One-shot reduced `getStats()` snapshot. */
+  samplePeerStats: typeof samplePeerStats;
+  /** Periodic `getStats()` sampler. */
+  createStatsSampler: typeof createStatsSampler;
+  /** Bucket a reduced sample into a connection-quality label. */
+  classifyStats: typeof classifyStats;
+  /** Parse an SDP document into a structured `ParsedSdp`. */
+  parseSdp: typeof parseSdp;
+  /** Parse + enforce server-side SDP constraints. */
+  validateSdp: typeof validateSdp;
+  /** Parse a single `candidate:` line. */
+  parseCandidate: typeof parseCandidate;
+  /** Serialize a parsed candidate back to canonical line form. */
+  stringifyCandidate: typeof stringifyCandidate;
+  /** Filter candidates against a privacy / policy filter. */
+  filterCandidates: typeof filterCandidates;
+  /** True for RFC 1918 / 6598 / IPv6 ULA addresses. */
+  isPrivateIp: typeof isPrivateIp;
+  /** True for `127.0.0.0/8` and `::1`. */
+  isLoopbackIp: typeof isLoopbackIp;
+  /** True for `169.254/16` and `fe80::/10`. */
+  isLinkLocalIp: typeof isLinkLocalIp;
+  /** True for `.local` mDNS hostnames. */
+  isMdnsHostname: typeof isMdnsHostname;
+  /** Base WebRTC error. */
+  WebRtcError: typeof WebRtcError;
+  /** Signaling-channel error. */
+  SignalingError: typeof SignalingError;
+  /** ICE candidate / connectivity error. */
+  IceError: typeof IceError;
+  /** SDP parse / validate error. */
+  SdpError: typeof SdpError;
+  /** TURN credential error. */
+  TurnError: typeof TurnError;
+  /** End-to-end encryption error. */
+  E2eeError: typeof E2eeError;
+  SfuError: typeof SfuError;
 
   // -- Meta ----------------------------------------------------------------
   /** Library version string. */

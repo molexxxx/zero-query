@@ -19,6 +19,7 @@ function buildLibrary() {
 
   const modules = [
     'src/errors.js',
+    'src/webrtc/errors.js', 'src/webrtc/sdp.js', 'src/webrtc/ice.js', 'src/webrtc/signaling.js', 'src/webrtc/peer.js', 'src/webrtc/room.js', 'src/webrtc/reactive.js', 'src/webrtc/turn.js', 'src/webrtc/e2ee.js', 'src/webrtc/joinToken.js', 'src/webrtc/observe.js', 'src/webrtc/sfu/mediasoup.js', 'src/webrtc/sfu/livekit.js', 'src/webrtc/sfu/index.js', 'src/webrtc/index.js',
     'src/reactive.js', 'src/diff.js', 'src/core.js', 'src/expression.js',
     'src/component.js', 'src/router.js', 'src/store.js', 'src/http.js',
     'src/utils.js',
@@ -86,6 +87,7 @@ function buildLibrary() {
   const parts = modules.map(file => {
     let code = fs.readFileSync(path.join(process.cwd(), file), 'utf-8');
     code = code.replace(/^import\s+[\s\S]*?from\s+['"].*?['"];?\s*$/gm, '');
+    code = code.replace(/^export\s+(?:\*|\{[\s\S]*?\})\s+from\s+['"].*?['"];?\s*$/gm, '');
     code = code.replace(/^export\s+(default\s+)?/gm, '');
     code = code.replace(/^export\s*\{[\s\S]*?\};\s*$/gm, '');
     return `// --- ${file} ${'-'.repeat(60 - file.length)}\n${code.trim()}`;
@@ -93,6 +95,7 @@ function buildLibrary() {
 
   let indexCode = fs.readFileSync(path.join(process.cwd(), 'index.js'), 'utf-8');
   indexCode = indexCode.replace(/^import\s+[\s\S]*?from\s+['"].*?['"];?\s*$/gm, '');
+  indexCode = indexCode.replace(/^export\s+(?:\*|\{[\s\S]*?\})\s+from\s+['"].*?['"];?\s*$/gm, '');
   indexCode = indexCode.replace(/^export\s*\{[\s\S]*?\};\s*$/gm, '');
   indexCode = indexCode.replace(/^export\s+(default\s+)?/gm, '');
 
@@ -104,14 +107,18 @@ function buildLibrary() {
   const minified = minify(bundle, banner);
   fs.writeFileSync(MIN_FILE, minified, 'utf-8');
 
-  // Inject actual minified library size into both outputs
+  // Inject actual minified library size into both outputs.
+  // The unminified bundle keeps single quotes; esbuild rewrites the minified
+  // output with double quotes, so we tolerate both.
   const libSizeKB = Math.round(Buffer.from(minified).length / 1024);
   const libSizeStr = `~${libSizeKB} KB`;
   const testObj = JSON.stringify(testResults);
-  let outContent = fs.readFileSync(OUT_FILE, 'utf-8').replace("'__LIB_SIZE__'", `'${libSizeStr}'`);
-  let minContent = minified.replace("'__LIB_SIZE__'", `'${libSizeStr}'`);
-  outContent = outContent.replace("'__UNIT_TESTS__'", testObj);
-  minContent = minContent.replace("'__UNIT_TESTS__'", testObj);
+  const libRe  = /(['"])__LIB_SIZE__\1/g;
+  const testRe = /(['"])__UNIT_TESTS__\1/g;
+  let outContent = fs.readFileSync(OUT_FILE, 'utf-8').replace(libRe, `'${libSizeStr}'`);
+  let minContent = minified.replace(libRe, JSON.stringify(libSizeStr));
+  outContent = outContent.replace(testRe, testObj);
+  minContent = minContent.replace(testRe, testObj);
   fs.writeFileSync(OUT_FILE, outContent, 'utf-8');
   fs.writeFileSync(MIN_FILE, minContent, 'utf-8');
 

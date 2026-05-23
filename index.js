@@ -28,6 +28,23 @@ import {
   memoize, retry, timeout,
 } from './src/utils.js';
 import { ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError } from './src/errors.js';
+import {
+  webrtc,
+  SignalingClient,
+  Peer,
+  Room, join as webrtcJoin,
+  useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
+  fetchTurnCredentials, mergeIceServers, createTurnRefresher,
+  deriveSFrameKey, generateSFrameKey, SFrameContext,
+  encryptFrame, decryptFrame, attachE2ee,
+  loadSfuAdapter,
+  decodeJoinToken, isJoinTokenExpired,
+  samplePeerStats, createStatsSampler, classifyStats,
+  parseSdp, validateSdp,
+  parseCandidate, stringifyCandidate, filterCandidates,
+  isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
+  WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError, SfuError,
+} from './src/webrtc/index.js';
 
 
 // ---------------------------------------------------------------------------
@@ -181,6 +198,48 @@ $.guardAsync     = guardAsync;
 $.validate       = validate;
 $.formatError    = formatError;
 
+// --- WebRTC ----------------------------------------------------------------
+$.webrtc             = webrtc;
+$.SignalingClient    = SignalingClient;
+$.Peer               = Peer;
+$.Room               = Room;
+$.useRoom            = useRoom;
+$.usePeer            = usePeer;
+$.useTracks          = useTracks;
+$.useDataChannel     = useDataChannel;
+$.useConnectionQuality = useConnectionQuality;
+$.fetchTurnCredentials = fetchTurnCredentials;
+$.mergeIceServers    = mergeIceServers;
+$.createTurnRefresher = createTurnRefresher;
+$.deriveSFrameKey    = deriveSFrameKey;
+$.generateSFrameKey  = generateSFrameKey;
+$.SFrameContext      = SFrameContext;
+$.encryptFrame       = encryptFrame;
+$.decryptFrame       = decryptFrame;
+$.attachE2ee         = attachE2ee;
+$.loadSfuAdapter     = loadSfuAdapter;
+$.SfuError           = SfuError;
+$.decodeJoinToken    = decodeJoinToken;
+$.isJoinTokenExpired = isJoinTokenExpired;
+$.samplePeerStats    = samplePeerStats;
+$.createStatsSampler = createStatsSampler;
+$.classifyStats      = classifyStats;
+$.parseSdp           = parseSdp;
+$.validateSdp        = validateSdp;
+$.parseCandidate     = parseCandidate;
+$.stringifyCandidate = stringifyCandidate;
+$.filterCandidates   = filterCandidates;
+$.isPrivateIp        = isPrivateIp;
+$.isLoopbackIp       = isLoopbackIp;
+$.isLinkLocalIp      = isLinkLocalIp;
+$.isMdnsHostname     = isMdnsHostname;
+$.WebRtcError        = WebRtcError;
+$.SignalingError     = SignalingError;
+$.IceError           = IceError;
+$.SdpError           = SdpError;
+$.TurnError          = TurnError;
+$.E2eeError          = E2eeError;
+
 // --- Meta ------------------------------------------------------------------
 $.version   = '__VERSION__';
 $.libSize   = '__LIB_SIZE__';
@@ -227,6 +286,18 @@ export {
   createStore, getStore, connectStore,
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError,
+  webrtc, SignalingClient, Peer, Room, webrtcJoin,
+  useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
+  fetchTurnCredentials, mergeIceServers, createTurnRefresher,
+  deriveSFrameKey, generateSFrameKey, SFrameContext,
+  encryptFrame, decryptFrame, attachE2ee,
+  loadSfuAdapter, SfuError,
+  decodeJoinToken, isJoinTokenExpired,
+  samplePeerStats, createStatsSampler, classifyStats,
+  parseSdp, validateSdp,
+  parseCandidate, stringifyCandidate, filterCandidates,
+  isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
+  WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
   debounce, throttle, pipe, once, sleep,
   escapeHtml, stripHtml, html, trust, TrustedHTML, uuid, camelCase, kebabCase,
   deepClone, deepMerge, isEqual, param, parseQuery,

@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v1.1.1
+ * zQuery (zeroQuery) v1.2.0
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -217,6 +217,3644 @@ function guardAsync(fn, code, context = {}) {
     }
   };
 }
+
+// --- src/webrtc/errors.js ----------------------------------------
+/**
+ * src/webrtc/errors.js - WebRTC error family
+ *
+ * All WebRTC-specific errors derive from `WebRtcError`, which itself
+ * derives from `ZQueryError` so they participate in the same
+ * `$.onError(handler)` reporting pipeline as the rest of the library.
+ *
+ * Each subclass has a sensible default `code` string; callers may override
+ * via the constructor's options bag (`{ code, context, cause }`). The codes
+ * intentionally mirror the families used by the matching `@zero-server/webrtc`
+ * package so cross-stack error reporting stays consistent.
+ */
+
+
+/**
+ * Base class for every WebRTC client error. Extends `ZQueryError` so it
+ * shows up in `$.onError(handler)` like any other library error.
+ *
+ *   throw new WebRtcError('peer connection failed');
+ *   throw new WebRtcError('peer connection failed', { code: 'PC_FAILED', context: { peerId } });
+ */
+class WebRtcError extends ZQueryError {
+    /**
+     * @param {string} message  - human-readable description.
+     * @param {object} [options]
+     * @param {string} [options.code]    - stable error code (defaults per subclass).
+     * @param {object} [options.context] - extra structured context.
+     * @param {Error}  [options.cause]   - original error, if any.
+     */
+    constructor(message, options = {}) {
+        const code    = options.code    || 'ZQ_WEBRTC';
+        const context = options.context || {};
+        super(code, message, context, options.cause);
+        this.name = 'WebRtcError';
+    }
+}
+
+
+/** Signaling-channel error (WebSocket transport, protocol framing, etc.). */
+class SignalingError extends WebRtcError {
+    /**
+     * @param {string} message
+     * @param {object} [options] - same shape as `WebRtcError`.
+     */
+    constructor(message, options = {}) {
+        super(message, { code: options.code || 'ZQ_WEBRTC_SIGNALING', context: options.context, cause: options.cause });
+        this.name = 'SignalingError';
+    }
+}
+
+
+/** ICE candidate / gathering / connectivity error. */
+class IceError extends WebRtcError {
+    /**
+     * @param {string} message
+     * @param {object} [options]
+     */
+    constructor(message, options = {}) {
+        super(message, { code: options.code || 'ZQ_WEBRTC_ICE', context: options.context, cause: options.cause });
+        this.name = 'IceError';
+    }
+}
+
+
+/** SDP parse / validate / mangle error. */
+class SdpError extends WebRtcError {
+    /**
+     * @param {string} message
+     * @param {object} [options]
+     */
+    constructor(message, options = {}) {
+        super(message, { code: options.code || 'ZQ_WEBRTC_SDP', context: options.context, cause: options.cause });
+        this.name = 'SdpError';
+    }
+}
+
+
+/** TURN credential fetch / refresh error. */
+class TurnError extends WebRtcError {
+    /**
+     * @param {string} message
+     * @param {object} [options]
+     */
+    constructor(message, options = {}) {
+        super(message, { code: options.code || 'ZQ_WEBRTC_TURN', context: options.context, cause: options.cause });
+        this.name = 'TurnError';
+    }
+}
+
+
+/** End-to-end encryption (SFrame / key exchange) error. */
+class E2eeError extends WebRtcError {
+    /**
+     * @param {string} message
+     * @param {object} [options]
+     */
+    constructor(message, options = {}) {
+        super(message, { code: options.code || 'ZQ_WEBRTC_E2EE', context: options.context, cause: options.cause });
+        this.name = 'E2eeError';
+    }
+}
+
+
+/** SFU adapter (mediasoup / LiveKit) error. */
+class SfuError extends WebRtcError {
+    /**
+     * @param {string} message
+     * @param {object} [options]
+     */
+    constructor(message, options = {}) {
+        super(message, { code: options.code || 'ZQ_WEBRTC_SFU', context: options.context, cause: options.cause });
+        this.name = 'SfuError';
+    }
+}
+
+// --- src/webrtc/sdp.js -------------------------------------------
+/**
+ * src/webrtc/sdp.js - minimal read-only SDP helpers
+ *
+ * A trimmed port of the server-side `@zero-server/webrtc` SDP module.
+ * The client only needs to read a few keys out of an SDP (for stats,
+ * ICE bookkeeping, and a sanity check before sending it through
+ * signaling); full RFC 8866 conformance lives on the server.
+ *
+ * Surface:
+ *   - `parseSdp(text)`     -> structured `{ version, origin, sessionName, media: [...] }`
+ *   - `validateSdp(text)`  -> throws `SdpError` if the SDP would be rejected by the hub
+ *                            (missing `UDP/TLS/RTP/SAVPF` proto, `ice-ufrag`, `ice-pwd`,
+ *                            or `fingerprint` on any non-rejected m-section).
+ *
+ * Pure functions, no globals, SSR-safe.
+ */
+
+
+/** Max SDP size accepted by the server. */
+const DEFAULT_MAX_BYTES = 65_536;
+
+/** Required transport protocol per server validator. */
+const REQUIRED_PROTO = 'UDP/TLS/RTP/SAVPF';
+
+/** Valid SDP direction attributes (RFC 8866 §6.7). */
+const SDP_DIRECTIONS = Object.freeze(['sendrecv', 'sendonly', 'recvonly', 'inactive']);
+
+
+/**
+ * Parse an SDP document into a minimal, structured form.
+ *
+ * Only the fields the client needs are lifted onto named keys; everything
+ * else is preserved verbatim on `attributes`/`media[i].attributes` so the
+ * caller can still inspect unusual lines without losing information.
+ *
+ * @param {string} text
+ * @param {object} [opts]
+ * @param {number} [opts.maxBytes=65536]
+ * @returns {{
+ *   version: number,
+ *   origin: ?object,
+ *   sessionName: string,
+ *   attributes: Array<{key:string,value:string}>,
+ *   media: Array<{
+ *     kind: string,
+ *     port: number,
+ *     proto: string,
+ *     fmts: string[],
+ *     mid?: string,
+ *     iceUfrag?: string,
+ *     icePwd?: string,
+ *     fingerprint?: { algorithm: string, value: string },
+ *     setup?: string,
+ *     direction?: string,
+ *     rtcpMux: boolean,
+ *     candidates: string[],
+ *     rtpmaps: Array<{ payload: number, codec: string, clockRate: number, channels?: number }>,
+ *     attributes: Array<{key:string,value:string}>,
+ *   }>,
+ * }}
+ */
+function parseSdp(text, opts = {}) {
+    if (typeof text !== 'string') {
+        throw new SdpError('parseSdp: input must be a string', { code: 'ZQ_WEBRTC_SDP_PARSE' });
+    }
+    const maxBytes = typeof opts.maxBytes === 'number' ? opts.maxBytes : DEFAULT_MAX_BYTES;
+    if (text.length > maxBytes) {
+        throw new SdpError(`parseSdp: payload exceeds ${maxBytes} bytes`, { code: 'ZQ_WEBRTC_SDP_TOO_LARGE' });
+    }
+    if (text.length === 0) {
+        throw new SdpError('parseSdp: empty input', { code: 'ZQ_WEBRTC_SDP_PARSE' });
+    }
+
+    const lines = text.replace(/\r\n/g, '\n').split('\n').filter((l) => l.length > 0);
+    if (lines.length === 0) {
+        throw new SdpError('parseSdp: no non-empty lines', { code: 'ZQ_WEBRTC_SDP_PARSE' });
+    }
+
+    const session = {
+        version:     0,
+        origin:      null,
+        sessionName: '',
+        attributes:  [],
+        media:       [],
+    };
+
+    let current = session;
+    let currentMedia = null;
+
+    for (let i = 0; i < lines.length; i++) {
+        const raw = lines[i];
+        const eq  = raw.indexOf('=');
+        if (eq < 1) {
+            throw new SdpError(`parseSdp: malformed line ${i + 1}`, {
+                code: 'ZQ_WEBRTC_SDP_PARSE',
+                context: { line: i + 1 },
+            });
+        }
+        const type = raw.slice(0, eq);
+        const val  = raw.slice(eq + 1);
+
+        if (i === 0 && type !== 'v') {
+            throw new SdpError('parseSdp: SDP must start with v=', {
+                code: 'ZQ_WEBRTC_SDP_PARSE',
+                context: { line: 1 },
+            });
+        }
+
+        switch (type) {
+            case 'v':
+                session.version = Number(val);
+                break;
+            case 'o':
+                session.origin = _parseOrigin(val);
+                break;
+            case 's':
+                session.sessionName = val;
+                break;
+            case 'm': {
+                currentMedia = _newMedia(val);
+                session.media.push(currentMedia);
+                current = currentMedia;
+                break;
+            }
+            case 'a':
+                _applyAttribute(current, val);
+                break;
+            default:
+                // ignore the lines we don't need for the client subset
+                break;
+        }
+    }
+
+    return session;
+}
+
+
+/**
+ * Validate that the SDP would survive the server-side hub's strict checks.
+ * Throws `SdpError` on missing required attributes; returns the parsed
+ * structure on success so callers can chain.
+ *
+ * Required, per `@zero-server/webrtc` signaling validator:
+ *   - at least one m-line
+ *   - non-rejected m-lines (port != 0) must use `UDP/TLS/RTP/SAVPF`
+ *   - each non-rejected m-line must carry `ice-ufrag`, `ice-pwd`, and
+ *     a `fingerprint` attribute (session-level fallback is honored).
+ *
+ * @param {string} text
+ * @returns {ReturnType<typeof parseSdp>}
+ */
+function validateSdp(text) {
+    const parsed = parseSdp(text);
+    if (parsed.media.length === 0) {
+        throw new SdpError('validateSdp: SDP has no m-lines', { code: 'ZQ_WEBRTC_SDP_NO_MEDIA' });
+    }
+
+    // Session-level fallbacks: ice-ufrag / ice-pwd / fingerprint can appear
+    // once at the session level and apply to every m-section.
+    const sessIceUfrag    = _findAttr(parsed.attributes, 'ice-ufrag');
+    const sessIcePwd      = _findAttr(parsed.attributes, 'ice-pwd');
+    const sessFingerprint = _findAttr(parsed.attributes, 'fingerprint');
+
+    for (let i = 0; i < parsed.media.length; i++) {
+        const m = parsed.media[i];
+        if (m.port === 0) continue;
+        if (m.proto !== REQUIRED_PROTO) {
+            throw new SdpError(
+                `validateSdp: m-line ${i} proto "${m.proto}" must be "${REQUIRED_PROTO}"`,
+                { code: 'ZQ_WEBRTC_SDP_BAD_PROTO', context: { index: i, proto: m.proto } }
+            );
+        }
+        const ufrag = m.iceUfrag || sessIceUfrag;
+        const pwd   = m.icePwd   || sessIcePwd;
+        const fp    = m.fingerprint || sessFingerprint;
+        if (!ufrag) {
+            throw new SdpError(`validateSdp: m-line ${i} missing ice-ufrag`, {
+                code: 'ZQ_WEBRTC_SDP_NO_ICE_UFRAG', context: { index: i },
+            });
+        }
+        if (!pwd) {
+            throw new SdpError(`validateSdp: m-line ${i} missing ice-pwd`, {
+                code: 'ZQ_WEBRTC_SDP_NO_ICE_PWD', context: { index: i },
+            });
+        }
+        if (!fp) {
+            throw new SdpError(`validateSdp: m-line ${i} missing fingerprint`, {
+                code: 'ZQ_WEBRTC_SDP_NO_FINGERPRINT', context: { index: i },
+            });
+        }
+    }
+
+    return parsed;
+}
+
+
+// ---------------------------------------------------------------------------
+// Internals
+// ---------------------------------------------------------------------------
+
+/** @param {string} val */
+function _parseOrigin(val) {
+    const t = val.split(/\s+/);
+    if (t.length < 6) return null;
+    return {
+        username:       t[0],
+        sessionId:      t[1],
+        sessionVersion: Number(t[2]),
+        netType:        t[3],
+        addrType:       t[4],
+        address:        t[5],
+    };
+}
+
+/** @param {string} val - the part after `m=` */
+function _newMedia(val) {
+    const t = val.split(/\s+/);
+    return {
+        kind:        t[0] || '',
+        port:        Number(t[1]) || 0,
+        proto:       t[2] || '',
+        fmts:        t.slice(3),
+        mid:         undefined,
+        iceUfrag:    undefined,
+        icePwd:      undefined,
+        fingerprint: undefined,
+        setup:       undefined,
+        direction:   undefined,
+        rtcpMux:     false,
+        candidates:  [],
+        rtpmaps:     [],
+        attributes:  [],
+    };
+}
+
+/**
+ * Apply a single `a=...` line to the current section (session or media).
+ * @param {object} section
+ * @param {string} val
+ */
+function _applyAttribute(section, val) {
+    const colon = val.indexOf(':');
+    const key = colon === -1 ? val : val.slice(0, colon);
+    const value = colon === -1 ? '' : val.slice(colon + 1);
+    section.attributes.push({ key, value });
+
+    switch (key) {
+        case 'mid':         if ('mid'         in section) section.mid = value; break;
+        case 'ice-ufrag':   if ('iceUfrag'    in section) section.iceUfrag = value; break;
+        case 'ice-pwd':     if ('icePwd'      in section) section.icePwd = value; break;
+        case 'setup':       if ('setup'       in section) section.setup = value; break;
+        case 'rtcp-mux':    if ('rtcpMux'     in section) section.rtcpMux = true; break;
+        case 'fingerprint': {
+            const sp = value.indexOf(' ');
+            const fp = sp === -1
+                ? { algorithm: value, value: '' }
+                : { algorithm: value.slice(0, sp), value: value.slice(sp + 1) };
+            if ('fingerprint' in section) section.fingerprint = fp;
+            break;
+        }
+        case 'candidate':
+            if ('candidates' in section) section.candidates.push(`candidate:${value}`);
+            break;
+        case 'rtpmap': {
+            if (!('rtpmaps' in section)) break;
+            const sp = value.indexOf(' ');
+            if (sp === -1) break;
+            const payload = Number(value.slice(0, sp));
+            const desc    = value.slice(sp + 1).split('/');
+            section.rtpmaps.push({
+                payload,
+                codec:     desc[0] || '',
+                clockRate: Number(desc[1]) || 0,
+                channels:  desc[2] ? Number(desc[2]) : undefined,
+            });
+            break;
+        }
+        case 'sendrecv':
+        case 'sendonly':
+        case 'recvonly':
+        case 'inactive':
+            if ('direction' in section) section.direction = key;
+            break;
+        default:
+            // unknown attribute - already preserved on attributes[]
+            break;
+    }
+}
+
+/**
+ * Find the first attribute value for `key` in an attribute list, or `undefined`.
+ * @param {Array<{key:string,value:string}>} list
+ * @param {string} key
+ */
+function _findAttr(list, key) {
+    for (let i = 0; i < list.length; i++) {
+        if (list[i].key === key) return list[i].value || true;
+    }
+    return undefined;
+}
+
+// --- src/webrtc/ice.js -------------------------------------------
+/**
+ * src/webrtc/ice.js - read-only ICE candidate helpers
+ *
+ * Mirrors the parsing / classification surface of the server-side
+ * `@zero-server/webrtc` ice module, trimmed to the subset the client
+ * actually needs (no policy enforcement - the server is the
+ * source of truth for cross-peer filtering).
+ *
+ * Exposes:
+ *   - `parseCandidate(line)` -> structured object
+ *   - `stringifyCandidate(obj)` -> canonical `candidate:...` line
+ *   - address classifiers: `isPrivateIp`, `isLoopbackIp`, `isLinkLocalIp`, `isMdnsHostname`
+ *   - `filterCandidates(list, policy)` for local-side trimming.
+ *
+ * SSR-safe: pure functions, no globals touched at module load.
+ */
+
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Recognized ICE candidate types (RFC 5245). */
+const CANDIDATE_TYPES = Object.freeze(['host', 'srflx', 'prflx', 'relay']);
+
+/** Recognized TCP candidate types (RFC 6544 §4.5). */
+const TCP_TYPES = Object.freeze(['active', 'passive', 'so']);
+
+
+// ---------------------------------------------------------------------------
+// Parser
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse a single ICE candidate line. Accepts inputs with or without the
+ * `a=` SDP-attribute prefix. Throws `IceError` on any structural problem.
+ *
+ * @param {string} line
+ * @returns {{
+ *   foundation: string,
+ *   component: number,
+ *   transport: string,
+ *   priority: number,
+ *   address: string,
+ *   port: number,
+ *   type: string,
+ *   relatedAddress?: string,
+ *   relatedPort?: number,
+ *   tcpType?: string,
+ *   extensions: Object<string,string>,
+ * }}
+ */
+function parseCandidate(line) {
+    if (typeof line !== 'string') {
+        throw new IceError('parseCandidate: input must be a string', { code: 'ZQ_WEBRTC_ICE_PARSE' });
+    }
+
+    let s = line.trim();
+    if (s.indexOf('a=') === 0) s = s.slice(2);
+    if (s.indexOf('candidate:') !== 0) {
+        throw new IceError('parseCandidate: missing "candidate:" prefix', {
+            code: 'ZQ_WEBRTC_ICE_PARSE',
+            context: { candidate: line },
+        });
+    }
+    s = s.slice('candidate:'.length);
+
+    const tok = s.split(/\s+/);
+    if (tok.length < 8) {
+        throw new IceError('parseCandidate: too few tokens', {
+            code: 'ZQ_WEBRTC_ICE_PARSE',
+            context: { candidate: line },
+        });
+    }
+
+    const foundation   = tok[0];
+    const componentStr = tok[1];
+    const transportRaw = tok[2];
+    const priorityStr  = tok[3];
+    const address      = tok[4];
+    const portStr      = tok[5];
+    const typKw        = tok[6];
+    const type         = tok[7];
+    const rest         = tok.slice(8);
+
+    if (typKw !== 'typ') {
+        throw new IceError('parseCandidate: expected "typ" keyword', {
+            code: 'ZQ_WEBRTC_ICE_PARSE',
+            context: { candidate: line },
+        });
+    }
+    if (CANDIDATE_TYPES.indexOf(type) === -1) {
+        throw new IceError(`parseCandidate: unknown type "${type}"`, {
+            code: 'ZQ_WEBRTC_ICE_PARSE',
+            context: { candidate: line },
+        });
+    }
+
+    const component = Number(componentStr);
+    const priority  = Number(priorityStr);
+    const port      = Number(portStr);
+    if (!Number.isInteger(component) || component < 0) {
+        throw new IceError('parseCandidate: invalid component', {
+            code: 'ZQ_WEBRTC_ICE_PARSE',
+            context: { candidate: line },
+        });
+    }
+    if (!Number.isFinite(priority)) {
+        throw new IceError('parseCandidate: invalid priority', {
+            code: 'ZQ_WEBRTC_ICE_PARSE',
+            context: { candidate: line },
+        });
+    }
+    if (!Number.isInteger(port) || port < 0 || port > 65535) {
+        throw new IceError('parseCandidate: invalid port', {
+            code: 'ZQ_WEBRTC_ICE_PARSE',
+            context: { candidate: line },
+        });
+    }
+
+    const out = {
+        foundation,
+        component,
+        transport: transportRaw.toLowerCase(),
+        priority,
+        address,
+        port,
+        type,
+        extensions: {},
+    };
+
+    for (let i = 0; i < rest.length - 1; i += 2) {
+        const k = rest[i];
+        const v = rest[i + 1];
+        if      (k === 'raddr')   out.relatedAddress = v;
+        else if (k === 'rport')   out.relatedPort    = Number(v);
+        else if (k === 'tcptype') out.tcpType        = v;
+        else                      out.extensions[k]  = v;
+    }
+
+    return out;
+}
+
+
+// ---------------------------------------------------------------------------
+// Serializer
+// ---------------------------------------------------------------------------
+
+/**
+ * Serialize a parsed candidate back to its canonical line format (no `a=` prefix).
+ * Round-trips outputs of `parseCandidate` exactly.
+ *
+ * @param {object} c - Output of `parseCandidate`.
+ * @returns {string}
+ */
+function stringifyCandidate(c) {
+    if (!c || typeof c !== 'object') {
+        throw new IceError('stringifyCandidate: input must be an object', { code: 'ZQ_WEBRTC_ICE_SERIALIZE' });
+    }
+    const required = ['foundation', 'component', 'transport', 'priority', 'address', 'port', 'type'];
+    for (const k of required) {
+        if (c[k] === undefined || c[k] === null) {
+            throw new IceError(`stringifyCandidate: missing "${k}"`, { code: 'ZQ_WEBRTC_ICE_SERIALIZE' });
+        }
+    }
+
+    let s = `candidate:${c.foundation} ${c.component} ${c.transport} ${c.priority} ${c.address} ${c.port} typ ${c.type}`;
+    if (c.relatedAddress !== undefined) s += ` raddr ${c.relatedAddress}`;
+    if (c.relatedPort !== undefined)    s += ` rport ${c.relatedPort}`;
+    if (c.tcpType !== undefined)        s += ` tcptype ${c.tcpType}`;
+    if (c.extensions) {
+        for (const k of Object.keys(c.extensions)) {
+            s += ` ${k} ${c.extensions[k]}`;
+        }
+    }
+    return s;
+}
+
+
+// ---------------------------------------------------------------------------
+// Address classifiers
+// ---------------------------------------------------------------------------
+
+function _isIPv4(addr) {
+    if (typeof addr !== 'string') return false;
+    const m = addr.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!m) return false;
+    for (let i = 1; i <= 4; i++) if (Number(m[i]) > 255) return false;
+    return true;
+}
+
+function _isIPv6(addr) {
+    if (typeof addr !== 'string') return false;
+    return addr.indexOf(':') !== -1 && /^[0-9a-fA-F:]+$/.test(addr);
+}
+
+/** RFC 1918, RFC 6598 CGNAT, and IPv6 ULA (fc00::/7). */
+function isPrivateIp(addr) {
+    if (_isIPv4(addr)) {
+        const parts = addr.split('.').map(Number);
+        const a = parts[0]; const b = parts[1];
+        if (a === 10) return true;
+        if (a === 172 && b >= 16 && b <= 31) return true;
+        if (a === 192 && b === 168) return true;
+        if (a === 100 && b >= 64 && b <= 127) return true;
+        return false;
+    }
+    if (_isIPv6(addr)) {
+        const head = addr.toLowerCase().split(':')[0];
+        if (head.length === 0) return false;
+        const n = parseInt(head, 16);
+        return (n & 0xfe00) === 0xfc00;
+    }
+    return false;
+}
+
+/** IPv4 127.0.0.0/8 and IPv6 ::1. */
+function isLoopbackIp(addr) {
+    if (_isIPv4(addr)) return addr.indexOf('127.') === 0;
+    if (_isIPv6(addr)) return addr === '::1' || /^0*:0*:0*:0*:0*:0*:0*:0*1$/.test(addr);
+    return false;
+}
+
+/** IPv4 169.254/16 and IPv6 fe80::/10. */
+function isLinkLocalIp(addr) {
+    if (_isIPv4(addr)) return addr.indexOf('169.254.') === 0;
+    if (_isIPv6(addr)) {
+        const head = addr.toLowerCase().split(':')[0];
+        if (head.length === 0) return false;
+        const n = parseInt(head, 16);
+        return (n & 0xffc0) === 0xfe80;
+    }
+    return false;
+}
+
+/** mDNS `.local` hostname (Chrome's IP-hiding ICE candidates). */
+function isMdnsHostname(host) {
+    if (typeof host !== 'string') return false;
+    if (_isIPv4(host) || _isIPv6(host)) return false;
+    return host.toLowerCase().endsWith('.local');
+}
+
+
+// ---------------------------------------------------------------------------
+// Policy filter
+// ---------------------------------------------------------------------------
+
+/**
+ * Filter a list of candidate lines (or parsed objects) against a policy.
+ * Returns the same shape it was given. Unparseable lines are silently
+ * dropped so a single bad candidate never poisons the whole batch.
+ *
+ * @param {Array<string|object>} candidates
+ * @param {object} [policy]
+ * @param {boolean} [policy.blockPrivate]
+ * @param {boolean} [policy.blockLoopback]
+ * @param {boolean} [policy.blockLinkLocal]
+ * @param {boolean} [policy.blockMdns]
+ * @param {boolean} [policy.blockTcp]
+ * @param {ReadonlyArray<string>} [policy.allowedTypes]
+ * @param {number} [policy.maxCandidates]
+ * @param {(c: object) => boolean} [policy.predicate]
+ * @returns {Array<string|object>}
+ */
+function filterCandidates(candidates, policy = {}) {
+    if (!Array.isArray(candidates)) return [];
+
+    const blockPrivate   = !!policy.blockPrivate;
+    const blockLoopback  = !!policy.blockLoopback;
+    const blockLinkLocal = !!policy.blockLinkLocal;
+    const blockMdns      = !!policy.blockMdns;
+    const blockTcp       = !!policy.blockTcp;
+    const allowedTypes   = policy.allowedTypes || null;
+    const maxCandidates  = typeof policy.maxCandidates === 'number' ? policy.maxCandidates : Infinity;
+    const predicate      = typeof policy.predicate === 'function' ? policy.predicate : null;
+
+    const out = [];
+    for (const item of candidates) {
+        if (out.length >= maxCandidates) break;
+        const isString = typeof item === 'string';
+        let parsed;
+        if (isString) {
+            try { parsed = parseCandidate(item); }
+            catch (_) { continue; }
+        } else {
+            parsed = item;
+        }
+        if (!parsed) continue;
+        if (allowedTypes && allowedTypes.indexOf(parsed.type) === -1) continue;
+        if (blockTcp && parsed.transport === 'tcp') continue;
+        if (blockMdns && isMdnsHostname(parsed.address)) continue;
+        if (blockPrivate && isPrivateIp(parsed.address)) continue;
+        if (blockLoopback && isLoopbackIp(parsed.address)) continue;
+        if (blockLinkLocal && isLinkLocalIp(parsed.address)) continue;
+        if (predicate && !predicate(parsed)) continue;
+        out.push(item);
+    }
+    return out;
+}
+
+// --- src/webrtc/signaling.js -------------------------------------
+/**
+ * src/webrtc/signaling.js - WebSocket signaling client
+ *
+ * Speaks the wire protocol of `@zero-server/webrtc` over a WebSocket
+ * transport. Handles connect / reconnect with exponential backoff,
+ * stores the `peerId` assigned by the server's initial `hello` frame,
+ * provides a tiny `on`/`off`/`send` event surface, and coalesces
+ * outbound trickle `ice` frames so we don't trip the hub's per-peer
+ * rate limit (default 30 msg/sec, 10/200ms here gives plenty of headroom).
+ *
+ * SSR-safe: nothing touches `WebSocket` at module load - the connection
+ * (and any timers) only spin up when `.connect()` is called.
+ */
+
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Default base backoff between reconnect attempts (ms). */
+const DEFAULT_BACKOFF_BASE_MS = 250;
+
+/** Default cap on the per-attempt backoff (ms). */
+const DEFAULT_BACKOFF_CAP_MS = 8000;
+
+/** Default maximum number of reconnect attempts before giving up. */
+const DEFAULT_MAX_RETRIES = 10;
+
+/** Default ICE-coalescing window length (ms). */
+const DEFAULT_ICE_FLUSH_MS = 200;
+
+/** Default max ICE frames flushed per coalesce window. */
+const DEFAULT_ICE_BATCH = 10;
+
+/** WebSocket close codes treated as "do not reconnect" (client-initiated bye). */
+const CLOSE_CODE_NORMAL = 1000;
+
+
+/**
+ * Tiny WebSocket signaling client for the zQuery WebRTC stack.
+ *
+ *   const client = new SignalingClient('wss://api.example.com/rtc');
+ *   client.on('hello', ({ peerId }) => console.log('I am', peerId));
+ *   client.on('joined', ({ room, peers }) => ...);
+ *   await client.connect();
+ *   client.send('join', { room: 'lobby' });
+ *
+ * Lifecycle events (in addition to server frame types):
+ *   - `open`        fired on every successful socket open (incl. reconnects).
+ *   - `close`       fired on every socket close, payload `{ code, reason, wasClean }`.
+ *   - `reconnect`   fired before each reconnect attempt, payload `{ attempt, delayMs }`.
+ *   - `error`       fired on protocol errors with a `SignalingError` payload.
+ */
+class SignalingClient {
+    /**
+     * @param {string} url - WebSocket URL (`ws://` or `wss://`).
+     * @param {object} [options]
+     * @param {object} [options.reconnect]                  - reconnect tuning (set `false` to disable).
+     * @param {number} [options.reconnect.baseMs=250]       - base backoff per attempt.
+     * @param {number} [options.reconnect.capMs=8000]       - cap on per-attempt backoff.
+     * @param {number} [options.reconnect.maxRetries=10]    - hard cap on reconnect attempts.
+     * @param {number} [options.iceFlushMs=200]             - ICE coalesce window length (ms).
+     * @param {number} [options.iceBatch=10]                - max ICE frames flushed per window.
+     * @param {Function} [options.WebSocket]                - WebSocket constructor (defaults to global; useful for tests).
+     */
+    constructor(url, options = {}) {
+        if (typeof url !== 'string' || url.length === 0) {
+            throw new SignalingError('SignalingClient requires a non-empty url', { code: 'ZQ_WEBRTC_SIGNALING_BAD_URL' });
+        }
+
+        const reconnect = options.reconnect === false
+            ? null
+            : Object.assign(
+                {
+                    baseMs:     DEFAULT_BACKOFF_BASE_MS,
+                    capMs:      DEFAULT_BACKOFF_CAP_MS,
+                    maxRetries: DEFAULT_MAX_RETRIES,
+                },
+                options.reconnect || {}
+            );
+
+        this.url        = url;
+        this.options    = {
+            reconnect,
+            iceFlushMs: options.iceFlushMs || DEFAULT_ICE_FLUSH_MS,
+            iceBatch:   options.iceBatch   || DEFAULT_ICE_BATCH,
+            WebSocket:  options.WebSocket  || null,
+        };
+        this.peerId     = null;
+        this.ws         = null;
+        this.connected  = false;
+        this.closed     = false;
+        this._attempts  = 0;
+        this._listeners = new Map();
+        this._iceQueue  = [];
+        this._iceTimer  = null;
+        this._reconnectTimer = null;
+        this._helloReceived  = false;
+    }
+
+    // -----------------------------------------------------------------------
+    // Event surface
+    // -----------------------------------------------------------------------
+
+    /**
+     * Register a listener for a server frame type or lifecycle event.
+     *
+     * @param {string}   type
+     * @param {Function} cb
+     * @returns {Function} unsubscribe function.
+     */
+    on(type, cb) {
+        if (typeof cb !== 'function') return () => {};
+        let set = this._listeners.get(type);
+        if (!set) { set = new Set(); this._listeners.set(type, set); }
+        set.add(cb);
+        return () => this.off(type, cb);
+    }
+
+    /**
+     * Remove a previously registered listener.
+     *
+     * @param {string}   type
+     * @param {Function} cb
+     */
+    off(type, cb) {
+        const set = this._listeners.get(type);
+        if (set) set.delete(cb);
+    }
+
+    /**
+     * Internal: emit to every registered listener for `type`.
+     *
+     * @param {string} type
+     * @param {*}      payload
+     * @private
+     */
+    _emit(type, payload) {
+        const set = this._listeners.get(type);
+        if (!set || set.size === 0) return;
+        for (const cb of [...set]) {
+            try { cb(payload); }
+            catch (_) { /* listener errors must not break the socket loop */ }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Lifecycle
+    // -----------------------------------------------------------------------
+
+    /**
+     * Open the socket. Resolves on first successful `open` event; rejects with
+     * a `SignalingError` if the very first connection attempt fails.
+     * Subsequent reconnects happen transparently and do not reject this promise.
+     *
+     * @returns {Promise<void>}
+     */
+    connect() {
+        if (this.connected) return Promise.resolve();
+        this.closed = false;
+        return new Promise((resolve, reject) => {
+            const onceOpen = () => {
+                this.off('open',  onceOpen);
+                this.off('error', onceErr);
+                resolve();
+            };
+            const onceErr = (err) => {
+                if (this._attempts === 0) {
+                    this.off('open',  onceOpen);
+                    this.off('error', onceErr);
+                    reject(err);
+                }
+            };
+            this.on('open',  onceOpen);
+            this.on('error', onceErr);
+            this._open();
+        });
+    }
+
+    /**
+     * Send a frame `{ type, ...payload }` to the server. `ice` frames are
+     * coalesced and flushed in batches of `iceBatch` per `iceFlushMs`.
+     *
+     * @param {string} type
+     * @param {object} [payload]
+     */
+    send(type, payload = {}) {
+        if (typeof type !== 'string' || type.length === 0) {
+            throw new SignalingError('SignalingClient.send requires a frame type', { code: 'ZQ_WEBRTC_SIGNALING_BAD_FRAME' });
+        }
+        const frame = Object.assign({ type }, payload);
+        if (type === 'ice') {
+            this._iceQueue.push(frame);
+            this._scheduleIceFlush();
+            return;
+        }
+        this._sendRaw(frame);
+    }
+
+    /**
+     * Gracefully close the socket. Sends a `bye` frame (best-effort), cancels
+     * any pending reconnect, and never reconnects again until `.connect()` is
+     * called explicitly.
+     */
+    close() {
+        this.closed = true;
+        if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
+        if (this._iceTimer)       { clearTimeout(this._iceTimer);       this._iceTimer       = null; }
+        this._iceQueue.length = 0;
+        if (this.ws) {
+            try { this._sendRaw({ type: 'bye' }); } catch (_) { /* socket may be dead */ }
+            try { this.ws.close(CLOSE_CODE_NORMAL, 'client-bye'); } catch (_) { /* */ }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Internals
+    // -----------------------------------------------------------------------
+
+    /**
+     * Open the underlying WebSocket and wire its event handlers. Defers all
+     * access to the global `WebSocket` so SSR consumers can import this
+     * module without a polyfill.
+     *
+     * @private
+     */
+    _open() {
+        const WS = this.options.WebSocket
+            || (typeof WebSocket !== 'undefined' ? WebSocket : null);
+        if (!WS) {
+            const err = new SignalingError('No WebSocket implementation available (SSR? pass options.WebSocket)', { code: 'ZQ_WEBRTC_SIGNALING_NO_WS' });
+            this._emit('error', err);
+            return;
+        }
+
+        this._helloReceived = false;
+        let ws;
+        try { ws = new WS(this.url); }
+        catch (cause) {
+            const err = new SignalingError('Failed to construct WebSocket', { code: 'ZQ_WEBRTC_SIGNALING_OPEN', cause });
+            this._emit('error', err);
+            this._scheduleReconnect();
+            return;
+        }
+        this.ws = ws;
+
+        ws.onopen = () => {
+            this.connected = true;
+            this._attempts = 0;
+            this._emit('open', { url: this.url });
+        };
+
+        ws.onmessage = (event) => this._onMessage(event);
+
+        ws.onerror = (event) => {
+            const err = new SignalingError('WebSocket error', { code: 'ZQ_WEBRTC_SIGNALING_WS_ERROR', context: { event } });
+            this._emit('error', err);
+        };
+
+        ws.onclose = (event) => {
+            this.connected = false;
+            this.ws        = null;
+            const payload = { code: event && event.code, reason: event && event.reason, wasClean: event && event.wasClean };
+            this._emit('close', payload);
+            if (this.closed) return;
+            if (payload.code === CLOSE_CODE_NORMAL) return;
+            this._scheduleReconnect();
+        };
+    }
+
+    /**
+     * Parse + validate an incoming frame and dispatch to listeners. The first
+     * message after `open` must be `{ type: 'hello', peerId }`; anything else
+     * (or a malformed JSON payload) raises a `SignalingError`.
+     *
+     * @param {MessageEvent} event
+     * @private
+     */
+    _onMessage(event) {
+        let frame;
+        try { frame = JSON.parse(event.data); }
+        catch (cause) {
+            this._emit('error', new SignalingError('Malformed JSON from server', { code: 'ZQ_WEBRTC_SIGNALING_BAD_JSON', cause }));
+            return;
+        }
+        if (!frame || typeof frame !== 'object' || typeof frame.type !== 'string') {
+            this._emit('error', new SignalingError('Frame missing required "type" field', { code: 'ZQ_WEBRTC_SIGNALING_BAD_FRAME', context: { frame } }));
+            return;
+        }
+
+        if (!this._helloReceived) {
+            if (frame.type !== 'hello' || typeof frame.peerId !== 'string') {
+                this._emit('error', new SignalingError('First frame must be a hello with peerId', { code: 'ZQ_WEBRTC_SIGNALING_NO_HELLO', context: { frame } }));
+                return;
+            }
+            this._helloReceived = true;
+            this.peerId = frame.peerId;
+        }
+
+        this._emit(frame.type, frame);
+    }
+
+    /**
+     * Send a frame immediately (no coalescing). Buffers a `SignalingError`
+     * to listeners if the socket is not currently open.
+     *
+     * @param {object} frame
+     * @private
+     */
+    _sendRaw(frame) {
+        if (!this.ws || !this.connected) {
+            this._emit('error', new SignalingError('Cannot send frame: socket not open', { code: 'ZQ_WEBRTC_SIGNALING_NOT_OPEN', context: { type: frame && frame.type } }));
+            return;
+        }
+        try { this.ws.send(JSON.stringify(frame)); }
+        catch (cause) {
+            this._emit('error', new SignalingError('socket.send threw', { code: 'ZQ_WEBRTC_SIGNALING_SEND_FAIL', cause }));
+        }
+    }
+
+    /**
+     * Schedule a coalesced ICE flush. Multiple `send('ice', ...)` calls within
+     * `iceFlushMs` of each other are drained together (up to `iceBatch` per
+     * window), keeping us well under the server's per-peer message-rate cap.
+     *
+     * @private
+     */
+    _scheduleIceFlush() {
+        if (this._iceTimer) return;
+        this._iceTimer = setTimeout(() => {
+            this._iceTimer = null;
+            this._flushIce();
+            if (this._iceQueue.length > 0) this._scheduleIceFlush();
+        }, this.options.iceFlushMs);
+    }
+
+    /**
+     * Drain up to `iceBatch` ICE frames from the queue, sending each
+     * individually. We intentionally do not concatenate them into a single
+     * wire frame - the server's protocol expects one `ice` frame per candidate.
+     *
+     * @private
+     */
+    _flushIce() {
+        const batch = this._iceQueue.splice(0, this.options.iceBatch);
+        for (const frame of batch) this._sendRaw(frame);
+    }
+
+    /**
+     * Schedule the next reconnect attempt using exponential backoff with the
+     * configured cap, bailing out once `maxRetries` is reached.
+     *
+     * @private
+     */
+    _scheduleReconnect() {
+        const cfg = this.options.reconnect;
+        if (!cfg) return;
+        if (this._attempts >= cfg.maxRetries) {
+            this._emit('error', new SignalingError('Max reconnect attempts exceeded', { code: 'ZQ_WEBRTC_SIGNALING_GIVEUP', context: { attempts: this._attempts } }));
+            this.closed = true;
+            return;
+        }
+        const attempt = this._attempts++;
+        const delayMs = Math.min(cfg.capMs, cfg.baseMs * Math.pow(2, attempt));
+        this._emit('reconnect', { attempt: attempt + 1, delayMs });
+        this._reconnectTimer = setTimeout(() => {
+            this._reconnectTimer = null;
+            if (!this.closed) this._open();
+        }, delayMs);
+    }
+}
+
+// --- src/webrtc/peer.js ------------------------------------------
+/**
+ * src/webrtc/peer.js - RTCPeerConnection wrapper with perfect negotiation
+ *
+ * Wraps a browser `RTCPeerConnection` and routes JSEP messages through a
+ * `SignalingClient` instance for a single remote peer. Implements the W3C
+ * "perfect negotiation" pattern (Jan-Ivar Bruaroey) so that simultaneous
+ * `negotiationneeded` events on both ends resolve deterministically based
+ * on the locally-assigned `polite` flag - no glare, no manual rollback.
+ *
+ * Wire-protocol mapping (mirrors @zero-server/webrtc):
+ *   - outgoing `offer`  -> `{ type: 'offer',  to, sdp }`   (sdp is the string)
+ *   - outgoing `answer` -> `{ type: 'answer', to, sdp }`
+ *   - outgoing `ice`    -> `{ type: 'ice',    to, candidate }`  (raw a=candidate: line or null)
+ *   - incoming filtered by `msg.from === this.id`.
+ *
+ * Server-side constraints honored here:
+ *   - at most `maxIceCandidates` trickled candidates per peer (default 30 -
+ *     the hub's hard cap on `a=candidate:` lines per SDP)
+ *   - `mDNS` (`.local`) candidates dropped before send
+ *   - failed `connectionState` automatically calls `pc.restartIce()`.
+ *
+ * SSR-safe: nothing touches `RTCPeerConnection` at module load - it's only
+ * resolved when a `Peer` is constructed. Tests can inject a fake constructor
+ * via `options.RTCPeerConnection`.
+ */
+
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Default cap on trickled ICE candidates per peer (matches server SDP cap). */
+const DEFAULT_MAX_ICE_CANDIDATES = 30;
+
+
+/**
+ * One remote peer over a shared `SignalingClient`. Caller owns the lifetime
+ * (construct, attach tracks, eventually call `.close()`).
+ *
+ *   const peer = new Peer('peer_42', signaling, { polite: true });
+ *   peer.addTrack(localAudio, localStream);
+ *   peer.on('track', ({ track, streams }) => attachToVideoEl(streams[0]));
+ *
+ * Lifecycle events:
+ *   - `track`                   forwards the underlying `RTCTrackEvent`.
+ *   - `connectionstatechange`   payload is the new `pc.connectionState` string.
+ *   - `datachannel`             forwards `RTCDataChannelEvent`.
+ *   - `close`                   fired exactly once when `.close()` runs.
+ *   - `error`                   `SdpError` / `IceError` from negotiation.
+ */
+class Peer {
+    /**
+     * @param {string} peerId                       - remote peer id (the `from`/`to` value on the wire).
+     * @param {import('./signaling.js').SignalingClient} signaling - shared signaling client.
+     * @param {object} [options]
+     * @param {boolean} [options.polite=false]      - perfect-negotiation polite flag.
+     * @param {RTCIceServer[]} [options.iceServers] - STUN/TURN servers.
+     * @param {Function} [options.RTCPeerConnection] - constructor override (tests).
+     * @param {number}  [options.maxIceCandidates=30] - trickled-candidate hard cap.
+     * @param {object}  [options.rtcConfig]          - extra fields merged into `RTCConfiguration`.
+     */
+    constructor(peerId, signaling, options = {}) {
+        if (typeof peerId !== 'string' || peerId.length === 0) {
+            throw new WebRtcError('Peer requires a non-empty peerId', { code: 'ZQ_WEBRTC_PEER_BAD_ID' });
+        }
+        if (!signaling || typeof signaling.send !== 'function' || typeof signaling.on !== 'function') {
+            throw new WebRtcError('Peer requires a SignalingClient-like object', { code: 'ZQ_WEBRTC_PEER_BAD_SIGNALING' });
+        }
+
+        const PCCtor = options.RTCPeerConnection
+            || (typeof globalThis !== 'undefined' && globalThis.RTCPeerConnection)
+            || null;
+        if (!PCCtor) {
+            throw new WebRtcError(
+                'RTCPeerConnection is not available in this environment',
+                { code: 'ZQ_WEBRTC_NO_RTC' }
+            );
+        }
+
+        const rtcConfig = Object.assign(
+            { iceServers: options.iceServers || [] },
+            options.rtcConfig || {}
+        );
+
+        this.id            = peerId;
+        this.signaling     = signaling;
+        this.polite        = !!options.polite;
+        this.pc            = new PCCtor(rtcConfig);
+        this.closed        = false;
+        this.makingOffer   = false;
+        this.ignoreOffer   = false;
+        this.srdAnswerPending = false;
+
+        this._listeners        = new Map();
+        this._maxIceCandidates = options.maxIceCandidates || DEFAULT_MAX_ICE_CANDIDATES;
+        this._sentCandidates   = 0;
+        this._sigUnsub         = [];
+
+        this._attachPc();
+        this._attachSignaling();
+    }
+
+    // -----------------------------------------------------------------------
+    // Event surface
+    // -----------------------------------------------------------------------
+
+    /**
+     * Subscribe to a Peer-level event.
+     *
+     * @param {string}   type
+     * @param {Function} cb
+     * @returns {Function} unsubscribe
+     */
+    on(type, cb) {
+        if (typeof cb !== 'function') return () => {};
+        let set = this._listeners.get(type);
+        if (!set) { set = new Set(); this._listeners.set(type, set); }
+        set.add(cb);
+        return () => this.off(type, cb);
+    }
+
+    /**
+     * Remove a previously registered listener.
+     *
+     * @param {string}   type
+     * @param {Function} cb
+     */
+    off(type, cb) {
+        const set = this._listeners.get(type);
+        if (set) set.delete(cb);
+    }
+
+    /**
+     * @param {string} type
+     * @param {*}      payload
+     * @private
+     */
+    _emit(type, payload) {
+        const set = this._listeners.get(type);
+        if (!set || set.size === 0) return;
+        for (const cb of [...set]) {
+            try { cb(payload); }
+            catch (_) { /* listener errors must not break negotiation */ }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Track / datachannel passthrough
+    // -----------------------------------------------------------------------
+
+    /**
+     * Add a local track to this peer. Returns the `RTCRtpSender` so the caller
+     * can later `replaceTrack()` or `removeTrack()` it directly.
+     *
+     * @param {MediaStreamTrack} track
+     * @param {...MediaStream}   streams
+     * @returns {*}
+     */
+    addTrack(track, ...streams) {
+        return this.pc.addTrack(track, ...streams);
+    }
+
+    /**
+     * Remove a previously-added sender from the peer.
+     *
+     * @param {*} sender
+     */
+    removeTrack(sender) {
+        return this.pc.removeTrack(sender);
+    }
+
+    /**
+     * Create a data channel on this peer. The remote side observes a
+     * `datachannel` event on its own `Peer`.
+     *
+     * @param {string} label
+     * @param {RTCDataChannelInit} [init]
+     * @returns {RTCDataChannel}
+     */
+    createDataChannel(label, init) {
+        return this.pc.createDataChannel(label, init);
+    }
+
+    /**
+     * Force ICE restart - useful from app code after detecting a long
+     * `disconnected` window. Negotiation kicks off automatically via
+     * `negotiationneeded`.
+     */
+    restartIce() {
+        if (this.closed) return;
+        try { this.pc.restartIce(); }
+        catch (err) {
+            this._emit('error', new IceError(err.message || 'restartIce failed', {
+                code: 'ZQ_WEBRTC_ICE_RESTART_FAILED',
+                cause: err,
+            }));
+        }
+    }
+
+    /**
+     * Close the underlying `RTCPeerConnection` and detach signaling listeners.
+     * Idempotent.
+     */
+    close() {
+        if (this.closed) return;
+        this.closed = true;
+
+        for (const off of this._sigUnsub) { try { off(); } catch (_) {} }
+        this._sigUnsub.length = 0;
+
+        try { this.pc.close(); } catch (_) {}
+        this._emit('close');
+    }
+
+    // -----------------------------------------------------------------------
+    // Internal: RTCPeerConnection wiring
+    // -----------------------------------------------------------------------
+
+    /** @private */
+    _attachPc() {
+        this.pc.onnegotiationneeded = async () => {
+            if (this.closed) return;
+            try {
+                this.makingOffer = true;
+                await this.pc.setLocalDescription();
+                const desc = this.pc.localDescription;
+                if (!desc || !desc.sdp) return;
+                this.signaling.send('offer', { to: this.id, sdp: desc.sdp });
+            } catch (err) {
+                this._emit('error', new SdpError(err.message || 'offer failed', {
+                    code: 'ZQ_WEBRTC_SDP_OFFER_FAILED',
+                    cause: err,
+                }));
+            } finally {
+                this.makingOffer = false;
+            }
+        };
+
+        this.pc.onicecandidate = (event) => {
+            if (this.closed) return;
+            const candidate = event && event.candidate;
+            // End-of-candidates marker (null) -> always forward.
+            if (!candidate) {
+                this.signaling.send('ice', { to: this.id, candidate: null });
+                return;
+            }
+            const cand = typeof candidate === 'string' ? candidate : candidate.candidate;
+            if (!cand) return;
+            // Drop mDNS candidates - servers / non-mDNS peers can't resolve them.
+            if (cand.indexOf('.local') !== -1) return;
+            if (this._sentCandidates >= this._maxIceCandidates) return;
+            this._sentCandidates++;
+            this.signaling.send('ice', { to: this.id, candidate: cand });
+        };
+
+        this.pc.ontrack = (event) => {
+            if (this.closed) return;
+            this._emit('track', event);
+        };
+
+        this.pc.ondatachannel = (event) => {
+            if (this.closed) return;
+            this._emit('datachannel', event);
+        };
+
+        this.pc.onconnectionstatechange = () => {
+            if (this.closed) return;
+            const state = this.pc.connectionState;
+            this._emit('connectionstatechange', state);
+            if (state === 'failed') {
+                try { this.pc.restartIce(); } catch (_) { /* swallow */ }
+            }
+        };
+    }
+
+    /** @private */
+    _attachSignaling() {
+        const guard = (cb) => (msg) => {
+            if (this.closed) return;
+            if (!msg || msg.from !== this.id) return;
+            cb(msg);
+        };
+        this._sigUnsub.push(
+            this.signaling.on('offer',  guard((m) => this._onRemoteDescription('offer',  m.sdp))),
+            this.signaling.on('answer', guard((m) => this._onRemoteDescription('answer', m.sdp))),
+            this.signaling.on('ice',    guard((m) => this._onRemoteCandidate(m.candidate))),
+        );
+    }
+
+    /**
+     * @param {'offer'|'answer'} kind
+     * @param {string|object} sdp
+     * @private
+     */
+    async _onRemoteDescription(kind, sdp) {
+        // Accept either a full description object (some servers relay it that
+        // way) or a bare SDP string; normalize to { type, sdp }.
+        const description = typeof sdp === 'string'
+            ? { type: kind, sdp }
+            : sdp;
+
+        try {
+            const ready = !this.makingOffer
+                && (this.pc.signalingState === 'stable' || this.srdAnswerPending);
+            const offerCollision = description.type === 'offer' && !ready;
+            this.ignoreOffer = !this.polite && offerCollision;
+            if (this.ignoreOffer) return;
+
+            this.srdAnswerPending = description.type === 'answer';
+            await this.pc.setRemoteDescription(description);
+            this.srdAnswerPending = false;
+
+            if (description.type === 'offer') {
+                await this.pc.setLocalDescription();
+                const local = this.pc.localDescription;
+                if (local && local.sdp) {
+                    this.signaling.send('answer', { to: this.id, sdp: local.sdp });
+                }
+            }
+        } catch (err) {
+            this._emit('error', new SdpError(err.message || 'setRemoteDescription failed', {
+                code: 'ZQ_WEBRTC_SDP_APPLY_FAILED',
+                cause: err,
+            }));
+        }
+    }
+
+    /**
+     * @param {string|null} candidate - raw `a=candidate:` line or `null` for EOC.
+     * @private
+     */
+    async _onRemoteCandidate(candidate) {
+        try {
+            if (candidate == null) {
+                // End-of-candidates: addIceCandidate(null) is the spec-compliant signal.
+                await this.pc.addIceCandidate(null);
+                return;
+            }
+            await this.pc.addIceCandidate({ candidate });
+        } catch (err) {
+            // The W3C pattern: suppress errors while we're explicitly ignoring an offer.
+            if (this.ignoreOffer) return;
+            this._emit('error', new IceError(err.message || 'addIceCandidate failed', {
+                code: 'ZQ_WEBRTC_ICE_ADD_FAILED',
+                cause: err,
+            }));
+        }
+    }
+}
+
+// --- src/webrtc/room.js ------------------------------------------
+/**
+ * src/webrtc/room.js - high-level Room handle and `join()` orchestrator
+ *
+ * A `Room` owns a mesh of `Peer` instances around a single `SignalingClient`,
+ * exposing reactive `peers` / `localTracks` `Signal`s, plus an imperative
+ * `publish` / `unpublish` / `dataChannel` / `leave` surface and a small
+ * `peer-joined` / `peer-left` / `error` event bus.
+ *
+ * Created by `webrtc.join(url, opts)` (see `index.js`). Direct construction
+ * is private API - callers should always go through `join()` so the
+ * connect / hello / join handshake completes before they get the handle.
+ *
+ * SSR-safe by reflection: `webrtc.join` defers all browser globals
+ * (`WebSocket`, `RTCPeerConnection`, `navigator.mediaDevices`) until called.
+ */
+
+
+
+
+
+// ---------------------------------------------------------------------------
+// Room
+// ---------------------------------------------------------------------------
+
+/**
+ * High-level handle around a joined room.
+ *
+ * Do not call `new Room(...)` directly - use `webrtc.join()`. The
+ * constructor is exported for type-checking and testing only.
+ */
+class Room {
+    /**
+     * @param {object} args
+     * @param {string} args.id - Room id (the `room` argument passed to `webrtc.join`).
+     * @param {string} args.self - Server-assigned local peer id (from the `hello` frame).
+     * @param {SignalingClient} args.signaling - Live signaling client.
+     * @param {object} [args.peerOptions] - Forwarded to each `new Peer(id, sig, opts)`.
+     */
+    constructor({ id, self, signaling, peerOptions = {} }) {
+        if (typeof id !== 'string' || id.length === 0) {
+            throw new WebRtcError('Room: id must be a non-empty string', { code: 'ZQ_WEBRTC_ROOM_BAD_ID' });
+        }
+        if (typeof self !== 'string' || self.length === 0) {
+            throw new WebRtcError('Room: self must be a non-empty string', { code: 'ZQ_WEBRTC_ROOM_BAD_SELF' });
+        }
+        if (!signaling || typeof signaling.send !== 'function') {
+            throw new WebRtcError('Room: signaling must be a SignalingClient', { code: 'ZQ_WEBRTC_ROOM_BAD_SIGNALING' });
+        }
+
+        this.id          = id;
+        this.self        = self;
+        this.signaling   = signaling;
+        this.peerOptions = peerOptions;
+        this.closed      = false;
+
+        /** Reactive map of remote peers, keyed by peer id. */
+        this.peers       = signal(new Map());
+        /** Reactive list of local tracks currently being published. */
+        this.localTracks = signal([]);
+
+        // Event bus (peer-joined, peer-left, mute, unmute, error)
+        /** @type {Map<string, Set<Function>>} */
+        this._listeners  = new Map();
+
+        // Track every (stream, track) pair we're publishing so a peer that
+        // joins later automatically receives the same set of tracks.
+        /** @type {Array<{ track: MediaStreamTrack, stream: MediaStream }>} */
+        this._publishedTracks = [];
+
+        // Per-peer sender bookkeeping so unpublish() can remove cleanly.
+        // _peerSenders : Map<peerId, Map<track, sender>>
+        /** @type {Map<string, Map<MediaStreamTrack, any>>} */
+        this._peerSenders = new Map();
+
+        // Multiplexed data channels, keyed by label. Each entry owns the
+        // per-peer underlying RTCDataChannel map plus the broadcast wrapper.
+        /** @type {Map<string, _RoomDataChannel>} */
+        this._channels    = new Map();
+
+        this._signalingUnsubs = [];
+        this._attachSignaling();
+    }
+
+
+    // ---- Mesh management ---------------------------------------------------
+
+    /**
+     * Add a remote peer to the mesh. Idempotent.
+     * @param {string} peerId
+     */
+    _addPeer(peerId) {
+        if (this.closed) return;
+        if (peerId === this.self) return;
+        const map = this.peers.peek();
+        if (map.has(peerId)) return;
+
+        // Perfect-negotiation polite flag - both ends agree deterministically.
+        const polite = this.self > peerId;
+        const peer = new Peer(peerId, this.signaling, Object.assign({ polite }, this.peerOptions));
+
+        /** @type {{ id: string, peer: Peer, pc: RTCPeerConnection, stream: MediaStream, audio: boolean, video: boolean, connection: string }} */
+        const info = {
+            id:         peerId,
+            peer,
+            pc:         peer.pc,
+            stream:     _newMediaStream(),
+            audio:      false,
+            video:      false,
+            connection: 'new',
+        };
+
+        peer.on('track', (evt) => {
+            // Prefer the first event-supplied stream so MediaStream identity is
+            // shared with what the remote sent; fall back to our local synthetic.
+            const incoming = evt && evt.streams && evt.streams[0];
+            if (incoming && incoming !== info.stream) {
+                info.stream = incoming;
+            } else if (evt && evt.track && typeof info.stream.addTrack === 'function') {
+                info.stream.addTrack(evt.track);
+            }
+            if (evt && evt.track) {
+                if (evt.track.kind === 'audio') info.audio = true;
+                if (evt.track.kind === 'video') info.video = true;
+            }
+            this._touchPeer(peerId);
+        });
+
+        peer.on('connectionstatechange', (state) => {
+            info.connection = state;
+            this._touchPeer(peerId);
+            if (state === 'failed') this._emit('error', new WebRtcError(
+                `Room: peer "${peerId}" connection failed`,
+                { code: 'ZQ_WEBRTC_PEER_FAILED', context: { peerId } }
+            ));
+        });
+
+        peer.on('datachannel', (evt) => {
+            const dc = evt && evt.channel;
+            if (!dc) return;
+            // Surface the incoming channel through the matching multiplex
+            // wrapper so callers see remote-opened channels alongside their own.
+            const wrap = this._channels.get(dc.label);
+            if (wrap) wrap._adoptIncoming(peerId, dc);
+        });
+
+        peer.on('error', (err) => this._emit('error', err));
+
+        // Mirror the new peer into the reactive Map.
+        const next = new Map(map);
+        next.set(peerId, info);
+        this.peers.value = next;
+
+        // Pre-existing local tracks: republish to the fresh peer.
+        if (this._publishedTracks.length > 0) {
+            const senders = new Map();
+            for (const { track, stream } of this._publishedTracks) {
+                try {
+                    const sender = peer.addTrack(track, stream);
+                    senders.set(track, sender);
+                } catch (err) {
+                    this._emit('error', err);
+                }
+            }
+            this._peerSenders.set(peerId, senders);
+        }
+
+        // Pre-existing data channels: open the same label on the new peer.
+        for (const wrap of this._channels.values()) {
+            try { wrap._openOnPeer(peerId, peer); }
+            catch (err) { this._emit('error', err); }
+        }
+
+        this._emit('peer-joined', info);
+    }
+
+    /**
+     * Drop a peer from the mesh.
+     * @param {string} peerId
+     */
+    _removePeer(peerId) {
+        const map = this.peers.peek();
+        const info = map.get(peerId);
+        if (!info) return;
+
+        try { info.peer.close(); }
+        catch (_) { /* idempotent */ }
+
+        for (const wrap of this._channels.values()) wrap._dropPeer(peerId);
+        this._peerSenders.delete(peerId);
+
+        const next = new Map(map);
+        next.delete(peerId);
+        this.peers.value = next;
+
+        this._emit('peer-left', info);
+    }
+
+    /** Re-emit a `peers` notification (used when PeerInfo internals mutate in place). */
+    _touchPeer(peerId) {
+        const map = this.peers.peek();
+        if (!map.has(peerId)) return;
+        // Replace with a fresh Map so the signal notifies subscribers.
+        this.peers.value = new Map(map);
+    }
+
+
+    // ---- Imperative surface ------------------------------------------------
+
+    /**
+     * Add every track in `stream` to every existing peer (and remember the
+     * pair so peers that join later also receive them).
+     *
+     * @param {MediaStream} stream
+     * @returns {Promise<void>}
+     */
+    async publish(stream) {
+        if (this.closed) throw new WebRtcError('Room.publish: room is closed', { code: 'ZQ_WEBRTC_ROOM_CLOSED' });
+        if (!stream || typeof stream.getTracks !== 'function') {
+            throw new WebRtcError('Room.publish: stream must be a MediaStream', { code: 'ZQ_WEBRTC_ROOM_BAD_STREAM' });
+        }
+        const tracks = stream.getTracks();
+        for (const track of tracks) {
+            // Skip duplicates.
+            if (this._publishedTracks.some((p) => p.track === track)) continue;
+            this._publishedTracks.push({ track, stream });
+
+            for (const [peerId, info] of this.peers.peek()) {
+                const senders = this._peerSenders.get(peerId) || new Map();
+                try {
+                    const sender = info.peer.addTrack(track, stream);
+                    senders.set(track, sender);
+                } catch (err) {
+                    this._emit('error', err);
+                }
+                this._peerSenders.set(peerId, senders);
+            }
+        }
+        // Notify localTracks subscribers.
+        this.localTracks.value = this._publishedTracks.map((p) => p.track);
+    }
+
+    /**
+     * Remove every track in `stream` from every peer.
+     *
+     * @param {MediaStream} stream
+     * @returns {Promise<void>}
+     */
+    async unpublish(stream) {
+        if (this.closed) return;
+        if (!stream || typeof stream.getTracks !== 'function') {
+            throw new WebRtcError('Room.unpublish: stream must be a MediaStream', { code: 'ZQ_WEBRTC_ROOM_BAD_STREAM' });
+        }
+        const tracks = stream.getTracks();
+        for (const track of tracks) {
+            const idx = this._publishedTracks.findIndex((p) => p.track === track);
+            if (idx === -1) continue;
+            this._publishedTracks.splice(idx, 1);
+            for (const [peerId, info] of this.peers.peek()) {
+                const senders = this._peerSenders.get(peerId);
+                if (!senders) continue;
+                const sender = senders.get(track);
+                if (!sender) continue;
+                try { info.peer.removeTrack(sender); }
+                catch (err) { this._emit('error', err); }
+                senders.delete(track);
+            }
+        }
+        this.localTracks.value = this._publishedTracks.map((p) => p.track);
+    }
+
+    /**
+     * Open (or look up) a multiplexed data channel on this room. The same
+     * `label` returns the same wrapper across calls. `send()` broadcasts to
+     * every peer; `on('message', cb)` fires once per inbound frame from any
+     * peer with `(data, peerId)` as the arguments.
+     *
+     * @param {string} label
+     * @param {RTCDataChannelInit} [opts]
+     */
+    dataChannel(label, opts) {
+        if (this.closed) throw new WebRtcError('Room.dataChannel: room is closed', { code: 'ZQ_WEBRTC_ROOM_CLOSED' });
+        if (typeof label !== 'string' || label.length === 0) {
+            throw new WebRtcError('Room.dataChannel: label must be a non-empty string', { code: 'ZQ_WEBRTC_ROOM_BAD_LABEL' });
+        }
+        const existing = this._channels.get(label);
+        if (existing) return existing;
+
+        const wrap = new _RoomDataChannel(label, opts || {});
+        this._channels.set(label, wrap);
+
+        for (const [peerId, info] of this.peers.peek()) {
+            try { wrap._openOnPeer(peerId, info.peer); }
+            catch (err) { this._emit('error', err); }
+        }
+        return wrap;
+    }
+
+    /**
+     * Leave the room - closes every peer, tells the server, and disposes
+     * the signaling subscriptions. The underlying `SignalingClient` is left
+     * open so the caller can join another room without reconnecting.
+     */
+    async leave() {
+        if (this.closed) return;
+        this.closed = true;
+
+        for (const unsub of this._signalingUnsubs) {
+            try { unsub(); } catch (_) { /* idempotent */ }
+        }
+        this._signalingUnsubs = [];
+
+        for (const wrap of this._channels.values()) wrap._closeAll();
+        this._channels.clear();
+
+        for (const [, info] of this.peers.peek()) {
+            try { info.peer.close(); } catch (_) { /* idempotent */ }
+        }
+        this.peers.value = new Map();
+
+        try { this.signaling.send('leave', {}); }
+        catch (_) { /* socket may already be closed */ }
+
+        this._listeners.clear();
+    }
+
+
+    // ---- Tiny event bus ---------------------------------------------------
+
+    /**
+     * Subscribe to a room-level event.
+     * @param {'peer-joined'|'peer-left'|'mute'|'unmute'|'error'} event
+     * @param {Function} cb
+     * @returns {() => void}
+     */
+    on(event, cb) {
+        if (typeof cb !== 'function') return () => {};
+        let set = this._listeners.get(event);
+        if (!set) { set = new Set(); this._listeners.set(event, set); }
+        set.add(cb);
+        return () => this.off(event, cb);
+    }
+
+    /** Remove a previously registered listener. */
+    off(event, cb) {
+        const set = this._listeners.get(event);
+        if (set) set.delete(cb);
+    }
+
+    /** @private */
+    _emit(event, payload) {
+        const set = this._listeners.get(event);
+        if (!set) return;
+        for (const cb of [...set]) {
+            try { cb(payload); }
+            catch (_) { /* listeners must not break the room */ }
+        }
+    }
+
+
+    // ---- Signaling glue ---------------------------------------------------
+
+    /** @private */
+    _attachSignaling() {
+        this._signalingUnsubs.push(this.signaling.on('peer-joined', (msg) => {
+            if (msg && typeof msg.id === 'string') this._addPeer(msg.id);
+        }));
+        this._signalingUnsubs.push(this.signaling.on('peer-left', (msg) => {
+            if (msg && typeof msg.id === 'string') this._removePeer(msg.id);
+        }));
+        this._signalingUnsubs.push(this.signaling.on('mute', (msg) => {
+            this._emit('mute', msg);
+        }));
+        this._signalingUnsubs.push(this.signaling.on('unmute', (msg) => {
+            this._emit('unmute', msg);
+        }));
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// _RoomDataChannel - multiplex wrapper around per-peer RTCDataChannels
+// ---------------------------------------------------------------------------
+
+class _RoomDataChannel {
+    constructor(label, opts) {
+        this.label    = label;
+        this.opts     = opts;
+        this.closed   = false;
+        /** @type {Map<string, RTCDataChannel>} */
+        this._byPeer  = new Map();
+        /** @type {Set<Function>} */
+        this._onMessage = new Set();
+        /** @type {Set<Function>} */
+        this._onOpen    = new Set();
+    }
+
+    /** Open the channel on a freshly-joined peer. */
+    _openOnPeer(peerId, peer) {
+        if (this.closed) return;
+        if (this._byPeer.has(peerId)) return;
+        const dc = peer.createDataChannel(this.label, this.opts);
+        this._attach(peerId, dc);
+    }
+
+    /** Adopt an incoming channel that the remote opened first. */
+    _adoptIncoming(peerId, dc) {
+        if (this.closed) return;
+        // If we already created one for this peer, prefer the existing.
+        if (this._byPeer.has(peerId)) return;
+        this._attach(peerId, dc);
+    }
+
+    _attach(peerId, dc) {
+        this._byPeer.set(peerId, dc);
+        const fanOpen = () => {
+            for (const cb of [...this._onOpen]) {
+                try { cb(peerId); } catch (_) { /* swallow */ }
+            }
+        };
+        const fanMsg = (evt) => {
+            const data = evt && 'data' in evt ? evt.data : evt;
+            for (const cb of [...this._onMessage]) {
+                try { cb(data, peerId); } catch (_) { /* swallow */ }
+            }
+        };
+        if (typeof dc.addEventListener === 'function') {
+            dc.addEventListener('open',    fanOpen);
+            dc.addEventListener('message', fanMsg);
+        } else {
+            dc.onopen    = fanOpen;
+            dc.onmessage = fanMsg;
+        }
+    }
+
+    /** Drop a peer's underlying channel (peer-left). */
+    _dropPeer(peerId) {
+        const dc = this._byPeer.get(peerId);
+        if (dc) { try { dc.close(); } catch (_) {} }
+        this._byPeer.delete(peerId);
+    }
+
+    /** Close every underlying channel. */
+    _closeAll() {
+        this.closed = true;
+        for (const dc of this._byPeer.values()) {
+            try { dc.close(); } catch (_) {}
+        }
+        this._byPeer.clear();
+        this._onMessage.clear();
+        this._onOpen.clear();
+    }
+
+
+    // -- Public surface ------------------------------------------------------
+
+    /** Broadcast a payload to every peer's underlying channel. */
+    send(data) {
+        if (this.closed) return;
+        for (const dc of this._byPeer.values()) {
+            try { dc.send(data); }
+            catch (_) { /* skip dead channels */ }
+        }
+    }
+
+    /**
+     * Subscribe to one of two events:
+     *   - `'message'` (data, peerId) - fires per inbound frame from any peer
+     *   - `'open'`    (peerId)       - fires when a per-peer channel reaches `'open'`
+     *
+     * @param {'message'|'open'} event
+     * @param {Function} cb
+     * @returns {() => void}
+     */
+    on(event, cb) {
+        if (typeof cb !== 'function') return () => {};
+        const set = event === 'open' ? this._onOpen : this._onMessage;
+        set.add(cb);
+        return () => set.delete(cb);
+    }
+
+    /** Close every underlying channel (alias for `_closeAll`). */
+    close() { this._closeAll(); }
+}
+
+
+// ---------------------------------------------------------------------------
+// join()
+// ---------------------------------------------------------------------------
+
+/**
+ * Connect to the signaling URL, join a room, and resolve with a `Room`.
+ *
+ * Browser globals are looked up at call time (never at module load) so the
+ * library stays SSR-safe. Tests can inject a fake `WebSocket` and
+ * `RTCPeerConnection` via the options bag.
+ *
+ * @param {string} url - WebSocket URL of a `@zero-server/webrtc` hub.
+ * @param {object} opts
+ * @param {string} opts.room
+ * @param {string} [opts.token]
+ * @param {RTCIceServer[]} [opts.iceServers]
+ * @param {boolean|MediaStreamConstraints} [opts.media] - If truthy, calls `getUserMedia` and `publish()` the result.
+ * @param {boolean|'auto'} [opts.polite] - Forced polite flag override (rarely useful - the default lexicographic rule is correct for symmetric meshes).
+ * @param {number} [opts.signalingTimeoutMs] - Max time to wait for `hello` + `joined` frames. Default `15000`.
+ * @param {false|object} [opts.reconnect] - Forwarded to `SignalingClient`.
+ * @param {typeof WebSocket} [opts.WebSocket] - Override (tests / SSR).
+ * @param {typeof RTCPeerConnection} [opts.RTCPeerConnection] - Override (tests / SSR).
+ * @param {{ mediaDevices: { getUserMedia(c): Promise<MediaStream> } }} [opts.navigator] - Override `navigator.mediaDevices` for tests.
+ * @returns {Promise<Room>}
+ */
+async function join(url, opts) {
+    if (typeof url !== 'string' || url.length === 0) {
+        throw new WebRtcError('webrtc.join: url must be a non-empty string', { code: 'ZQ_WEBRTC_JOIN_BAD_URL' });
+    }
+    if (!opts || typeof opts.room !== 'string' || opts.room.length === 0) {
+        throw new WebRtcError('webrtc.join: opts.room must be a non-empty string', { code: 'ZQ_WEBRTC_JOIN_BAD_ROOM' });
+    }
+
+    const sigOpts = {};
+    if (opts.reconnect !== undefined) sigOpts.reconnect = opts.reconnect;
+    if (opts.WebSocket)               sigOpts.WebSocket = opts.WebSocket;
+
+    const signaling = new SignalingClient(url, sigOpts);
+
+    const peerOptions = {};
+    if (opts.iceServers)        peerOptions.iceServers = opts.iceServers;
+    if (opts.RTCPeerConnection) peerOptions.RTCPeerConnection = opts.RTCPeerConnection;
+    if (opts.polite !== undefined && opts.polite !== 'auto') peerOptions.polite = !!opts.polite;
+
+    const timeoutMs = typeof opts.signalingTimeoutMs === 'number' ? opts.signalingTimeoutMs : 15_000;
+
+    const helloPromise  = _waitFor(signaling, 'hello',  timeoutMs);
+    const joinedPromise = _waitFor(signaling, 'joined', timeoutMs);
+    // Avoid an unhandled rejection if `hello` fails first and we never
+    // reach the `await joinedPromise` site.
+    joinedPromise.catch(() => {});
+
+    try {
+        await signaling.connect();
+        const hello = await helloPromise;
+        const selfId = hello && hello.peerId;
+        if (typeof selfId !== 'string' || selfId.length === 0) {
+            throw new SignalingError('webrtc.join: hello frame missing peerId', { code: 'ZQ_WEBRTC_JOIN_NO_PEER_ID' });
+        }
+
+        signaling.send('join', { room: opts.room, token: opts.token });
+        const joined = await joinedPromise;
+        const initialPeers = (joined && Array.isArray(joined.peers)) ? joined.peers : [];
+
+        const room = new Room({ id: opts.room, self: selfId, signaling, peerOptions });
+        for (const peerId of initialPeers) room._addPeer(peerId);
+
+        if (opts.media) {
+            const constraints = opts.media === true ? { audio: true, video: true } : opts.media;
+            const nav = opts.navigator
+                || (typeof navigator !== 'undefined' ? navigator : null);
+            const md = nav && nav.mediaDevices;
+            if (!md || typeof md.getUserMedia !== 'function') {
+                throw new WebRtcError(
+                    'webrtc.join: navigator.mediaDevices.getUserMedia is unavailable',
+                    { code: 'ZQ_WEBRTC_JOIN_NO_MEDIA_DEVICES' }
+                );
+            }
+            const stream = await md.getUserMedia(constraints);
+            await room.publish(stream);
+        }
+
+        return room;
+    } catch (err) {
+        try { signaling.close(); } catch (_) {}
+        if (err instanceof WebRtcError) throw err;
+        throw new WebRtcError(
+            `webrtc.join: ${err && err.message ? err.message : 'failed'}`,
+            { code: 'ZQ_WEBRTC_JOIN_FAILED', cause: err }
+        );
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// Internals
+// ---------------------------------------------------------------------------
+
+/** Resolve on the first matching frame, reject after `timeoutMs`. */
+function _waitFor(signaling, type, timeoutMs) {
+    return new Promise((resolve, reject) => {
+        let done = false;
+        const off = signaling.on(type, (msg) => {
+            if (done) return;
+            done = true;
+            try { off(); } catch (_) {}
+            clearTimeout(timer);
+            resolve(msg);
+        });
+        const timer = setTimeout(() => {
+            if (done) return;
+            done = true;
+            try { off(); } catch (_) {}
+            reject(new SignalingError(
+                `webrtc.join: timed out waiting for "${type}" after ${timeoutMs}ms`,
+                { code: 'ZQ_WEBRTC_JOIN_TIMEOUT', context: { type, timeoutMs } }
+            ));
+        }, timeoutMs);
+    });
+}
+
+/** Try to instantiate a real MediaStream; fall back to a tiny stub for environments that lack it. */
+function _newMediaStream() {
+    if (typeof MediaStream === 'function') {
+        try { return new MediaStream(); }
+        catch (_) { /* fall through */ }
+    }
+    const tracks = [];
+    return {
+        id: `stream_${Math.random().toString(36).slice(2, 10)}`,
+        getTracks: () => tracks.slice(),
+        addTrack:  (t) => { tracks.push(t); },
+        removeTrack: (t) => {
+            const i = tracks.indexOf(t);
+            if (i >= 0) tracks.splice(i, 1);
+        },
+    };
+}
+
+// --- src/webrtc/reactive.js --------------------------------------
+/**
+ * src/webrtc/reactive.js - reactive composables on top of `Room`
+ *
+ * Thin wrappers that adapt the Room / Peer surface into the project's
+ * `signal()`/`effect()` primitives. They mirror the surface described in
+ * the roadmap: `useRoom`, `usePeer`, `useTracks`, `useDataChannel`, and
+ * `useConnectionQuality`. Each returns either a `Signal` (cleanup via the
+ * room's `leave()`) or a small object with a `.close()` / `.dispose()`
+ * method - callers manage lifetime explicitly since the component runtime
+ * does not currently expose `onCleanup`.
+ */
+
+
+
+
+/**
+ * Join a room and return a Promise that resolves to a `Room` whose
+ * `peers` / `localTracks` signals can be consumed directly. The returned
+ * Promise also exposes a `.dispose()` shortcut (`room.leave()`); when the
+ * room is closed, signals stop updating.
+ *
+ * Two call shapes:
+ *   useRoom(url, opts)                  → join via signaling
+ *   useRoom(roomInstance)               → wrap an existing Room (composability)
+ *
+ * @param {string|Room} urlOrRoom
+ * @param {object} [opts]
+ * @returns {Promise<Room>}
+ */
+function useRoom(urlOrRoom, opts) {
+    if (urlOrRoom instanceof Room) {
+        return Promise.resolve(urlOrRoom);
+    }
+    if (typeof urlOrRoom !== 'string') {
+        return Promise.reject(new WebRtcError(
+            'useRoom: first argument must be a signaling URL or a Room',
+            { code: 'ZQ_WEBRTC_USE_ROOM_BAD_ARG' }
+        ));
+    }
+    return join(urlOrRoom, opts || {});
+}
+
+
+/**
+ * Reactive view of a single remote peer.
+ *
+ * @param {Room} room
+ * @param {string} peerId
+ * @returns {{ readonly value: object | null, dispose: () => void }}
+ *   A getter-only signal-like with `.value` (the PeerInfo or `null` if absent)
+ *   and `.dispose()` to stop listening.
+ */
+function usePeer(room, peerId) {
+    if (!(room instanceof Room)) {
+        throw new WebRtcError('usePeer: room must be a Room instance', { code: 'ZQ_WEBRTC_USE_PEER_BAD_ROOM' });
+    }
+    if (typeof peerId !== 'string' || peerId.length === 0) {
+        throw new WebRtcError('usePeer: peerId must be a non-empty string', { code: 'ZQ_WEBRTC_USE_PEER_BAD_ID' });
+    }
+
+    const out = signal(null);
+    const refresh = () => {
+        const map = room.peers.peek();
+        const info = map.get(peerId) || null;
+        if (info !== out.peek()) out.value = info;
+    };
+    refresh();
+    const unsub = room.peers.subscribe(refresh);
+    return {
+        get value() { return out.value; },
+        peek() { return out.peek(); },
+        subscribe(cb) { return out.subscribe(cb); },
+        dispose() { try { unsub(); } catch (_) {} },
+    };
+}
+
+
+/**
+ * Reactive list of a peer's currently-attached `MediaStreamTrack`s.
+ *
+ * @param {object} peerInfo - The PeerInfo object yielded by `room.peers`.
+ * @returns {{ readonly value: MediaStreamTrack[], dispose: () => void }}
+ */
+function useTracks(peerInfo) {
+    if (!peerInfo || !peerInfo.stream) {
+        throw new WebRtcError('useTracks: peerInfo.stream is required', { code: 'ZQ_WEBRTC_USE_TRACKS_BAD_PEER' });
+    }
+    const sig = signal(_safeGetTracks(peerInfo.stream));
+
+    const refresh = () => {
+        const next = _safeGetTracks(peerInfo.stream);
+        // Replace the array reference so subscribers always notify.
+        sig.value = next;
+    };
+
+    let unsub = null;
+    const stream = peerInfo.stream;
+    if (typeof stream.addEventListener === 'function') {
+        stream.addEventListener('addtrack', refresh);
+        stream.addEventListener('removetrack', refresh);
+        unsub = () => {
+            try { stream.removeEventListener('addtrack', refresh); } catch (_) {}
+            try { stream.removeEventListener('removetrack', refresh); } catch (_) {}
+        };
+    }
+
+    return {
+        get value() { return sig.value; },
+        peek() { return sig.peek(); },
+        subscribe(cb) { return sig.subscribe(cb); },
+        /** Manually re-sample (useful in tests / environments without addtrack events). */
+        refresh,
+        dispose() { if (unsub) unsub(); },
+    };
+}
+
+
+/**
+ * Reactive data-channel wrapper backed by `room.dataChannel(label)`.
+ *
+ * @param {Room} room
+ * @param {string} label
+ * @param {{ history?: number, opts?: RTCDataChannelInit }} [opts]
+ * @returns {{
+ *   messages: { readonly value: Array<{ data: any, from: string, at: number }>, peek: () => any[], subscribe: (cb: Function) => () => void },
+ *   send: (data: any) => void,
+ *   close: () => void,
+ *   dispose: () => void,
+ * }}
+ */
+function useDataChannel(room, label, opts) {
+    if (!(room instanceof Room)) {
+        throw new WebRtcError('useDataChannel: room must be a Room instance', { code: 'ZQ_WEBRTC_USE_DC_BAD_ROOM' });
+    }
+    if (typeof label !== 'string' || label.length === 0) {
+        throw new WebRtcError('useDataChannel: label must be a non-empty string', { code: 'ZQ_WEBRTC_USE_DC_BAD_LABEL' });
+    }
+    const history = opts && typeof opts.history === 'number' ? opts.history : 100;
+    const wrap = room.dataChannel(label, opts && opts.opts);
+
+    const messages = signal([]);
+    const off = wrap.on('message', (data, from) => {
+        const entry = { data, from, at: Date.now() };
+        const next = messages.peek().slice();
+        next.push(entry);
+        if (next.length > history) next.splice(0, next.length - history);
+        messages.value = next;
+    });
+
+    return {
+        messages: {
+            get value() { return messages.value; },
+            peek() { return messages.peek(); },
+            subscribe(cb) { return messages.subscribe(cb); },
+        },
+        send(data) { wrap.send(data); },
+        close() {
+            try { off(); } catch (_) {}
+            try { wrap.close(); } catch (_) {}
+        },
+        dispose() {
+            try { off(); } catch (_) {}
+        },
+    };
+}
+
+
+/**
+ * Periodically sample `peer.pc.getStats()` and map the result to a
+ * three-bucket connection quality classifier. Returns a signal-like with
+ * `.value` and `.dispose()` for cleanup.
+ *
+ * Heuristic (intentionally simple - more nuance lands with the
+ * observability pass):
+ *   - 'good' if packetLossPct < 2 AND rtt < 200
+ *   - 'fair' if packetLossPct < 10 AND rtt < 500
+ *   - else 'poor'
+ *
+ * @param {object} peerInfo - PeerInfo from `room.peers`.
+ * @param {{ intervalMs?: number, getStats?: () => Promise<any> }} [opts]
+ * @returns {{ readonly value: 'good'|'fair'|'poor', dispose: () => void }}
+ */
+function useConnectionQuality(peerInfo, opts) {
+    if (!peerInfo || !peerInfo.pc) {
+        throw new WebRtcError('useConnectionQuality: peerInfo.pc is required', { code: 'ZQ_WEBRTC_USE_CQ_BAD_PEER' });
+    }
+    const intervalMs = opts && typeof opts.intervalMs === 'number' ? opts.intervalMs : 2000;
+    const sampler = opts && typeof opts.getStats === 'function'
+        ? opts.getStats
+        : () => peerInfo.pc.getStats();
+
+    const sig = signal('good');
+    let stopped = false;
+
+    const sample = async () => {
+        if (stopped) return;
+        try {
+            const report = await sampler();
+            const q = _classifyStats(report);
+            if (q !== sig.peek()) sig.value = q;
+        } catch (_) {
+            // sampling failures don't change the bucket
+        }
+    };
+
+    sample();
+    const timer = setInterval(sample, intervalMs);
+
+    return {
+        get value() { return sig.value; },
+        peek() { return sig.peek(); },
+        subscribe(cb) { return sig.subscribe(cb); },
+        dispose() {
+            stopped = true;
+            clearInterval(timer);
+        },
+    };
+}
+
+
+// ---------------------------------------------------------------------------
+// Internals
+// ---------------------------------------------------------------------------
+
+function _safeGetTracks(stream) {
+    if (stream && typeof stream.getTracks === 'function') {
+        try { return stream.getTracks(); }
+        catch (_) { return []; }
+    }
+    return [];
+}
+
+/**
+ * Convert a `getStats()` report to a `'good' | 'fair' | 'poor'` bucket.
+ * The report can be a `RTCStatsReport`-like (Map / iterable of stat objects)
+ * or a plain object map.
+ */
+function _classifyStats(report) {
+    const stats = [];
+    if (report && typeof report.forEach === 'function') {
+        report.forEach((v) => stats.push(v));
+    } else if (report && typeof report === 'object') {
+        for (const k of Object.keys(report)) stats.push(report[k]);
+    }
+
+    let inbound = null;
+    let pair = null;
+    for (const s of stats) {
+        if (!s || typeof s !== 'object') continue;
+        if (s.type === 'inbound-rtp' && !inbound) inbound = s;
+        if (s.type === 'candidate-pair' && (s.state === 'succeeded' || s.nominated)) pair = s;
+    }
+
+    let lossPct = 0;
+    if (inbound && typeof inbound.packetsLost === 'number' && typeof inbound.packetsReceived === 'number') {
+        const total = inbound.packetsLost + inbound.packetsReceived;
+        lossPct = total > 0 ? (inbound.packetsLost / total) * 100 : 0;
+    }
+    const rttMs = pair && typeof pair.currentRoundTripTime === 'number'
+        ? pair.currentRoundTripTime * 1000
+        : 0;
+
+    if (lossPct < 2 && rttMs < 200) return 'good';
+    if (lossPct < 10 && rttMs < 500) return 'fair';
+    return 'poor';
+}
+
+// --- src/webrtc/turn.js ------------------------------------------
+/**
+ * src/webrtc/turn.js - TURN credential client
+ *
+ * Tiny HTTP helper for the `@zero-server/webrtc` TURN-credential endpoint
+ * (`issueTurnCredentials`). Fetches `{ username, credential, urls, ttl }`
+ * and exposes an `RTCIceServer[]` for direct injection into
+ * `RTCPeerConnection({ iceServers })`. A `createTurnRefresher` factory
+ * schedules an automatic refresh before the credentials expire.
+ */
+
+
+/**
+ * Fetch a TURN credential bundle from `url`.
+ *
+ * @param {string} url
+ * @param {RequestInit} [opts]
+ * @returns {Promise<{username: string, credential: string, urls: string[], ttl: number}>}
+ */
+async function fetchTurnCredentials(url, opts) {
+    if (typeof url !== 'string' || !url) {
+        throw new TurnError('fetchTurnCredentials: url must be a non-empty string', {
+            code: 'ZQ_WEBRTC_TURN_BAD_URL',
+        });
+    }
+    const fetchImpl = (opts && opts.fetch) || (typeof fetch !== 'undefined' ? fetch : null);
+    if (!fetchImpl) {
+        throw new TurnError('fetchTurnCredentials: no fetch implementation available', {
+            code: 'ZQ_WEBRTC_TURN_NO_FETCH',
+        });
+    }
+
+    const init = { ...(opts || {}) };
+    delete init.fetch;
+
+    let res;
+    try {
+        res = await fetchImpl(url, init);
+    } catch (err) {
+        throw new TurnError(`fetchTurnCredentials: network error - ${err && err.message ? err.message : err}`, {
+            code: 'ZQ_WEBRTC_TURN_NETWORK',
+            cause: err instanceof Error ? err : undefined,
+            context: { url },
+        });
+    }
+
+    if (!res || !res.ok) {
+        const status = res ? res.status : 0;
+        throw new TurnError(`fetchTurnCredentials: HTTP ${status}`, {
+            code: 'ZQ_WEBRTC_TURN_HTTP',
+            context: { url, status },
+        });
+    }
+
+    let body;
+    try {
+        body = await res.json();
+    } catch (err) {
+        throw new TurnError('fetchTurnCredentials: response is not valid JSON', {
+            code: 'ZQ_WEBRTC_TURN_BAD_JSON',
+            cause: err instanceof Error ? err : undefined,
+            context: { url },
+        });
+    }
+
+    return _validateCredentials(body, url);
+}
+
+
+/**
+ * Merge TURN credentials with an optional base `iceServers` array, producing
+ * the final list to pass to `RTCPeerConnection`. The base list is preserved
+ * unchanged; the TURN bundle is appended as a single entry. Duplicate URL
+ * entries are dropped (first occurrence wins).
+ *
+ * @param {RTCIceServer[]} [base]
+ * @param {{username: string, credential: string, urls: string[]}} [turn]
+ * @returns {RTCIceServer[]}
+ */
+function mergeIceServers(base, turn) {
+    const list = [];
+    const seen = new Set();
+    const pushServer = (server) => {
+        if (!server || !server.urls) return;
+        const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+        const fresh = urls.filter((u) => {
+            if (typeof u !== 'string' || !u) return false;
+            if (seen.has(u)) return false;
+            seen.add(u);
+            return true;
+        });
+        if (fresh.length === 0) return;
+        const next = { ...server, urls: fresh };
+        list.push(next);
+    };
+
+    if (Array.isArray(base)) {
+        for (const s of base) pushServer(s);
+    }
+    if (turn && Array.isArray(turn.urls) && turn.urls.length > 0) {
+        pushServer({
+            urls: turn.urls,
+            username: turn.username,
+            credential: turn.credential,
+        });
+    }
+    return list;
+}
+
+
+/**
+ * Schedule automatic TURN-credential refresh ahead of expiry.
+ *
+ * Returns a handle:
+ * - `start()` — fetch once immediately, then auto-refresh.
+ * - `refresh()` — force an immediate refresh.
+ * - `stop()` — cancel any pending timer.
+ * - `peek()` / `value` — last successfully fetched credentials (or `null`).
+ *
+ * @param {{
+ *     url: string,
+ *     fetch?: typeof fetch,
+ *     leadMs?: number,
+ *     minIntervalMs?: number,
+ *     onRefresh?: (creds: {username: string, credential: string, urls: string[], ttl: number}) => void,
+ *     onError?: (err: Error) => void,
+ *     requestInit?: RequestInit,
+ * }} opts
+ */
+function createTurnRefresher(opts) {
+    if (!opts || typeof opts.url !== 'string' || !opts.url) {
+        throw new TurnError('createTurnRefresher: opts.url is required', {
+            code: 'ZQ_WEBRTC_TURN_REFRESHER_BAD_URL',
+        });
+    }
+    const url           = opts.url;
+    const fetchImpl     = opts.fetch || null;
+    const leadMs        = Number.isFinite(opts.leadMs) ? opts.leadMs : 30000;
+    const minIntervalMs = Number.isFinite(opts.minIntervalMs) ? opts.minIntervalMs : 5000;
+    const onRefresh     = typeof opts.onRefresh === 'function' ? opts.onRefresh : null;
+    const onError       = typeof opts.onError   === 'function' ? opts.onError   : null;
+    const requestInit   = opts.requestInit || undefined;
+
+    let timer   = null;
+    let stopped = false;
+    let current = null;
+
+    const handle = {
+        get value() { return current; },
+        peek()      { return current; },
+        async refresh() {
+            if (stopped) return null;
+            try {
+                const init = fetchImpl ? { ...(requestInit || {}), fetch: fetchImpl } : requestInit;
+                const creds = await fetchTurnCredentials(url, init);
+                if (stopped) return creds;
+                current = creds;
+                _schedule(creds.ttl);
+                if (onRefresh) onRefresh(creds);
+                return creds;
+            } catch (err) {
+                if (!stopped && onError) onError(err);
+                if (!stopped) _schedule(60);   // retry in 60s on failure
+                throw err;
+            }
+        },
+        async start() {
+            if (stopped) return null;
+            return handle.refresh();
+        },
+        stop() {
+            stopped = true;
+            if (timer) {
+                clearTimeout(timer);
+                timer = null;
+            }
+        },
+    };
+
+    function _schedule(ttlSeconds) {
+        if (timer) {
+            clearTimeout(timer);
+            timer = null;
+        }
+        const ms = Math.max(minIntervalMs, ttlSeconds * 1000 - leadMs);
+        timer = setTimeout(() => {
+            timer = null;
+            handle.refresh().catch(() => {});
+        }, ms);
+        if (timer && typeof timer.unref === 'function') timer.unref();
+    }
+
+    return handle;
+}
+
+
+function _validateCredentials(body, url) {
+    if (!body || typeof body !== 'object') {
+        throw new TurnError('fetchTurnCredentials: response is not an object', {
+            code: 'ZQ_WEBRTC_TURN_BAD_BODY',
+            context: { url },
+        });
+    }
+    const { username, credential, urls, ttl } = body;
+    if (typeof username !== 'string' || !username) {
+        throw new TurnError('fetchTurnCredentials: response.username missing', {
+            code: 'ZQ_WEBRTC_TURN_BAD_BODY',
+            context: { url, field: 'username' },
+        });
+    }
+    if (typeof credential !== 'string' || !credential) {
+        throw new TurnError('fetchTurnCredentials: response.credential missing', {
+            code: 'ZQ_WEBRTC_TURN_BAD_BODY',
+            context: { url, field: 'credential' },
+        });
+    }
+    if (!Array.isArray(urls) || urls.length === 0 || !urls.every((u) => typeof u === 'string' && u)) {
+        throw new TurnError('fetchTurnCredentials: response.urls must be a non-empty string array', {
+            code: 'ZQ_WEBRTC_TURN_BAD_BODY',
+            context: { url, field: 'urls' },
+        });
+    }
+    const ttlNum = Number(ttl);
+    if (!Number.isFinite(ttlNum) || ttlNum <= 0) {
+        throw new TurnError('fetchTurnCredentials: response.ttl must be a positive number', {
+            code: 'ZQ_WEBRTC_TURN_BAD_BODY',
+            context: { url, field: 'ttl' },
+        });
+    }
+    return {
+        username,
+        credential,
+        urls: urls.slice(),
+        ttl: ttlNum,
+    };
+}
+
+// --- src/webrtc/e2ee.js ------------------------------------------
+/**
+ * src/webrtc/e2ee.js - SFrame-style end-to-end encryption
+ *
+ * Provides a small AES-GCM SFrame implementation suitable for
+ * `RTCRtpScriptTransform` / Encoded Transforms wiring. Frames are wrapped
+ * as `[1-byte epoch][12-byte IV][N-byte ciphertext+tag]` so receivers can
+ * route a frame to the correct key without an out-of-band signal.
+ *
+ * Key derivation: PBKDF2(passphrase, salt) -> HKDF -> AES-GCM-128. The
+ * salt is intended to be a room id so two clients of the same room with
+ * the same passphrase derive the same key.
+ *
+ * The actual `RTCRtpScriptTransform` wiring lives in `attachE2ee()`; the
+ * core encryptFrame / decryptFrame helpers are pure and run anywhere
+ * WebCrypto is available (browsers, jsdom, Node 18+).
+ */
+
+
+const AES_GCM_KEY_BITS  = 128;
+const IV_BYTES          = 12;
+const HEADER_BYTES      = 1 + IV_BYTES;  // 1-byte epoch + 12-byte IV
+const PBKDF2_ITERATIONS = 100_000;
+const HKDF_INFO         = new TextEncoder().encode('zquery-sframe-v1');
+
+
+/**
+ * @returns {SubtleCrypto}
+ */
+function _subtle() {
+    const subtle = typeof crypto !== 'undefined' && crypto.subtle ? crypto.subtle : null;
+    if (!subtle) {
+        throw new E2eeError('WebCrypto SubtleCrypto is not available in this environment', {
+            code: 'ZQ_WEBRTC_E2EE_NO_WEBCRYPTO',
+        });
+    }
+    return subtle;
+}
+
+function _randomBytes(n) {
+    const buf = new Uint8Array(n);
+    if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
+        throw new E2eeError('crypto.getRandomValues is not available in this environment', {
+            code: 'ZQ_WEBRTC_E2EE_NO_RANDOM',
+        });
+    }
+    crypto.getRandomValues(buf);
+    return buf;
+}
+
+function _asUint8(input) {
+    if (input instanceof Uint8Array)             return input;
+    if (input instanceof ArrayBuffer)            return new Uint8Array(input);
+    if (ArrayBuffer.isView(input))               return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+    // Handle cross-realm ArrayBuffer (jsdom / VM contexts).
+    if (input && typeof input === 'object' && typeof input.byteLength === 'number'
+        && Object.prototype.toString.call(input) === '[object ArrayBuffer]') {
+        return new Uint8Array(input);
+    }
+    throw new E2eeError('expected a BufferSource (Uint8Array | ArrayBuffer | typed array)', {
+        code: 'ZQ_WEBRTC_E2EE_BAD_INPUT',
+    });
+}
+
+
+/**
+ * Derive an AES-GCM-128 SFrame key from a passphrase + salt (typically
+ * the room id). Two clients calling this with the same inputs produce
+ * the same key.
+ *
+ * @param {string} passphrase
+ * @param {string} salt
+ * @returns {Promise<CryptoKey>}
+ */
+async function deriveSFrameKey(passphrase, salt) {
+    if (typeof passphrase !== 'string' || !passphrase) {
+        throw new E2eeError('deriveSFrameKey: passphrase must be a non-empty string', {
+            code: 'ZQ_WEBRTC_E2EE_BAD_PASSPHRASE',
+        });
+    }
+    if (typeof salt !== 'string' || !salt) {
+        throw new E2eeError('deriveSFrameKey: salt must be a non-empty string', {
+            code: 'ZQ_WEBRTC_E2EE_BAD_SALT',
+        });
+    }
+    const subtle = _subtle();
+    const enc    = new TextEncoder();
+    const baseKey = await subtle.importKey(
+        'raw', enc.encode(passphrase), { name: 'PBKDF2' }, false, ['deriveBits']
+    );
+    const pbkdfBits = await subtle.deriveBits(
+        { name: 'PBKDF2', hash: 'SHA-256', salt: enc.encode(salt), iterations: PBKDF2_ITERATIONS },
+        baseKey,
+        256
+    );
+    const hkdfKey = await subtle.importKey(
+        'raw', pbkdfBits, { name: 'HKDF' }, false, ['deriveKey']
+    );
+    return subtle.deriveKey(
+        { name: 'HKDF', hash: 'SHA-256', salt: enc.encode(salt), info: HKDF_INFO },
+        hkdfKey,
+        { name: 'AES-GCM', length: AES_GCM_KEY_BITS },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+
+/**
+ * Generate a fresh random AES-GCM-128 SFrame key.
+ *
+ * @returns {Promise<CryptoKey>}
+ */
+async function generateSFrameKey() {
+    return _subtle().generateKey(
+        { name: 'AES-GCM', length: AES_GCM_KEY_BITS },
+        true,
+        ['encrypt', 'decrypt']
+    );
+}
+
+
+/**
+ * Holds the current key + epoch for an SFrame transform pair. Receivers
+ * keep a sliding window of accepted epochs (old keys retained briefly so
+ * in-flight frames decode after a rotation; oldest evicted on each
+ * `setKey`).
+ */
+class SFrameContext {
+    /**
+     * @param {{maxEpochs?: number}} [opts]
+     */
+    constructor(opts) {
+        const max = opts && Number.isFinite(opts.maxEpochs) ? opts.maxEpochs : 4;
+        /** @private */ this._keys       = new Map();   // epoch -> CryptoKey
+        /** @private */ this._maxEpochs  = Math.max(1, max);
+        /** @public  */ this.currentEpoch = 0;
+    }
+
+    /**
+     * Install `key` for `epoch` and mark it as the encrypt key. Evicts the
+     * oldest epoch when more than `maxEpochs` are tracked.
+     *
+     * @param {number} epoch
+     * @param {CryptoKey} key
+     */
+    setKey(epoch, key) {
+        if (!Number.isInteger(epoch) || epoch < 0 || epoch > 255) {
+            throw new E2eeError('SFrameContext.setKey: epoch must be an integer in [0, 255]', {
+                code: 'ZQ_WEBRTC_E2EE_BAD_EPOCH',
+            });
+        }
+        if (!key) {
+            throw new E2eeError('SFrameContext.setKey: key required', {
+                code: 'ZQ_WEBRTC_E2EE_BAD_KEY',
+            });
+        }
+        this._keys.set(epoch, key);
+        this.currentEpoch = epoch;
+        while (this._keys.size > this._maxEpochs) {
+            const oldest = this._keys.keys().next().value;
+            this._keys.delete(oldest);
+        }
+    }
+
+    /** Drop a previously installed epoch (e.g. forward-secret evict on peer-leave). */
+    removeEpoch(epoch) {
+        this._keys.delete(epoch);
+    }
+
+    /** Return the key for `epoch`, or `null` if unknown / evicted. */
+    getKey(epoch) {
+        return this._keys.get(epoch) || null;
+    }
+
+    /** Number of epochs currently tracked. */
+    get epochCount() {
+        return this._keys.size;
+    }
+}
+
+
+/**
+ * Encrypt one frame using the context's current epoch key.
+ *
+ * Output layout: `[1-byte epoch][12-byte IV][ciphertext + 16-byte tag]`.
+ *
+ * @param {SFrameContext} ctx
+ * @param {BufferSource} payload
+ * @returns {Promise<Uint8Array>}
+ */
+async function encryptFrame(ctx, payload) {
+    if (!(ctx instanceof SFrameContext)) {
+        throw new E2eeError('encryptFrame: ctx must be an SFrameContext', {
+            code: 'ZQ_WEBRTC_E2EE_BAD_CTX',
+        });
+    }
+    const key = ctx.getKey(ctx.currentEpoch);
+    if (!key) {
+        throw new E2eeError(`encryptFrame: no key installed for epoch ${ctx.currentEpoch}`, {
+            code: 'ZQ_WEBRTC_E2EE_NO_KEY',
+            context: { epoch: ctx.currentEpoch },
+        });
+    }
+    const plain   = _asUint8(payload);
+    const iv      = _randomBytes(IV_BYTES);
+    const cipher  = new Uint8Array(await _subtle().encrypt({ name: 'AES-GCM', iv }, key, plain));
+    const out     = new Uint8Array(HEADER_BYTES + cipher.byteLength);
+    out[0]        = ctx.currentEpoch & 0xff;
+    out.set(iv, 1);
+    out.set(cipher, HEADER_BYTES);
+    return out;
+}
+
+
+/**
+ * Decrypt one frame produced by `encryptFrame`. Returns the plaintext as a
+ * `Uint8Array`. Throws `E2eeError` if the epoch is unknown or AES-GCM
+ * authentication fails.
+ *
+ * @param {SFrameContext} ctx
+ * @param {BufferSource} frame
+ * @returns {Promise<Uint8Array>}
+ */
+async function decryptFrame(ctx, frame) {
+    if (!(ctx instanceof SFrameContext)) {
+        throw new E2eeError('decryptFrame: ctx must be an SFrameContext', {
+            code: 'ZQ_WEBRTC_E2EE_BAD_CTX',
+        });
+    }
+    const bytes = _asUint8(frame);
+    if (bytes.byteLength <= HEADER_BYTES) {
+        throw new E2eeError('decryptFrame: frame too short for SFrame header', {
+            code: 'ZQ_WEBRTC_E2EE_SHORT_FRAME',
+        });
+    }
+    const epoch = bytes[0];
+    const key   = ctx.getKey(epoch);
+    if (!key) {
+        throw new E2eeError(`decryptFrame: no key for epoch ${epoch}`, {
+            code: 'ZQ_WEBRTC_E2EE_UNKNOWN_EPOCH',
+            context: { epoch },
+        });
+    }
+    const iv     = bytes.subarray(1, HEADER_BYTES);
+    const cipher = bytes.subarray(HEADER_BYTES);
+    let   plain;
+    try {
+        plain = new Uint8Array(await _subtle().decrypt({ name: 'AES-GCM', iv }, key, cipher));
+    } catch (err) {
+        throw new E2eeError('decryptFrame: AES-GCM authentication failed', {
+            code: 'ZQ_WEBRTC_E2EE_AUTH_FAILED',
+            cause: err instanceof Error ? err : undefined,
+            context: { epoch },
+        });
+    }
+    return plain;
+}
+
+
+/**
+ * Attach SFrame encrypt/decrypt transforms to every existing and future
+ * RTP sender/receiver on `pc`. Uses `RTCRtpScriptTransform` where
+ * available, falls back to the legacy `createEncodedStreams()` API on
+ * older engines.
+ *
+ * @param {RTCPeerConnection} pc
+ * @param {SFrameContext} ctx
+ * @returns {{refresh(): void, detach(): void}}
+ */
+function attachE2ee(pc, ctx) {
+    if (!pc || typeof pc.getSenders !== 'function' || typeof pc.getReceivers !== 'function') {
+        throw new E2eeError('attachE2ee: pc must look like an RTCPeerConnection', {
+            code: 'ZQ_WEBRTC_E2EE_BAD_PC',
+        });
+    }
+    if (!(ctx instanceof SFrameContext)) {
+        throw new E2eeError('attachE2ee: ctx must be an SFrameContext', {
+            code: 'ZQ_WEBRTC_E2EE_BAD_CTX',
+        });
+    }
+
+    const wired = new WeakSet();
+    let detached = false;
+
+    function wireSender(sender) {
+        if (detached || wired.has(sender)) return;
+        wired.add(sender);
+        const stream = _maybeEncodedStreams(sender);
+        if (!stream) return;
+        const transformer = new TransformStream({
+            async transform(chunk, controller) {
+                try {
+                    const payload = _asUint8(chunk.data);
+                    const out     = await encryptFrame(ctx, payload);
+                    chunk.data    = out.buffer;
+                    controller.enqueue(chunk);
+                } catch (_) {
+                    // drop frame on encrypt failure (no key yet, etc.)
+                }
+            },
+        });
+        stream.readable.pipeThrough(transformer).pipeTo(stream.writable).catch(() => {});
+    }
+
+    function wireReceiver(receiver) {
+        if (detached || wired.has(receiver)) return;
+        wired.add(receiver);
+        const stream = _maybeEncodedStreams(receiver);
+        if (!stream) return;
+        const transformer = new TransformStream({
+            async transform(chunk, controller) {
+                try {
+                    const payload = _asUint8(chunk.data);
+                    const out     = await decryptFrame(ctx, payload);
+                    chunk.data    = out.buffer;
+                    controller.enqueue(chunk);
+                } catch (_) {
+                    // drop undecryptable frame
+                }
+            },
+        });
+        stream.readable.pipeThrough(transformer).pipeTo(stream.writable).catch(() => {});
+    }
+
+    function refresh() {
+        if (detached) return;
+        for (const s of pc.getSenders())   wireSender(s);
+        for (const r of pc.getReceivers()) wireReceiver(r);
+    }
+
+    refresh();
+
+    return {
+        refresh,
+        detach() { detached = true; },
+    };
+}
+
+
+function _maybeEncodedStreams(senderOrReceiver) {
+    if (typeof senderOrReceiver.createEncodedStreams === 'function') {
+        try {
+            return senderOrReceiver.createEncodedStreams();
+        } catch (_) {
+            return null;
+        }
+    }
+    return null;
+}
+
+// --- src/webrtc/joinToken.js -------------------------------------
+/**
+ * src/webrtc/joinToken.js
+ *
+ * UX-only decoder for the opaque join tokens minted server-side by
+ * `signJoinToken({ secret, user, room, exp, ... })` in
+ * `@zero-server/webrtc`. The client never trusts the payload — the
+ * server re-validates the signature on every `join` — but it's useful to
+ * surface things like "expires in 5 minutes" or "room name preview" in
+ * the UI before sending the token.
+ *
+ * Supported formats (all base64url-encoded segments separated by `.`):
+ *   - 1 segment : `<payload>`
+ *   - 2 segments: `<payload>.<sig>`
+ *   - 3 segments: `<header>.<payload>.<sig>` (JWT-like)
+ */
+
+
+/**
+ * Decode a join token issued by the server.
+ *
+ * @param {string} token
+ * @returns {{ user: { id: string } | null, room: string | null, exp: number | null, raw: any }}
+ */
+function decodeJoinToken(token) {
+    if (typeof token !== 'string' || !token) {
+        throw new WebRtcError('decodeJoinToken(token): token must be a non-empty string', {
+            code: 'ZQ_WEBRTC_TOKEN_BAD_INPUT',
+        });
+    }
+
+    const segments = token.split('.');
+    if (segments.length < 1 || segments.length > 3) {
+        throw new WebRtcError(`decodeJoinToken(token): expected 1-3 base64url segments, got ${segments.length}`, {
+            code: 'ZQ_WEBRTC_TOKEN_BAD_SHAPE',
+            context: { segments: segments.length },
+        });
+    }
+
+    const payloadSegment = segments.length === 3 ? segments[1] : segments[0];
+    let payload;
+    try {
+        const json = _base64UrlDecode(payloadSegment);
+        payload = JSON.parse(json);
+    } catch (cause) {
+        throw new WebRtcError('decodeJoinToken(token): payload is not valid base64url-encoded JSON', {
+            code: 'ZQ_WEBRTC_TOKEN_BAD_PAYLOAD',
+            cause,
+        });
+    }
+
+    if (!payload || typeof payload !== 'object') {
+        throw new WebRtcError('decodeJoinToken(token): payload must be a JSON object', {
+            code: 'ZQ_WEBRTC_TOKEN_BAD_PAYLOAD',
+        });
+    }
+
+    return {
+        user: _readUser(payload),
+        room: typeof payload.room === 'string' ? payload.room : null,
+        exp:  typeof payload.exp  === 'number' ? payload.exp  : null,
+        raw:  payload,
+    };
+}
+
+
+/**
+ * `true` if the token's `exp` (seconds since epoch) is in the past.
+ * Tokens without an `exp` are reported as not expired. Clock skew defaults to 0.
+ *
+ * @param {{ exp: number | null }} decoded   Output of `decodeJoinToken()`.
+ * @param {{ nowMs?: number, skewMs?: number }} [opts]
+ * @returns {boolean}
+ */
+function isJoinTokenExpired(decoded, opts = {}) {
+    if (!decoded || typeof decoded !== 'object') return false;
+    if (typeof decoded.exp !== 'number') return false;
+    const nowMs  = typeof opts.nowMs  === 'number' ? opts.nowMs  : Date.now();
+    const skewMs = typeof opts.skewMs === 'number' ? opts.skewMs : 0;
+    return (decoded.exp * 1000) <= (nowMs - skewMs);
+}
+
+
+// ---------------------------------------------------------------------------
+// Internals
+// ---------------------------------------------------------------------------
+
+function _readUser(payload) {
+    const u = payload.user;
+    if (u && typeof u === 'object' && typeof u.id === 'string') {
+        return { id: u.id, ...u };
+    }
+    if (typeof payload.sub === 'string') {
+        return { id: payload.sub };
+    }
+    return null;
+}
+
+
+function _base64UrlDecode(segment) {
+    // Restore standard base64 alphabet + padding.
+    let b64 = segment.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4;
+    if (pad === 2)      b64 += '==';
+    else if (pad === 3) b64 += '=';
+    else if (pad === 1) throw new Error('invalid base64url length');
+
+    if (typeof atob === 'function') {
+        const bin = atob(b64);
+        // Decode as UTF-8.
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return new TextDecoder().decode(bytes);
+    }
+    // Node fallback.
+    // eslint-disable-next-line no-undef
+    return Buffer.from(b64, 'base64').toString('utf8');
+}
+
+// --- src/webrtc/observe.js ---------------------------------------
+/**
+ * src/webrtc/observe.js
+ *
+ * Low-level WebRTC observability helpers built on top of
+ * `RTCPeerConnection.getStats()`. The reactive layer
+ * (`useConnectionQuality`) is built on top of these — keeping the raw
+ * sampler separate makes it easy to plug stats into logging, dev tools,
+ * or telemetry without spinning up the reactive runtime.
+ */
+
+
+/**
+ * Take a one-shot getStats() snapshot and reduce it to a flat summary
+ * suitable for logging, dashboards, or feeding into `classifyStats()`.
+ *
+ * @param {RTCPeerConnection} pc
+ * @returns {Promise<{
+ *   report: any,
+ *   inboundRtp: any[],
+ *   outboundRtp: any[],
+ *   candidatePair: any | null,
+ *   summary: { rttMs: number | null, lossPct: number, bytesSent: number, bytesReceived: number }
+ * }>}
+ */
+async function samplePeerStats(pc) {
+    if (!pc || typeof pc.getStats !== 'function') {
+        throw new WebRtcError('samplePeerStats(pc): RTCPeerConnection required', {
+            code: 'ZQ_WEBRTC_OBSERVE_BAD_PC',
+        });
+    }
+    let report;
+    try {
+        report = await pc.getStats();
+    } catch (cause) {
+        throw new WebRtcError('samplePeerStats(pc): getStats() failed', {
+            code: 'ZQ_WEBRTC_OBSERVE_GETSTATS_FAILED',
+            cause,
+        });
+    }
+    return _reduce(report);
+}
+
+
+/**
+ * Start a periodic getStats() sampler.
+ *
+ * @param {RTCPeerConnection} pc
+ * @param {{
+ *   intervalMs?: number,
+ *   onSample?:  (sample: Awaited<ReturnType<typeof samplePeerStats>>) => void,
+ *   onError?:   (err: Error) => void,
+ *   immediate?: boolean,
+ * }} [opts]
+ * @returns {{
+ *   stop: () => void,
+ *   getLatest: () => Awaited<ReturnType<typeof samplePeerStats>> | null,
+ * }}
+ */
+function createStatsSampler(pc, opts = {}) {
+    if (!pc || typeof pc.getStats !== 'function') {
+        throw new WebRtcError('createStatsSampler(pc): RTCPeerConnection required', {
+            code: 'ZQ_WEBRTC_OBSERVE_BAD_PC',
+        });
+    }
+    const intervalMs = typeof opts.intervalMs === 'number' && opts.intervalMs > 0 ? opts.intervalMs : 2000;
+    const immediate  = opts.immediate !== false;
+    const onSample   = typeof opts.onSample === 'function' ? opts.onSample : null;
+    const onError    = typeof opts.onError  === 'function' ? opts.onError  : null;
+
+    let latest  = null;
+    let stopped = false;
+
+    const tick = async () => {
+        if (stopped) return;
+        try {
+            const s = await samplePeerStats(pc);
+            if (stopped) return;
+            latest = s;
+            if (onSample) {
+                try { onSample(s); } catch (_) { /* user callback errors are swallowed */ }
+            }
+        } catch (err) {
+            if (onError) {
+                try { onError(err); } catch (_) { /* user callback errors are swallowed */ }
+            }
+        }
+    };
+
+    if (immediate) tick();
+    const timer = setInterval(tick, intervalMs);
+
+    return {
+        stop() {
+            if (stopped) return;
+            stopped = true;
+            clearInterval(timer);
+        },
+        getLatest() { return latest; },
+    };
+}
+
+
+/**
+ * Bucket a reduced sample into a coarse quality label.
+ *
+ * @param {{ summary: { rttMs: number | null, lossPct: number } } | null} sample
+ * @returns {'good' | 'fair' | 'poor' | 'unknown'}
+ */
+function classifyStats(sample) {
+    if (!sample || !sample.summary) return 'unknown';
+    const { rttMs, lossPct } = sample.summary;
+    if (rttMs == null && lossPct === 0) return 'unknown';
+    if (lossPct > 5 || (rttMs != null && rttMs > 400)) return 'poor';
+    if (lossPct > 1 || (rttMs != null && rttMs > 200)) return 'fair';
+    return 'good';
+}
+
+
+// ---------------------------------------------------------------------------
+// Internals
+// ---------------------------------------------------------------------------
+
+function _reduce(report) {
+    const inboundRtp  = [];
+    const outboundRtp = [];
+    let candidatePair = null;
+
+    const visit = (s) => {
+        if (!s || typeof s !== 'object') return;
+        if (s.type === 'inbound-rtp')  inboundRtp.push(s);
+        if (s.type === 'outbound-rtp') outboundRtp.push(s);
+        if (s.type === 'candidate-pair' && (s.nominated || s.state === 'succeeded')) {
+            if (!candidatePair) candidatePair = s;
+        }
+    };
+
+    if (report && typeof report.forEach === 'function') {
+        report.forEach(visit);
+    } else if (report && typeof report === 'object') {
+        for (const k of Object.keys(report)) visit(report[k]);
+    }
+
+    let bytesSent = 0;
+    let bytesReceived = 0;
+    let lostTotal = 0;
+    let recvTotal = 0;
+    for (const s of outboundRtp) {
+        if (typeof s.bytesSent === 'number') bytesSent += s.bytesSent;
+    }
+    for (const s of inboundRtp) {
+        if (typeof s.bytesReceived === 'number') bytesReceived += s.bytesReceived;
+        if (typeof s.packetsLost     === 'number') lostTotal += s.packetsLost;
+        if (typeof s.packetsReceived === 'number') recvTotal += s.packetsReceived;
+    }
+    const total = lostTotal + recvTotal;
+    const lossPct = total > 0 ? (lostTotal / total) * 100 : 0;
+
+    let rttMs = null;
+    if (candidatePair && typeof candidatePair.currentRoundTripTime === 'number') {
+        rttMs = candidatePair.currentRoundTripTime * 1000;
+    }
+
+    return {
+        report,
+        inboundRtp,
+        outboundRtp,
+        candidatePair,
+        summary: { rttMs, lossPct, bytesSent, bytesReceived },
+    };
+}
+
+// --- src/webrtc/sfu/mediasoup.js ---------------------------------
+/**
+ * src/webrtc/sfu/mediasoup.js
+ *
+ * Thin wrapper around the optional `mediasoup-client` peer dependency.
+ *
+ *   - `mediasoup-client` is intentionally NOT bundled. Apps that want it
+ *     must `npm install mediasoup-client` themselves.
+ *   - If it isn't installed, `createMediasoupAdapter()` throws
+ *     `ZQ_WEBRTC_SFU_PEER_MISSING` with an actionable message.
+ *   - The adapter exposes the lower-level mediasoup `Device` plus
+ *     helpers for `load(routerRtpCapabilities)`, `canProduce(kind)`,
+ *     `createSendTransport(params)`, `createRecvTransport(params)`.
+ *   - The higher-level `adapter.join(joinOpts)` requires SFU-specific
+ *     signaling (request → response over a data channel or HTTP). That
+ *     glue lives in the consuming app for now; calling `.join()` throws
+ *     `ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE` so the limitation is explicit.
+ */
+
+
+/**
+ * Dynamically import `mediasoup-client`. Returns the module's exports.
+ * Throws `SfuError(ZQ_WEBRTC_SFU_PEER_MISSING)` if the package is absent.
+ *
+ * @returns {Promise<any>}
+ */
+async function _importMediasoupClient() {
+    try {
+        // The package name is computed at runtime so static bundlers (Vite,
+        // Rollup, esbuild) don't try to resolve the optional peer dep at
+        // build time and fail the build when it isn't installed.
+        const pkg = ['mediasoup', 'client'].join('-');
+        return await import(/* @vite-ignore */ pkg);
+    } catch (cause) {
+        throw new SfuError(
+            'mediasoup-client peer dependency is not installed; run `npm install mediasoup-client`',
+            { code: 'ZQ_WEBRTC_SFU_PEER_MISSING', cause },
+        );
+    }
+}
+
+
+/**
+ * Build a mediasoup-client adapter.
+ *
+ * @param {object} [opts]
+ * @param {any}    [opts.client]         Pre-imported mediasoup-client module (test hook).
+ * @param {object} [opts.deviceOptions]  Forwarded to `new Device(...)`.
+ * @returns {Promise<import('./index.js').SfuAdapter>}
+ */
+async function createMediasoupAdapter(opts = {}) {
+    const mod    = opts.client || await _importMediasoupClient();
+    const Device = mod.Device || (mod.default && mod.default.Device);
+    if (typeof Device !== 'function') {
+        throw new SfuError('mediasoup-client module did not expose a Device constructor', {
+            code: 'ZQ_WEBRTC_SFU_BAD_MODULE',
+        });
+    }
+
+    let device;
+    try {
+        device = new Device(opts.deviceOptions || {});
+    } catch (cause) {
+        throw new SfuError('failed to construct mediasoup-client Device', {
+            code: 'ZQ_WEBRTC_SFU_DEVICE_FAILED',
+            cause,
+        });
+    }
+
+    return {
+        name: 'mediasoup',
+        device,
+
+        /** Has `device.load({ routerRtpCapabilities })` been called yet? */
+        get loaded() {
+            return !!device.loaded;
+        },
+
+        /**
+         * Load the device with the SFU router's RTP capabilities.
+         * @param {any} routerRtpCapabilities
+         * @returns {Promise<void>}
+         */
+        async load(routerRtpCapabilities) {
+            if (!routerRtpCapabilities || typeof routerRtpCapabilities !== 'object') {
+                throw new SfuError('load(routerRtpCapabilities): routerRtpCapabilities required', {
+                    code: 'ZQ_WEBRTC_SFU_BAD_RTP_CAPS',
+                });
+            }
+            if (device.loaded) return;
+            try {
+                await device.load({ routerRtpCapabilities });
+            } catch (cause) {
+                throw new SfuError('device.load() failed', {
+                    code: 'ZQ_WEBRTC_SFU_LOAD_FAILED',
+                    cause,
+                });
+            }
+        },
+
+        /**
+         * @param {'audio'|'video'} kind
+         * @returns {boolean}
+         */
+        canProduce(kind) {
+            if (!device.loaded) {
+                throw new SfuError('canProduce(): device not loaded yet', {
+                    code: 'ZQ_WEBRTC_SFU_NOT_LOADED',
+                });
+            }
+            return !!device.canProduce(kind);
+        },
+
+        /** @param {any} params */
+        createSendTransport(params) {
+            if (!device.loaded) {
+                throw new SfuError('createSendTransport(): device not loaded yet', {
+                    code: 'ZQ_WEBRTC_SFU_NOT_LOADED',
+                });
+            }
+            return device.createSendTransport(params);
+        },
+
+        /** @param {any} params */
+        createRecvTransport(params) {
+            if (!device.loaded) {
+                throw new SfuError('createRecvTransport(): device not loaded yet', {
+                    code: 'ZQ_WEBRTC_SFU_NOT_LOADED',
+                });
+            }
+            return device.createRecvTransport(params);
+        },
+
+        /**
+         * Reserved for the higher-level join flow once SFU-specific signaling
+         * is wired through `Room`. Today, callers should use the device and
+         * transport helpers above directly.
+         *
+         * @param {any} _joinOpts
+         * @returns {Promise<never>}
+         */
+        async join(_joinOpts) {
+            throw new SfuError(
+                'mediasoup adapter.join() not implemented; use device + createSendTransport/createRecvTransport with your SFU signaling layer',
+                { code: 'ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE' },
+            );
+        },
+    };
+}
+
+// --- src/webrtc/sfu/livekit.js -----------------------------------
+/**
+ * src/webrtc/sfu/livekit.js
+ *
+ * Thin wrapper around the optional `livekit-client` peer dependency.
+ *
+ *   - `livekit-client` is intentionally NOT bundled. Apps that want it
+ *     must `npm install livekit-client` themselves.
+ *   - If it isn't installed, `createLivekitAdapter()` throws
+ *     `ZQ_WEBRTC_SFU_PEER_MISSING` with an actionable message.
+ *   - The adapter exposes a LiveKit `Room` instance plus `connect()` /
+ *     `disconnect()` helpers. The higher-level zQuery `Room` mapping
+ *     lives in the consuming app for now; calling `.join()` throws
+ *     `ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE`.
+ */
+
+
+/**
+ * Dynamically import `livekit-client`. Returns the module's exports.
+ * Throws `SfuError(ZQ_WEBRTC_SFU_PEER_MISSING)` if the package is absent.
+ *
+ * @returns {Promise<any>}
+ */
+async function _importLivekitClient() {
+    try {
+        // Compose the package name at runtime so static bundlers (Vite,
+        // Rollup, esbuild) don't try to resolve the optional peer dep.
+        const pkg = ['livekit', 'client'].join('-');
+        return await import(/* @vite-ignore */ pkg);
+    } catch (cause) {
+        throw new SfuError(
+            'livekit-client peer dependency is not installed; run `npm install livekit-client`',
+            { code: 'ZQ_WEBRTC_SFU_PEER_MISSING', cause },
+        );
+    }
+}
+
+
+/**
+ * Build a LiveKit-client adapter.
+ *
+ * @param {object} [opts]
+ * @param {any}    [opts.client]       Pre-imported livekit-client module (test hook).
+ * @param {object} [opts.roomOptions]  Forwarded to `new Room(...)`.
+ * @returns {Promise<import('./index.js').SfuAdapter>}
+ */
+async function createLivekitAdapter(opts = {}) {
+    const mod    = opts.client || await _importLivekitClient();
+    const RoomCtor = mod.Room || (mod.default && mod.default.Room);
+    if (typeof RoomCtor !== 'function') {
+        throw new SfuError('livekit-client module did not expose a Room constructor', {
+            code: 'ZQ_WEBRTC_SFU_BAD_MODULE',
+        });
+    }
+
+    let room;
+    try {
+        room = new RoomCtor(opts.roomOptions || {});
+    } catch (cause) {
+        throw new SfuError('failed to construct livekit-client Room', {
+            code: 'ZQ_WEBRTC_SFU_ROOM_FAILED',
+            cause,
+        });
+    }
+
+    let connected = false;
+
+    return {
+        name: 'livekit',
+        room,
+
+        /** Has `connect()` resolved at least once and not been undone by disconnect? */
+        get connected() {
+            return connected;
+        },
+
+        /**
+         * Connect to a LiveKit server.
+         * @param {string} url            LiveKit signaling URL (`wss://...`).
+         * @param {string} token          Room access token (JWT) minted server-side.
+         * @param {object} [connectOpts]  Forwarded to `room.connect(...)`.
+         * @returns {Promise<void>}
+         */
+        async connect(url, token, connectOpts) {
+            if (typeof url !== 'string' || !url) {
+                throw new SfuError('connect(url, token): url required', {
+                    code: 'ZQ_WEBRTC_SFU_BAD_URL',
+                });
+            }
+            if (typeof token !== 'string' || !token) {
+                throw new SfuError('connect(url, token): token required', {
+                    code: 'ZQ_WEBRTC_SFU_BAD_TOKEN',
+                });
+            }
+            try {
+                await room.connect(url, token, connectOpts);
+                connected = true;
+            } catch (cause) {
+                throw new SfuError('livekit-client Room.connect() failed', {
+                    code: 'ZQ_WEBRTC_SFU_CONNECT_FAILED',
+                    cause,
+                });
+            }
+        },
+
+        /** Disconnect from the LiveKit server (best effort). */
+        async disconnect() {
+            if (!connected) return;
+            try {
+                await room.disconnect();
+            } finally {
+                connected = false;
+            }
+        },
+
+        /**
+         * Reserved for the higher-level join flow that maps a LiveKit `Room`
+         * to a zQuery `Room`. Not implemented yet.
+         *
+         * @param {any} _joinOpts
+         * @returns {Promise<never>}
+         */
+        async join(_joinOpts) {
+            throw new SfuError(
+                'livekit adapter.join() not implemented; use connect(url, token) and the underlying livekit-client Room directly',
+                { code: 'ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE' },
+            );
+        },
+    };
+}
+
+// --- src/webrtc/sfu/index.js -------------------------------------
+/**
+ * src/webrtc/sfu/index.js
+ *
+ * SFU adapter registry. Adapters are dynamic-imported so the (optional)
+ * peer dependencies (`mediasoup-client`, `livekit-client`) only load
+ * when actually used.
+ *
+ * Public surface:
+ *   - `loadSfuAdapter(name, opts?)` → `Promise<SfuAdapter>`
+ */
+
+
+
+
+/**
+ * @typedef {object} SfuAdapter
+ * @property {'mediasoup'|'livekit'} name
+ * @property {(joinOpts: any) => Promise<any>} join
+ */
+
+
+/**
+ * Load an SFU adapter by name. The adapter's peer dependency must be
+ * installed by the consuming app.
+ *
+ * @param {'mediasoup'|'livekit'} name
+ * @param {object} [opts]
+ * @returns {Promise<SfuAdapter>}
+ */
+async function loadSfuAdapter(name, opts = {}) {
+    if (name === 'mediasoup') {
+        return createMediasoupAdapter(opts);
+    }
+    if (name === 'livekit') {
+        return createLivekitAdapter(opts);
+    }
+    throw new SfuError(`unknown SFU adapter: ${name}`, {
+        code: 'ZQ_WEBRTC_SFU_UNKNOWN',
+        context: { name },
+    });
+}
+
+// --- src/webrtc/index.js -----------------------------------------
+/**
+ * src/webrtc/index.js - WebRTC public barrel
+ *
+ * Re-exports the WebRTC error family, low-level building blocks
+ * (`SignalingClient`, `Peer`, SDP/ICE helpers), and the high-level
+ * `Room` + reactive composables on the `webrtc` namespace.
+ */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * High-level WebRTC namespace exposed as `$.webrtc`. Bundles every public
+ * member from this module so consumers can reach the full surface through
+ * a single import.
+ */
+const webrtc = {
+    SignalingClient,
+    Peer,
+    Room,
+    join,
+
+    // Composables
+    useRoom,
+    usePeer,
+    useTracks,
+    useDataChannel,
+    useConnectionQuality,
+
+    // TURN client
+    fetchTurnCredentials,
+    mergeIceServers,
+    createTurnRefresher,
+
+    // E2EE
+    deriveSFrameKey,
+    generateSFrameKey,
+    SFrameContext,
+    encryptFrame,
+    decryptFrame,
+    attachE2ee,
+
+    // SFU adapters
+    loadSfuAdapter,
+
+    // Join tokens
+    decodeJoinToken,
+    isJoinTokenExpired,
+
+    // Observability
+    samplePeerStats,
+    createStatsSampler,
+    classifyStats,
+
+    // SDP / ICE helpers
+    parseSdp,
+    validateSdp,
+    parseCandidate,
+    stringifyCandidate,
+    filterCandidates,
+    isPrivateIp,
+    isLoopbackIp,
+    isLinkLocalIp,
+    isMdnsHostname,
+
+    // Errors
+    WebRtcError,
+    SignalingError,
+    IceError,
+    SdpError,
+    TurnError,
+    E2eeError,
+    SfuError,
+};
 
 // --- src/reactive.js ---------------------------------------------
 /**
@@ -4089,6 +7727,24 @@ class Component {
       el.removeAttribute('z-style');
     });
 
+    // -- z-stream (assign MediaStream to <video>/<audio>.srcObject) -
+    this._el.querySelectorAll('[z-stream]').forEach(el => {
+      if (el.closest('[z-pre]')) return;
+      const val = this._evalExpr(el.getAttribute('z-stream'));
+      const hasMediaStream = typeof MediaStream !== 'undefined';
+      if (val == null) {
+        el.srcObject = null;
+      } else if (hasMediaStream && val instanceof MediaStream) {
+        el.srcObject = val;
+      } else if (val && typeof val.getTracks === 'function') {
+        // Accept duck-typed stream objects (test fakes, polyfills).
+        el.srcObject = val;
+      } else {
+        el.srcObject = null;
+      }
+      el.removeAttribute('z-stream');
+    });
+
     // z-html and z-text are now pre-expanded at string level (before
     // morph) via _expandContentDirectives(), so the diff engine can
     // properly diff their content instead of clearing + re-injecting.
@@ -6457,6 +10113,7 @@ function timeout(promise, ms, message) {
 
 
 
+
 // ---------------------------------------------------------------------------
 // $ - The main function & namespace
 // ---------------------------------------------------------------------------
@@ -6608,10 +10265,52 @@ $.guardAsync     = guardAsync;
 $.validate       = validate;
 $.formatError    = formatError;
 
+// --- WebRTC ----------------------------------------------------------------
+$.webrtc             = webrtc;
+$.SignalingClient    = SignalingClient;
+$.Peer               = Peer;
+$.Room               = Room;
+$.useRoom            = useRoom;
+$.usePeer            = usePeer;
+$.useTracks          = useTracks;
+$.useDataChannel     = useDataChannel;
+$.useConnectionQuality = useConnectionQuality;
+$.fetchTurnCredentials = fetchTurnCredentials;
+$.mergeIceServers    = mergeIceServers;
+$.createTurnRefresher = createTurnRefresher;
+$.deriveSFrameKey    = deriveSFrameKey;
+$.generateSFrameKey  = generateSFrameKey;
+$.SFrameContext      = SFrameContext;
+$.encryptFrame       = encryptFrame;
+$.decryptFrame       = decryptFrame;
+$.attachE2ee         = attachE2ee;
+$.loadSfuAdapter     = loadSfuAdapter;
+$.SfuError           = SfuError;
+$.decodeJoinToken    = decodeJoinToken;
+$.isJoinTokenExpired = isJoinTokenExpired;
+$.samplePeerStats    = samplePeerStats;
+$.createStatsSampler = createStatsSampler;
+$.classifyStats      = classifyStats;
+$.parseSdp           = parseSdp;
+$.validateSdp        = validateSdp;
+$.parseCandidate     = parseCandidate;
+$.stringifyCandidate = stringifyCandidate;
+$.filterCandidates   = filterCandidates;
+$.isPrivateIp        = isPrivateIp;
+$.isLoopbackIp       = isLoopbackIp;
+$.isLinkLocalIp      = isLinkLocalIp;
+$.isMdnsHostname     = isMdnsHostname;
+$.WebRtcError        = WebRtcError;
+$.SignalingError     = SignalingError;
+$.IceError           = IceError;
+$.SdpError           = SdpError;
+$.TurnError          = TurnError;
+$.E2eeError          = E2eeError;
+
 // --- Meta ------------------------------------------------------------------
-$.version   = '1.1.1';
-$.libSize   = '~115 KB';
-$.unitTests = {"passed":2281,"failed":0,"total":2281,"suites":565,"duration":6088,"ok":true};
+$.version   = '1.2.0';
+$.libSize   = '~129 KB';
+$.unitTests = {"passed":2508,"failed":0,"total":2508,"suites":617,"duration":6209,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

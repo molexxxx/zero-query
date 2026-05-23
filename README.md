@@ -6,6 +6,7 @@
 
 <p align="center">
 
+[![CI](https://github.com/tonywied17/zero-query/actions/workflows/ci.yml/badge.svg)](https://github.com/tonywied17/zero-query/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/zero-query.svg)](https://www.npmjs.com/package/zero-query)
 [![npm downloads](https://img.shields.io/npm/dm/zero-query.svg)](https://www.npmjs.com/package/zero-query)
 [![GitHub](https://img.shields.io/badge/GitHub-zero--query-blue.svg)](https://github.com/tonywied17/zero-query)
@@ -32,6 +33,7 @@
 | **Security** | XSS-safe template expressions (`{{}}` auto-escaping), sandboxed expression evaluator (blocks `window`, `Function`, `eval`, `RegExp`, `Error`, prototype chains), prototype pollution prevention in `deepMerge`/`setPath`, `z-link` protocol validation, SSR error sanitization, `renderShell()` metadata injection hardening (script-tag breakout prevention, ReDoS-safe OG keys, safe `.replace()` patterns) |
 | **Dev Tools** | CLI dev server with live-reload, CSS hot-swap, full-screen error overlay, floating toolbar, dark-themed inspector panel (Router view, DOM tree, network log, component viewer, performance dashboard), fetch interceptor, render instrumentation, CLI bundler for single-file production builds |
 | **SSR** | Server-side rendering to HTML strings in Node.js - `createSSRApp()`, `renderToString()`, `renderPage()` with SEO/Open Graph support, `renderShell()` for injecting SSR into custom HTML shells, `renderBatch()` for parallel rendering, fragment mode, hydration markers, graceful error handling, `escapeHtml()` utility |
+| **WebRTC** | `SignalingClient` + `Peer` (perfect negotiation) + multi-peer `Room` speaking the `@zero-server/webrtc` wire protocol &mdash; `$.webrtc.join(url, opts)`, reactive `useRoom` / `usePeer` / `useTracks` / `useDataChannel` / `useConnectionQuality` composables, `z-stream` directive for binding remote `MediaStream`s to `<video>` / `<audio>`, SDP + ICE parsers, exponential-backoff reconnect, coalesced ICE trickle, TURN credential fetcher + auto-refresher, SFrame E2EE worker, SFU peer-dep adapters for `mediasoup-client` and `livekit-client`, join-token decoder, `getStats()` sampler with quality classification, typed error family (`WebRtcError`, `SignalingError`, `IceError`, `SdpError`, `TurnError`, `E2eeError`); scaffold a one-page demo with `npx zero-query create my-app --webrtc-demo` |
 
 ---
 

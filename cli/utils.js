@@ -127,13 +127,31 @@ function stripComments(code) {
 }
 
 // ---------------------------------------------------------------------------
-// minify - single-pass minification
-//   Strips comments, collapses whitespace to the minimum required,
-//   and preserves string / template-literal / regex content verbatim.
+// minify - production minification via esbuild
+//   Performs identifier mangling, dead-code elimination, whitespace removal,
+//   and boolean shortening. Falls back to the legacy in-house pass-through
+//   minifier if esbuild fails to load (e.g. on a clean clone before
+//   `npm install`).
 // ---------------------------------------------------------------------------
 
 function minify(code, banner) {
-  return banner + '\n' + _minifyBody(code.replace(banner, ''));
+    let esbuild;
+    try { esbuild = require('esbuild'); }
+    catch (_) { return banner + '\n' + _minifyBody(code.replace(banner, '')); }
+
+    const body = code.replace(banner, '');
+    const result = esbuild.transformSync(body, {
+        minify:               true,
+        target:               'es2019',
+        legalComments:        'none',
+        treeShaking:          true,
+        keepNames:            false,
+        minifyIdentifiers:    true,
+        minifyWhitespace:     true,
+        minifySyntax:         true,
+        charset:              'utf8',
+    });
+    return banner + '\n' + result.code.trimEnd() + '\n';
 }
 
 /**
