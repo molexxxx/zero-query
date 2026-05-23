@@ -14,6 +14,8 @@ function showHelp() {
       --ssr, -s                Use the SSR template - includes server/index.js
                                SSR HTTP server with shared component definitions,
                                blog with param routing, JSON API, and SEO metadata
+      --webrtc-demo, -w        Use the WebRTC demo template - one-page video room
+                               powered by $.webrtc.join() against a zero-server hub
 
     dev [root]                 Start a dev server with live-reload
       --port, -p <number>     Port number (default: 3100)
