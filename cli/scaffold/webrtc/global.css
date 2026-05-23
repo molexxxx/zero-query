@@ -1,0 +1,98 @@
+/* {{NAME}} - WebRTC demo */
+* { box-sizing: border-box; }
+
+:root {
+    --bg:         #0b0c10;
+    --panel:      #151821;
+    --border:     #262b38;
+    --text:       #e8ecf3;
+    --text-muted: #8a93a6;
+    --accent:     #5b8def;
+    --accent-2:   #16a34a;
+    --danger:     #e1455c;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+}
+
+.topbar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+}
+.topbar .brand    { font-weight: 700; font-size: 1.1rem; }
+.topbar small     { color: var(--text-muted); }
+
+main { padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+}
+.controls input {
+    flex: 1 1 280px;
+    min-width: 220px;
+    background: #0d101a;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    font-family: inherit;
+}
+.controls button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 0.375rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+.controls button[disabled] { opacity: 0.5; cursor: not-allowed; }
+.controls button.leave     { background: var(--danger); }
+
+.status {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+.status.error { color: var(--danger); }
+
+.tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+}
+.tile {
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    position: relative;
+}
+.tile video { width: 100%; height: 100%; object-fit: cover; background: #000; }
+.tile .label {
+    position: absolute;
+    left: 0.5rem; bottom: 0.5rem;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 0.15rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+}

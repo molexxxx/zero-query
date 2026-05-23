@@ -31,10 +31,11 @@ function createProject(args) {
   const target = dirArg ? path.resolve(dirArg) : process.cwd();
   const name   = path.basename(target);
 
-  // Determine scaffold variant: --minimal / -m  or  --ssr / -s  or  default
-  const variant = flag('minimal', 'm') ? 'minimal'
-                : flag('ssr', 's')     ? 'ssr'
-                :                        'default';
+  // Determine scaffold variant: --minimal / -m  or  --ssr / -s  or --webrtc-demo / -w  or  default
+  const variant = flag('minimal', 'm')      ? 'minimal'
+                : flag('ssr', 's')          ? 'ssr'
+                : flag('webrtc-demo', 'w')  ? 'webrtc'
+                :                             'default';
 
   // Guard: refuse to overwrite existing files
   const checkFiles = ['index.html', 'global.css', 'app', 'assets'];

@@ -758,6 +758,29 @@ describe('CLI - createProject', () => {
     expect(fs.existsSync(dir)).toBe(true);
   });
 
+  it('webrtc scaffold directory exists', () => {
+    const dir = path.resolve(__dirname, '..', 'cli', 'scaffold', 'webrtc');
+    expect(fs.existsSync(dir)).toBe(true);
+  });
+
+  it('webrtc scaffold has index.html with {{NAME}} placeholder', () => {
+    const html = fs.readFileSync(
+      path.resolve(__dirname, '..', 'cli', 'scaffold', 'webrtc', 'index.html'), 'utf-8'
+    );
+    expect(html).toContain('{{NAME}}');
+    expect(html).toContain('video-room');
+  });
+
+  it('webrtc scaffold has app/components/video-room.js using $.webrtc.join', () => {
+    const src = fs.readFileSync(
+      path.resolve(__dirname, '..', 'cli', 'scaffold', 'webrtc', 'app', 'components', 'video-room.js'),
+      'utf-8'
+    );
+    expect(src).toContain('$.webrtc.join');
+    expect(src).toContain('z-stream');
+    expect(src).toContain('video-room');
+  });
+
   // -- default scaffold contains expected files --
 
   it('default scaffold has index.html', () => {
