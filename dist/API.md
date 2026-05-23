@@ -176,6 +176,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Room](#room)
   - [Reactive Composables](#reactive-composables)
   - [z-stream Directive](#z-stream-directive)
+  - [TURN Credentials](#turn-credentials)
   - [SDP + ICE Helpers](#sdp-ice-helpers)
   - [Error Family](#error-family)
   - [Wire Protocol](#wire-protocol)
@@ -6543,10 +6544,10 @@ zQuery ships a small WebRTC client that talks the wire protocol of `@zero-server
 | `$.Room` / `$.webrtc.join(url, opts)` | Yes |
 | `$.useRoom()` / `usePeer()` / `useTracks()` / `useDataChannel()` / `useConnectionQuality()` | Yes |
 | `z-stream` directive | Yes |
+| `$.fetchTurnCredentials()` / `$.mergeIceServers()` / `$.createTurnRefresher()` | Yes |
 | `$.parseSdp`, `$.validateSdp` | Yes |
 | `$.parseCandidate`, `$.stringifyCandidate`, `$.filterCandidates` | Yes |
 | `$.WebRtcError`, `$.SignalingError`, `$.IceError`, `$.SdpError`, `$.TurnError`, `$.E2eeError` | Yes |
-| `$.webrtc.fetchTurnCredentials()` | Planned |
 | `$.webrtc.loadSfuAdapter('mediasoup' \| 'livekit')` | Planned |
 | SFrame end-to-end encryption | Planned |
 
@@ -6764,6 +6765,51 @@ tile.instance.state.stream = peerInfo.stream;
 ```
 
   
+### TURN Credentials
+
+  
+The backend's `issueTurnCredentials()` handler returns short-lived `{ username, credential, urls, ttl }` bundles. `fetchTurnCredentials()` normalizes the response and validates its shape; `mergeIceServers()` concatenates the TURN entry with your existing STUN list (deduping any overlapping URLs); `createTurnRefresher()` schedules an automatic refetch ahead of expiry so a long-running room never sees a 401 mid-call. Any failure surfaces as a typed `TurnError`.
+
+  
+
+```javascript
+import { fetchTurnCredentials, mergeIceServers, createTurnRefresher } from 'zero-query';
+
+// One-shot fetch (e.g. right before $.webrtc.join):
+const creds = await $.fetchTurnCredentials('/webrtc/turn-credentials');
+const iceServers = $.mergeIceServers(
+    [{ urls: 'stun:stun.l.google.com:19302' }],
+    creds
+);
+
+const room = await $.webrtc.join('wss://api.example.com/rtc', {
+    room:       'lobby',
+    iceServers,
+});
+
+// Long-lived refresher (re-fetches ~30s before ttl expires):
+const turn = $.createTurnRefresher({
+    url:       '/webrtc/turn-credentials',
+    leadMs:    30000,
+    onRefresh: (next) => console.log('TURN rotated', next.ttl),
+    onError:   (err)  => console.warn('TURN refresh failed', err.code),
+});
+await turn.start();
+console.log(turn.value);   // latest credentials
+turn.stop();               // cancel timer on unmount
+```
+
+  
+| Helper | Returns |
+| --- | --- |
+| `fetchTurnCredentials(url, { fetch?, ...RequestInit })` | `Promise` |
+| `mergeIceServers(base?, turn?)` | `RTCIceServer[]` — base entries first, TURN appended, dup URLs dropped. |
+| `createTurnRefresher({ url, fetch?, leadMs?, minIntervalMs?, onRefresh?, onError?, requestInit? })` | `{ value, peek, start, refresh, stop }` |
+
+  
+> All TURN errors derive from `TurnError`: `ZQ_WEBRTC_TURN_BAD_URL`, `ZQ_WEBRTC_TURN_NO_FETCH`, `ZQ_WEBRTC_TURN_NETWORK`, `ZQ_WEBRTC_TURN_HTTP`, `ZQ_WEBRTC_TURN_BAD_JSON`, `ZQ_WEBRTC_TURN_BAD_BODY`.
+
+  
 ### SDP + ICE Helpers
 
   
@@ -6905,6 +6951,9 @@ import {
   useTracks,
   useDataChannel,
   useConnectionQuality,
+  fetchTurnCredentials,
+  mergeIceServers,
+  createTurnRefresher,
   parseSdp,
   validateSdp,
   parseCandidate,

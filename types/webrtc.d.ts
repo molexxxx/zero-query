@@ -397,6 +397,49 @@ export interface TurnCredentials {
     ttl: number;
 }
 
+/** Options accepted by `fetchTurnCredentials()` (extends `RequestInit`). */
+export interface FetchTurnOptions extends RequestInit {
+    /** Optional `fetch` implementation override (defaults to global `fetch`). */
+    fetch?: typeof fetch;
+}
+
+/** Fetch a TURN credential bundle from the app's HTTP endpoint. */
+export function fetchTurnCredentials(url: string, opts?: FetchTurnOptions): Promise<TurnCredentials>;
+
+/** Merge TURN credentials with an optional base `iceServers` list, deduping URLs. */
+export function mergeIceServers(base?: RTCIceServer[], turn?: { username: string; credential: string; urls: string[] }): RTCIceServer[];
+
+/** Options accepted by `createTurnRefresher()`. */
+export interface TurnRefresherOptions {
+    /** TURN credential endpoint. */
+    url: string;
+    /** Optional `fetch` override. */
+    fetch?: typeof fetch;
+    /** Refresh `leadMs` milliseconds before the credential TTL expires. Default `30000`. */
+    leadMs?: number;
+    /** Floor on the scheduled refresh interval in ms. Default `5000`. */
+    minIntervalMs?: number;
+    /** Called after each successful refresh. */
+    onRefresh?: (creds: TurnCredentials) => void;
+    /** Called when a refresh fails (next refresh is auto-retried). */
+    onError?: (err: Error) => void;
+    /** Extra `RequestInit` forwarded to `fetch`. */
+    requestInit?: RequestInit;
+}
+
+/** Handle returned by `createTurnRefresher()`. */
+export interface TurnRefresher {
+    /** Last successfully fetched credentials, or `null` until the first refresh. */
+    readonly value: TurnCredentials | null;
+    peek(): TurnCredentials | null;
+    start(): Promise<TurnCredentials | null>;
+    refresh(): Promise<TurnCredentials | null>;
+    stop(): void;
+}
+
+/** Schedule automatic TURN-credential refresh ahead of expiry. */
+export function createTurnRefresher(opts: TurnRefresherOptions): TurnRefresher;
+
 /** Opaque adapter interface for `loadSfuAdapter()`. */
 export interface SfuAdapter {
     name: 'mediasoup' | 'livekit';
@@ -426,7 +469,11 @@ export interface WebRtcNamespace {
     /** Join a room over the given signaling URL. */
     join(url: string, opts: JoinOptions): Promise<Room>;
     /** Fetch TURN credentials from the app's HTTP endpoint. */
-    fetchTurnCredentials?(url: string, opts?: RequestInit): Promise<TurnCredentials>;
+    fetchTurnCredentials: typeof fetchTurnCredentials;
+    /** Merge TURN credentials with a base `iceServers[]`. */
+    mergeIceServers: typeof mergeIceServers;
+    /** Schedule automatic TURN-credential refresh ahead of expiry. */
+    createTurnRefresher: typeof createTurnRefresher;
     /** UX-only decode of a `signJoinToken(...)` payload (server validates). */
     decodeJoinToken?(token: string): { user: { id: string }; room: string; exp: number };
     /** Load an optional SFU adapter (peer-dep). */
