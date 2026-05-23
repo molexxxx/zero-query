@@ -6,6 +6,7 @@
 
 <p align="center">
 
+[![CI](https://github.com/tonywied17/zero-query/actions/workflows/ci.yml/badge.svg)](https://github.com/tonywied17/zero-query/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/zero-query.svg)](https://www.npmjs.com/package/zero-query)
 [![npm downloads](https://img.shields.io/npm/dm/zero-query.svg)](https://www.npmjs.com/package/zero-query)
 [![GitHub](https://img.shields.io/badge/GitHub-zero--query-blue.svg)](https://github.com/tonywied17/zero-query)
