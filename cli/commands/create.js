@@ -78,6 +78,21 @@ function createProject(args) {
 
   const devCmd = `npx zquery dev${target !== process.cwd() ? ` ${dirArg}` : ''}`;
 
+  // Copy zquery.min.js from the package's pre-built dist into the project root
+  // so file:// previews and the dev/SSR servers all serve the same minified
+  // bundle that ships with the installed zero-query package. The dev server
+  // also intercepts requests for "zquery.min.js" and will fall back to the
+  // package copy if the file is missing, so this is a convenience for direct
+  // file access (Open in Browser, etc.).
+  {
+    const zqRoot = path.resolve(__dirname, '..', '..');
+    const zqMin  = path.join(zqRoot, 'dist', 'zquery.min.js');
+    if (fs.existsSync(zqMin)) {
+      fs.copyFileSync(zqMin, path.join(target, 'zquery.min.js'));
+      console.log(`  ✓ zquery.min.js`);
+    }
+  }
+
   if (variant === 'ssr') {
     console.log(`\n  Installing dependencies...\n`);
     // Install zero-query from the same package that provides this CLI
