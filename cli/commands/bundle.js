@@ -1052,12 +1052,16 @@ function bundleApp() {
   // Embed zquery.min.js
   let libSection = '';
   {
-    // __dirname is cli/commands/, so the package root is two levels up
+    // __dirname is cli/commands/, so the package root is two levels up.
+    // When installed via `npm install zero-query`, pkgRoot lives inside the
+    // user's node_modules/ — in that case we never rebuild and just embed the
+    // pre-built dist/zquery.min.js that ships with the package.
     const pkgRoot    = path.resolve(__dirname, '..', '..');
     const pkgSrcDir  = path.join(pkgRoot, 'src');
     const pkgMinFile = path.join(pkgRoot, 'dist', 'zquery.min.js');
+    const isInstalled = /[\\/]node_modules[\\/]/.test(pkgRoot);
 
-    if (fs.existsSync(pkgSrcDir) && fs.existsSync(path.join(pkgRoot, 'index.js'))) {
+    if (!isInstalled && fs.existsSync(pkgSrcDir) && fs.existsSync(path.join(pkgRoot, 'index.js'))) {
       console.log(`\n  Building library from source...`);
       const prevCwd = process.cwd();
       try {
