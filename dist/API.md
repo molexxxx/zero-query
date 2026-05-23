@@ -173,6 +173,9 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Status](#status)
   - [SignalingClient](#signalingclient)
   - [Peer (Perfect Negotiation)](#peer-perfect-negotiation)
+  - [Room](#room)
+  - [Reactive Composables](#reactive-composables)
+  - [z-stream Directive](#z-stream-directive)
   - [SDP + ICE Helpers](#sdp-ice-helpers)
   - [Error Family](#error-family)
   - [Wire Protocol](#wire-protocol)
@@ -6527,26 +6530,25 @@ const API_BASE = $.platform === 'electron'
 ## WebRTC
 
   
-zQuery ships a small WebRTC client that talks the wire protocol of `@zero-server/webrtc`. The high-level `$.webrtc.join()` helper, room/peer surface, reactive composables, TURN client, SFrame E2EE, and SFU adapters land in upcoming releases. This release exposes the low-level `SignalingClient` and the error family.
+zQuery ships a small WebRTC client that talks the wire protocol of `@zero-server/webrtc`. The low-level `SignalingClient` and `Peer` primitives compose into a higher-level `Room` with reactive composables (`useRoom`, `usePeer`, `useTracks`, `useDataChannel`, `useConnectionQuality`) and the `z-stream` directive for binding remote `MediaStream`s to `` / `` elements. TURN credential fetching, SFrame E2EE, and SFU adapters land in upcoming releases.
 
   
 ### Status
-
-  
-> **Under construction.** Only the low-level `SignalingClient` and the WebRTC error classes are wired in this release. `$.webrtc.join()` currently throws `WebRtcError('ZQ_WEBRTC_NOT_IMPLEMENTED')` — use `new SignalingClient(url)` directly until the high-level `Room` API lands.
 
   
 | Surface | Available |
 | --- | --- |
 | `$.SignalingClient` / `$.webrtc.SignalingClient` | Yes |
 | `$.Peer` / `$.webrtc.Peer` | Yes |
+| `$.Room` / `$.webrtc.join(url, opts)` | Yes |
+| `$.useRoom()` / `usePeer()` / `useTracks()` / `useDataChannel()` / `useConnectionQuality()` | Yes |
+| `z-stream` directive | Yes |
 | `$.parseSdp`, `$.validateSdp` | Yes |
 | `$.parseCandidate`, `$.stringifyCandidate`, `$.filterCandidates` | Yes |
 | `$.WebRtcError`, `$.SignalingError`, `$.IceError`, `$.SdpError`, `$.TurnError`, `$.E2eeError` | Yes |
-| `$.webrtc.join(url, opts)` | Throws — lands in a later release |
-| `$.webrtc.useRoom()` / `usePeer()` / `useTracks()` / `useDataChannel()` | Planned |
 | `$.webrtc.fetchTurnCredentials()` | Planned |
 | `$.webrtc.loadSfuAdapter('mediasoup' \| 'livekit')` | Planned |
+| SFrame end-to-end encryption | Planned |
 
   
 ### SignalingClient
@@ -6645,6 +6647,121 @@ signaling.on('peer-left', ({ id }) => peers.get(id)?.close());
 
   
 > mDNS (`*.local`) candidates are filtered before send, and trickled candidates are capped per-peer so we stay inside the server's `a=candidate:` ceiling.
+
+  
+### Room
+
+  
+A `Room` is the multi-peer container above `SignalingClient` + `Peer`. It tracks every remote peer in a reactive `Signal`, fans out local tracks via `publish()` / `unpublish()`, and multiplexes named data channels across every connected peer. `$.webrtc.join(url, opts)` opens the signaling socket, waits for `hello`, sends `join`, and resolves once the server returns `joined`.
+
+  
+
+```javascript
+import { join } from 'zero-query';
+
+const room = await $.webrtc.join('wss://api.example.com/rtc', {
+    room:  'lobby',
+    media: { audio: true, video: true },   // calls getUserMedia automatically
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+});
+
+room.on('peer-joined', (info) => console.log('joined', info.id));
+room.on('peer-left',   (info) => console.log('left',   info.id));
+room.on('error',       (err)  => console.warn(err.code, err.message));
+
+// Publish a stream later (e.g. after a screen-share button):
+const screen = await navigator.mediaDevices.getDisplayMedia();
+await room.publish(screen);
+
+// Open a chat channel that every peer joins:
+const chat = room.dataChannel('chat');
+chat.on('message', (text, fromPeerId) => console.log(fromPeerId, text));
+chat.send('hello room');
+
+await room.leave();
+```
+
+  
+| Member | Type | Description |
+| --- | --- | --- |
+| `room.id` | `string` | Room identifier passed to `join`. |
+| `room.self` | `string` | Local peer id assigned by the server. |
+| `room.peers` | `Signal>` | Reactive map of every remote peer in the room. |
+| `room.localTracks` | `Signal` | Reactive snapshot of currently-published local tracks. |
+| `room.publish(stream)` | `Promise` | Add every track in the stream to every peer. |
+| `room.unpublish(stream)` | `Promise` | Remove every previously-published track in the stream. |
+| `room.dataChannel(label, opts?)` | `RoomDataChannel` | Returns a multiplexed handle ({label, send, on, close}). Same label returns the same handle. |
+| `room.on(event, cb)` | `() => void` | Subscribe to `peer-joined` / `peer-left` / `mute` / `unmute` / `error`. |
+| `room.leave()` | `Promise` | Send `leave`, close every peer and the socket. Idempotent. |
+
+  
+### Reactive Composables
+
+  
+Each composable returns a disposable reactive handle — `{ value, peek, subscribe(cb), dispose() }` — that you can render with `z-text` / `z-html` or wire into component re-renders. Call `dispose()` in your unmount path so listeners and intervals are torn down.
+
+  
+
+```javascript
+import { useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality } from 'zero-query';
+
+const room = await $.useRoom('wss://api.example.com/rtc', { room: 'lobby' });
+
+// Track a specific remote peer reactively:
+const peerHandle = $.usePeer(room, 'peer-abc');
+peerHandle.subscribe((info) => {
+    if (!info) return console.log('peer gone');
+    console.log('connection:', info.connection);
+});
+
+// Live track list for that peer (re-emits on addtrack/removetrack):
+const tracksHandle = $.useTracks(peerHandle.peek());
+
+// A chat channel with bounded message history:
+const chat = $.useDataChannel(room, 'chat', { history: 200 });
+chat.send('hi');
+chat.messages.subscribe((entries) => render(entries));  // [{data, from, at}]
+
+// Sampled connection-quality bucket from RTCPeerConnection.getStats():
+const quality = $.useConnectionQuality(peerHandle.peek(), { intervalMs: 2000 });
+quality.subscribe((bucket) => console.log(bucket));     // 'good' | 'fair' | 'poor'
+
+// On unmount:
+peerHandle.dispose();
+tracksHandle.dispose();
+chat.dispose();
+quality.dispose();
+```
+
+  
+| Composable | Returns |
+| --- | --- |
+| `useRoom(urlOrRoom, opts?)` | `Promise` — resolves an existing Room or calls `join`. |
+| `usePeer(room, peerId)` | `{ value: PeerInfo \| null, peek, subscribe, dispose }` |
+| `useTracks(peerInfo)` | `{ value: MediaStreamTrack[], refresh, peek, subscribe, dispose }` |
+| `useDataChannel(room, label, { history? })` | `{ messages: { value: Array, ... }, send, close, dispose }` |
+| `useConnectionQuality(peerInfo, { intervalMs?, getStats? })` | `{ value: "good" \| "fair" \| "poor", peek, subscribe, dispose }` |
+
+  
+### z-stream Directive
+
+  
+Bind a reactive `MediaStream` (or any object exposing `getTracks()`) to a `` or `` element by setting `srcObject` directly — no `URL.createObjectURL` dance. The directive is SSR-safe and writes `null` when the expression is nullish.
+
+  
+
+```javascript
+import { component } from 'zero-query';
+
+component('peer-video', {
+    state:    { stream: null },
+    template: () => `<video z-stream="stream" autoplay playsinline muted></video>`,
+});
+
+// Anywhere you have a PeerInfo (from room.peers or usePeer):
+const tile = $('peer-video').first();
+tile.instance.state.stream = peerInfo.stream;
+```
 
   
 ### SDP + ICE Helpers
@@ -6781,6 +6898,13 @@ import {
   webrtc,
   SignalingClient,
   Peer,
+  Room,
+  webrtcJoin,
+  useRoom,
+  usePeer,
+  useTracks,
+  useDataChannel,
+  useConnectionQuality,
   parseSdp,
   validateSdp,
   parseCandidate,

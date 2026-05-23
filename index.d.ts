@@ -158,6 +158,15 @@ export {
   JoinOptions,
   PeerInfo,
   Room,
+  RoomDataChannel,
+  ReactiveHandle,
+  DataChannelMessage,
+  join,
+  useRoom,
+  usePeer,
+  useTracks,
+  useDataChannel,
+  useConnectionQuality,
   TurnCredentials,
   SfuAdapter,
   WebRtcNamespace,
@@ -210,6 +219,13 @@ import type {
   WebRtcNamespace,
   SignalingClient,
   Peer,
+  Room,
+  join as webrtcJoin,
+  useRoom,
+  usePeer,
+  useTracks,
+  useDataChannel,
+  useConnectionQuality,
   WebRtcError,
   SignalingError,
   IceError,
@@ -411,6 +427,20 @@ interface ZQueryStatic {
   SignalingClient: typeof SignalingClient;
   /** Per-remote-peer `RTCPeerConnection` wrapper with perfect negotiation. */
   Peer: typeof Peer;
+  /** High-level multi-peer room handle. */
+  Room: typeof Room;
+  /** Join a room over the given signaling URL. */
+  webrtcJoin: typeof webrtcJoin;
+  /** Resolve a `Room` from a URL or pass-through an existing one. */
+  useRoom: typeof useRoom;
+  /** Reactive handle that tracks a remote peer by id. */
+  usePeer: typeof usePeer;
+  /** Reactive handle exposing the live track list for a peer. */
+  useTracks: typeof useTracks;
+  /** Reactive multiplexed data channel keyed by `label`. */
+  useDataChannel: typeof useDataChannel;
+  /** Reactive connection-quality bucket from periodic `getStats()`. */
+  useConnectionQuality: typeof useConnectionQuality;
   /** Parse an SDP document into a structured `ParsedSdp`. */
   parseSdp: typeof parseSdp;
   /** Parse + enforce server-side SDP constraints. */

@@ -326,16 +326,67 @@ export interface PeerInfo {
 }
 
 /** High-level room handle returned by `webrtc.join()` / `useRoom()`. */
-export interface Room {
+export class Room {
     readonly id: string;
     readonly self: string;
+    readonly closed: boolean;
     readonly peers: Signal<Map<string, PeerInfo>>;
     readonly localTracks: Signal<MediaStreamTrack[]>;
+    constructor(opts: { id: string; self: string; signaling: SignalingClient; peerOptions?: PeerOptions });
     publish(stream: MediaStream): Promise<void>;
     unpublish(stream: MediaStream): Promise<void>;
-    dataChannel(label: string, opts?: RTCDataChannelInit): RTCDataChannel;
+    dataChannel(label: string, opts?: RTCDataChannelInit): RoomDataChannel;
     leave(): Promise<void>;
     on(event: 'peer-joined' | 'peer-left' | 'mute' | 'unmute' | 'error', cb: (...args: any[]) => void): () => void;
+    off(event: string, cb: (...args: any[]) => void): void;
+}
+
+/** Join a room over the given signaling URL. */
+export function join(url: string, opts: JoinOptions): Promise<Room>;
+
+/** Resolve a `Room` from either a URL (calls `join`) or an existing `Room`. */
+export function useRoom(urlOrRoom: string | Room, opts?: JoinOptions): Promise<Room>;
+
+/** Reactive handle that tracks a remote peer by id. */
+export function usePeer(room: Room, peerId: string): ReactiveHandle<PeerInfo | null>;
+
+/** Reactive handle exposing the live track list for a peer. */
+export function useTracks(peer: PeerInfo): ReactiveHandle<MediaStreamTrack[]> & { refresh(): void };
+
+/** Reactive multiplexed data channel keyed by `label`. */
+export function useDataChannel(room: Room, label: string, opts?: { history?: number }): {
+    messages: ReactiveHandle<DataChannelMessage[]>;
+    send(data: any): void;
+    close(): void;
+    dispose(): void;
+};
+
+/** Reactive connection-quality bucket from periodic `getStats()`. */
+export function useConnectionQuality(peer: PeerInfo, opts?: { intervalMs?: number; getStats?: (pc: RTCPeerConnection) => Promise<any> }): ReactiveHandle<'good' | 'fair' | 'poor'>;
+
+/** Multiplexed data channel returned by `Room.dataChannel(label)`. */
+export interface RoomDataChannel {
+    readonly label: string;
+    readonly closed: boolean;
+    send(data: any): void;
+    on(event: 'message', cb: (data: any, fromPeerId: string) => void): () => void;
+    on(event: 'open',    cb: (peerId: string) => void): () => void;
+    close(): void;
+}
+
+/** Disposable reactive handle returned by composables. */
+export interface ReactiveHandle<T> {
+    readonly value: T;
+    peek(): T;
+    subscribe(cb: (value: T) => void): () => void;
+    dispose(): void;
+}
+
+/** Buffered message yielded by `useDataChannel`. */
+export interface DataChannelMessage {
+    data: any;
+    from: string;
+    at: number;
 }
 
 /** TURN credential bundle returned by `webrtc.fetchTurnCredentials()`. */
@@ -372,7 +423,7 @@ export interface WebRtcNamespace {
     TurnError:       typeof TurnError;
     E2eeError:       typeof E2eeError;
 
-    /** Join a room. Currently throws `WebRtcError(ZQ_WEBRTC_NOT_IMPLEMENTED)`. */
+    /** Join a room over the given signaling URL. */
     join(url: string, opts: JoinOptions): Promise<Room>;
     /** Fetch TURN credentials from the app's HTTP endpoint. */
     fetchTurnCredentials?(url: string, opts?: RequestInit): Promise<TurnCredentials>;
@@ -380,20 +431,21 @@ export interface WebRtcNamespace {
     decodeJoinToken?(token: string): { user: { id: string }; room: string; exp: number };
     /** Load an optional SFU adapter (peer-dep). */
     loadSfuAdapter?(name: 'mediasoup' | 'livekit'): Promise<SfuAdapter>;
-    /** Reactive composable: join on mount, leave on unmount. */
-    useRoom?(name: string, opts?: Partial<JoinOptions>): Room;
-    /** Reactive composable: track a remote peer by id. */
-    usePeer?(room: Room | string, peerId: string): Signal<PeerInfo | null>;
-    /** Reactive composable: live track list for a peer. */
-    useTracks?(peer: PeerInfo): Signal<MediaStreamTrack[]>;
-    /** Reactive composable: typed data channel handle. */
-    useDataChannel?(room: Room, label: string, opts?: { history?: number }): {
-        messages: Signal<any[]>;
+    /** Resolve a `Room` from either a URL (calls `join`) or an existing `Room`. */
+    useRoom(urlOrRoom: string | Room, opts?: JoinOptions): Promise<Room>;
+    /** Reactive handle that tracks a remote peer by id. */
+    usePeer(room: Room, peerId: string): ReactiveHandle<PeerInfo | null>;
+    /** Reactive handle exposing the live track list for a peer. */
+    useTracks(peer: PeerInfo): ReactiveHandle<MediaStreamTrack[]> & { refresh(): void };
+    /** Reactive multiplexed data channel keyed by `label`. */
+    useDataChannel(room: Room, label: string, opts?: { history?: number }): {
+        messages: ReactiveHandle<DataChannelMessage[]>;
         send(data: any): void;
         close(): void;
+        dispose(): void;
     };
-    /** Reactive composable: connection-quality bucket from periodic `getStats()`. */
-    useConnectionQuality?(peer: PeerInfo): Signal<'good' | 'fair' | 'poor'>;
+    /** Reactive connection-quality bucket from periodic `getStats()`. */
+    useConnectionQuality(peer: PeerInfo, opts?: { intervalMs?: number; getStats?: (pc: RTCPeerConnection) => Promise<any> }): ReactiveHandle<'good' | 'fair' | 'poor'>;
 }
 
 /** Live binding for the `webrtc` named export. */

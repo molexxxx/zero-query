@@ -32,6 +32,8 @@ import {
   webrtc,
   SignalingClient,
   Peer,
+  Room, join as webrtcJoin,
+  useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
   parseSdp, validateSdp,
   parseCandidate, stringifyCandidate, filterCandidates,
   isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
@@ -194,6 +196,12 @@ $.formatError    = formatError;
 $.webrtc             = webrtc;
 $.SignalingClient    = SignalingClient;
 $.Peer               = Peer;
+$.Room               = Room;
+$.useRoom            = useRoom;
+$.usePeer            = usePeer;
+$.useTracks          = useTracks;
+$.useDataChannel     = useDataChannel;
+$.useConnectionQuality = useConnectionQuality;
 $.parseSdp           = parseSdp;
 $.validateSdp        = validateSdp;
 $.parseCandidate     = parseCandidate;
@@ -256,7 +264,8 @@ export {
   createStore, getStore, connectStore,
   http,
   ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError,
-  webrtc, SignalingClient, Peer,
+  webrtc, SignalingClient, Peer, Room, webrtcJoin,
+  useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
   parseSdp, validateSdp,
   parseCandidate, stringifyCandidate, filterCandidates,
   isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
