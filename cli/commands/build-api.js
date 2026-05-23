@@ -30,6 +30,7 @@ const API_SECTIONS = [
   { id: 'ssr',            file: 'ssr.js',              exportName: 'ssr'          },
   { id: 'security',       file: 'security.js',         exportName: 'security'     },
   { id: 'environment',   file: 'environment.js',      exportName: 'environment'  },
+  { id: 'webrtc',         file: 'webrtc.js',           exportName: 'webrtc'       },
 ];
 
 

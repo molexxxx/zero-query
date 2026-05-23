@@ -141,6 +141,26 @@ export {
   renderToString,
 } from './types/ssr';
 
+export {
+  WebRtcError,
+  SignalingError,
+  IceError,
+  SdpError,
+  TurnError,
+  E2eeError,
+  WebRtcErrorOptions,
+  SignalingClient,
+  SignalingClientOptions,
+  SignalingReconnectOptions,
+  JoinOptions,
+  PeerInfo,
+  Room,
+  TurnCredentials,
+  SfuAdapter,
+  WebRtcNamespace,
+  webrtc,
+} from './types/webrtc';
+
 // ---------------------------------------------------------------------------
 // $ - Main function & namespace
 // ---------------------------------------------------------------------------
@@ -163,6 +183,16 @@ import type {
 } from './types/utils';
 import type { onError, ZQueryError, ErrorCode, guardCallback, guardAsync, validate, formatError } from './types/errors';
 import type { morph, morphElement, safeEval } from './types/misc';
+import type {
+  WebRtcNamespace,
+  SignalingClient,
+  WebRtcError,
+  SignalingError,
+  IceError,
+  SdpError,
+  TurnError,
+  E2eeError,
+} from './types/webrtc';
 
 /**
  * Main selector / DOM-ready function - always returns a `ZQueryCollection` (like jQuery).
@@ -340,6 +370,24 @@ interface ZQueryStatic {
   memoize: typeof memoize;
   retry: typeof retry;
   timeout: typeof timeout;
+
+  // -- WebRTC --------------------------------------------------------------
+  /** WebRTC namespace - low-level `SignalingClient`, error family, and (future) high-level helpers. */
+  webrtc: WebRtcNamespace;
+  /** Low-level WebSocket signaling client (speaks `@zero-server/webrtc` wire). */
+  SignalingClient: typeof SignalingClient;
+  /** Base WebRTC error. */
+  WebRtcError: typeof WebRtcError;
+  /** Signaling-channel error. */
+  SignalingError: typeof SignalingError;
+  /** ICE candidate / connectivity error. */
+  IceError: typeof IceError;
+  /** SDP parse / validate error. */
+  SdpError: typeof SdpError;
+  /** TURN credential error. */
+  TurnError: typeof TurnError;
+  /** End-to-end encryption error. */
+  E2eeError: typeof E2eeError;
 
   // -- Meta ----------------------------------------------------------------
   /** Library version string. */

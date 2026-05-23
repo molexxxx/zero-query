@@ -19,6 +19,7 @@ function buildLibrary() {
 
   const modules = [
     'src/errors.js',
+    'src/webrtc/errors.js', 'src/webrtc/signaling.js', 'src/webrtc/index.js',
     'src/reactive.js', 'src/diff.js', 'src/core.js', 'src/expression.js',
     'src/component.js', 'src/router.js', 'src/store.js', 'src/http.js',
     'src/utils.js',
