@@ -321,6 +321,19 @@ class E2eeError extends WebRtcError {
     }
 }
 
+
+/** SFU adapter (mediasoup / LiveKit) error. */
+class SfuError extends WebRtcError {
+    /**
+     * @param {string} message
+     * @param {object} [options]
+     */
+    constructor(message, options = {}) {
+        super(message, { code: options.code || 'ZQ_WEBRTC_SFU', context: options.context, cause: options.cause });
+        this.name = 'SfuError';
+    }
+}
+
 // --- src/webrtc/sdp.js -------------------------------------------
 /**
  * src/webrtc/sdp.js - minimal read-only SDP helpers
@@ -3129,6 +3142,201 @@ function _maybeEncodedStreams(senderOrReceiver) {
     return null;
 }
 
+// --- src/webrtc/sfu/mediasoup.js ---------------------------------
+/**
+ * src/webrtc/sfu/mediasoup.js
+ *
+ * Thin wrapper around the optional `mediasoup-client` peer dependency.
+ *
+ *   - `mediasoup-client` is intentionally NOT bundled. Apps that want it
+ *     must `npm install mediasoup-client` themselves.
+ *   - If it isn't installed, `createMediasoupAdapter()` throws
+ *     `ZQ_WEBRTC_SFU_PEER_MISSING` with an actionable message.
+ *   - The adapter exposes the lower-level mediasoup `Device` plus
+ *     helpers for `load(routerRtpCapabilities)`, `canProduce(kind)`,
+ *     `createSendTransport(params)`, `createRecvTransport(params)`.
+ *   - The higher-level `adapter.join(joinOpts)` requires SFU-specific
+ *     signaling (request → response over a data channel or HTTP). That
+ *     glue lives in the consuming app for now; calling `.join()` throws
+ *     `ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE` so the limitation is explicit.
+ */
+
+
+/**
+ * Dynamically import `mediasoup-client`. Returns the module's exports.
+ * Throws `SfuError(ZQ_WEBRTC_SFU_PEER_MISSING)` if the package is absent.
+ *
+ * @returns {Promise<any>}
+ */
+async function _importMediasoupClient() {
+    try {
+        // The package name is computed at runtime so static bundlers (Vite,
+        // Rollup, esbuild) don't try to resolve the optional peer dep at
+        // build time and fail the build when it isn't installed.
+        const pkg = ['mediasoup', 'client'].join('-');
+        return await import(/* @vite-ignore */ pkg);
+    } catch (cause) {
+        throw new SfuError(
+            'mediasoup-client peer dependency is not installed; run `npm install mediasoup-client`',
+            { code: 'ZQ_WEBRTC_SFU_PEER_MISSING', cause },
+        );
+    }
+}
+
+
+/**
+ * Build a mediasoup-client adapter.
+ *
+ * @param {object} [opts]
+ * @param {any}    [opts.client]         Pre-imported mediasoup-client module (test hook).
+ * @param {object} [opts.deviceOptions]  Forwarded to `new Device(...)`.
+ * @returns {Promise<import('./index.js').SfuAdapter>}
+ */
+async function createMediasoupAdapter(opts = {}) {
+    const mod    = opts.client || await _importMediasoupClient();
+    const Device = mod.Device || (mod.default && mod.default.Device);
+    if (typeof Device !== 'function') {
+        throw new SfuError('mediasoup-client module did not expose a Device constructor', {
+            code: 'ZQ_WEBRTC_SFU_BAD_MODULE',
+        });
+    }
+
+    let device;
+    try {
+        device = new Device(opts.deviceOptions || {});
+    } catch (cause) {
+        throw new SfuError('failed to construct mediasoup-client Device', {
+            code: 'ZQ_WEBRTC_SFU_DEVICE_FAILED',
+            cause,
+        });
+    }
+
+    return {
+        name: 'mediasoup',
+        device,
+
+        /** Has `device.load({ routerRtpCapabilities })` been called yet? */
+        get loaded() {
+            return !!device.loaded;
+        },
+
+        /**
+         * Load the device with the SFU router's RTP capabilities.
+         * @param {any} routerRtpCapabilities
+         * @returns {Promise<void>}
+         */
+        async load(routerRtpCapabilities) {
+            if (!routerRtpCapabilities || typeof routerRtpCapabilities !== 'object') {
+                throw new SfuError('load(routerRtpCapabilities): routerRtpCapabilities required', {
+                    code: 'ZQ_WEBRTC_SFU_BAD_RTP_CAPS',
+                });
+            }
+            if (device.loaded) return;
+            try {
+                await device.load({ routerRtpCapabilities });
+            } catch (cause) {
+                throw new SfuError('device.load() failed', {
+                    code: 'ZQ_WEBRTC_SFU_LOAD_FAILED',
+                    cause,
+                });
+            }
+        },
+
+        /**
+         * @param {'audio'|'video'} kind
+         * @returns {boolean}
+         */
+        canProduce(kind) {
+            if (!device.loaded) {
+                throw new SfuError('canProduce(): device not loaded yet', {
+                    code: 'ZQ_WEBRTC_SFU_NOT_LOADED',
+                });
+            }
+            return !!device.canProduce(kind);
+        },
+
+        /** @param {any} params */
+        createSendTransport(params) {
+            if (!device.loaded) {
+                throw new SfuError('createSendTransport(): device not loaded yet', {
+                    code: 'ZQ_WEBRTC_SFU_NOT_LOADED',
+                });
+            }
+            return device.createSendTransport(params);
+        },
+
+        /** @param {any} params */
+        createRecvTransport(params) {
+            if (!device.loaded) {
+                throw new SfuError('createRecvTransport(): device not loaded yet', {
+                    code: 'ZQ_WEBRTC_SFU_NOT_LOADED',
+                });
+            }
+            return device.createRecvTransport(params);
+        },
+
+        /**
+         * Reserved for the higher-level join flow once SFU-specific signaling
+         * is wired through `Room`. Today, callers should use the device and
+         * transport helpers above directly.
+         *
+         * @param {any} _joinOpts
+         * @returns {Promise<never>}
+         */
+        async join(_joinOpts) {
+            throw new SfuError(
+                'mediasoup adapter.join() not implemented; use device + createSendTransport/createRecvTransport with your SFU signaling layer',
+                { code: 'ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE' },
+            );
+        },
+    };
+}
+
+// --- src/webrtc/sfu/index.js -------------------------------------
+/**
+ * src/webrtc/sfu/index.js
+ *
+ * SFU adapter registry. Adapters are dynamic-imported so the (optional)
+ * peer dependencies (`mediasoup-client`, `livekit-client`) only load
+ * when actually used.
+ *
+ * Public surface:
+ *   - `loadSfuAdapter(name, opts?)` → `Promise<SfuAdapter>`
+ */
+
+
+
+/**
+ * @typedef {object} SfuAdapter
+ * @property {'mediasoup'|'livekit'} name
+ * @property {(joinOpts: any) => Promise<any>} join
+ */
+
+
+/**
+ * Load an SFU adapter by name. The adapter's peer dependency must be
+ * installed by the consuming app.
+ *
+ * @param {'mediasoup'|'livekit'} name
+ * @param {object} [opts]
+ * @returns {Promise<SfuAdapter>}
+ */
+async function loadSfuAdapter(name, opts = {}) {
+    if (name === 'mediasoup') {
+        return createMediasoupAdapter(opts);
+    }
+    if (name === 'livekit') {
+        throw new SfuError('LiveKit adapter is not implemented yet', {
+            code: 'ZQ_WEBRTC_SFU_NOT_IMPLEMENTED',
+            context: { name },
+        });
+    }
+    throw new SfuError(`unknown SFU adapter: ${name}`, {
+        code: 'ZQ_WEBRTC_SFU_UNKNOWN',
+        context: { name },
+    });
+}
+
 // --- src/webrtc/index.js -----------------------------------------
 /**
  * src/webrtc/index.js - WebRTC public barrel
@@ -3137,6 +3345,7 @@ function _maybeEncodedStreams(senderOrReceiver) {
  * (`SignalingClient`, `Peer`, SDP/ICE helpers), and the high-level
  * `Room` + reactive composables on the `webrtc` namespace.
  */
+
 
 
 
@@ -3168,8 +3377,10 @@ function _maybeEncodedStreams(senderOrReceiver) {
     deriveSFrameKey, generateSFrameKey, SFrameContext,
     encryptFrame, decryptFrame, attachE2ee,
 } from './e2ee.js';
+{ loadSfuAdapter } from './sfu/index.js';
+{ createMediasoupAdapter } from './sfu/mediasoup.js';
 {
-    WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
+    WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError, SfuError,
 } from './errors.js';
 
 
@@ -3204,6 +3415,9 @@ const webrtc = {
     decryptFrame,
     attachE2ee,
 
+    // SFU adapters
+    loadSfuAdapter,
+
     // SDP / ICE helpers
     parseSdp,
     validateSdp,
@@ -3222,6 +3436,7 @@ const webrtc = {
     SdpError,
     TurnError,
     E2eeError,
+    SfuError,
 };
 
 // --- src/reactive.js ---------------------------------------------
@@ -9652,6 +9867,8 @@ $.SFrameContext      = SFrameContext;
 $.encryptFrame       = encryptFrame;
 $.decryptFrame       = decryptFrame;
 $.attachE2ee         = attachE2ee;
+$.loadSfuAdapter     = loadSfuAdapter;
+$.SfuError           = SfuError;
 $.parseSdp           = parseSdp;
 $.validateSdp        = validateSdp;
 $.parseCandidate     = parseCandidate;
@@ -9670,8 +9887,8 @@ $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.1.1';
-$.libSize   = '~163 KB';
-$.unitTests = {"passed":2456,"failed":0,"total":2456,"suites":605,"duration":5903,"ok":true};
+$.libSize   = '~166 KB';
+$.unitTests = {"passed":2470,"failed":0,"total":2470,"suites":608,"duration":5982,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

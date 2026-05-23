@@ -177,6 +177,8 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Reactive Composables](#reactive-composables)
   - [z-stream Directive](#z-stream-directive)
   - [TURN Credentials](#turn-credentials)
+  - [End-to-End Encryption (SFrame)](#end-to-end-encryption-sframe)
+  - [SFU Adapters](#sfu-adapters)
   - [SDP + ICE Helpers](#sdp-ice-helpers)
   - [Error Family](#error-family)
   - [Wire Protocol](#wire-protocol)
@@ -6548,8 +6550,8 @@ zQuery ships a small WebRTC client that talks the wire protocol of `@zero-server
 | `$.parseSdp`, `$.validateSdp` | Yes |
 | `$.parseCandidate`, `$.stringifyCandidate`, `$.filterCandidates` | Yes |
 | `$.WebRtcError`, `$.SignalingError`, `$.IceError`, `$.SdpError`, `$.TurnError`, `$.E2eeError` | Yes |
-| `$.webrtc.loadSfuAdapter('mediasoup' \| 'livekit')` | Planned |
-| SFrame end-to-end encryption | Planned |
+| `$.webrtc.loadSfuAdapter('mediasoup' \| 'livekit')` | mediasoup — Yes (peer-dep wrapper); LiveKit — Planned |
+| `$.deriveSFrameKey`, `$.generateSFrameKey`, `$.SFrameContext`, `$.encryptFrame`, `$.decryptFrame`, `$.attachE2ee` | Yes |
 
   
 ### SignalingClient
@@ -6810,6 +6812,71 @@ turn.stop();               // cancel timer on unmount
 > All TURN errors derive from `TurnError`: `ZQ_WEBRTC_TURN_BAD_URL`, `ZQ_WEBRTC_TURN_NO_FETCH`, `ZQ_WEBRTC_TURN_NETWORK`, `ZQ_WEBRTC_TURN_HTTP`, `ZQ_WEBRTC_TURN_BAD_JSON`, `ZQ_WEBRTC_TURN_BAD_BODY`.
 
   
+### End-to-End Encryption (SFrame)
+
+  
+Optional per-frame AES-GCM-128 encryption that runs after the encoder and before the decoder via `RTCRtpSender.createEncodedStreams()`. Keys are bound to a 1-byte epoch so a room can rotate without dropping in-flight frames; up to `maxEpochs` (default 4) past keys are retained for late decryptors. Derive a shared key from a passphrase + salt with `deriveSFrameKey()`, or generate one with `generateSFrameKey()`. Each frame is laid out as `[1-byte epoch][12-byte IV][ciphertext + GCM tag]`.
+
+  
+
+```javascript
+import { deriveSFrameKey, SFrameContext, attachE2ee, join } from 'zero-query/webrtc';
+
+  // 1) Derive a key everyone in the room shares (passphrase out-of-band).
+  const key = await deriveSFrameKey('correct horse battery', 'room-42');
+
+  // 2) Track it under epoch 0.
+  const ctx = new SFrameContext();
+  ctx.setKey(0, key);
+
+  // 3) Join, then wire transforms onto every sender + receiver.
+  const room = await join('wss://example.com/ws', { room: 'room-42', /* ... */ });
+  room.on('peer', (peer) => {
+      const handle = attachE2ee(peer.pc, ctx);
+      peer.on('track', () => handle.refresh()); // re-walk for late tracks
+  });
+
+  // 4) Rotate by installing a new key under the next epoch.
+  ctx.setKey(1, await deriveSFrameKey('correct horse battery v2', 'room-42'));
+```
+
+  
+| Helper | Result |
+| --- | --- |
+| `deriveSFrameKey(passphrase, salt)` | `Promise` — PBKDF2-SHA256 (100k) → HKDF-SHA256 → AES-GCM-128. |
+| `generateSFrameKey()` | `Promise` — random AES-GCM-128. |
+| `new SFrameContext({ maxEpochs? })` | Tracks `epoch → key`; `setKey(epoch, key)` advances `currentEpoch` and evicts the oldest beyond `maxEpochs`. |
+| `encryptFrame(ctx, payload)` | `Promise` — `[epoch][iv][cipher+tag]`. |
+| `decryptFrame(ctx, frame)` | `Promise` — reads the epoch byte and decrypts with the matching key. |
+| `attachE2ee(pc, ctx)` | `{ refresh(), detach() }` — installs encrypt/decrypt transforms on every sender + receiver of an `RTCPeerConnection`. |
+
+  
+> All E2EE errors derive from `E2eeError`: `ZQ_WEBRTC_E2EE_NO_WEBCRYPTO`, `ZQ_WEBRTC_E2EE_NO_RANDOM`, `ZQ_WEBRTC_E2EE_BAD_PASSPHRASE`, `ZQ_WEBRTC_E2EE_BAD_SALT`, `ZQ_WEBRTC_E2EE_BAD_INPUT`, `ZQ_WEBRTC_E2EE_BAD_CTX`, `ZQ_WEBRTC_E2EE_NO_KEY`, `ZQ_WEBRTC_E2EE_SHORT_FRAME`, `ZQ_WEBRTC_E2EE_UNKNOWN_EPOCH`, `ZQ_WEBRTC_E2EE_AUTH_FAILED`.
+
+  
+### SFU Adapters
+
+  
+`loadSfuAdapter(name, opts?)` dynamic-imports an optional peer dependency and returns an adapter wrapping its native client. Today only the **mediasoup** adapter is wired (LiveKit lands later). The peer dependency (`mediasoup-client`) is *not* bundled — consuming apps install it themselves; if it's missing, the adapter throws `ZQ_WEBRTC_SFU_PEER_MISSING` with an actionable message.
+
+  
+
+```javascript
+import { loadSfuAdapter } from 'zero-query/webrtc';
+
+  const sfu = await loadSfuAdapter('mediasoup');
+  await sfu.load(routerRtpCapabilities);            // from your SFU signaling
+  if (sfu.canProduce('audio')) {
+      const sendTransport = sfu.createSendTransport(sendTransportParams);
+      // wire transport.on('connect', ...) / on('produce', ...) to your signaling
+  }
+  const recvTransport = sfu.createRecvTransport(recvTransportParams);
+```
+
+  
+> All SFU errors derive from `SfuError`: `ZQ_WEBRTC_SFU_UNKNOWN`, `ZQ_WEBRTC_SFU_NOT_IMPLEMENTED`, `ZQ_WEBRTC_SFU_PEER_MISSING`, `ZQ_WEBRTC_SFU_BAD_MODULE`, `ZQ_WEBRTC_SFU_DEVICE_FAILED`, `ZQ_WEBRTC_SFU_BAD_RTP_CAPS`, `ZQ_WEBRTC_SFU_LOAD_FAILED`, `ZQ_WEBRTC_SFU_NOT_LOADED`, `ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE`.
+
+  
 ### SDP + ICE Helpers
 
   
@@ -6960,6 +7027,8 @@ import {
   encryptFrame,
   decryptFrame,
   attachE2ee,
+  loadSfuAdapter,
+  SfuError,
   parseSdp,
   validateSdp,
   parseCandidate,

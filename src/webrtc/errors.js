@@ -101,3 +101,16 @@ export class E2eeError extends WebRtcError {
         this.name = 'E2eeError';
     }
 }
+
+
+/** SFU adapter (mediasoup / LiveKit) error. */
+export class SfuError extends WebRtcError {
+    /**
+     * @param {string} message
+     * @param {object} [options]
+     */
+    constructor(message, options = {}) {
+        super(message, { code: options.code || 'ZQ_WEBRTC_SFU', context: options.context, cause: options.cause });
+        this.name = 'SfuError';
+    }
+}
