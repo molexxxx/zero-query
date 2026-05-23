@@ -6550,7 +6550,7 @@ zQuery ships a small WebRTC client that talks the wire protocol of `@zero-server
 | `$.parseSdp`, `$.validateSdp` | Yes |
 | `$.parseCandidate`, `$.stringifyCandidate`, `$.filterCandidates` | Yes |
 | `$.WebRtcError`, `$.SignalingError`, `$.IceError`, `$.SdpError`, `$.TurnError`, `$.E2eeError` | Yes |
-| `$.webrtc.loadSfuAdapter('mediasoup' \| 'livekit')` | mediasoup — Yes (peer-dep wrapper); LiveKit — Planned |
+| `$.webrtc.loadSfuAdapter('mediasoup' \| 'livekit')` | Yes — peer-dep wrappers for both mediasoup-client and livekit-client |
 | `$.deriveSFrameKey`, `$.generateSFrameKey`, `$.SFrameContext`, `$.encryptFrame`, `$.decryptFrame`, `$.attachE2ee` | Yes |
 
   
@@ -6871,10 +6871,16 @@ import { loadSfuAdapter } from 'zero-query/webrtc';
       // wire transport.on('connect', ...) / on('produce', ...) to your signaling
   }
   const recvTransport = sfu.createRecvTransport(recvTransportParams);
+
+  // LiveKit adapter:
+  const lk = await loadSfuAdapter('livekit');
+  await lk.connect('wss://lk.example', accessToken);
+  // ... use lk.room directly (livekit-client Room) ...
+  await lk.disconnect();
 ```
 
   
-> All SFU errors derive from `SfuError`: `ZQ_WEBRTC_SFU_UNKNOWN`, `ZQ_WEBRTC_SFU_NOT_IMPLEMENTED`, `ZQ_WEBRTC_SFU_PEER_MISSING`, `ZQ_WEBRTC_SFU_BAD_MODULE`, `ZQ_WEBRTC_SFU_DEVICE_FAILED`, `ZQ_WEBRTC_SFU_BAD_RTP_CAPS`, `ZQ_WEBRTC_SFU_LOAD_FAILED`, `ZQ_WEBRTC_SFU_NOT_LOADED`, `ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE`.
+> All SFU errors derive from `SfuError`: `ZQ_WEBRTC_SFU_UNKNOWN`, `ZQ_WEBRTC_SFU_PEER_MISSING`, `ZQ_WEBRTC_SFU_BAD_MODULE`, `ZQ_WEBRTC_SFU_DEVICE_FAILED`, `ZQ_WEBRTC_SFU_ROOM_FAILED`, `ZQ_WEBRTC_SFU_BAD_RTP_CAPS`, `ZQ_WEBRTC_SFU_BAD_URL`, `ZQ_WEBRTC_SFU_BAD_TOKEN`, `ZQ_WEBRTC_SFU_LOAD_FAILED`, `ZQ_WEBRTC_SFU_CONNECT_FAILED`, `ZQ_WEBRTC_SFU_NOT_LOADED`, `ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE`.
 
   
 ### SDP + ICE Helpers

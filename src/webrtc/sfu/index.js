@@ -11,6 +11,7 @@
 
 import { SfuError } from '../errors.js';
 import { createMediasoupAdapter } from './mediasoup.js';
+import { createLivekitAdapter } from './livekit.js';
 
 
 /**
@@ -33,10 +34,7 @@ export async function loadSfuAdapter(name, opts = {}) {
         return createMediasoupAdapter(opts);
     }
     if (name === 'livekit') {
-        throw new SfuError('LiveKit adapter is not implemented yet', {
-            code: 'ZQ_WEBRTC_SFU_NOT_IMPLEMENTED',
-            context: { name },
-        });
+        return createLivekitAdapter(opts);
     }
     throw new SfuError(`unknown SFU adapter: ${name}`, {
         code: 'ZQ_WEBRTC_SFU_UNKNOWN',

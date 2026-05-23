@@ -41,9 +41,9 @@ describe('loadSfuAdapter', () => {
         });
     });
 
-    it('rejects livekit (not implemented yet)', async () => {
+    it('rejects livekit when livekit-client is not installed (peer-dep missing)', async () => {
         await expect(loadSfuAdapter('livekit')).rejects.toMatchObject({
-            code: 'ZQ_WEBRTC_SFU_NOT_IMPLEMENTED',
+            code: 'ZQ_WEBRTC_SFU_PEER_MISSING',
         });
     });
 

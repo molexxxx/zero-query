@@ -3292,6 +3292,137 @@ async function createMediasoupAdapter(opts = {}) {
     };
 }
 
+// --- src/webrtc/sfu/livekit.js -----------------------------------
+/**
+ * src/webrtc/sfu/livekit.js
+ *
+ * Thin wrapper around the optional `livekit-client` peer dependency.
+ *
+ *   - `livekit-client` is intentionally NOT bundled. Apps that want it
+ *     must `npm install livekit-client` themselves.
+ *   - If it isn't installed, `createLivekitAdapter()` throws
+ *     `ZQ_WEBRTC_SFU_PEER_MISSING` with an actionable message.
+ *   - The adapter exposes a LiveKit `Room` instance plus `connect()` /
+ *     `disconnect()` helpers. The higher-level zQuery `Room` mapping
+ *     lives in the consuming app for now; calling `.join()` throws
+ *     `ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE`.
+ */
+
+
+/**
+ * Dynamically import `livekit-client`. Returns the module's exports.
+ * Throws `SfuError(ZQ_WEBRTC_SFU_PEER_MISSING)` if the package is absent.
+ *
+ * @returns {Promise<any>}
+ */
+async function _importLivekitClient() {
+    try {
+        // Compose the package name at runtime so static bundlers (Vite,
+        // Rollup, esbuild) don't try to resolve the optional peer dep.
+        const pkg = ['livekit', 'client'].join('-');
+        return await import(/* @vite-ignore */ pkg);
+    } catch (cause) {
+        throw new SfuError(
+            'livekit-client peer dependency is not installed; run `npm install livekit-client`',
+            { code: 'ZQ_WEBRTC_SFU_PEER_MISSING', cause },
+        );
+    }
+}
+
+
+/**
+ * Build a LiveKit-client adapter.
+ *
+ * @param {object} [opts]
+ * @param {any}    [opts.client]       Pre-imported livekit-client module (test hook).
+ * @param {object} [opts.roomOptions]  Forwarded to `new Room(...)`.
+ * @returns {Promise<import('./index.js').SfuAdapter>}
+ */
+async function createLivekitAdapter(opts = {}) {
+    const mod    = opts.client || await _importLivekitClient();
+    const RoomCtor = mod.Room || (mod.default && mod.default.Room);
+    if (typeof RoomCtor !== 'function') {
+        throw new SfuError('livekit-client module did not expose a Room constructor', {
+            code: 'ZQ_WEBRTC_SFU_BAD_MODULE',
+        });
+    }
+
+    let room;
+    try {
+        room = new RoomCtor(opts.roomOptions || {});
+    } catch (cause) {
+        throw new SfuError('failed to construct livekit-client Room', {
+            code: 'ZQ_WEBRTC_SFU_ROOM_FAILED',
+            cause,
+        });
+    }
+
+    let connected = false;
+
+    return {
+        name: 'livekit',
+        room,
+
+        /** Has `connect()` resolved at least once and not been undone by disconnect? */
+        get connected() {
+            return connected;
+        },
+
+        /**
+         * Connect to a LiveKit server.
+         * @param {string} url            LiveKit signaling URL (`wss://...`).
+         * @param {string} token          Room access token (JWT) minted server-side.
+         * @param {object} [connectOpts]  Forwarded to `room.connect(...)`.
+         * @returns {Promise<void>}
+         */
+        async connect(url, token, connectOpts) {
+            if (typeof url !== 'string' || !url) {
+                throw new SfuError('connect(url, token): url required', {
+                    code: 'ZQ_WEBRTC_SFU_BAD_URL',
+                });
+            }
+            if (typeof token !== 'string' || !token) {
+                throw new SfuError('connect(url, token): token required', {
+                    code: 'ZQ_WEBRTC_SFU_BAD_TOKEN',
+                });
+            }
+            try {
+                await room.connect(url, token, connectOpts);
+                connected = true;
+            } catch (cause) {
+                throw new SfuError('livekit-client Room.connect() failed', {
+                    code: 'ZQ_WEBRTC_SFU_CONNECT_FAILED',
+                    cause,
+                });
+            }
+        },
+
+        /** Disconnect from the LiveKit server (best effort). */
+        async disconnect() {
+            if (!connected) return;
+            try {
+                await room.disconnect();
+            } finally {
+                connected = false;
+            }
+        },
+
+        /**
+         * Reserved for the higher-level join flow that maps a LiveKit `Room`
+         * to a zQuery `Room`. Not implemented yet.
+         *
+         * @param {any} _joinOpts
+         * @returns {Promise<never>}
+         */
+        async join(_joinOpts) {
+            throw new SfuError(
+                'livekit adapter.join() not implemented; use connect(url, token) and the underlying livekit-client Room directly',
+                { code: 'ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE' },
+            );
+        },
+    };
+}
+
 // --- src/webrtc/sfu/index.js -------------------------------------
 /**
  * src/webrtc/sfu/index.js
@@ -3303,6 +3434,7 @@ async function createMediasoupAdapter(opts = {}) {
  * Public surface:
  *   - `loadSfuAdapter(name, opts?)` → `Promise<SfuAdapter>`
  */
+
 
 
 
@@ -3326,10 +3458,7 @@ async function loadSfuAdapter(name, opts = {}) {
         return createMediasoupAdapter(opts);
     }
     if (name === 'livekit') {
-        throw new SfuError('LiveKit adapter is not implemented yet', {
-            code: 'ZQ_WEBRTC_SFU_NOT_IMPLEMENTED',
-            context: { name },
-        });
+        return createLivekitAdapter(opts);
     }
     throw new SfuError(`unknown SFU adapter: ${name}`, {
         code: 'ZQ_WEBRTC_SFU_UNKNOWN',
@@ -3379,6 +3508,7 @@ async function loadSfuAdapter(name, opts = {}) {
 } from './e2ee.js';
 { loadSfuAdapter } from './sfu/index.js';
 { createMediasoupAdapter } from './sfu/mediasoup.js';
+{ createLivekitAdapter } from './sfu/livekit.js';
 {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError, SfuError,
 } from './errors.js';
@@ -9887,8 +10017,8 @@ $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.1.1';
-$.libSize   = '~166 KB';
-$.unitTests = {"passed":2470,"failed":0,"total":2470,"suites":608,"duration":5982,"ok":true};
+$.libSize   = '~167 KB';
+$.unitTests = {"passed":2481,"failed":0,"total":2481,"suites":610,"duration":6038,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

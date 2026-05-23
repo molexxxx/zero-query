@@ -56,6 +56,7 @@ export {
 } from './e2ee.js';
 export { loadSfuAdapter } from './sfu/index.js';
 export { createMediasoupAdapter } from './sfu/mediasoup.js';
+export { createLivekitAdapter } from './sfu/livekit.js';
 export {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError, SfuError,
 } from './errors.js';
