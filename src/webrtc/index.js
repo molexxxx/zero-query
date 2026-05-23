@@ -21,6 +21,9 @@ import {
     useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
 } from './reactive.js';
 import {
+    fetchTurnCredentials, mergeIceServers, createTurnRefresher,
+} from './turn.js';
+import {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './errors.js';
 
@@ -39,6 +42,9 @@ export { Room, join } from './room.js';
 export {
     useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
 } from './reactive.js';
+export {
+    fetchTurnCredentials, mergeIceServers, createTurnRefresher,
+} from './turn.js';
 export {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './errors.js';
@@ -61,6 +67,11 @@ export const webrtc = {
     useTracks,
     useDataChannel,
     useConnectionQuality,
+
+    // TURN client
+    fetchTurnCredentials,
+    mergeIceServers,
+    createTurnRefresher,
 
     // SDP / ICE helpers
     parseSdp,

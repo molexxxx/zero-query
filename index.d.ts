@@ -167,6 +167,12 @@ export {
   useTracks,
   useDataChannel,
   useConnectionQuality,
+  fetchTurnCredentials,
+  mergeIceServers,
+  createTurnRefresher,
+  FetchTurnOptions,
+  TurnRefresher,
+  TurnRefresherOptions,
   TurnCredentials,
   SfuAdapter,
   WebRtcNamespace,
@@ -226,6 +232,9 @@ import type {
   useTracks,
   useDataChannel,
   useConnectionQuality,
+  fetchTurnCredentials,
+  mergeIceServers,
+  createTurnRefresher,
   WebRtcError,
   SignalingError,
   IceError,
@@ -441,6 +450,12 @@ interface ZQueryStatic {
   useDataChannel: typeof useDataChannel;
   /** Reactive connection-quality bucket from periodic `getStats()`. */
   useConnectionQuality: typeof useConnectionQuality;
+  /** Fetch TURN credentials from the app's HTTP endpoint. */
+  fetchTurnCredentials: typeof fetchTurnCredentials;
+  /** Merge TURN credentials with a base `iceServers[]`. */
+  mergeIceServers: typeof mergeIceServers;
+  /** Schedule automatic TURN-credential refresh ahead of expiry. */
+  createTurnRefresher: typeof createTurnRefresher;
   /** Parse an SDP document into a structured `ParsedSdp`. */
   parseSdp: typeof parseSdp;
   /** Parse + enforce server-side SDP constraints. */

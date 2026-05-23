@@ -34,6 +34,7 @@ import {
   Peer,
   Room, join as webrtcJoin,
   useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
+  fetchTurnCredentials, mergeIceServers, createTurnRefresher,
   parseSdp, validateSdp,
   parseCandidate, stringifyCandidate, filterCandidates,
   isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
@@ -202,6 +203,9 @@ $.usePeer            = usePeer;
 $.useTracks          = useTracks;
 $.useDataChannel     = useDataChannel;
 $.useConnectionQuality = useConnectionQuality;
+$.fetchTurnCredentials = fetchTurnCredentials;
+$.mergeIceServers    = mergeIceServers;
+$.createTurnRefresher = createTurnRefresher;
 $.parseSdp           = parseSdp;
 $.validateSdp        = validateSdp;
 $.parseCandidate     = parseCandidate;
@@ -266,6 +270,7 @@ export {
   ZQueryError, ErrorCode, onError, reportError, guardCallback, guardAsync, validate, formatError,
   webrtc, SignalingClient, Peer, Room, webrtcJoin,
   useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
+  fetchTurnCredentials, mergeIceServers, createTurnRefresher,
   parseSdp, validateSdp,
   parseCandidate, stringifyCandidate, filterCandidates,
   isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
