@@ -55,6 +55,11 @@ export class E2eeError extends WebRtcError {
     constructor(message: string, options?: WebRtcErrorOptions);
 }
 
+/** SFU adapter (mediasoup / LiveKit) error. */
+export class SfuError extends WebRtcError {
+    constructor(message: string, options?: WebRtcErrorOptions);
+}
+
 
 // ---------------------------------------------------------------------------
 // SignalingClient
@@ -497,11 +502,27 @@ export interface E2eeHandle {
  */
 export function attachE2ee(pc: RTCPeerConnection, ctx: SFrameContext): E2eeHandle;
 
-/** Opaque adapter interface for `loadSfuAdapter()`. */
+/** Adapter interface returned by `loadSfuAdapter()`. */
 export interface SfuAdapter {
     name: 'mediasoup' | 'livekit';
-    join(opts: JoinOptions): Promise<Room>;
+    /** Underlying adapter-specific device (mediasoup `Device`, etc.). */
+    device?: any;
+    /** Has `load()` completed at least once? */
+    readonly loaded?: boolean;
+    /** Load the device with the SFU router's RTP capabilities. */
+    load?(routerRtpCapabilities: any): Promise<void>;
+    canProduce?(kind: 'audio' | 'video'): boolean;
+    createSendTransport?(params: any): any;
+    createRecvTransport?(params: any): any;
+    /** Higher-level join (signaling-dependent; not yet implemented for mediasoup). */
+    join(opts: any): Promise<Room>;
 }
+
+/** Load an SFU adapter by name. Peer dependency must be installed. */
+export function loadSfuAdapter(
+    name: 'mediasoup' | 'livekit',
+    opts?: { client?: any; deviceOptions?: any },
+): Promise<SfuAdapter>;
 
 /** The `$.webrtc` namespace. */
 export interface WebRtcNamespace {
@@ -522,6 +543,7 @@ export interface WebRtcNamespace {
     SdpError:        typeof SdpError;
     TurnError:       typeof TurnError;
     E2eeError:       typeof E2eeError;
+    SfuError:        typeof SfuError;
 
     /** Join a room over the given signaling URL. */
     join(url: string, opts: JoinOptions): Promise<Room>;
@@ -543,10 +565,10 @@ export interface WebRtcNamespace {
     decryptFrame: typeof decryptFrame;
     /** Install SFrame encrypt/decrypt transforms on a peer connection. */
     attachE2ee: typeof attachE2ee;
+    /** Load an optional SFU adapter (peer-dep). */
+    loadSfuAdapter: typeof loadSfuAdapter;
     /** UX-only decode of a `signJoinToken(...)` payload (server validates). */
     decodeJoinToken?(token: string): { user: { id: string }; room: string; exp: number };
-    /** Load an optional SFU adapter (peer-dep). */
-    loadSfuAdapter?(name: 'mediasoup' | 'livekit'): Promise<SfuAdapter>;
     /** Resolve a `Room` from either a URL (calls `join`) or an existing `Room`. */
     useRoom(urlOrRoom: string | Room, opts?: JoinOptions): Promise<Room>;
     /** Reactive handle that tracks a remote peer by id. */

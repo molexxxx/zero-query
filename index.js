@@ -37,10 +37,11 @@ import {
   fetchTurnCredentials, mergeIceServers, createTurnRefresher,
   deriveSFrameKey, generateSFrameKey, SFrameContext,
   encryptFrame, decryptFrame, attachE2ee,
+  loadSfuAdapter,
   parseSdp, validateSdp,
   parseCandidate, stringifyCandidate, filterCandidates,
   isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
-  WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
+  WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError, SfuError,
 } from './src/webrtc/index.js';
 
 
@@ -214,6 +215,8 @@ $.SFrameContext      = SFrameContext;
 $.encryptFrame       = encryptFrame;
 $.decryptFrame       = decryptFrame;
 $.attachE2ee         = attachE2ee;
+$.loadSfuAdapter     = loadSfuAdapter;
+$.SfuError           = SfuError;
 $.parseSdp           = parseSdp;
 $.validateSdp        = validateSdp;
 $.parseCandidate     = parseCandidate;
@@ -281,6 +284,7 @@ export {
   fetchTurnCredentials, mergeIceServers, createTurnRefresher,
   deriveSFrameKey, generateSFrameKey, SFrameContext,
   encryptFrame, decryptFrame, attachE2ee,
+  loadSfuAdapter, SfuError,
   parseSdp, validateSdp,
   parseCandidate, stringifyCandidate, filterCandidates,
   isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,

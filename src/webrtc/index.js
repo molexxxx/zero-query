@@ -27,8 +27,9 @@ import {
     deriveSFrameKey, generateSFrameKey, SFrameContext,
     encryptFrame, decryptFrame, attachE2ee,
 } from './e2ee.js';
+import { loadSfuAdapter } from './sfu/index.js';
 import {
-    WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
+    WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError, SfuError,
 } from './errors.js';
 
 
@@ -53,8 +54,10 @@ export {
     deriveSFrameKey, generateSFrameKey, SFrameContext,
     encryptFrame, decryptFrame, attachE2ee,
 } from './e2ee.js';
+export { loadSfuAdapter } from './sfu/index.js';
+export { createMediasoupAdapter } from './sfu/mediasoup.js';
 export {
-    WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
+    WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError, SfuError,
 } from './errors.js';
 
 
@@ -89,6 +92,9 @@ export const webrtc = {
     decryptFrame,
     attachE2ee,
 
+    // SFU adapters
+    loadSfuAdapter,
+
     // SDP / ICE helpers
     parseSdp,
     validateSdp,
@@ -107,4 +113,5 @@ export const webrtc = {
     SdpError,
     TurnError,
     E2eeError,
+    SfuError,
 };

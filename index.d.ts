@@ -148,6 +148,7 @@ export {
   SdpError,
   TurnError,
   E2eeError,
+  SfuError,
   WebRtcErrorOptions,
   SignalingClient,
   SignalingClientOptions,
@@ -176,6 +177,7 @@ export {
   encryptFrame,
   decryptFrame,
   attachE2ee,
+  loadSfuAdapter,
   FetchTurnOptions,
   TurnRefresher,
   TurnRefresherOptions,
@@ -247,12 +249,14 @@ import type {
   encryptFrame,
   decryptFrame,
   attachE2ee,
+  loadSfuAdapter,
   WebRtcError,
   SignalingError,
   IceError,
   SdpError,
   TurnError,
   E2eeError,
+  SfuError,
   parseSdp,
   validateSdp,
   parseCandidate,
@@ -480,6 +484,8 @@ interface ZQueryStatic {
   decryptFrame: typeof decryptFrame;
   /** Install SFrame encrypt/decrypt transforms on a peer connection. */
   attachE2ee: typeof attachE2ee;
+  /** Load an optional SFU adapter (peer-dep). */
+  loadSfuAdapter: typeof loadSfuAdapter;
   /** Parse an SDP document into a structured `ParsedSdp`. */
   parseSdp: typeof parseSdp;
   /** Parse + enforce server-side SDP constraints. */
@@ -510,6 +516,7 @@ interface ZQueryStatic {
   TurnError: typeof TurnError;
   /** End-to-end encryption error. */
   E2eeError: typeof E2eeError;
+  SfuError: typeof SfuError;
 
   // -- Meta ----------------------------------------------------------------
   /** Library version string. */
