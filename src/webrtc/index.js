@@ -13,12 +13,14 @@
  */
 
 import { SignalingClient } from './signaling.js';
+import { Peer } from './peer.js';
 import {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './errors.js';
 
 
 export { SignalingClient } from './signaling.js';
+export { Peer } from './peer.js';
 export {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './errors.js';
@@ -31,6 +33,7 @@ export {
  *
  * @type {{
  *   SignalingClient: typeof SignalingClient,
+ *   Peer: typeof Peer,
  *   WebRtcError: typeof WebRtcError,
  *   SignalingError: typeof SignalingError,
  *   IceError: typeof IceError,
@@ -42,6 +45,7 @@ export {
  */
 export const webrtc = {
     SignalingClient,
+    Peer,
     WebRtcError,
     SignalingError,
     IceError,
