@@ -440,6 +440,63 @@ export interface TurnRefresher {
 /** Schedule automatic TURN-credential refresh ahead of expiry. */
 export function createTurnRefresher(opts: TurnRefresherOptions): TurnRefresher;
 
+
+// ───────────────────────── E2EE (SFrame) ─────────────────────────
+
+/** Options for `new SFrameContext()`. */
+export interface SFrameContextOptions {
+    /** Maximum number of epochs to retain (default `4`). Oldest is evicted on overflow. */
+    maxEpochs?: number;
+}
+
+/**
+ * Holds the AES-GCM-128 key material for one or more SFrame epochs.
+ * Each epoch is identified by an unsigned 8-bit integer (0-255).
+ */
+export class SFrameContext {
+    constructor(opts?: SFrameContextOptions);
+    /** Currently-active epoch (advanced by `setKey()`). */
+    readonly currentEpoch: number;
+    /** Number of tracked epoch → key mappings. */
+    readonly epochCount: number;
+    /** Install a key for `epoch` and make it the current epoch. */
+    setKey(epoch: number, key: CryptoKey): void;
+    /** Drop the key for `epoch` (no-op if absent). */
+    removeEpoch(epoch: number): void;
+    /** Look up the key for `epoch`, or `null` if not tracked. */
+    getKey(epoch: number): CryptoKey | null;
+}
+
+/**
+ * Derive an AES-GCM-128 SFrame key from a shared passphrase + salt
+ * (PBKDF2-SHA256 → HKDF-SHA256).
+ */
+export function deriveSFrameKey(passphrase: string, salt: string): Promise<CryptoKey>;
+/** Generate a random AES-GCM-128 key suitable for SFrame use. */
+export function generateSFrameKey(): Promise<CryptoKey>;
+
+/**
+ * Encrypt a single media/data frame with the current epoch's key.
+ * Returns `Uint8Array` laid out as `[1-byte epoch][12-byte IV][ciphertext+tag]`.
+ */
+export function encryptFrame(ctx: SFrameContext, payload: BufferSource): Promise<Uint8Array>;
+/** Decrypt a frame produced by `encryptFrame()`. */
+export function decryptFrame(ctx: SFrameContext, frame: BufferSource): Promise<Uint8Array>;
+
+/** Handle returned by `attachE2ee()`. */
+export interface E2eeHandle {
+    /** Re-walk the peer connection's senders + receivers and wire any new ones. */
+    refresh(): void;
+    /** Best-effort teardown (current senders/receivers continue with their pipes). */
+    detach(): void;
+}
+
+/**
+ * Install SFrame encrypt/decrypt transforms on every sender and receiver
+ * of the given `RTCPeerConnection`. Requires `RTCRtpSender.createEncodedStreams()`.
+ */
+export function attachE2ee(pc: RTCPeerConnection, ctx: SFrameContext): E2eeHandle;
+
 /** Opaque adapter interface for `loadSfuAdapter()`. */
 export interface SfuAdapter {
     name: 'mediasoup' | 'livekit';
@@ -474,6 +531,18 @@ export interface WebRtcNamespace {
     mergeIceServers: typeof mergeIceServers;
     /** Schedule automatic TURN-credential refresh ahead of expiry. */
     createTurnRefresher: typeof createTurnRefresher;
+    /** Derive an AES-GCM-128 SFrame key from a shared passphrase + salt. */
+    deriveSFrameKey: typeof deriveSFrameKey;
+    /** Generate a random AES-GCM-128 SFrame key. */
+    generateSFrameKey: typeof generateSFrameKey;
+    /** SFrame epoch / key holder. */
+    SFrameContext: typeof SFrameContext;
+    /** Encrypt a single frame with the current SFrame epoch's key. */
+    encryptFrame: typeof encryptFrame;
+    /** Decrypt a frame previously produced by `encryptFrame()`. */
+    decryptFrame: typeof decryptFrame;
+    /** Install SFrame encrypt/decrypt transforms on a peer connection. */
+    attachE2ee: typeof attachE2ee;
     /** UX-only decode of a `signJoinToken(...)` payload (server validates). */
     decodeJoinToken?(token: string): { user: { id: string }; room: string; exp: number };
     /** Load an optional SFU adapter (peer-dep). */

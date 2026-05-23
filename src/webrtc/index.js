@@ -24,6 +24,10 @@ import {
     fetchTurnCredentials, mergeIceServers, createTurnRefresher,
 } from './turn.js';
 import {
+    deriveSFrameKey, generateSFrameKey, SFrameContext,
+    encryptFrame, decryptFrame, attachE2ee,
+} from './e2ee.js';
+import {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './errors.js';
 
@@ -45,6 +49,10 @@ export {
 export {
     fetchTurnCredentials, mergeIceServers, createTurnRefresher,
 } from './turn.js';
+export {
+    deriveSFrameKey, generateSFrameKey, SFrameContext,
+    encryptFrame, decryptFrame, attachE2ee,
+} from './e2ee.js';
 export {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './errors.js';
@@ -72,6 +80,14 @@ export const webrtc = {
     fetchTurnCredentials,
     mergeIceServers,
     createTurnRefresher,
+
+    // E2EE
+    deriveSFrameKey,
+    generateSFrameKey,
+    SFrameContext,
+    encryptFrame,
+    decryptFrame,
+    attachE2ee,
 
     // SDP / ICE helpers
     parseSdp,
