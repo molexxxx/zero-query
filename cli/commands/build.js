@@ -87,6 +87,7 @@ function buildLibrary() {
   const parts = modules.map(file => {
     let code = fs.readFileSync(path.join(process.cwd(), file), 'utf-8');
     code = code.replace(/^import\s+[\s\S]*?from\s+['"].*?['"];?\s*$/gm, '');
+    code = code.replace(/^export\s+(?:\*|\{[\s\S]*?\})\s+from\s+['"].*?['"];?\s*$/gm, '');
     code = code.replace(/^export\s+(default\s+)?/gm, '');
     code = code.replace(/^export\s*\{[\s\S]*?\};\s*$/gm, '');
     return `// --- ${file} ${'-'.repeat(60 - file.length)}\n${code.trim()}`;
@@ -94,6 +95,7 @@ function buildLibrary() {
 
   let indexCode = fs.readFileSync(path.join(process.cwd(), 'index.js'), 'utf-8');
   indexCode = indexCode.replace(/^import\s+[\s\S]*?from\s+['"].*?['"];?\s*$/gm, '');
+  indexCode = indexCode.replace(/^export\s+(?:\*|\{[\s\S]*?\})\s+from\s+['"].*?['"];?\s*$/gm, '');
   indexCode = indexCode.replace(/^export\s*\{[\s\S]*?\};\s*$/gm, '');
   indexCode = indexCode.replace(/^export\s+(default\s+)?/gm, '');
 

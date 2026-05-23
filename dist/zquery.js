@@ -3778,35 +3778,18 @@ async function loadSfuAdapter(name, opts = {}) {
 
 
 
-{ SignalingClient } from './signaling.js';
-{ Peer } from './peer.js';
-{
-    parseSdp, validateSdp, SDP_DIRECTIONS,
-} from './sdp.js';
-{
-    parseCandidate, stringifyCandidate, filterCandidates,
-    isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
-    CANDIDATE_TYPES, TCP_TYPES,
-} from './ice.js';
-{ Room, join } from './room.js';
-{
-    useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
-} from './reactive.js';
-{
-    fetchTurnCredentials, mergeIceServers, createTurnRefresher,
-} from './turn.js';
-{
-    deriveSFrameKey, generateSFrameKey, SFrameContext,
-    encryptFrame, decryptFrame, attachE2ee,
-} from './e2ee.js';
-{ loadSfuAdapter } from './sfu/index.js';
-{ createMediasoupAdapter } from './sfu/mediasoup.js';
-{ createLivekitAdapter } from './sfu/livekit.js';
-{ decodeJoinToken, isJoinTokenExpired } from './joinToken.js';
-{ samplePeerStats, createStatsSampler, classifyStats } from './observe.js';
-{
-    WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError, SfuError,
-} from './errors.js';
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 /**
@@ -10326,8 +10309,8 @@ $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.2.0';
-$.libSize   = '~172 KB';
-$.unitTests = {"passed":2507,"failed":0,"total":2507,"suites":617,"duration":6779,"ok":true};
+$.libSize   = '~171 KB';
+$.unitTests = {"passed":2507,"failed":0,"total":2507,"suites":617,"duration":6050,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------
