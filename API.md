@@ -169,6 +169,23 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Environment Properties](#environment-properties)
   - [Platform Detection](#platform-detection)
   - [Quick Reference](#quick-reference)
+- [WebRTC](#webrtc)
+  - [Overview](#overview)
+  - [Surface Status](#surface-status)
+  - [Quick Start](#quick-start)
+  - [SignalingClient](#signalingclient)
+  - [Peer (Perfect Negotiation)](#peer-perfect-negotiation)
+  - [Room](#room)
+  - [Reactive Composables](#reactive-composables)
+  - [z-stream Directive](#z-stream-directive)
+  - [TURN Credentials](#turn-credentials)
+  - [End-to-End Encryption (SFrame)](#end-to-end-encryption-sframe)
+  - [SFU Adapters](#sfu-adapters)
+  - [Join Tokens](#join-tokens)
+  - [Observability (getStats)](#observability-getstats)
+  - [SDP + ICE Helpers](#sdp-ice-helpers)
+  - [Error Family](#error-family)
+  - [Wire Protocol](#wire-protocol)
 
 ---
 
@@ -6517,6 +6534,609 @@ const API_BASE = $.platform === 'electron'
 
 ---
 
+## WebRTC
+
+  
+zQuery ships a complete WebRTC client that speaks the wire protocol of `@zero-server/webrtc` — from a low-level `SignalingClient` + perfect-negotiation `Peer` up to a reactive multi-peer `Room` with composables, TURN credential rotation, SFrame end-to-end encryption, mediasoup & LiveKit SFU adapters, join-token decoding, and `getStats()` observability. The `z-stream` directive binds remote `MediaStream`s straight to `` / `` elements — no `URL.createObjectURL` dance.
+
+  
+### Overview
+
+  
+The WebRTC surface is layered — pick the level you need:
+
+  
+| Layer | API | Use when… |
+| --- | --- | --- |
+| **Raw** | `SignalingClient`, `Peer` | You want full control over JSEP and trickle. |
+| **Mid-level** | `Room`, `$.webrtc.join(url, opts)` | You need a multi-peer container with publish / data channels. |
+| **Reactive** | `useRoom`, `usePeer`, `useTracks`, `useDataChannel`, `useConnectionQuality` | You want to wire room state straight into components. |
+| **Pluggable** | `loadSfuAdapter('mediasoup' \| 'livekit')` | You're routing through an SFU instead of mesh. |
+| **Hardening** | `SFrameContext`, `attachE2ee`, TURN refresher | You need E2EE and rotating TURN credentials. |
+
+  
+> **Tip:** Want a working starting point? Run `npx zero-query create my-app --webrtc-demo` (alias `-w`) to scaffold a one-page video room with local + remote tiles, mic/cam controls, and a status overlay.
+
+  
+### Surface Status
+
+  
+Everything in the table below is shipping today. Green dots mean stable + tested, blue dots mark optional peer-dependency surfaces (you install the dep yourself).
+
+  
+| Surface | Status | Notes |
+| --- | --- | --- |
+| `SignalingClient` | Shipping | Exponential-backoff reconnect, coalesced ICE trickle |
+| `Peer` | Shipping | Perfect-negotiation polite/impolite collision handling |
+| `Room` / `$.webrtc.join()` | Shipping | Mesh topology with reactive `peers` map |
+| `useRoom` / `usePeer` / `useTracks` / `useDataChannel` / `useConnectionQuality` | Shipping | All return disposable handles |
+| `z-stream` directive | Shipping | SSR-safe; writes `srcObject` directly |
+| TURN client (`fetchTurnCredentials`, `mergeIceServers`, `createTurnRefresher`) | Shipping | Auto-refresh before TTL |
+| SFrame E2EE (`SFrameContext`, `attachE2ee`) | Shipping | AES-GCM-128 with epoch rotation |
+| `loadSfuAdapter('mediasoup')` | Shipping | Install `mediasoup-client` yourself |
+| `loadSfuAdapter('livekit')` | Shipping | Install `livekit-client` yourself |
+| `decodeJoinToken` / `isJoinTokenExpired` | Shipping | UX-only — server re-validates every join |
+| `samplePeerStats` / `createStatsSampler` / `classifyStats` | Shipping | `good` / `fair` / `poor` buckets |
+| SDP + ICE helpers (`parseSdp`, `validateSdp`, `parseCandidate`, `filterCandidates`) | Shipping | Zero-dep, isomorphic |
+| `WebRtcError` family (Signaling / Ice / Sdp / Turn / E2ee / Sfu) | Shipping | Stable string codes; flows through `$.onError` |
+
+  
+### Quick Start
+
+  
+Join a room and render every remote peer's video in three steps:
+
+  
+
+```javascript
+// 1) Get local media
+const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+
+// 2) Join the room (opens signaling, completes handshake)
+const room = await $.webrtc.join('wss://api.example.com/rtc', {
+    room: 'lobby',
+    user: { id: 'me' },
+    tracks: stream.getTracks(),
+});
+
+// 3) Render each remote peer with the z-stream directive
+$.component('video-room', {
+    state: () => ({ peers: [] }),
+    mounted() {
+        this._unsub = room.peers.subscribe((map) => {
+            this.state.peers = [...map.values()];
+        });
+    },
+    destroyed() { this._unsub?.(); room.leave(); },
+    render() {
+        return \`
+            <video z-stream="local" autoplay muted playsinline></video>
+            <div class="tiles">
+                <video z-for="p in peers" z-stream="p.stream" autoplay playsinline></video>
+            </div>
+        \`;
+    },
+});
+```
+
+  
+> **Tip:** `$.webrtc.join()` is the one-liner that bundles `new SignalingClient(…)` + `connect()` + `send('join')` + `Room` wiring. Use it whenever you don't need raw control of the JSEP loop.
+
+  
+### SignalingClient
+
+  
+Lightweight WebSocket client that handles connect, exponential-backoff reconnect, the server's initial `hello` handshake, and outbound ICE coalescing (so trickle bursts don't trip the server's per-peer rate cap).
+
+  
+
+```javascript
+import { SignalingClient } from 'zero-query';
+
+const client = new SignalingClient('wss://api.example.com/rtc', {
+    // Exponential backoff between reconnect attempts (defaults shown)
+    reconnect: { baseMs: 250, capMs: 8000, maxRetries: 10 },
+    // ICE coalescing window: at most 10 frames per 200ms
+    iceFlushMs: 200,
+    iceBatch:   10,
+});
+
+client.on('hello',       ({ peerId })          => console.log('I am', peerId));
+client.on('joined',      ({ room, peers })     => console.log(room, peers));
+client.on('peer-joined', ({ id })              => console.log('peer-joined', id));
+client.on('offer',       ({ from, sdp })       => /* accept + answer */);
+client.on('ice',         ({ from, candidate }) => /* addIceCandidate */);
+client.on('error',       (err) => console.warn(err.code, err.message));
+
+await client.connect();
+client.send('join', { room: 'lobby' });
+// trickle - auto-batched into safe-rate windows
+client.send('ice', { to: 'peer-x', candidate: '...' });
+client.close();
+```
+
+  
+| Member | Type | Description |
+| --- | --- | --- |
+| `new SignalingClient(url, opts?)` |  | Construct (does not open the socket) |
+| `.connect()` | `Promise` | Open the socket; resolves on first `open` |
+| `.send(type, payload?)` | `void` | Send a frame; `ice` frames are coalesced |
+| `.on(type, cb)` | `() => void` | Subscribe to a server frame type or lifecycle event (`open`, `close`, `reconnect`, `error`) |
+| `.off(type, cb)` | `void` | Unsubscribe |
+| `.close()` | `void` | Send `bye` and stop reconnecting |
+| `.peerId` | `string \| null` | Server-assigned peer id (set after first `hello`) |
+| `.connected` | `boolean` | `true` while the underlying WebSocket is open |
+
+  
+> All signaling errors derive from `SignalingError`: `ZQ_WEBRTC_SIGNALING_BAD_URL`, `ZQ_WEBRTC_SIGNALING_BAD_HANDSHAKE`, `ZQ_WEBRTC_SIGNALING_BAD_FRAME`, `ZQ_WEBRTC_SIGNALING_NOT_CONNECTED`, `ZQ_WEBRTC_SIGNALING_CLOSED`.
+
+  
+### Peer (Perfect Negotiation)
+
+  
+The `Peer` class wraps a single `RTCPeerConnection` and routes JSEP messages through a shared `SignalingClient` for one remote peer. It implements the W3C **perfect-negotiation** pattern, so simultaneous `negotiationneeded` events on both ends resolve deterministically based on the locally-assigned `polite` flag — no glare, no manual rollback.
+
+  
+
+```javascript
+import { SignalingClient, Peer } from 'zero-query';
+
+const signaling = new SignalingClient('wss://api.example.com/rtc');
+await signaling.connect();
+signaling.send('join', { room: 'lobby' });
+
+signaling.on('peer-joined', ({ id }) => {
+    // Decide polite/impolite however you like - lexicographic id is fine
+    const polite = signaling.peerId < id;
+    const peer = new Peer(id, signaling, {
+        polite,
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    });
+
+    peer.on('track', (ev) => attachToVideoEl(ev.streams[0]));
+    peer.on('connectionstatechange', (state) => console.log(state));
+    peer.on('error', (err) => console.warn(err.code, err.message));
+
+    // Push local media
+    for (const track of localStream.getTracks()) {
+        peer.addTrack(track, localStream);
+    }
+});
+
+signaling.on('peer-left', ({ id }) => peers.get(id)?.close());
+```
+
+  
+| Member | Type | Description |
+| --- | --- | --- |
+| `new Peer(peerId, signaling, opts?)` |  | Construct (creates the underlying `RTCPeerConnection` eagerly) |
+| `opts.polite` | `boolean` | Perfect-negotiation polite flag. Polite peers yield on collision |
+| `opts.iceServers` | `RTCIceServer[]` | STUN/TURN servers forwarded to `RTCPeerConnection` |
+| `opts.maxIceCandidates` | `number` | Hard cap on trickled candidates per peer (default `30`, matching server SDP cap) |
+| `.addTrack(track, ...streams)` | `RTCRtpSender` | Add a local track. Triggers `negotiationneeded` |
+| `.createDataChannel(label, init?)` | `RTCDataChannel` | Open a data channel; remote peer observes a `datachannel` event |
+| `.restartIce()` | `void` | Force ICE restart (also fires automatically on `connectionState = "failed"`) |
+| `.on(event, cb)` | `() => void` | Subscribe to `track` / `datachannel` / `connectionstatechange` / `close` / `error` |
+| `.close()` | `void` | Close the underlying connection. Idempotent |
+| `.pc` | `RTCPeerConnection` | Escape hatch for direct access (stats, sender params, etc.) |
+
+  
+> **Tip:** mDNS (`*.local`) candidates are filtered before send, and trickled candidates are capped per-peer so we stay inside the server's `a=candidate:` ceiling.
+
+  
+### Room
+
+  
+A `Room` is the multi-peer container above `SignalingClient` + `Peer`. It tracks every remote peer in a reactive `Signal`, fans out local tracks via `publish()` / `unpublish()`, and multiplexes named data channels across every connected peer. `$.webrtc.join(url, opts)` opens the signaling socket, waits for `hello`, sends `join`, and resolves once the server returns `joined`.
+
+  
+
+```javascript
+import { join } from 'zero-query';
+
+const room = await $.webrtc.join('wss://api.example.com/rtc', {
+    room:  'lobby',
+    media: { audio: true, video: true },   // calls getUserMedia automatically
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+});
+
+room.on('peer-joined', (info) => console.log('joined', info.id));
+room.on('peer-left',   (info) => console.log('left',   info.id));
+room.on('error',       (err)  => console.warn(err.code, err.message));
+
+// Publish a stream later (e.g. after a screen-share button):
+const screen = await navigator.mediaDevices.getDisplayMedia();
+await room.publish(screen);
+
+// Open a chat channel that every peer joins:
+const chat = room.dataChannel('chat');
+chat.on('message', (text, fromPeerId) => console.log(fromPeerId, text));
+chat.send('hello room');
+
+await room.leave();
+```
+
+  
+| Member | Type | Description |
+| --- | --- | --- |
+| `room.id` | `string` | Room identifier passed to `join` |
+| `room.self` | `string` | Local peer id assigned by the server |
+| `room.peers` | `Signal>` | Reactive map of every remote peer in the room |
+| `room.localTracks` | `Signal` | Reactive snapshot of currently-published local tracks |
+| `room.publish(stream)` | `Promise` | Add every track in the stream to every peer |
+| `room.unpublish(stream)` | `Promise` | Remove every previously-published track in the stream |
+| `room.dataChannel(label, opts?)` | `RoomDataChannel` | Multiplexed handle `{ label, send, on, close }`. Same label returns the same handle |
+| `room.on(event, cb)` | `() => void` | Subscribe to `peer-joined` / `peer-left` / `mute` / `unmute` / `error` |
+| `room.leave()` | `Promise` | Send `leave`, close every peer and the socket. Idempotent |
+
+  
+### Reactive Composables
+
+  
+Each composable returns a disposable reactive handle — `{ value, peek, subscribe(cb), dispose() }` — that you can render with `z-text` / `z-html` or wire into component re-renders. Call `dispose()` in your unmount path so listeners and intervals are torn down.
+
+  
+
+```javascript
+import { useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality } from 'zero-query';
+
+const room = await $.useRoom('wss://api.example.com/rtc', { room: 'lobby' });
+
+// Track a specific remote peer reactively:
+const peerHandle = $.usePeer(room, 'peer-abc');
+peerHandle.subscribe((info) => {
+    if (!info) return console.log('peer gone');
+    console.log('connection:', info.connection);
+});
+
+// Live track list for that peer (re-emits on addtrack/removetrack):
+const tracksHandle = $.useTracks(peerHandle.peek());
+
+// A chat channel with bounded message history:
+const chat = $.useDataChannel(room, 'chat', { history: 200 });
+chat.send('hi');
+chat.messages.subscribe((entries) => render(entries));  // [{data, from, at}]
+
+// Sampled connection-quality bucket from RTCPeerConnection.getStats():
+const quality = $.useConnectionQuality(peerHandle.peek(), { intervalMs: 2000 });
+quality.subscribe((bucket) => console.log(bucket));     // 'good' | 'fair' | 'poor'
+
+// On unmount:
+peerHandle.dispose();
+tracksHandle.dispose();
+chat.dispose();
+quality.dispose();
+```
+
+  
+| Composable | Returns |
+| --- | --- |
+| `useRoom(urlOrRoom, opts?)` | `Promise` — resolves an existing Room or calls `join` |
+| `usePeer(room, peerId)` | `{ value: PeerInfo \| null, peek, subscribe, dispose }` |
+| `useTracks(peerInfo)` | `{ value: MediaStreamTrack[], refresh, peek, subscribe, dispose }` |
+| `useDataChannel(room, label, { history? })` | `{ messages, send, close, dispose }` |
+| `useConnectionQuality(peerInfo, { intervalMs?, getStats? })` | `{ value: "good" \| "fair" \| "poor", peek, subscribe, dispose }` |
+
+  
+> **Warning:** Forgetting `dispose()` on unmount leaks getStats intervals and signal subscriptions — `useConnectionQuality` in particular keeps a 2-second timer alive until disposed.
+
+  
+### z-stream Directive
+
+  
+Bind a reactive `MediaStream` (or any object exposing `getTracks()`) to a `` or `` element by setting `srcObject` directly — no `URL.createObjectURL` dance. SSR-safe and writes `null` when the expression is nullish.
+
+  
+
+```javascript
+import { component } from 'zero-query';
+
+component('peer-video', {
+    state:    { stream: null },
+    template: () => \`<video z-stream="stream" autoplay playsinline muted></video>\`,
+});
+
+// Anywhere you have a PeerInfo (from room.peers or usePeer):
+const tile = $('peer-video').first();
+tile.instance.state.stream = peerInfo.stream;
+```
+
+  
+> **Tip:** `z-stream` tolerates plain `MediaStream`s, anything with `.stream`, or any object that exposes `getTracks()`. Reassign the expression to `null` to detach without removing the element.
+
+  
+### TURN Credentials
+
+  
+The backend's `issueTurnCredentials()` handler returns short-lived `{ username, credential, urls, ttl }` bundles. `fetchTurnCredentials()` normalizes the response and validates its shape; `mergeIceServers()` concatenates the TURN entry with your existing STUN list (deduping any overlapping URLs); `createTurnRefresher()` schedules an automatic refetch ahead of expiry so a long-running room never sees a 401 mid-call. Any failure surfaces as a typed `TurnError`.
+
+  
+
+```javascript
+import { fetchTurnCredentials, mergeIceServers, createTurnRefresher } from 'zero-query';
+
+// One-shot fetch (e.g. right before $.webrtc.join):
+const creds = await $.fetchTurnCredentials('/webrtc/turn-credentials');
+const iceServers = $.mergeIceServers(
+    [{ urls: 'stun:stun.l.google.com:19302' }],
+    creds
+);
+
+const room = await $.webrtc.join('wss://api.example.com/rtc', {
+    room:       'lobby',
+    iceServers,
+});
+
+// Long-lived refresher (re-fetches ~30s before ttl expires):
+const turn = $.createTurnRefresher({
+    url:       '/webrtc/turn-credentials',
+    leadMs:    30000,
+    onRefresh: (next) => console.log('TURN rotated', next.ttl),
+    onError:   (err)  => console.warn('TURN refresh failed', err.code),
+});
+await turn.start();
+console.log(turn.value);   // latest credentials
+turn.stop();               // cancel timer on unmount
+```
+
+  
+| Helper | Returns |
+| --- | --- |
+| `fetchTurnCredentials(url, { fetch?, ...RequestInit })` | `Promise` |
+| `mergeIceServers(base?, turn?)` | `RTCIceServer[]` — base entries first, TURN appended, dup URLs dropped |
+| `createTurnRefresher({ url, fetch?, leadMs?, minIntervalMs?, onRefresh?, onError?, requestInit? })` | `{ value, peek, start, refresh, stop }` |
+
+  
+> All TURN errors derive from `TurnError`: `ZQ_WEBRTC_TURN_BAD_URL`, `ZQ_WEBRTC_TURN_NO_FETCH`, `ZQ_WEBRTC_TURN_NETWORK`, `ZQ_WEBRTC_TURN_HTTP`, `ZQ_WEBRTC_TURN_BAD_JSON`, `ZQ_WEBRTC_TURN_BAD_BODY`.
+
+  
+### End-to-End Encryption (SFrame)
+
+  
+Optional per-frame AES-GCM-128 encryption that runs after the encoder and before the decoder via `RTCRtpSender.createEncodedStreams()`. Keys are bound to a 1-byte epoch so a room can rotate without dropping in-flight frames; up to `maxEpochs` (default 4) past keys are retained for late decryptors. Each frame is laid out as `[1-byte epoch][12-byte IV][ciphertext + GCM tag]`.
+
+  
+
+```javascript
+import { deriveSFrameKey, SFrameContext, attachE2ee, join } from 'zero-query/webrtc';
+
+  // 1) Derive a key everyone in the room shares (passphrase out-of-band).
+  const key = await deriveSFrameKey('correct horse battery', 'room-42');
+
+  // 2) Track it under epoch 0.
+  const ctx = new SFrameContext();
+  ctx.setKey(0, key);
+
+  // 3) Join, then wire transforms onto every sender + receiver.
+  const room = await join('wss://example.com/ws', { room: 'room-42', /* ... */ });
+  room.on('peer', (peer) => {
+      const handle = attachE2ee(peer.pc, ctx);
+      peer.on('track', () => handle.refresh()); // re-walk for late tracks
+  });
+
+  // 4) Rotate by installing a new key under the next epoch.
+  ctx.setKey(1, await deriveSFrameKey('correct horse battery v2', 'room-42'));
+```
+
+  
+| Helper | Result |
+| --- | --- |
+| `deriveSFrameKey(passphrase, salt)` | `Promise` — PBKDF2-SHA256 (100k) → HKDF-SHA256 → AES-GCM-128 |
+| `generateSFrameKey()` | `Promise` — random AES-GCM-128 |
+| `new SFrameContext({ maxEpochs? })` | Tracks `epoch → key`; `setKey(epoch, key)` advances `currentEpoch` |
+| `encryptFrame(ctx, payload)` | `Promise` — `[epoch][iv][cipher+tag]` |
+| `decryptFrame(ctx, frame)` | `Promise` — reads epoch byte and decrypts with matching key |
+| `attachE2ee(pc, ctx)` | `{ refresh(), detach() }` — installs transforms on every sender + receiver |
+
+  
+> **Warning:** SFrame requires `RTCRtpSender.createEncodedStreams()` (Insertable Streams). Browsers without it throw `ZQ_WEBRTC_E2EE_NO_WEBCRYPTO` or fail silently on `attachE2ee` — feature-detect before promising E2EE to users.
+
+  
+> All E2EE errors derive from `E2eeError`: `ZQ_WEBRTC_E2EE_NO_WEBCRYPTO`, `ZQ_WEBRTC_E2EE_NO_RANDOM`, `ZQ_WEBRTC_E2EE_BAD_PASSPHRASE`, `ZQ_WEBRTC_E2EE_BAD_SALT`, `ZQ_WEBRTC_E2EE_BAD_INPUT`, `ZQ_WEBRTC_E2EE_BAD_CTX`, `ZQ_WEBRTC_E2EE_NO_KEY`, `ZQ_WEBRTC_E2EE_SHORT_FRAME`, `ZQ_WEBRTC_E2EE_UNKNOWN_EPOCH`, `ZQ_WEBRTC_E2EE_AUTH_FAILED`.
+
+  
+### SFU Adapters
+
+  
+`loadSfuAdapter(name, opts?)` dynamic-imports an optional peer dependency and returns an adapter wrapping its native client. Both **mediasoup** and **LiveKit** adapters are shipped today. The peer dependencies are *not* bundled — consuming apps install them themselves; if missing, the adapter throws `ZQ_WEBRTC_SFU_PEER_MISSING` with an actionable message.
+
+  
+| Adapter | Peer dep | Install |
+| --- | --- | --- |
+| `'mediasoup'` | `mediasoup-client` | `npm i mediasoup-client` |
+| `'livekit'` | `livekit-client` | `npm i livekit-client` |
+
+  
+
+```javascript
+import { loadSfuAdapter } from 'zero-query/webrtc';
+
+  // mediasoup adapter:
+  const sfu = await loadSfuAdapter('mediasoup');
+  await sfu.load(routerRtpCapabilities);            // from your SFU signaling
+  if (sfu.canProduce('audio')) {
+      const sendTransport = sfu.createSendTransport(sendTransportParams);
+      // wire transport.on('connect', ...) / on('produce', ...) to your signaling
+  }
+  const recvTransport = sfu.createRecvTransport(recvTransportParams);
+
+  // LiveKit adapter:
+  const lk = await loadSfuAdapter('livekit');
+  await lk.connect('wss://lk.example', accessToken);
+  // ... use lk.room directly (livekit-client Room) ...
+  await lk.disconnect();
+```
+
+  
+> All SFU errors derive from `SfuError`: `ZQ_WEBRTC_SFU_UNKNOWN`, `ZQ_WEBRTC_SFU_PEER_MISSING`, `ZQ_WEBRTC_SFU_BAD_MODULE`, `ZQ_WEBRTC_SFU_DEVICE_FAILED`, `ZQ_WEBRTC_SFU_ROOM_FAILED`, `ZQ_WEBRTC_SFU_BAD_RTP_CAPS`, `ZQ_WEBRTC_SFU_BAD_URL`, `ZQ_WEBRTC_SFU_BAD_TOKEN`, `ZQ_WEBRTC_SFU_LOAD_FAILED`, `ZQ_WEBRTC_SFU_CONNECT_FAILED`, `ZQ_WEBRTC_SFU_NOT_LOADED`, `ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE`.
+
+  
+### Join Tokens
+
+  
+`decodeJoinToken(token)` is a UX-only helper that base64url-decodes the payload of a server-issued join token (as minted by `signJoinToken({ secret, user, room, exp })` in `@zero-server/webrtc`). The client **never trusts** the payload — the server re-validates the signature on every `join` — but the decoded fields are useful for UI like "expires in 5 minutes" or showing the user's display name before sending. Tokens may be 1-, 2-, or 3-segment (JWT-like).
+
+  
+
+```javascript
+import { decodeJoinToken, isJoinTokenExpired } from 'zero-query';
+
+  const t = decodeJoinToken(tokenFromServer);
+  // { user: { id: 'u1', name: 'Ada' }, room: 'lobby', exp: 1700000000, raw: {...} }
+
+  if (isJoinTokenExpired(t, { skewMs: 30_000 })) {
+      // refresh token before calling `join`
+  }
+```
+
+  
+| Helper | Returns |
+| --- | --- |
+| `decodeJoinToken(token)` | `{ user, room, exp, raw }` |
+| `isJoinTokenExpired(decoded, { nowMs?, skewMs? })` | `boolean` |
+
+  
+> **Warning:** `decodeJoinToken` performs **no** signature verification — it is a UI helper only. Never gate auth or permissions on its output; the server is the source of truth.
+
+  
+> Errors derive from `WebRtcError`: `ZQ_WEBRTC_TOKEN_BAD_INPUT`, `ZQ_WEBRTC_TOKEN_BAD_SHAPE`, `ZQ_WEBRTC_TOKEN_BAD_PAYLOAD`.
+
+  
+### Observability (getStats)
+
+  
+Low-level `RTCPeerConnection.getStats()` helpers — useful for dashboards, logging, and feeding the reactive `useConnectionQuality` composable. `samplePeerStats(pc)` reduces a getStats report to a flat summary plus the raw arrays. `createStatsSampler(pc, opts)` polls on an interval. `classifyStats(sample)` buckets a sample into `'good' | 'fair' | 'poor' | 'unknown'`.
+
+  
+
+```javascript
+import { samplePeerStats, createStatsSampler, classifyStats } from 'zero-query';
+
+  // One-shot snapshot:
+  const s = await samplePeerStats(pc);
+  console.log(s.summary, classifyStats(s));
+  // { rttMs: 42, lossPct: 0.3, bytesSent: 18234, bytesReceived: 30210 }  'good'
+
+  // Periodic sampler:
+  const sampler = createStatsSampler(pc, {
+      intervalMs: 2000,
+      onSample: (s) => dashboardSignal.value = s.summary,
+      onError:  (err) => console.warn('stats failed', err.code, err.message),
+  });
+  // ... later
+  sampler.stop();
+```
+
+  
+| Bucket | Heuristic |
+| --- | --- |
+| `'good'` | Loss &le; 1% *and* RTT &le; 200 ms |
+| `'fair'` | Loss &le; 5% *and* RTT &le; 400 ms |
+| `'poor'` | Loss > 5% *or* RTT > 400 ms |
+| `'unknown'` | No `candidate-pair` in the report yet (early/closed connection) |
+
+  
+> Errors derive from `WebRtcError`: `ZQ_WEBRTC_OBSERVE_BAD_PC`, `ZQ_WEBRTC_OBSERVE_GETSTATS_FAILED`.
+
+  
+### SDP + ICE Helpers
+
+  
+Zero-dependency, read-only ports of the parser surface from `@zero-server/webrtc`. Useful for sanity-checking an SDP before sending it through signaling, lifting structured fields out for stats / debugging, and filtering ICE candidates against a local privacy policy. All errors derive from `SdpError` / `IceError`.
+
+  
+
+```javascript
+import {
+    parseSdp, validateSdp,
+    parseCandidate, filterCandidates, isMdnsHostname,
+} from 'zero-query';
+
+// Parse + validate the SDP server-side rules apply (UDP/TLS/RTP/SAVPF,
+// ice-ufrag, ice-pwd, fingerprint). Throws SdpError if any required
+// attribute is missing on a non-rejected m-line.
+const desc = validateSdp(offer.sdp);
+console.log(desc.media[0].iceUfrag, desc.media[0].fingerprint);
+
+// Filter a raw candidate batch against a local privacy policy:
+const safe = filterCandidates(offer.candidates, {
+    blockPrivate: true,
+    blockMdns:    true,
+    allowedTypes: ['srflx', 'relay'],
+    maxCandidates: 30,
+});
+
+// Parse a single candidate line:
+const c = parseCandidate('candidate:1 1 udp 2122194687 1.2.3.4 50001 typ srflx raddr 192.168.1.5 rport 50000');
+if (c.type === 'relay') console.log('via TURN');
+if (isMdnsHostname(c.address)) console.log('mDNS - skip');
+```
+
+  
+| Helper | Returns | Throws |
+| --- | --- | --- |
+| `parseSdp(text, opts?)` | `ParsedSdp` | SdpError |
+| `validateSdp(text)` | `ParsedSdp` | SdpError |
+| `parseCandidate(line)` | `IceCandidate` | IceError |
+| `stringifyCandidate(c)` | `string` | IceError |
+| `filterCandidates(list, policy?)` | same shape as input | — |
+| `isPrivateIp / isLoopbackIp / isLinkLocalIp / isMdnsHostname` | `boolean` | — |
+
+  
+### Error Family
+
+  
+Every WebRTC error derives from `WebRtcError`, which itself derives from the shared `ZQueryError`. They participate in `$.onError(handler)` like any other library error and carry a stable `code` string.
+
+  
+| Class | Default Code | Surface |
+| --- | --- | --- |
+| `WebRtcError` | `ZQ_WEBRTC` | Base — token decode, getStats |
+| `SignalingError` | `ZQ_WEBRTC_SIGNALING` | WebSocket / handshake / framing |
+| `IceError` | `ZQ_WEBRTC_ICE` | Candidate parsing / validation |
+| `SdpError` | `ZQ_WEBRTC_SDP` | SDP parsing / validation |
+| `TurnError` | `ZQ_WEBRTC_TURN` | TURN credential fetch / refresh |
+| `E2eeError` | `ZQ_WEBRTC_E2EE` | SFrame key + frame transform |
+| `SfuError` | `ZQ_WEBRTC_SFU` | SFU adapter / peer-dep loader |
+
+  
+
+```javascript
+import { WebRtcError, SignalingError } from 'zero-query';
+
+try {
+    await client.connect();
+} catch (err) {
+    if (err instanceof SignalingError) {
+        console.warn('signaling failed:', err.code, err.message);
+    } else if (err instanceof WebRtcError) {
+        console.warn('webrtc failed:', err.code, err.message);
+    } else {
+        throw err;
+    }
+}
+```
+
+  
+> **Tip:** Use `$.onError(handler)` to centralize WebRTC error reporting alongside HTTP / router / component errors. Every WebRTC error code starts with `ZQ_WEBRTC_` so a single prefix check picks them all out.
+
+  
+### Wire Protocol
+
+  
+The `SignalingClient` speaks the JSON-over-WebSocket protocol of `@zero-server/webrtc`. The first server message after a successful connect is always `{ type: 'hello', peerId }`; everything else is type-tagged.
+
+  
+| Direction | Frame types |
+| --- | --- |
+| **Client → Server** | `join`, `leave`, `offer`, `answer`, `ice`, `mute`, `unmute`, `bye`, `e2ee-key` |
+| **Server → Client** | `hello`, `joined`, `peer-joined`, `peer-left`, `offer`, `answer`, `ice`, `mute`, `unmute`, `e2ee-key`, `error` |
+
+  
+> Frames missing the required `type` field, the initial `hello`, or with malformed JSON raise a `SignalingError` on the `error` event — matching the server's own validation contract.
+
+---
+
 ## ES Module Exports (for npm/bundler usage)
 
 When used as an ES module (not the built bundle), the library provides named exports for every public API:
@@ -6560,6 +7180,47 @@ import {
   guardAsync,
   validate,
   formatError,
+  webrtc,
+  SignalingClient,
+  Peer,
+  Room,
+  webrtcJoin,
+  useRoom,
+  usePeer,
+  useTracks,
+  useDataChannel,
+  useConnectionQuality,
+  fetchTurnCredentials,
+  mergeIceServers,
+  createTurnRefresher,
+  deriveSFrameKey,
+  generateSFrameKey,
+  SFrameContext,
+  encryptFrame,
+  decryptFrame,
+  attachE2ee,
+  loadSfuAdapter,
+  SfuError,
+  decodeJoinToken,
+  isJoinTokenExpired,
+  samplePeerStats,
+  createStatsSampler,
+  classifyStats,
+  parseSdp,
+  validateSdp,
+  parseCandidate,
+  stringifyCandidate,
+  filterCandidates,
+  isPrivateIp,
+  isLoopbackIp,
+  isLinkLocalIp,
+  isMdnsHostname,
+  WebRtcError,
+  SignalingError,
+  IceError,
+  SdpError,
+  TurnError,
+  E2eeError,
   debounce,
   throttle,
   pipe,

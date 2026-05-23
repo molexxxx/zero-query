@@ -754,6 +754,37 @@ describe('component - z-style directive', () => {
 
 
 // ---------------------------------------------------------------------------
+// z-stream (MediaStream -> .srcObject)
+// ---------------------------------------------------------------------------
+
+describe('component - z-stream directive', () => {
+  it('assigns a duck-typed MediaStream to srcObject', () => {
+    const fakeStream = { id: 'fake', getTracks: () => [] };
+    component('zstream-set', {
+      state: () => ({ stream: fakeStream }),
+      render() { return '<video class="v" z-stream="stream"></video>'; },
+    });
+    document.body.innerHTML = '<zstream-set id="zs1"></zstream-set>';
+    mount('#zs1', 'zstream-set');
+    const video = document.querySelector('#zs1 video.v');
+    expect(video.srcObject).toBe(fakeStream);
+    expect(video.hasAttribute('z-stream')).toBe(false);
+  });
+
+  it('assigns null when the expression is null', () => {
+    component('zstream-null', {
+      state: () => ({ stream: null }),
+      render() { return '<video class="v" z-stream="stream"></video>'; },
+    });
+    document.body.innerHTML = '<zstream-null id="zs2"></zstream-null>';
+    mount('#zs2', 'zstream-null');
+    const video = document.querySelector('#zs2 video.v');
+    expect(video.srcObject).toBeNull();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
 // Event binding (@event)
 // ---------------------------------------------------------------------------
 
