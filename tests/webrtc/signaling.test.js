@@ -235,7 +235,7 @@ describe('SignalingClient', () => {
         const hadWs = 'WebSocket' in globalThis;
         const prev  = hadWs ? globalThis.WebSocket : undefined;
         try {
-            // eslint-disable-next-line no-global-assign
+             
             delete globalThis.WebSocket;
             // Re-import via dynamic import to prove module init doesn't read it
             const mod = await import('../../src/webrtc/signaling.js?ssrSafe=1');
