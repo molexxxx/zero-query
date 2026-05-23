@@ -12,7 +12,7 @@
  * All `send()` calls are buffered into `sendCalls` for assertion.
  */
 
-/* eslint-disable no-unused-vars */
+ 
 
 /** Active fake-socket instances, in construction order. Cleared per-test by callers. */
 export const fakeSockets = [];

@@ -6,6 +6,15 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+// Website sources are gitignored; on CI / fresh checkouts the compare page
+// component isn't available — skip those specific tests gracefully.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const COMPARE_FILE = resolve(__dirname, '../zquery-website/app/components/compare.js');
+const COMPARE_AVAILABLE = existsSync(COMPARE_FILE);
 
 // Framework imports
 import {
@@ -40,7 +49,7 @@ describe('Compare page component structure', () => {
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it('compare-page component registers successfully', async () => {
+  it.skipIf(!COMPARE_AVAILABLE)('compare-page component registers successfully', async () => {
     // Importing compare.js registers the component via $.component
     // We need $ to be available globally for comparisons
     const mod = await import('../index.js');
@@ -50,9 +59,11 @@ describe('Compare page component structure', () => {
     globalThis.BUNDLE_SIZE = '~85.5 KB';
     globalThis.BUNDLE_SIZE_NUM = 85.5;
 
-    // Import compare to register the component
+    // Import compare to register the component (dynamic path hides it from
+    // Vite's static import analysis, since the file may not exist on CI).
+    const comparePath = '../zquery-website/app/components/compare.js';
     try {
-      await import('../zquery-website/app/components/compare.js');
+      await import(/* @vite-ignore */ comparePath);
     } catch (e) {
       // May fail due to store import; that's fine for structure tests
     }

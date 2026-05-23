@@ -74,7 +74,7 @@ describe('fetchTurnCredentials', () => {
     it('rejects when no fetch implementation is available', async () => {
         const originalFetch = globalThis.fetch;
         try {
-            // eslint-disable-next-line no-undef
+             
             globalThis.fetch = undefined;
             await expect(fetchTurnCredentials('https://x/turn')).rejects.toMatchObject({
                 code: 'ZQ_WEBRTC_TURN_NO_FETCH',
