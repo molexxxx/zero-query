@@ -1,15 +1,9 @@
 /**
  * src/webrtc/index.js - WebRTC public barrel
  *
- * Re-exports the WebRTC-related error classes and the low-level
- * `SignalingClient`, plus a stub `webrtc` namespace whose high-level
- * `join()` helper currently throws - the room/peer/track surface lands
- * in subsequent passes.
- *
- * Keeping the namespace shape stable from day one means consumers can
- * already import `$.webrtc` and reach for `SignalingClient`,
- * `WebRtcError`, etc., without having to rewire imports when the rest
- * of the surface ships.
+ * Re-exports the WebRTC error family, low-level building blocks
+ * (`SignalingClient`, `Peer`, SDP/ICE helpers), and the high-level
+ * `Room` + reactive composables on the `webrtc` namespace.
  */
 
 import { SignalingClient } from './signaling.js';
@@ -22,6 +16,10 @@ import {
     isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
     CANDIDATE_TYPES, TCP_TYPES,
 } from './ice.js';
+import { Room, join } from './room.js';
+import {
+    useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
+} from './reactive.js';
 import {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './errors.js';
@@ -37,31 +35,34 @@ export {
     isPrivateIp, isLoopbackIp, isLinkLocalIp, isMdnsHostname,
     CANDIDATE_TYPES, TCP_TYPES,
 } from './ice.js';
+export { Room, join } from './room.js';
+export {
+    useRoom, usePeer, useTracks, useDataChannel, useConnectionQuality,
+} from './reactive.js';
 export {
     WebRtcError, SignalingError, IceError, SdpError, TurnError, E2eeError,
 } from './errors.js';
 
 
 /**
- * High-level WebRTC namespace. Most members are stubs in this release -
- * only `SignalingClient` is wired through. Calling `webrtc.join()` will
- * throw a `WebRtcError` with code `ZQ_WEBRTC_NOT_IMPLEMENTED`.
- *
- * @type {{
- *   SignalingClient: typeof SignalingClient,
- *   Peer: typeof Peer,
- *   WebRtcError: typeof WebRtcError,
- *   SignalingError: typeof SignalingError,
- *   IceError: typeof IceError,
- *   SdpError: typeof SdpError,
- *   TurnError: typeof TurnError,
- *   E2eeError: typeof E2eeError,
- *   join: (url: string, opts: object) => Promise<never>,
- * }}
+ * High-level WebRTC namespace exposed as `$.webrtc`. Bundles every public
+ * member from this module so consumers can reach the full surface through
+ * a single import.
  */
 export const webrtc = {
     SignalingClient,
     Peer,
+    Room,
+    join,
+
+    // Composables
+    useRoom,
+    usePeer,
+    useTracks,
+    useDataChannel,
+    useConnectionQuality,
+
+    // SDP / ICE helpers
     parseSdp,
     validateSdp,
     parseCandidate,
@@ -71,24 +72,12 @@ export const webrtc = {
     isLoopbackIp,
     isLinkLocalIp,
     isMdnsHostname,
+
+    // Errors
     WebRtcError,
     SignalingError,
     IceError,
     SdpError,
     TurnError,
     E2eeError,
-
-    /**
-     * Join a room. Not yet implemented - only the low-level `SignalingClient`
-     * is wired in this release. Use `new SignalingClient(url)` directly until
-     * the high-level `Room` API lands.
-     *
-     * @returns {Promise<never>}
-     */
-    async join() {
-        throw new WebRtcError(
-            'webrtc.join() is not implemented yet - use SignalingClient directly',
-            { code: 'ZQ_WEBRTC_NOT_IMPLEMENTED' }
-        );
-    },
 };

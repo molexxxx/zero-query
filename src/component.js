@@ -1268,6 +1268,24 @@ class Component {
       el.removeAttribute('z-style');
     });
 
+    // -- z-stream (assign MediaStream to <video>/<audio>.srcObject) -
+    this._el.querySelectorAll('[z-stream]').forEach(el => {
+      if (el.closest('[z-pre]')) return;
+      const val = this._evalExpr(el.getAttribute('z-stream'));
+      const hasMediaStream = typeof MediaStream !== 'undefined';
+      if (val == null) {
+        el.srcObject = null;
+      } else if (hasMediaStream && val instanceof MediaStream) {
+        el.srcObject = val;
+      } else if (val && typeof val.getTracks === 'function') {
+        // Accept duck-typed stream objects (test fakes, polyfills).
+        el.srcObject = val;
+      } else {
+        el.srcObject = null;
+      }
+      el.removeAttribute('z-stream');
+    });
+
     // z-html and z-text are now pre-expanded at string level (before
     // morph) via _expandContentDirectives(), so the diff engine can
     // properly diff their content instead of clearing + re-injecting.
