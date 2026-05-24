@@ -226,6 +226,21 @@ describe('Router - z-link-params', () => {
     link.click();
     expect(window.location.hash).toBe('#/user/fallback');
   });
+
+  it('rejects z-link-params that parses to an array (must be an object)', () => {
+    document.body.innerHTML += '<a z-link="/user/:id" z-link-params=\'["42"]\'>User</a>';
+    const link = document.querySelector('a[z-link="/user/:id"]');
+    link.click();
+    // Interpolation skipped, raw href preserved
+    expect(window.location.hash).toBe('#/user/:id');
+  });
+
+  it('rejects z-link-params that parses to null', () => {
+    document.body.innerHTML += '<a z-link="/user/:id" z-link-params="null">User</a>';
+    const link = document.querySelector('a[z-link="/user/:id"]');
+    link.click();
+    expect(window.location.hash).toBe('#/user/:id');
+  });
 });
 
 

@@ -5762,12 +5762,28 @@ class Parser {
 
   // Main entry
   parse() {
+    this.depth = 0;
     const result = this.parseExpression(0);
     return result;
   }
 
   // Precedence climbing
   parseExpression(minPrec) {
+    // Cap nesting depth so a deeply parenthesised or recursive expression
+    // can’t stack-overflow the host. Threshold (96) is generous - real
+    // template expressions are flat - but stops pathological inputs cold.
+    if (++this.depth > 96) {
+      this.depth--;
+      throw new Error('Expression nesting depth exceeded (max 96)');
+    }
+    try {
+      return this._parseExpressionImpl(minPrec);
+    } finally {
+      this.depth--;
+    }
+  }
+
+  _parseExpressionImpl(minPrec) {
     let left = this.parseUnary();
 
     while (true) {
@@ -6403,8 +6419,18 @@ function _evalBinary(node, scope) {
 const _astCache = new Map();
 const _AST_CACHE_MAX = 512;
 
+// Maximum source length accepted by safeEval. Real template expressions
+// are tens of bytes; anything beyond 8 KB is almost certainly an attack
+// payload or accidental dump. Reject up front to avoid feeding the
+// tokenizer and parser unbounded input.
+const _EXPR_MAX_LEN = 8192;
+
 function safeEval(expr, scope) {
   try {
+    if (typeof expr !== 'string') return undefined;
+    if (expr.length > _EXPR_MAX_LEN) {
+      throw new Error(`Expression exceeds max length (${_EXPR_MAX_LEN} bytes)`);
+    }
     const trimmed = expr.trim();
     if (!trimmed) return undefined;
 
@@ -8385,7 +8411,13 @@ class Router {
       if (paramsAttr) {
         try {
           const params = JSON.parse(paramsAttr);
-          href = this._interpolateParams(href, params);
+          // Reject arrays, null, primitives - z-link-params must be a plain
+          // key/value object since we use it to interpolate :param placeholders.
+          if (typeof params !== 'object' || params === null || Array.isArray(params)) {
+            reportError(ErrorCode.ROUTER_RESOLVE, 'z-link-params must be a JSON object', { href, paramsAttr });
+          } else {
+            href = this._interpolateParams(href, params);
+          }
         } catch (err) {
           reportError(ErrorCode.ROUTER_RESOLVE, 'Malformed JSON in z-link-params', { href, paramsAttr }, err);
         }
@@ -9306,10 +9338,16 @@ class Store {
   }
 
   /**
-   * Get current state snapshot (plain object)
+   * Get current state snapshot (plain object).
+   *
+   * Pass `{ clone: false }` to skip the structuredClone pass when the caller
+   * treats state as read-only. Big perf win for serialise/inspect paths that
+   * never mutate the returned value. Default remains a defensive deep copy.
    */
-  snapshot() {
-    return deepClone(this.state.__raw || this.state);
+  snapshot(opts) {
+    const raw = this.state.__raw || this.state;
+    if (opts && opts.clone === false) return raw;
+    return deepClone(raw);
   }
 
   /**
@@ -10396,8 +10434,8 @@ $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.2.0';
-$.libSize   = '~129 KB';
-$.unitTests = {"passed":2525,"failed":0,"total":2525,"suites":619,"duration":6433,"ok":true};
+$.libSize   = '~130 KB';
+$.unitTests = {"passed":2532,"failed":0,"total":2532,"suites":620,"duration":7093,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------
