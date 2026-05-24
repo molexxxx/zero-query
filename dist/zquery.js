@@ -5471,7 +5471,9 @@ function queryAll(selector, context) {
 // Quick-ref shortcuts, on $ namespace)
 // ---------------------------------------------------------------------------
 query.id       = (id) => document.getElementById(id);
-query.class    = (name) => document.querySelector(`.${name}`);
+// Escape the class name so callers can safely pass identifiers containing
+// dots, colons, leading digits, etc. without breaking the selector.
+query.class    = (name) => document.querySelector(`.${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(name) : name}`);
 query.classes  = (name) => new ZQueryCollection(Array.from(document.getElementsByClassName(name)));
 query.tag      = (name) => new ZQueryCollection(Array.from(document.getElementsByTagName(name)));
 Object.defineProperty(query, 'name', {
@@ -7715,9 +7717,9 @@ class Component {
         const val = this._evalExpr(attr.value);
         node.removeAttribute(attr.name);
         if (val === false || val === null || val === undefined) {
-          node.removeAttribute(attrName);
+          node.toggleAttribute(attrName, false);
         } else if (val === true) {
-          node.setAttribute(attrName, '');
+          node.toggleAttribute(attrName, true);
         } else {
           node.setAttribute(attrName, String(val));
         }
@@ -9653,25 +9655,35 @@ const http = {
 // ---------------------------------------------------------------------------
 
 /**
- * Debounce - delays execution until after `ms` of inactivity
+ * Debounce - delays execution until after `ms` of inactivity.
+ * Optional `{ signal }` aborts any pending invocation and prevents future ones.
  */
-function debounce(fn, ms = 250) {
+function debounce(fn, ms = 250, opts = {}) {
   let timer;
+  const signal = opts.signal;
   const debounced = (...args) => {
+    if (signal && signal.aborted) return;
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), ms);
   };
   debounced.cancel = () => clearTimeout(timer);
+  if (signal) {
+    if (signal.aborted) debounced.cancel();
+    else signal.addEventListener('abort', debounced.cancel, { once: true });
+  }
   return debounced;
 }
 
 /**
- * Throttle - limits execution to once per `ms`
+ * Throttle - limits execution to once per `ms`.
+ * Optional `{ signal }` aborts any pending trailing call and prevents future ones.
  */
-function throttle(fn, ms = 250) {
+function throttle(fn, ms = 250, opts = {}) {
   let last = 0;
   let timer;
-  return (...args) => {
+  const signal = opts.signal;
+  const throttled = (...args) => {
+    if (signal && signal.aborted) return;
     const now = Date.now();
     const remaining = ms - (now - last);
     clearTimeout(timer);
@@ -9682,6 +9694,12 @@ function throttle(fn, ms = 250) {
       timer = setTimeout(() => { last = Date.now(); fn(...args); }, remaining);
     }
   };
+  throttled.cancel = () => clearTimeout(timer);
+  if (signal) {
+    if (signal.aborted) throttled.cancel();
+    else signal.addEventListener('abort', throttled.cancel, { once: true });
+  }
+  return throttled;
 }
 
 /**
@@ -10006,6 +10024,9 @@ function chunk(arr, size) {
 }
 
 function groupBy(arr, keyFn) {
+  // Prefer the native Object.groupBy (Node 21+, all evergreens) when available -
+  // it returns a null-prototype object which is safer for use as a lookup map.
+  if (typeof Object.groupBy === 'function') return Object.groupBy(arr, keyFn);
   const result = {};
   for (const item of arr) {
     const k = keyFn(item);
@@ -10376,7 +10397,7 @@ $.E2eeError          = E2eeError;
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.2.0';
 $.libSize   = '~129 KB';
-$.unitTests = {"passed":2521,"failed":0,"total":2521,"suites":619,"duration":6579,"ok":true};
+$.unitTests = {"passed":2525,"failed":0,"total":2525,"suites":619,"duration":6433,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------
