@@ -4,7 +4,7 @@
  * Coverage for the `Peer` wrapper:
  *   - construction guards
  *   - negotiationneeded -> sends `offer` frame with sdp string
- *   - ICE trickle: candidates routed to signaling with `to: peerId`
+ *   - ICE trickle: candidates routed to signaling with `target: peerId`
  *   - ICE cap of 30 candidates, mDNS filter, EOC marker
  *   - incoming `offer` -> sets remote, replies with `answer`
  *   - incoming `answer` -> sets remote, no extra frames
@@ -105,7 +105,7 @@ describe('Peer (perfect negotiation)', () => {
 
         const offers = sentOfType('offer');
         expect(offers).toHaveLength(1);
-        expect(offers[0].to).toBe('peer_a');
+        expect(offers[0].target).toBe('peer_a');
         expect(typeof offers[0].sdp).toBe('string');
         expect(offers[0].sdp).toContain('UDP/TLS/RTP/SAVPF');
         peer.close();
@@ -146,7 +146,7 @@ describe('Peer (perfect negotiation)', () => {
         // here, so just verify a deterministic side-effect: at minimum the
         // queue depth matches the candidate count we trickled.
         expect(sig._iceQueue.length).toBe(3);
-        expect(sig._iceQueue[0].to).toBe('peer_a');
+        expect(sig._iceQueue[0].target).toBe('peer_a');
         expect(sig._iceQueue[0].candidate).toContain('typ host');
         expect(sig._iceQueue[2].candidate).toBeNull();
         peer.close();
@@ -201,7 +201,7 @@ describe('Peer (perfect negotiation)', () => {
         expect(lastPc().setRemoteCalls[0]).toEqual({ type: 'offer', sdp: 'remote-sdp-blob' });
         const answers = sentOfType('answer');
         expect(answers).toHaveLength(1);
-        expect(answers[0].to).toBe('peer_a');
+        expect(answers[0].target).toBe('peer_a');
         expect(typeof answers[0].sdp).toBe('string');
         peer.close();
     });

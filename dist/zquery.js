@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v1.2.7
+ * zQuery (zeroQuery) v1.2.8
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -1321,9 +1321,9 @@ class SignalingClient {
  * on the locally-assigned `polite` flag - no glare, no manual rollback.
  *
  * Wire-protocol mapping (mirrors @zero-server/webrtc):
- *   - outgoing `offer`  -> `{ type: 'offer',  to, sdp }`   (sdp is the string)
- *   - outgoing `answer` -> `{ type: 'answer', to, sdp }`
- *   - outgoing `ice`    -> `{ type: 'ice',    to, candidate }`  (raw a=candidate: line or null)
+ *   - outgoing `offer`  -> `{ type: 'offer',  target, sdp }`   (sdp is the string)
+ *   - outgoing `answer` -> `{ type: 'answer', target, sdp }`
+ *   - outgoing `ice`    -> `{ type: 'ice',    target, candidate }`  (raw a=candidate: line or null)
  *   - incoming filtered by `msg.from === this.id`.
  *
  * Server-side constraints honored here:
@@ -1538,7 +1538,7 @@ class Peer {
                 await this.pc.setLocalDescription();
                 const desc = this.pc.localDescription;
                 if (!desc || !desc.sdp) return;
-                this.signaling.send('offer', { to: this.id, sdp: desc.sdp });
+                this.signaling.send('offer', { target: this.id, sdp: desc.sdp });
             } catch (err) {
                 this._emit('error', new SdpError(err.message || 'offer failed', {
                     code: 'ZQ_WEBRTC_SDP_OFFER_FAILED',
@@ -1554,7 +1554,7 @@ class Peer {
             const candidate = event && event.candidate;
             // End-of-candidates marker (null) -> always forward.
             if (!candidate) {
-                this.signaling.send('ice', { to: this.id, candidate: null });
+                this.signaling.send('ice', { target: this.id, candidate: null });
                 return;
             }
             const cand = typeof candidate === 'string' ? candidate : candidate.candidate;
@@ -1563,7 +1563,7 @@ class Peer {
             if (cand.indexOf('.local') !== -1) return;
             if (this._sentCandidates >= this._maxIceCandidates) return;
             this._sentCandidates++;
-            this.signaling.send('ice', { to: this.id, candidate: cand });
+            this.signaling.send('ice', { target: this.id, candidate: cand });
         };
 
         this.pc.ontrack = (event) => {
@@ -1627,7 +1627,7 @@ class Peer {
                 await this.pc.setLocalDescription();
                 const local = this.pc.localDescription;
                 if (local && local.sdp) {
-                    this.signaling.send('answer', { to: this.id, sdp: local.sdp });
+                    this.signaling.send('answer', { target: this.id, sdp: local.sdp });
                 }
             }
         } catch (err) {
@@ -10449,9 +10449,9 @@ $.TurnError          = TurnError;
 $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
-$.version   = '1.2.7';
+$.version   = '1.2.8';
 $.libSize   = '~130 KB';
-$.unitTests = {"passed":2534,"failed":0,"total":2534,"suites":620,"duration":6104,"ok":true};
+$.unitTests = {"passed":2534,"failed":0,"total":2534,"suites":620,"duration":6058,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

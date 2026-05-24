@@ -121,6 +121,58 @@ button.ghost         { background: transparent; }
 }
 .device-hint .icon { flex: 0 0 auto; }
 
+/* ---- Active rooms picker --------------------------------------------- */
+
+.rooms-section {
+    margin-top: 1.25rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+}
+.rooms-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+.rooms-head h2 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+.room-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.room-list li { margin: 0; }
+.room-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    background: #11151f;
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.room-pill:hover         { border-color: var(--accent); }
+.room-pill.active        { background: var(--accent); border-color: transparent; color: #fff; }
+.room-pill-name          { font-weight: 600; }
+.room-pill-count         { font-size: 0.75rem; color: var(--text-muted); }
+.room-pill.active .room-pill-count { color: rgba(255,255,255,0.85); }
+.room-list-empty {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 0.25rem 0 0;
+}
+
 /* ---- Room layout (in-call) -------------------------------------------- */
 
 .room {
