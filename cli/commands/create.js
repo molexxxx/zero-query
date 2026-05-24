@@ -137,7 +137,7 @@ function createProject(args) {
       execSync(`npm install "${zqRoot}"`, { cwd: target, stdio: 'inherit' });
       execSync(`npm install`, { cwd: target, stdio: 'inherit' });
     } catch {
-      console.error(`\n  ✗ npm install failed. Run it manually:\n\n    cd ${dirArg || '.'}\n    npm install\n    node server/index.js\n`);
+      console.error(`\n  ✗ npm install failed. Run it manually:\n\n    cd ${dirArg || '.'}\n    npm install\n    npm start\n`);
       process.exit(1);
     }
 
@@ -150,22 +150,26 @@ function createProject(args) {
     }
 
     console.log(`
-  Done! The WebRTC demo needs the signaling server running. In one terminal:
+  Camera, microphone, and screen-share are OFF by default - users opt in
+  from inside the room. Optional env vars:
+    - WEBRTC_JWT_SECRET  enforce signed join tokens
+    - TURN_SECRET + TURN_URLS  issue time-limited TURN credentials
 
-    cd ${dirArg || '.'}
-    node server/index.js
-
-  Then in another terminal serve the static client:
-
-    ${devCmd}
-
-  Notes:
-    - Camera, microphone, and screen-share are OFF by default. Users opt-in
-      from inside the room.
-    - Set WEBRTC_JWT_SECRET to enforce signed join tokens.
-    - Set TURN_SECRET + TURN_URLS to issue time-limited TURN credentials.
+  Starting WebRTC signaling + static server on http://localhost:3000 ...
 `);
-    return;
+
+    const child = spawn('node', ['server/index.js'], { cwd: target, stdio: 'inherit' });
+
+    setTimeout(() => {
+      const open = process.platform === 'win32' ? 'start'
+                 : process.platform === 'darwin' ? 'open' : 'xdg-open';
+      try { execSync(`${open} http://localhost:3000`, { stdio: 'ignore' }); } catch {}
+    }, 500);
+
+    process.on('SIGINT',  () => { child.kill(); process.exit(); });
+    process.on('SIGTERM', () => { child.kill(); process.exit(); });
+    child.on('exit', (code) => process.exit(code || 0));
+    return; // keep process alive for the server
   } else {
     console.log(`
   Done! Next steps:
