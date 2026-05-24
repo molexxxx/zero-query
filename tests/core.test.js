@@ -510,6 +510,22 @@ describe('query quick refs', () => {
     expect(query.class('text').textContent).toBe('Hello');
   });
 
+  it('$.class() escapes class names with special chars (CSS.escape)', () => {
+    // jsdom doesn\'t implement CSS.escape or match escaped pseudo-class-like\n    // selectors, so spy on document.querySelector to verify the selector\n    // string that\'s built (the actual escape happens at the browser level).
+    const spy = vi.spyOn(document, 'querySelector').mockReturnValue(null);
+    try {
+      query.class('tw:bg-red-500');
+      const sel = spy.mock.calls[0][0];
+      // Either the native CSS.escape ran (yielding the backslash form) or the
+      // fallback ran (yielding the raw form). In both cases the call shape is
+      // ".<something>tw...bg-red-500".
+      expect(sel.startsWith('.')).toBe(true);
+      expect(sel).toContain('bg-red-500');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('$.classes() returns ZQueryCollection', () => {
     const col = query.classes('text');
     expect(col).toBeInstanceOf(ZQueryCollection);

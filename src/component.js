@@ -1269,9 +1269,9 @@ class Component {
         const val = this._evalExpr(attr.value);
         node.removeAttribute(attr.name);
         if (val === false || val === null || val === undefined) {
-          node.removeAttribute(attrName);
+          node.toggleAttribute(attrName, false);
         } else if (val === true) {
-          node.setAttribute(attrName, '');
+          node.toggleAttribute(attrName, true);
         } else {
           node.setAttribute(attrName, String(val));
         }

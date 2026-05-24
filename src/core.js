@@ -858,7 +858,9 @@ export function queryAll(selector, context) {
 // Quick-ref shortcuts, on $ namespace)
 // ---------------------------------------------------------------------------
 query.id       = (id) => document.getElementById(id);
-query.class    = (name) => document.querySelector(`.${name}`);
+// Escape the class name so callers can safely pass identifiers containing
+// dots, colons, leading digits, etc. without breaking the selector.
+query.class    = (name) => document.querySelector(`.${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(name) : name}`);
 query.classes  = (name) => new ZQueryCollection(Array.from(document.getElementsByClassName(name)));
 query.tag      = (name) => new ZQueryCollection(Array.from(document.getElementsByTagName(name)));
 Object.defineProperty(query, 'name', {
