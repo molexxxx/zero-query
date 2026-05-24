@@ -763,7 +763,7 @@ class Component {
         });
 
         let stoppedAt = null; // Track elements that called .stop
-        for (const { selector, methodExpr, modifiers, el, matched } of hits) {
+        for (const { methodExpr, modifiers, el, matched } of hits) {
 
           // In delegated events, .stop should prevent ancestor bindings from
           // firing - stopPropagation alone only stops real DOM bubbling.

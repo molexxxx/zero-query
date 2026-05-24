@@ -17,7 +17,7 @@
  *   });
  */
 
-import { mount, destroy, prefetch } from './component.js';
+import { mount, prefetch } from './component.js';
 import { reportError, ErrorCode } from './errors.js';
 
 // Unique marker on history.state to identify zQuery-managed entries
@@ -395,7 +395,6 @@ class Router {
     if (this._mode === 'hash') {
       // Hash mode: stash the substate in a global - hashchange will check.
       // We still push a history entry via a sentinel hash suffix.
-      const current = window.location.hash || '#/';
       window.history.pushState(
         { [_ZQ_STATE_KEY]: 'substate', key, data },
         '',

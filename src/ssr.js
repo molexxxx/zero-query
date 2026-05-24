@@ -22,6 +22,7 @@
 
 import { safeEval } from './expression.js';
 import { reportError, ErrorCode, ZQueryError } from './errors.js';
+import { escapeHtml as _escapeHtml } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // SSR Component renderer
@@ -115,12 +116,8 @@ const SSR_RESERVED = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
-// HTML escaping for SSR output
+// HTML escaping for SSR output (re-uses utils.escapeHtml)
 // ---------------------------------------------------------------------------
-const _escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-function _escapeHtml(str) {
-  return str.replace(/[&<>"']/g, c => _escapeMap[c]);
-}
 
 // ---------------------------------------------------------------------------
 // SSR App - component registry + renderer
@@ -411,7 +408,7 @@ export function renderToString(definition, props = {}) {
  * @returns {string}
  */
 export function escapeHtml(str) {
-  return _escapeHtml(String(str));
+  return _escapeHtml(str);
 }
 
 // Re-export matchRoute so SSR servers can import from 'zero-query/ssr'

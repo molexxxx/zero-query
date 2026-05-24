@@ -3257,7 +3257,7 @@ function _base64UrlDecode(segment) {
         return new TextDecoder().decode(bytes);
     }
     // Node fallback.
-    // eslint-disable-next-line no-undef
+     
     return Buffer.from(b64, 'base64').toString('utf8');
 }
 
@@ -6086,13 +6086,6 @@ class Parser {
 // ---------------------------------------------------------------------------
 
 /** Safe property access whitelist for built-in prototypes */
-const SAFE_ARRAY_METHODS = new Set([
-  'length', 'map', 'filter', 'find', 'findIndex', 'some', 'every',
-  'reduce', 'reduceRight', 'forEach', 'includes', 'indexOf', 'lastIndexOf',
-  'join', 'slice', 'concat', 'flat', 'flatMap', 'reverse', 'sort',
-  'fill', 'keys', 'values', 'entries', 'at', 'toString',
-]);
-
 const SAFE_STRING_METHODS = new Set([
   'length', 'charAt', 'charCodeAt', 'includes', 'indexOf', 'lastIndexOf',
   'slice', 'substring', 'trim', 'trimStart', 'trimEnd', 'toLowerCase',
@@ -6104,18 +6097,6 @@ const SAFE_STRING_METHODS = new Set([
 const SAFE_NUMBER_METHODS = new Set([
   'toFixed', 'toPrecision', 'toString', 'valueOf',
 ]);
-
-const SAFE_OBJECT_METHODS = new Set([
-  'hasOwnProperty', 'toString', 'valueOf',
-]);
-
-const SAFE_MATH_PROPS = new Set([
-  'PI', 'E', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'SQRT2', 'SQRT1_2',
-  'abs', 'ceil', 'floor', 'round', 'trunc', 'max', 'min', 'pow',
-  'sqrt', 'sign', 'random', 'log', 'log2', 'log10',
-]);
-
-const SAFE_JSON_PROPS = new Set(['parse', 'stringify']);
 
 /**
  * Check if property access is safe
@@ -7222,7 +7203,7 @@ class Component {
         });
 
         let stoppedAt = null; // Track elements that called .stop
-        for (const { selector, methodExpr, modifiers, el, matched } of hits) {
+        for (const { methodExpr, modifiers, el, matched } of hits) {
 
           // In delegated events, .stop should prevent ancestor bindings from
           // firing - stopPropagation alone only stops real DOM bubbling.
@@ -8564,7 +8545,6 @@ class Router {
     if (this._mode === 'hash') {
       // Hash mode: stash the substate in a global - hashchange will check.
       // We still push a history entry via a sentinel hash suffix.
-      const current = window.location.hash || '#/';
       window.history.pushState(
         { [_ZQ_STATE_KEY]: 'substate', key, data },
         '',
@@ -9041,6 +9021,7 @@ function getRouter() {
 
 
 
+
 class Store {
   constructor(config = {}) {
     this._subscribers = new Map();   // key → Set<fn>
@@ -9059,7 +9040,7 @@ class Store {
 
     // Store initial state for reset
     const initial = typeof config.state === 'function' ? config.state() : { ...(config.state || {}) };
-    this._initialState = JSON.parse(JSON.stringify(initial));
+    this._initialState = deepClone(initial);
 
     this.state = reactive(initial, (key, value, old) => {
       if (this._batching) {
@@ -9121,7 +9102,7 @@ class Store {
    * Save a snapshot for undo. Call before making changes you want to be undoable.
    */
   checkpoint() {
-    const snap = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    const snap = deepClone(this.state.__raw || this.state);
     this._undoStack.push(snap);
     if (this._undoStack.length > this._maxUndo) {
       this._undoStack.splice(0, this._undoStack.length - this._maxUndo);
@@ -9135,7 +9116,7 @@ class Store {
    */
   undo() {
     if (this._undoStack.length === 0) return false;
-    const current = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    const current = deepClone(this.state.__raw || this.state);
     this._redoStack.push(current);
     const prev = this._undoStack.pop();
     this.replaceState(prev);
@@ -9148,7 +9129,7 @@ class Store {
    */
   redo() {
     if (this._redoStack.length === 0) return false;
-    const current = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    const current = deepClone(this.state.__raw || this.state);
     this._undoStack.push(current);
     const next = this._redoStack.pop();
     this.replaceState(next);
@@ -9241,7 +9222,7 @@ class Store {
    * Get current state snapshot (plain object)
    */
   snapshot() {
-    return JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    return deepClone(this.state.__raw || this.state);
   }
 
   /**
@@ -9274,7 +9255,7 @@ class Store {
    * Reset state to initial values. If no argument, resets to the original state.
    */
   reset(initialState) {
-    this.replaceState(initialState || JSON.parse(JSON.stringify(this._initialState)));
+    this.replaceState(initialState || deepClone(this._initialState));
     this._history = [];
     this._undoStack = [];
     this._redoStack = [];
@@ -10309,8 +10290,8 @@ $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.2.0';
-$.libSize   = '~129 KB';
-$.unitTests = {"passed":2508,"failed":0,"total":2508,"suites":617,"duration":6209,"ok":true};
+$.libSize   = '~128 KB';
+$.unitTests = {"passed":2508,"failed":0,"total":2508,"suites":617,"duration":6350,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

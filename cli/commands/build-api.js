@@ -360,7 +360,6 @@ function buildEsmSection(root) {
 
 async function buildApi() {
   const root = process.cwd();
-  const pkg  = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf-8'));
 
   console.log('\n  zQuery API.md Generator\n');
 
