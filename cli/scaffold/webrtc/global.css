@@ -88,7 +88,12 @@ button {
     cursor: pointer;
     font-family: inherit;
     transition: background .15s, border-color .15s, transform .05s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    line-height: 1;
 }
+button .icon { flex: 0 0 auto; display: block; }
 button:hover         { background: #232939; border-color: var(--border-hi); }
 button:active        { transform: translateY(1px); }
 button:disabled      { opacity: 0.55; cursor: not-allowed; }
@@ -110,7 +115,11 @@ button.ghost         { background: transparent; }
     border-radius: 0.375rem;
     font-size: 0.85rem;
     margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
+.device-hint .icon { flex: 0 0 auto; }
 
 /* ---- Room layout (in-call) -------------------------------------------- */
 
@@ -150,7 +159,14 @@ button.ghost         { background: transparent; }
     flex: 0 0 auto;
 }
 .roster-row .dot.off { background: var(--text-muted); }
-.roster-row .roster-icons { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; }
+.roster-row .roster-icons {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.roster-row.me .roster-icons { color: var(--accent); }
 
 .sidebar .leave { margin-top: 0.5rem; }
 
@@ -256,12 +272,16 @@ button.ghost         { background: transparent; }
 }
 .tile .label-name { font-weight: 600; }
 .tile .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
     font-size: 0.78rem;
     line-height: 1;
-    padding: 0.05rem 0.25rem;
+    padding: 0.2rem 0.35rem;
     border-radius: 999px;
     background: rgba(255,255,255,0.08);
 }
+.tile .chip .icon { display: block; }
 .tile .chip-on      { background: rgba(22,163,74,0.25); }
 .tile .chip-off     { background: rgba(225,69,92,0.25); }
 .tile .chip-screen  { background: rgba(91,141,239,0.25); }
@@ -282,11 +302,17 @@ button.ghost         { background: transparent; }
     border-radius: 6px;
     background: rgba(0, 0, 0, 0.5);
     border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
     opacity: 0;
     transition: opacity .15s;
-    font-size: 0.85rem;
 }
-.tile:hover .pin-btn { opacity: 1; }
+.tile.self .pin-btn,
+.tile.tile-main .pin-btn { opacity: 1; background: rgba(0, 0, 0, 0.4); }
+.tile:hover .pin-btn      { opacity: 1; }
 
 .tile.thumb .label { font-size: 0.72rem; padding: 0.1rem 0.4rem; }
 .tile.thumb .chip  { display: none; }
@@ -326,6 +352,9 @@ button.ghost         { background: transparent; }
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--border);
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 .chat-log {
     flex: 1 1 auto;
@@ -335,7 +364,16 @@ button.ghost         { background: transparent; }
     flex-direction: column;
     gap: 0.5rem;
 }
-.chat-log .empty { color: var(--text-muted); font-size: 0.9rem; text-align: center; margin: auto 0; }
+.chat-log .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    text-align: center;
+    margin: auto 0;
+}
 .msg {
     background: rgba(255,255,255,0.02);
     padding: 0.35rem 0.5rem;

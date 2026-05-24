@@ -529,6 +529,32 @@ $.component('video-room', {
         } catch (_) { return ''; }
     },
 
+    // Lucide-style line icons, 24x24, strokes follow `currentColor` so they
+    // pick up button text colour automatically. Used everywhere instead of
+    // emoji so glyphs look consistent across OSes and inside dark UI chrome.
+    _icon(name, size) {
+        const s = size || 18;
+        const head = '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s +
+            '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"' +
+            ' stroke-linecap="round" stroke-linejoin="round" class="icon icon-' + name + '" aria-hidden="true">';
+        const paths = {
+            'mic':         '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>',
+            'mic-off':     '<line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>',
+            'video':       '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>',
+            'video-off':   '<path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/>',
+            'monitor':     '<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+            'volume':      '<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>',
+            'pin':         '<path d="M12 17v5"/><path d="M9 10.76V6h-.5a1.5 1.5 0 0 1 0-3h7a1.5 1.5 0 0 1 0 3H15v4.76a2 2 0 0 0 .55 1.38l2.45 2.6V17H6v-2.26l2.45-2.6A2 2 0 0 0 9 10.76z"/>',
+            'phone-off':   '<path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="23" y1="1" x2="1" y2="23"/>',
+            'stop':        '<rect x="6" y="6" width="12" height="12" rx="1"/>',
+            'send':        '<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>',
+            'message':     '<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>',
+            'wave':        '<path d="M18 11V6a2 2 0 0 0-4 0v6"/><path d="M14 10V4a2 2 0 0 0-4 0v8"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+            'alert':       '<path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+        };
+        return head + (paths[name] || '') + '</svg>';
+    },
+
     // ---- Tile assembly --------------------------------------------------
 
     _collectTiles() {
@@ -585,7 +611,7 @@ $.component('video-room', {
         if (!hasMic)   hint.push('no microphone detected');
         if (!hasCam)   hint.push('no camera detected');
         if (!hasShare) hint.push('screen sharing unavailable in this browser');
-        const hintLine = hint.length ? `<div class="device-hint">⚠ ${$.escapeHtml(hint.join(' · '))}</div>` : '';
+        const hintLine = hint.length ? `<div class="device-hint">${this._icon('alert', 14)}<span>${$.escapeHtml(hint.join(' · '))}</span></div>` : '';
 
         return `
             <div class="lobby">
@@ -699,9 +725,9 @@ $.component('video-room', {
                             <span class="dot ${micOn && !micMuted ? 'on' : 'off'}"></span>
                             <span class="who">${$.escapeHtml(displayName)} <small>(you)</small></span>
                             <span class="roster-icons">
-                                ${micOn ? (micMuted ? '🔇' : '🎤') : ''}
-                                ${camOn ? (camMuted ? '🚫' : '📷') : ''}
-                                ${sharing ? '🖥️' : ''}
+                                ${micOn ? this._icon(micMuted ? 'mic-off' : 'mic', 14) : ''}
+                                ${camOn ? this._icon(camMuted ? 'video-off' : 'video', 14) : ''}
+                                ${sharing ? this._icon('monitor', 14) : ''}
                             </span>
                         </div>
                         ${peers.map((p) => `
@@ -709,14 +735,14 @@ $.component('video-room', {
                                 <span class="dot ${p.micOn && !p.micMuted ? 'on' : 'off'}"></span>
                                 <span class="who">${$.escapeHtml(p.name || p.id)}</span>
                                 <span class="roster-icons">
-                                    ${p.micOn ? (p.micMuted ? '🔇' : '🎤') : ''}
-                                    ${p.camOn ? (p.camMuted ? '🚫' : '📷') : ''}
-                                    ${p.sharing ? '🖥️' : ''}
+                                    ${p.micOn ? this._icon(p.micMuted ? 'mic-off' : 'mic', 14) : ''}
+                                    ${p.camOn ? this._icon(p.camMuted ? 'video-off' : 'video', 14) : ''}
+                                    ${p.sharing ? this._icon('monitor', 14) : ''}
                                 </span>
                             </div>
                         `).join('')}
                     </div>
-                    <button class="leave" @click="leave">Leave room</button>
+                    <button class="leave" @click="leave">${this._icon('phone-off', 16)}<span>Leave room</span></button>
                 </aside>
 
                 <section class="stage">
@@ -728,25 +754,25 @@ $.component('video-room', {
                     <div class="controls">
                         <div class="ctl-group">
                             ${micOn
-                                ? `<button class="${micMuted ? 'off' : ''}" @click="toggleMute" title="${micMuted ? 'Unmute mic' : 'Mute mic'}">${micMuted ? '🔇 Unmute' : '🎤 Mute'}</button>
-                                   <button class="off ghost" @click="stopMic" title="Stop microphone">⏹ Mic</button>`
-                                : `<button class="primary" @click="startMic">🎤 Start mic</button>`}
+                                ? `<button class="${micMuted ? 'off' : ''}" @click="toggleMute" title="${micMuted ? 'Unmute mic' : 'Mute mic'}">${this._icon(micMuted ? 'mic-off' : 'mic')}<span>${micMuted ? 'Unmute' : 'Mute'}</span></button>
+                                   <button class="off ghost" @click="stopMic" title="Stop microphone">${this._icon('stop')}<span>Mic</span></button>`
+                                : `<button class="primary" @click="startMic">${this._icon('mic')}<span>Start mic</span></button>`}
                         </div>
 
                         <div class="ctl-group">
                             ${camOn
-                                ? `<button class="${camMuted ? 'off' : ''}" @click="toggleCamMute" title="${camMuted ? 'Resume camera' : 'Pause camera'}">${camMuted ? '🚫 Resume' : '📷 Pause'}</button>
-                                   <button class="off ghost" @click="stopCam" title="Stop camera">⏹ Cam</button>`
-                                : `<button class="primary" @click="startCam">📷 Start camera</button>`}
+                                ? `<button class="${camMuted ? 'off' : ''}" @click="toggleCamMute" title="${camMuted ? 'Resume camera' : 'Pause camera'}">${this._icon(camMuted ? 'video-off' : 'video')}<span>${camMuted ? 'Resume' : 'Pause'}</span></button>
+                                   <button class="off ghost" @click="stopCam" title="Stop camera">${this._icon('stop')}<span>Cam</span></button>`
+                                : `<button class="primary" @click="startCam">${this._icon('video')}<span>Start camera</span></button>`}
                         </div>
 
                         <div class="ctl-group">
                             ${sharing
-                                ? `<button class="active" @click="stopShare" title="Stop screen share">🛑 Stop sharing${shareAudio ? ' (with audio)' : ''}</button>`
-                                : `<button @click="startShare" ${hasShare ? '' : 'disabled'} title="${hasShare ? 'Share a screen, window or tab (audio capture optional)' : 'Screen share unsupported here'}">🖥️ Share screen</button>`}
+                                ? `<button class="active" @click="stopShare" title="Stop screen share">${this._icon('stop')}<span>Stop sharing${shareAudio ? ' (with audio)' : ''}</span></button>`
+                                : `<button @click="startShare" ${hasShare ? '' : 'disabled'} title="${hasShare ? 'Share a screen, window or tab (audio capture optional)' : 'Screen share unsupported here'}">${this._icon('monitor')}<span>Share screen</span></button>`}
                         </div>
 
-                        ${pinned ? `<button class="ghost" @click="unpin" title="Unpin focused tile">📌 Unpin</button>` : ''}
+                        ${pinned ? `<button class="ghost" @click="unpin" title="Unpin focused tile">${this._icon('pin')}<span>Unpin</span></button>` : ''}
 
                         <div class="status-inline ${error ? 'error' : ''}">
                             ${error ? $.escapeHtml(error) : $.escapeHtml(status)}
@@ -755,13 +781,13 @@ $.component('video-room', {
                 </section>
 
                 <aside class="chat">
-                    <div class="chat-header">Chat · ${messages.length}</div>
+                    <div class="chat-header">${this._icon('message', 14)}<span>Chat · ${messages.length}</span></div>
                     <div class="chat-log" id="chat-log">
-                        ${chatLines || '<div class="empty">No messages yet. Say hi 👋</div>'}
+                        ${chatLines || `<div class="empty">${this._icon('wave', 22)}<span>No messages yet. Say hi.</span></div>`}
                     </div>
                     <form class="chat-form" @submit="sendChat">
                         <input type="text" value="${$.escapeHtml(draft)}" @input="setDraft" placeholder="Message #${$.escapeHtml(roomName)}" maxlength="500" />
-                        <button type="submit" class="primary">Send</button>
+                        <button type="submit" class="primary">${this._icon('send')}<span>Send</span></button>
                     </form>
                 </aside>
             </div>
@@ -793,20 +819,20 @@ $.component('video-room', {
             : '';
 
         const micChip = (!isScreen && t.micOn !== undefined)
-            ? `<span class="chip ${t.micMuted ? 'chip-off' : 'chip-on'}">${t.micMuted ? '🔇' : '🎤'}</span>`
+            ? `<span class="chip ${t.micMuted ? 'chip-off' : 'chip-on'}">${this._icon(t.micMuted ? 'mic-off' : 'mic', 12)}</span>`
             : '';
 
         const audioChip = (isScreen && t.badges && t.badges.length)
-            ? `<span class="chip chip-on">🔊</span>`
+            ? `<span class="chip chip-on">${this._icon('volume', 12)}</span>`
             : '';
 
         const label = `<div class="label">
-            <span class="label-name">${$.escapeHtml(t.name)}${t.isSelf ? '' : ''}</span>
+            <span class="label-name">${$.escapeHtml(t.name)}</span>
             ${micChip}${audioChip}
-            ${isScreen ? '<span class="chip chip-screen">🖥️</span>' : ''}
+            ${isScreen ? `<span class="chip chip-screen">${this._icon('monitor', 12)}</span>` : ''}
         </div>`;
 
-        const pinBtn = `<button class="pin-btn" @click="pinTile('${t.id}', '${t.kind}')" title="Pin to focus">📌</button>`;
+        const pinBtn = `<button class="pin-btn" @click="pinTile('${t.id}', '${t.kind}')" title="Pin to focus">${this._icon('pin', 14)}</button>`;
 
         return `
             <div class="${cls}">
