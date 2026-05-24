@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v1.2.12
+ * zQuery (zeroQuery) v1.2.13
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -1415,6 +1415,11 @@ class Peer {
         this._maxIceCandidates = options.maxIceCandidates || DEFAULT_MAX_ICE_CANDIDATES;
         this._sentCandidates   = 0;
         this._sigUnsub         = [];
+        // Serialize incoming remote events (offer/answer/ice) so an ICE frame
+        // can never call addIceCandidate() while a setRemoteDescription() is
+        // still in flight - that race throws "The remote description was null"
+        // and leaves the PeerConnection stuck in `have-local-offer` forever.
+        this._opChain          = Promise.resolve();
 
         this._attachPc();
         this._attachSignaling();
@@ -1605,7 +1610,9 @@ class Peer {
         const guard = (cb) => (msg) => {
             if (this.closed) return;
             if (!msg || msg.from !== this.id) return;
-            cb(msg);
+            // Chain every remote event behind any prior in-flight op so SDP
+            // and ICE never race against each other.
+            this._opChain = this._opChain.then(() => cb(msg)).catch(() => {});
         };
         this._sigUnsub.push(
             this.signaling.on('offer',  guard((m) => this._onRemoteDescription('offer',  m.sdp))),
@@ -10476,9 +10483,9 @@ $.TurnError          = TurnError;
 $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
-$.version   = '1.2.12';
+$.version   = '1.2.13';
 $.libSize   = '~130 KB';
-$.unitTests = {"passed":2534,"failed":0,"total":2534,"suites":620,"duration":6149,"ok":true};
+$.unitTests = {"passed":2534,"failed":0,"total":2534,"suites":620,"duration":6049,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

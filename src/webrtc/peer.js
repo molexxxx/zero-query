@@ -104,6 +104,11 @@ export class Peer {
         this._maxIceCandidates = options.maxIceCandidates || DEFAULT_MAX_ICE_CANDIDATES;
         this._sentCandidates   = 0;
         this._sigUnsub         = [];
+        // Serialize incoming remote events (offer/answer/ice) so an ICE frame
+        // can never call addIceCandidate() while a setRemoteDescription() is
+        // still in flight - that race throws "The remote description was null"
+        // and leaves the PeerConnection stuck in `have-local-offer` forever.
+        this._opChain          = Promise.resolve();
 
         this._attachPc();
         this._attachSignaling();
@@ -294,7 +299,9 @@ export class Peer {
         const guard = (cb) => (msg) => {
             if (this.closed) return;
             if (!msg || msg.from !== this.id) return;
-            cb(msg);
+            // Chain every remote event behind any prior in-flight op so SDP
+            // and ICE never race against each other.
+            this._opChain = this._opChain.then(() => cb(msg)).catch(() => {});
         };
         this._sigUnsub.push(
             this.signaling.on('offer',  guard((m) => this._onRemoteDescription('offer',  m.sdp))),
