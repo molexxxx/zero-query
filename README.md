@@ -44,20 +44,19 @@
 The fastest way to develop with zQuery is via the built-in **CLI dev server** with **live-reload**. It serves your ES modules as-is and automatically resolves the library - no manual downloads required.
 
 ```bash
-# Install (per-project or globally)
-npm install zero-query   # or: npm install zero-query -g
+npx zero-query create my-app
 ```
 
-Scaffold a new project and start the server:
+That's it. One command scaffolds the project, installs dependencies, starts the dev server, and opens your browser to <http://localhost:3100>. To restart later:
 
 ```bash
-npx zquery create my-app
-npx zquery dev my-app
+cd my-app
+npm run dev      # or: npm start
 ```
 
 > **Tip:** Stay in the project root (where `node_modules` lives) instead of `cd`-ing into `my-app`. This keeps `index.d.ts` accessible to your IDE for full type/intellisense support.
 
-The `create` command generates a ready-to-run project with a sidebar layout, router, multiple components (including folder components with external templates and styles), and responsive styles. Use `--minimal` (or `-m`) to scaffold a lightweight 3-page starter instead. Use `--ssr` (or `-s`) to scaffold a project with a Node.js server-side rendering example. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
+The `create` command generates a ready-to-run project with a sidebar layout, router, multiple components (including folder components with external templates and styles), and responsive styles. Use `--minimal` (or `-m`) for a lightweight 3-page starter. Use `--ssr` (or `-s`) for a Node.js server-side rendering project (auto-launches on port 3000). Use `--webrtc-demo` (or `-w`) for a one-page video room backed by [zero-server](https://github.com/tonywied17/zero-server) (also port 3000). Every variant auto-installs, auto-starts, and opens the browser. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
 
 #### Error Overlay
 
