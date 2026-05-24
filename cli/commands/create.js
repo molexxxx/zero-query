@@ -39,11 +39,34 @@ function openBrowser(url) {
  * Spawn a long-running child process, wire SIGINT/SIGTERM to terminate it,
  * and exit when it does. Used by every scaffold variant to launch the dev /
  * SSR / signaling server right after install.
+ *
+ * On Windows we deliberately DO NOT use `shell: true` for `node` invocations:
+ * a shell wrapper (cmd.exe) intercepts Ctrl-C and `child.kill()` only kills
+ * the shell, leaving the node server orphaned. Spawning `node` directly
+ * (it's on PATH) lets signals flow and lets us issue `taskkill /T` to bring
+ * down the whole process tree.
  */
 function runAndExit(cmd, cmdArgs, cwd) {
-  const child = spawn(cmd, cmdArgs, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
-  process.on('SIGINT',  () => { child.kill(); process.exit(); });
-  process.on('SIGTERM', () => { child.kill(); process.exit(); });
+  const isWin    = process.platform === 'win32';
+  const useShell = isWin && cmd !== 'node';
+  const child    = spawn(cmd, cmdArgs, { cwd, stdio: 'inherit', shell: useShell });
+
+  let killing = false;
+  const killChild = () => {
+    if (killing || child.exitCode !== null) return;
+    killing = true;
+    if (isWin) {
+      // Force-kill the entire process tree so orphaned grandchildren
+      // (e.g. node started via npm) don't keep the port open.
+      try { execSync(`taskkill /PID ${child.pid} /T /F`, { stdio: 'ignore' }); }
+      catch { try { child.kill(); } catch { /* swallow */ } }
+    } else {
+      try { child.kill('SIGINT'); } catch { /* swallow */ }
+    }
+  };
+
+  process.on('SIGINT',  () => { killChild(); process.exit(); });
+  process.on('SIGTERM', () => { killChild(); process.exit(); });
   child.on('exit', (code) => process.exit(code || 0));
 }
 

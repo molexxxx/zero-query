@@ -194,6 +194,22 @@ async function main() {
         }
         console.log('');
     });
+
+    // Clean shutdown on Ctrl-C so the listening port is released immediately
+    // and stays released for the next dev iteration.
+    let shuttingDown = false;
+    const shutdown = (signal) => {
+        if (shuttingDown) return;
+        shuttingDown = true;
+        console.log(`\n  ${signal} received, shutting down WebRTC server...`);
+        try { hub && hub.close && hub.close(); } catch { /* swallow */ }
+        try { app && app.close && app.close(() => process.exit(0)); }
+        catch { process.exit(0); }
+        // Hard cap in case close() never resolves (open WS clients, etc.).
+        setTimeout(() => process.exit(0), 1500).unref();
+    };
+    process.on('SIGINT',  () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 function _wsUrl(req) {

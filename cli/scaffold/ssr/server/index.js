@@ -169,7 +169,7 @@ async function serveStatic(res, pathname) {
 
 // --- HTTP server ------------------------------------------------------------
 
-createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
   const { pathname } = new URL(req.url, `http://localhost:${PORT}`);
 
   // Static assets (CSS, images, etc.)
@@ -211,3 +211,15 @@ createServer(async (req, res) => {
   routes.forEach(r => console.log(`    ${r.path.padEnd(10)} → ${r.component}`));
   console.log(`    *         → not-found\n`);
 });
+
+// Clean shutdown on Ctrl-C so the port is freed immediately.
+let shuttingDown = false;
+const shutdown = (signal) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`\n  ${signal} received, shutting down SSR server...`);
+  try { server.close(() => process.exit(0)); } catch { process.exit(0); }
+  setTimeout(() => process.exit(0), 1500).unref();
+};
+process.on('SIGINT',  () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
