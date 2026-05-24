@@ -184,7 +184,7 @@ async function main() {
 
     // ---- Listen ----
     app.listen(PORT, () => {
-        console.log('\n  ⚡ WebRTC server → http://localhost:' + PORT);
+        console.log('\n  WebRTC server → http://localhost:' + PORT);
         console.log('     • signaling   ws://localhost:'   + PORT + '/rtc');
         console.log('     • turn creds  http://localhost:' + PORT + '/rtc/turn');
         if (JWT) {
