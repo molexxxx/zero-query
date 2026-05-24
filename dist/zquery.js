@@ -6630,6 +6630,10 @@ class Component {
     this._updateQueued = false;
     this._listeners = [];
     this._watchCleanups = [];
+    // Elements that have scheduled debounce/throttle timers under this
+    // component instance. Tracked so destroy() can clear them even if the
+    // element is detached from the subtree before teardown.
+    this._timerEls = new Set();
 
     // Refs map
     this.refs = {};
@@ -6957,44 +6961,60 @@ class Component {
 
     // Apply scoped styles on first render
     if (!this._mounted && combinedStyles) {
-      const scopeAttr = `z-s${this._uid}`;
-      this._el.setAttribute(scopeAttr, '');
-      let noScopeDepth = 0;   // brace depth at which a no-scope @-rule started (0 = none active)
-      let braceDepth = 0;     // overall brace depth
-      const scoped = combinedStyles.replace(/([^{}]+)\{|\}/g, (match, selector) => {
-        if (match === '}') {
-          if (noScopeDepth > 0 && braceDepth <= noScopeDepth) noScopeDepth = 0;
-          braceDepth--;
-          return match;
-        }
-        braceDepth++;
-        const trimmed = selector.trim();
-        // Don't scope @-rules themselves
-        if (trimmed.startsWith('@')) {
-          // @keyframes and @font-face contain non-selector content - skip scoping inside them
-          if (/^@(keyframes|font-face)\b/.test(trimmed)) {
-            noScopeDepth = braceDepth;
-          }
-          return match;
-        }
-        // Inside @keyframes or @font-face - don't scope inner rules
-        if (noScopeDepth > 0 && braceDepth > noScopeDepth) {
-          return match;
-        }
-        return selector.split(',').map(s => `[${scopeAttr}] ${s.trim()}`).join(', ') + ' {';
-      });
-      const styleEl = document.createElement('style');
-      styleEl.textContent = scoped;
-      styleEl.setAttribute('data-zq-component', this._def._name || '');
-      styleEl.setAttribute('data-zq-scope', scopeAttr);
-      if (this._def._resolvedStyleUrls) {
-        styleEl.setAttribute('data-zq-style-urls', this._def._resolvedStyleUrls.join(' '));
-        if (this._def.styles) {
-          styleEl.setAttribute('data-zq-inline', this._def.styles);
-        }
+      const def = this._def;
+      // Use a stable per-definition scope attr so all instances share one
+      // <style> tag (ref-counted). Anonymous defs fall back to per-instance
+      // scoping for safety.
+      let scopeAttr = def._scopeAttr;
+      if (!scopeAttr) {
+        scopeAttr = def._name ? `z-s-${def._name}` : `z-s${this._uid}`;
+        def._scopeAttr = scopeAttr;
       }
-      document.head.appendChild(styleEl);
-      this._styleEl = styleEl;
+      this._el.setAttribute(scopeAttr, '');
+      this._scopeAttr = scopeAttr;
+
+      if (def._styleEl && def._styleEl.isConnected) {
+        // Already injected by a previous instance — just bump refcount.
+        def._styleRefCount = (def._styleRefCount || 0) + 1;
+      } else {
+        let noScopeDepth = 0;   // brace depth at which a no-scope @-rule started (0 = none active)
+        let braceDepth = 0;     // overall brace depth
+        const scoped = combinedStyles.replace(/([^{}]+)\{|\}/g, (match, selector) => {
+          if (match === '}') {
+            if (noScopeDepth > 0 && braceDepth <= noScopeDepth) noScopeDepth = 0;
+            braceDepth--;
+            return match;
+          }
+          braceDepth++;
+          const trimmed = selector.trim();
+          // Don't scope @-rules themselves
+          if (trimmed.startsWith('@')) {
+            // @keyframes and @font-face contain non-selector content - skip scoping inside them
+            if (/^@(keyframes|font-face)\b/.test(trimmed)) {
+              noScopeDepth = braceDepth;
+            }
+            return match;
+          }
+          // Inside @keyframes or @font-face - don't scope inner rules
+          if (noScopeDepth > 0 && braceDepth > noScopeDepth) {
+            return match;
+          }
+          return selector.split(',').map(s => `[${scopeAttr}] ${s.trim()}`).join(', ') + ' {';
+        });
+        const styleEl = document.createElement('style');
+        styleEl.textContent = scoped;
+        styleEl.setAttribute('data-zq-component', def._name || '');
+        styleEl.setAttribute('data-zq-scope', scopeAttr);
+        if (def._resolvedStyleUrls) {
+          styleEl.setAttribute('data-zq-style-urls', def._resolvedStyleUrls.join(' '));
+          if (def.styles) {
+            styleEl.setAttribute('data-zq-inline', def.styles);
+          }
+        }
+        document.head.appendChild(styleEl);
+        def._styleEl = styleEl;
+        def._styleRefCount = 1;
+      }
     }
 
     // -- Focus preservation ----------------------------------------
@@ -7297,6 +7317,7 @@ class Component {
             clearTimeout(timers[event]);
             timers[event] = setTimeout(() => invoke(e), ms);
             _debounceTimers.set(el, timers);
+            this._timerEls.add(el);
             continue;
           }
 
@@ -7309,6 +7330,7 @@ class Component {
             invoke(e);
             timers[event] = setTimeout(() => { timers[event] = null; }, ms);
             _throttleTimers.set(el, timers);
+            this._timerEls.add(el);
             continue;
           }
 
@@ -7391,10 +7413,15 @@ class Component {
         : isEditable ? 'input' : 'input';
 
       // -- Handler: read DOM → write to reactive state -------------
-      // Skip if already bound (morph preserves existing elements,
-      // so re-binding would stack duplicate listeners)
-      if (el._zqModelBound) return;
-      el._zqModelBound = true;
+      // Remove any previously-bound z-model listener on this element so
+      // re-runs (re-render, keyed reconciliation, modifier change) replace
+      // instead of stacking. A boolean "already bound" flag is not enough:
+      // if the bound state key / modifiers ever change, the stale handler
+      // would keep writing to the old key.
+      if (el._zqModelUnbind) {
+        try { el._zqModelUnbind(); } catch { /* ignore */ }
+        el._zqModelUnbind = null;
+      }
 
       const handler = () => {
         let val;
@@ -7416,12 +7443,18 @@ class Component {
 
       if (hasDebounce) {
         let timer = null;
-        el.addEventListener(event, () => {
+        const debounced = () => {
           clearTimeout(timer);
           timer = setTimeout(handler, debounceMs);
-        });
+        };
+        el.addEventListener(event, debounced);
+        el._zqModelUnbind = () => {
+          el.removeEventListener(event, debounced);
+          clearTimeout(timer);
+        };
       } else {
         el.addEventListener(event, handler);
+        el._zqModelUnbind = () => el.removeEventListener(event, handler);
       }
     });
   }
@@ -7865,21 +7898,34 @@ class Component {
     this._delegatedEvents = null;
     this._eventBindings = null;
     // Clear any pending debounce/throttle timers to prevent stale closures.
-    // Timers are keyed by individual child elements, so iterate all descendants.
-    const allEls = this._el.querySelectorAll('*');
-    allEls.forEach(child => {
-      const dTimers = _debounceTimers.get(child);
-      if (dTimers) {
-        for (const key in dTimers) clearTimeout(dTimers[key]);
-        _debounceTimers.delete(child);
+    // Use the per-instance _timerEls set so detached elements (removed by
+    // z-if / z-for / keyed reconciliation before destroy) are still cleaned.
+    if (this._timerEls) {
+      this._timerEls.forEach(child => {
+        const dTimers = _debounceTimers.get(child);
+        if (dTimers) {
+          for (const key in dTimers) clearTimeout(dTimers[key]);
+          _debounceTimers.delete(child);
+        }
+        const tTimers = _throttleTimers.get(child);
+        if (tTimers) {
+          for (const key in tTimers) clearTimeout(tTimers[key]);
+          _throttleTimers.delete(child);
+        }
+      });
+      this._timerEls.clear();
+    }
+    if (this._scopeAttr) {
+      const def = this._def;
+      if (def && def._styleEl && def._scopeAttr === this._scopeAttr) {
+        def._styleRefCount = (def._styleRefCount || 1) - 1;
+        if (def._styleRefCount <= 0) {
+          def._styleEl.remove();
+          def._styleEl = null;
+          def._styleRefCount = 0;
+        }
       }
-      const tTimers = _throttleTimers.get(child);
-      if (tTimers) {
-        for (const key in tTimers) clearTimeout(tTimers[key]);
-        _throttleTimers.delete(child);
-      }
-    });
-    if (this._styleEl) this._styleEl.remove();
+    }
     _instances.delete(this._el);
     this._el.innerHTML = '';
   }
@@ -8198,7 +8244,12 @@ class Router {
     this._mode = isFile ? 'hash' : (config.mode || 'history');
 
     // Keep-alive cache: component name → { container, instance }
+    // Map iteration order = insertion order, used for LRU eviction.
     this._keepAliveCache = new Map();
+    // Optional cap on cached keep-alive instances. null = unbounded (default).
+    this._keepAliveMax = (typeof config.keepAliveMax === 'number' && config.keepAliveMax > 0)
+      ? config.keepAliveMax
+      : null;
 
     // Base path for sub-path deployments
     // Priority: explicit config.base → window.__ZQ_BASE → <base href> tag
@@ -8785,6 +8836,9 @@ class Router {
       // Keep-alive: reuse cached instance
       if (isKeepAlive && componentName && this._keepAliveCache.has(componentName)) {
         const cached = this._keepAliveCache.get(componentName);
+        // Refresh LRU order: move to most-recently-used position
+        this._keepAliveCache.delete(componentName);
+        this._keepAliveCache.set(componentName, cached);
         // Hide all children, show the cached one
         [...this._el.children].forEach(c => { c.style.display = 'none'; });
         cached.container.style.display = '';
@@ -8823,6 +8877,7 @@ class Router {
 
         if (isKeepAlive) {
           this._keepAliveCache.set(componentName, { container, instance: this._instance });
+          this._evictKeepAliveLRU();
           // Call activated() on first mount
           if (this._instance._def.activated) {
             try { this._instance._def.activated.call(this._instance); }
@@ -8889,6 +8944,27 @@ class Router {
   }
 
   // --- Destroy -------------------------------------------------------------
+
+  /**
+   * @private Evict least-recently-used keep-alive entries beyond _keepAliveMax.
+   * The current route's component is preserved even if it would otherwise be
+   * the oldest entry, to avoid destroying the active view.
+   */
+  _evictKeepAliveLRU() {
+    if (this._keepAliveMax == null) return;
+    while (this._keepAliveCache.size > this._keepAliveMax) {
+      // Find oldest entry that isn't the currently-active component
+      let evictKey = null;
+      for (const key of this._keepAliveCache.keys()) {
+        if (key !== this._currentComponentName) { evictKey = key; break; }
+      }
+      if (evictKey == null) break;
+      const cached = this._keepAliveCache.get(evictKey);
+      this._keepAliveCache.delete(evictKey);
+      try { cached.instance.destroy(); } catch { /* swallow */ }
+      if (cached.container && cached.container.parentNode) cached.container.remove();
+    }
+  }
 
   destroy() {
     // Remove window/document event listeners to prevent memory leaks
@@ -10290,8 +10366,8 @@ $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.2.0';
-$.libSize   = '~128 KB';
-$.unitTests = {"passed":2508,"failed":0,"total":2508,"suites":617,"duration":6350,"ok":true};
+$.libSize   = '~129 KB';
+$.unitTests = {"passed":2521,"failed":0,"total":2521,"suites":619,"duration":6173,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

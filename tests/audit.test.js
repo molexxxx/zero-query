@@ -3156,8 +3156,8 @@ describe('Scoped Styles', () => {
     const styleEl = document.querySelector(`style[data-zq-component="${name}"]`);
     const text = styleEl.textContent;
     // Each selector should be prefixed with [z-sN]
-    expect(text).toMatch(/\[z-s\d+\]\s+\.box\s*\{/);
-    expect(text).toMatch(/\[z-s\d+\]\s+\.box \.inner\s*\{/);
+    expect(text).toMatch(/\[z-s[-\w]+\]\s+\.box\s*\{/);
+    expect(text).toMatch(/\[z-s[-\w]+\]\s+\.box \.inner\s*\{/);
     el.remove();
   });
 
@@ -3174,8 +3174,8 @@ describe('Scoped Styles', () => {
     const styleEl = document.querySelector(`style[data-zq-component="${name}"]`);
     const text = styleEl.textContent;
     // Both selectors should be independently prefixed
-    expect(text).toMatch(/\[z-s\d+\]\s+\.a/);
-    expect(text).toMatch(/\[z-s\d+\]\s+\.b/);
+    expect(text).toMatch(/\[z-s[-\w]+\]\s+\.a/);
+    expect(text).toMatch(/\[z-s[-\w]+\]\s+\.b/);
     el.remove();
   });
 
@@ -3194,10 +3194,10 @@ describe('Scoped Styles', () => {
     // The @keyframes rule itself should not be scoped
     expect(text).toContain('@keyframes fadeIn');
     // "from" and "to" inside @keyframes should NOT have [z-s] prefix
-    expect(text).not.toMatch(/\[z-s\d+\]\s+from/);
-    expect(text).not.toMatch(/\[z-s\d+\]\s+to/);
+    expect(text).not.toMatch(/\[z-s[-\w]+\]\s+from/);
+    expect(text).not.toMatch(/\[z-s[-\w]+\]\s+to/);
     // But .animated SHOULD be scoped
-    expect(text).toMatch(/\[z-s\d+\]\s+\.animated/);
+    expect(text).toMatch(/\[z-s[-\w]+\]\s+\.animated/);
     el.remove();
   });
 
@@ -3215,7 +3215,7 @@ describe('Scoped Styles', () => {
     const text = styleEl.textContent;
     expect(text).toContain('@font-face');
     // .text should be scoped
-    expect(text).toMatch(/\[z-s\d+\]\s+\.text/);
+    expect(text).toMatch(/\[z-s[-\w]+\]\s+\.text/);
     el.remove();
   });
 
@@ -3233,7 +3233,7 @@ describe('Scoped Styles', () => {
     const text = styleEl.textContent;
     expect(text).toContain('@media');
     // .mobile inside @media should be scoped
-    expect(text).toMatch(/\[z-s\d+\]\s+\.mobile/);
+    expect(text).toMatch(/\[z-s[-\w]+\]\s+\.mobile/);
     el.remove();
   });
 });
