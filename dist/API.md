@@ -25,7 +25,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Navigation Guards](#navigation-guards)
   - [Change Listener](#change-listener)
   - [Current Route State](#current-route-state)
-  - [matchRoute()](#matchroute)
+  - [matchRoute()](#match-route)
   - [Dynamic Route Management](#dynamic-route-management)
   - [Hash Fragments](#hash-fragments)
   - [Sub-Route History Substates](#sub-route-history-substates)
@@ -39,28 +39,28 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Computed Properties](#computed-properties)
   - [Watchers](#watchers)
   - [Templates](#templates)
-  - [Events & Forms](#events-forms)
+  - [Events & Forms](#events)
   - [Lifecycle](#lifecycle)
   - [Props & Communication](#props-communication)
-  - [Reactive Props Schema](#reactive-props-schema)
+  - [Reactive Props Schema](#reactive-props)
   - [Store Connectors](#store-connectors)
   - [Scoped Styles](#scoped-styles)
   - [DOM Morphing](#dom-morphing)
   - [Transitions](#transitions)
   - [Mounting & Instance API](#mounting-instance-api)
-  - [Quick Reference](#quick-reference)
+  - [Quick Reference](#component-quick-reference)
 - [Directives](#directives)
-  - [Quick Reference](#quick-reference)
-  - [z-if / z-else-if / z-else](#z-if-z-else-if-z-else)
+  - [Quick Reference](#directive-quick-reference)
+  - [z-if / z-else-if / z-else](#z-if-z-else)
   - [z-for](#z-for)
   - [z-key](#z-key)
   - [z-show](#z-show)
-  - [z-bind / :attr](#z-bind-attr)
+  - [z-bind / :attr](#z-bind)
   - [z-class](#z-class)
   - [z-style](#z-style)
   - [z-html & z-text](#z-html-z-text)
-  - [Event Binding (@event)](#event-binding-event)
-  - [z-model](#z-model)
+  - [Event Binding (@event)](#event-binding)
+  - [z-model](#z-model-directive)
   - [z-ref](#z-ref)
   - [z-cloak](#z-cloak)
   - [z-pre](#z-pre)
@@ -70,7 +70,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [External Templates](#external-templates)
   - [Processing Order](#processing-order)
 - [Store](#store)
-  - [Setup](#setup)
+  - [Setup](#store-setup)
   - [Dispatching Actions](#dispatching-actions)
   - [Reading State & Getters](#reading-state-getters)
   - [Subscriptions](#subscriptions)
@@ -81,35 +81,35 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Batch Updates](#batch-updates)
   - [Checkpoint / Undo / Redo](#checkpoint-undo-redo)
   - [State Utilities](#state-utilities)
-  - [Error Resilience](#error-resilience)
-  - [Using Store in Components](#using-store-in-components)
-  - [connectStore()](#connectstore)
-  - [Quick Reference](#quick-reference)
-- [HTTP Client](#http-client)
+  - [Error Resilience](#store-error-resilience)
+  - [Using Store in Components](#store-in-components)
+  - [connectStore()](#connect-store)
+  - [Quick Reference](#store-quick-reference)
+- [HTTP Client](#http)
   - [Request Methods](#request-methods)
-  - [Configuration](#configuration)
+  - [Configuration](#http-configuration)
   - [Response Object](#response-object)
   - [Auto-Parsing](#auto-parsing)
   - [Interceptors](#interceptors)
   - [Abort / Cancel](#abort-cancel)
-  - [FormData & String Bodies](#formdata-string-bodies)
-  - [Error Handling](#error-handling)
+  - [FormData & String Bodies](#formdata)
+  - [Error Handling](#http-error-handling)
   - [Per-Request Options](#per-request-options)
   - [Parallel Requests](#parallel-requests)
-  - [Raw Fetch Passthrough](#raw-fetch-passthrough)
+  - [Raw Fetch Passthrough](#raw-fetch)
 - [Reactive](#reactive)
-  - [$.reactive()](#reactive)
-  - [$.Signal](#signal)
-  - [$.signal()](#signal)
-  - [$.computed()](#computed)
-  - [$.effect()](#effect)
+  - [$.reactive()](#reactive-proxy)
+  - [$.Signal](#signal-class)
+  - [$.signal()](#signals)
+  - [$.computed()](#computed-signals)
+  - [$.effect()](#effects)
   - [$.batch()](#batch)
   - [$.untracked()](#untracked)
-  - [Summary](#summary)
-  - [How Auto-Tracking Works](#how-auto-tracking-works)
-  - [Error Resilience](#error-resilience)
-  - [Quick Reference](#quick-reference)
-- [Selectors & Collections](#selectors-collections)
+  - [Summary](#reactive-summary)
+  - [How Auto-Tracking Works](#how-tracking-works)
+  - [Error Resilience](#reactive-error-resilience)
+  - [Quick Reference](#reactive-quick-reference)
+- [Selectors & Collections](#selectors)
   - [$() Main Selector](#main-selector)
   - [Raw-Element Shortcuts](#raw-element-shortcuts)
   - [Multi-Element Shortcuts](#multi-element-shortcuts)
@@ -117,9 +117,9 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Element Creation](#element-creation)
   - [Animations](#animations)
   - [Form Helpers](#form-helpers)
-  - [DOM Ready & Plugins](#dom-ready-plugins)
+  - [DOM Ready & Plugins](#plugins)
   - [Native DOM Equivalents](#native-dom-equivalents)
-- [Utilities](#utilities)
+- [Utilities](#utils)
   - [Function Utilities](#function-utilities)
   - [String Utilities](#string-utilities)
   - [Object Utilities](#object-utilities)
@@ -139,53 +139,53 @@ Complete API documentation for every module, method, option, and type in zQuery.
   - [Dismissing & Auto-Clear](#dismissing-auto-clear)
   - [Programmatic Error Handling](#programmatic-error-handling)
   - [Error Utilities](#error-utilities)
-  - [formatError()](#formaterror)
-  - [guardAsync()](#guardasync)
+  - [formatError()](#format-error)
+  - [guardAsync()](#guard-async)
   - [All Error Codes](#all-error-codes)
-- [Server-Side Rendering (SSR)](#server-side-rendering-ssr)
-  - [Overview](#overview)
+- [Server-Side Rendering (SSR)](#ssr)
+  - [Overview](#ssr-overview)
   - [SSR Scaffold](#ssr-scaffold)
-  - [createSSRApp()](#createssrapp)
-  - [Registering Components](#registering-components)
-  - [renderToString()](#rendertostring)
-  - [renderPage()](#renderpage)
-  - [renderBatch()](#renderbatch)
-  - [renderShell()](#rendershell)
-  - [Hydration](#hydration)
-  - [Error Handling in SSR](#error-handling-in-ssr)
-  - [escapeHtml()](#escapehtml)
-  - [matchRoute()](#matchroute)
+  - [createSSRApp()](#create-ssr-app)
+  - [Registering Components](#register-components)
+  - [renderToString()](#render-to-string)
+  - [renderPage()](#render-page)
+  - [renderBatch()](#render-batch)
+  - [renderShell()](#render-shell)
+  - [Hydration](#ssr-hydration)
+  - [Error Handling in SSR](#ssr-error-handling)
+  - [escapeHtml()](#ssr-escape-html)
+  - [matchRoute()](#ssr-match-route)
 - [Security](#security)
-  - [Overview](#overview)
-  - [Template Expression Escaping](#template-expression-escaping)
+  - [Overview](#security-overview)
+  - [Template Expression Escaping](#template-escaping)
   - [z-html & Trusted HTML](#z-html-trusted-html)
   - [Expression Sandbox](#expression-sandbox)
-  - [Prototype Pollution Prevention](#prototype-pollution-prevention)
+  - [Prototype Pollution Prevention](#prototype-pollution)
   - [Route Link Validation](#route-link-validation)
   - [SSR Error Sanitization](#ssr-error-sanitization)
-  - [Best Practices](#best-practices)
-  - [Quick Reference](#quick-reference)
-- [Environment Detection](#environment-detection)
+  - [Best Practices](#security-best-practices)
+  - [Quick Reference](#security-quick-reference)
+- [Environment Detection](#environment)
   - [Environment Properties](#environment-properties)
   - [Platform Detection](#platform-detection)
-  - [Quick Reference](#quick-reference)
+  - [Quick Reference](#environment-quick-reference)
 - [WebRTC](#webrtc)
-  - [Overview](#overview)
-  - [Surface Status](#surface-status)
-  - [Quick Start](#quick-start)
-  - [SignalingClient](#signalingclient)
-  - [Peer (Perfect Negotiation)](#peer-perfect-negotiation)
-  - [Room](#room)
-  - [Reactive Composables](#reactive-composables)
-  - [z-stream Directive](#z-stream-directive)
-  - [TURN Credentials](#turn-credentials)
-  - [End-to-End Encryption (SFrame)](#end-to-end-encryption-sframe)
-  - [SFU Adapters](#sfu-adapters)
-  - [Join Tokens](#join-tokens)
-  - [Observability (getStats)](#observability-getstats)
-  - [SDP + ICE Helpers](#sdp-ice-helpers)
-  - [Error Family](#error-family)
-  - [Wire Protocol](#wire-protocol)
+  - [Overview](#webrtc-overview)
+  - [Surface Status](#webrtc-status)
+  - [Quick Start](#webrtc-quickstart)
+  - [SignalingClient](#webrtc-signaling)
+  - [Peer (Perfect Negotiation)](#webrtc-peer)
+  - [Room](#webrtc-room)
+  - [Reactive Composables](#webrtc-composables)
+  - [z-stream Directive](#webrtc-z-stream)
+  - [TURN Credentials](#webrtc-turn)
+  - [End-to-End Encryption (SFrame)](#webrtc-e2ee)
+  - [SFU Adapters](#webrtc-sfu)
+  - [Join Tokens](#webrtc-jointoken)
+  - [Observability (getStats)](#webrtc-observe)
+  - [SDP + ICE Helpers](#webrtc-sdp-ice)
+  - [Error Family](#webrtc-errors)
+  - [Wire Protocol](#webrtc-wire)
 
 ---
 
@@ -195,6 +195,7 @@ Complete API documentation for every module, method, option, and type in zQuery.
 Client-side SPA router with history and hash mode, dynamic params, query strings, navigation guards, lazy loading, and lifecycle hooks. Handles `z-link` interception, `popstate`/`hashchange` events, and component mounting automatically.
 
   
+
 ### Setup
 
   
@@ -225,6 +226,7 @@ const router = $.router({
 > **Tip:** **Recommended:** Use `` in your HTML rather than passing `el` in JavaScript. The router auto-detects it, keeping your JS cleaner and your outlet visible in markup. You can still pass `el` to override if needed.
 
   
+
 ### Config Options
 
   
@@ -237,6 +239,7 @@ const router = $.router({
 | `fallback` | `string \| null` | `null` | Component name to mount when no route matches (404 page) |
 
   
+
 ### Routing Modes
 
   
@@ -271,6 +274,7 @@ $.router({ el: '#my-container', routes: [...] });
 ```
 
   
+
 ### Route Definitions
 
   
@@ -299,6 +303,7 @@ $.router({ el: '#my-container', routes: [...] });
 ```
 
   
+
 ### Keep-Alive Routes
 
   
@@ -357,6 +362,7 @@ $.component('code-editor', {
 > **Warning:** Keep-alive components are never destroyed until the router itself is destroyed. Use `deactivated()` to release resources (WebSocket connections, intervals) that shouldn’t run while hidden.
 
   
+
 ### Route Matching
 
   
@@ -377,6 +383,7 @@ Routes are tested in **registration order** — the first match wins. Place spec
 When no route matches, the `fallback` component is mounted (your 404 page). If no fallback is configured, the outlet is left empty.
 
   
+
 ### Navigation
 
   
@@ -445,6 +452,7 @@ router.add({ path: '/new', component: 'new-page' }).navigate('/new');
 ```
 
   
+
 ### Navigation Links — `z-link`
 
   
@@ -484,6 +492,7 @@ Add `z-link` to any element for SPA navigation. Clicks are intercepted and route
 > **Warning:** **Internal routes only:** `z-link` accepts only internal route paths. Protocol schemes like `http:`, `javascript:`, and `data:` are automatically rejected. Use regular `` tags for external links.
 
   
+
 ### Scroll to Top — `z-to-top`
 
   
@@ -498,6 +507,7 @@ Add `z-to-top` to a `z-link` to scroll to the top after navigation. Defaults to 
 ```
 
   
+
 ### Active Route — `z-active-route`
 
   
@@ -549,6 +559,7 @@ Automatically toggle a CSS class on elements based on whether their route matche
 > **Tip:** Unlike Angular’s `routerLinkActive` which infers the route from `routerLink`, zQuery uses an explicit path in `z-active-route`. This lets you apply the active class to *any* element, not just links.
 
   
+
 ### Route Params & Query
 
   
@@ -590,6 +601,7 @@ $.component('user-page', {
 ```
 
   
+
 ### Lazy Loading
 
   
@@ -616,6 +628,7 @@ const router = $.router({
 > **Tip:** **Code-splitting tip:** Each `import()` becomes a separate chunk when you bundle. Group related components into one file or split every page — whatever fits your app size.
 
   
+
 ### Render Functions
 
   
@@ -642,6 +655,7 @@ const router = $.router({
 > **No lifecycle:** Render functions inject raw HTML into the outlet — no `mounted`, `destroyed`, or reactive state. Use them for static preview pages, simple redirects, or placeholder content. For anything interactive, use a registered component.
 
   
+
 ### Navigation Guards
 
   
@@ -688,6 +702,7 @@ Both callbacks receive `(to, from)` objects with `{ path, params, query, route }
 > **Warning:** **Redirect loop protection:** If guards redirect more than **10 times** in a single navigation cycle, the router bails out to prevent infinite loops. If your guard throws an error, it is caught automatically — the navigation is cancelled but the router keeps running.
 
   
+
 ### Change Listener
 
   
@@ -706,6 +721,7 @@ unsub();
 ```
 
   
+
 ### Current Route State
 
   
@@ -740,6 +756,7 @@ router.resolve('/');         // → '/my-app'
 ```
 
   
+
 ### matchRoute()
 
   
@@ -801,6 +818,7 @@ async function render(pathname) {
 ```
 
   
+
 ### Dynamic Route Management
 
   
@@ -832,6 +850,7 @@ router
 > **Tip:** Routes added via `add()` are appended to the end of the route list. Since matching is first-match-wins, they won’t shadow existing routes with the same pattern.
 
   
+
 ### Hash Fragments
 
   
@@ -854,6 +873,7 @@ router.navigate('/docs#api');
 ```
 
   
+
 ### Sub-Route History Substates
 
   
@@ -920,6 +940,7 @@ unsub();
 > **Tip:** **Use cases:** modals, side panels, multi-step forms, tab switches, expandable detail views, and any inner-component navigation where "back" should undo a UI action instead of leaving the page entirely.
 
   
+
 ### Cleanup & Destroy
 
   
@@ -942,6 +963,7 @@ router.destroy();
 | Substate tracking | The internal `_inSubstate` flag is reset |
 
   
+
 ### How Navigation Works
 
   
@@ -964,6 +986,7 @@ Every route change — whether from a click, `navigate()`, or the back button �
 > **Re-entrancy safe:** If a guard or listener triggers another navigation, the current resolution is completed first — no double-mounts or race conditions.
 
   
+
 ### Full Example
 
   
@@ -1015,6 +1038,7 @@ document.querySelector('#go').addEventListener('click', () => {
 Components are the core building block in zQuery. Each one is a self-contained unit with its own state, template, lifecycle, and scoped styles — all defined in a single `$.component()` call.
 
   
+
 ### Your First Component
 
   
@@ -1044,6 +1068,7 @@ Drop `` anywhere in your HTML and it just works.
 > **Tip:** If you come from React, think of `$.component()` as a combination of `useState`, `useEffect`, and JSX — with no build step. If you come from Vue, it's very close to the Options API.
 
   
+
 ### Anatomy of a Component
 
   
@@ -1065,6 +1090,7 @@ Every component is an object passed to `$.component(name, options)`. Here’s ho
 > The `state` key is special — it creates a deeply reactive proxy. Mutate properties and the component re-renders automatically. You never call a `setState()` or `forceUpdate()`.
 
   
+
 ### State & Reactivity
 
   
@@ -1094,6 +1120,7 @@ $.component('notification-badge', {
 > **Tip:** Use a factory function `state: () => ({ ... })` when the same component appears more than once on a page. An object literal is shared across instances, which can cause unexpected coupling.
 
   
+
 ### Computed Properties
 
   
@@ -1110,6 +1137,7 @@ $.component('cart-summary', {
     formatted(){ return '
 
   
+
 ### Watchers
 
   
@@ -1142,6 +1170,7 @@ $.component('theme-switcher', {
 ```
 
   
+
 ### Templates
 
   
@@ -1292,6 +1321,7 @@ templateUrl: { main: 'main.html', sidebar: 'sidebar.html' }
 ```
 
   
+
 ### Events & Forms
 
   
@@ -1323,6 +1353,7 @@ $.component('contact-form', {
 > **Tip:** See Directives › Event Binding for modifiers, argument passing, and `$event`. See Directives › z-model for the full form element & modifier reference.
 
   
+
 ### Lifecycle
 
   
@@ -1361,6 +1392,7 @@ $.component('live-clock', {
 > **Warning:** Always clean up in `destroyed()`. Timers, event listeners, and store subscriptions that outlive their component cause memory leaks.
 
   
+
 ### Props & Communication
 
   
@@ -1478,6 +1510,7 @@ $.component('modal-dialog', {
 > **Tip:** If you need to query projected content, do so in `updated()` or with a `requestAnimationFrame` in `mounted()`.
 
   
+
 ### Reactive Props Schema
 
   
@@ -1533,6 +1566,7 @@ $.component('user-badge', {
 > **Tip:** You can also use the shorthand `{ name: String }` which is equivalent to `{ name: { type: String } }`.
 
   
+
 ### Store Connectors
 
   
@@ -1564,6 +1598,7 @@ The `stores` config creates automatic multi-key subscriptions. When any listed k
 > **Tip:** See Store › connectStore() for full details on the connector API.
 
   
+
 ### Scoped Styles
 
   
@@ -1631,6 +1666,7 @@ $.style(['reset.css', 'typography.css', 'layout.css']);
 > **Tip:** Duplicate URLs are ignored — calling `$.style("theme.css")` twice only loads it once.
 
   
+
 ### DOM Morphing
 
   
@@ -1749,6 +1785,7 @@ $.morphElement($.id('panel'), newEl);
 **Auto-Key Detection:** zQuery automatically detects `z-key` attributes in child lists and switches to keyed reconciliation. If any child has `z-key`, the entire sibling group is reconciled as a keyed list.
 
   
+
 ### Transitions
 
   
@@ -1826,6 +1863,7 @@ $.component('fade-panel', {
 > **Tip:** See Directives › z-transition for the directive reference.
 
   
+
 ### Mounting & Instance API
 
   
@@ -1858,6 +1896,7 @@ $.mount('#header', 'user-badge', { name: 'Alice' });
 | `this.emit(event, detail)` | Dispatch a CustomEvent from the host element (bubbles) |
 
   
+
 ### Quick Reference
 
   
@@ -1894,6 +1933,7 @@ $.mount('#header', 'user-badge', { name: 'Alice' });
 ```
 
   
+
 ### Watchers
 
   
@@ -1911,6 +1951,7 @@ React to specific state changes with `watch`. Each watcher receives the new and 
 __CODEBLOCK_3__
 
   
+
 ### Templates
 
   
@@ -1961,6 +2002,7 @@ __CODEBLOCK_6__
 __CODEBLOCK_7__
 
   
+
 ### Events & Forms
 
   
@@ -1976,6 +2018,7 @@ __CODEBLOCK_9__
 > **Tip:** See Directives › Event Binding for modifiers, argument passing, and `$event`. See Directives › z-model for the full form element & modifier reference.
 
   
+
 ### Lifecycle
 
   
@@ -1998,6 +2041,7 @@ __CODEBLOCK_10__
 > **Warning:** Always clean up in `destroyed()`. Timers, event listeners, and store subscriptions that outlive their component cause memory leaks.
 
   
+
 ### Props & Communication
 
   
@@ -2058,6 +2102,7 @@ __CODEBLOCK_15__
 > **Tip:** If you need to query projected content, do so in `updated()` or with a `requestAnimationFrame` in `mounted()`.
 
   
+
 ### Reactive Props Schema
 
   
@@ -2093,6 +2138,7 @@ __CODEBLOCK_17__
 > **Tip:** You can also use the shorthand `{ name: String }` which is equivalent to `{ name: { type: String } }`.
 
   
+
 ### Store Connectors
 
   
@@ -2108,6 +2154,7 @@ The `stores` config creates automatic multi-key subscriptions. When any listed k
 > **Tip:** See Store › connectStore() for full details on the connector API.
 
   
+
 ### Scoped Styles
 
   
@@ -2141,6 +2188,7 @@ __CODEBLOCK_21__
 > **Tip:** Duplicate URLs are ignored — calling `$.style("theme.css")` twice only loads it once.
 
   
+
 ### DOM Morphing
 
   
@@ -2222,6 +2270,7 @@ __CODEBLOCK_24__
 **Auto-Key Detection:** zQuery automatically detects `z-key` attributes in child lists and switches to keyed reconciliation. If any child has `z-key`, the entire sibling group is reconciled as a keyed list.
 
   
+
 ### Transitions
 
   
@@ -2263,6 +2312,7 @@ __CODEBLOCK_27__
 > **Tip:** See Directives › z-transition for the directive reference.
 
   
+
 ### Mounting & Instance API
 
   
@@ -2285,6 +2335,7 @@ __CODEBLOCK_28__
 | `this.emit(event, detail)` | Dispatch a CustomEvent from the host element (bubbles) |
 
   
+
 ### Quick Reference
 
   
@@ -2322,6 +2373,7 @@ __CODEBLOCK_28__
 Directives are special HTML attributes that add reactive behavior to your templates. They’re processed after every render and morph pass.
 
   
+
 ### Quick Reference
 
   
@@ -2350,6 +2402,7 @@ Directives are special HTML attributes that add reactive behavior to your templa
 | `z-link` |  | Client-side SPA link — see **Router** section |
 
   
+
 ### z-if / z-else-if / z-else
 
   
@@ -2392,6 +2445,7 @@ $.component('status-display', {
 | Transitions | Triggers mount/destroy | CSS transitions work naturally |
 
   
+
 ### z-for
 
   
@@ -2444,6 +2498,7 @@ $.component('todo-list', {
 > **Tip:** Always add `z-key` when using `z-for` with items that can be reordered or removed. This enables LIS-based reconciliation for minimal DOM operations.
 
   
+
 ### z-key
 
   
@@ -2492,6 +2547,7 @@ $.component('task-list', {
 > **Tip:** Never use the loop index as a key on mutable lists — it defeats the purpose of keyed reconciliation. Use a stable unique identifier like a database ID.
 
   
+
 ### z-show
 
   
@@ -2521,6 +2577,7 @@ $.component('toggle-panel', {
 ```
 
   
+
 ### z-bind / `:attr`
 
   
@@ -2565,6 +2622,7 @@ $.component('dynamic-link', {
 > **Tip:** Boolean attributes (`disabled`, `hidden`, `checked`, etc.) are removed from the DOM when the expression is falsy, and added when truthy.
 
   
+
 ### z-class
 
   
@@ -2608,6 +2666,7 @@ $.component('tab-button', {
 > **Tip:** Static classes on the same element are preserved. `z-class` only manages the classes it controls — it won’t remove classes you set in plain `class="..."`.
 
   
+
 ### z-style
 
   
@@ -2647,6 +2706,7 @@ $.component('color-picker', {
 > **Tip:** Object syntax merges with existing inline styles. Use camelCase property names (`fontSize`) — they’re converted to kebab-case (`font-size`) automatically.
 
   
+
 ### z-html & z-text
 
   
@@ -2682,6 +2742,7 @@ $.component('article-view', {
 > **Tip:** `z-text` is morph-friendly and will not disrupt focus or selection. Prefer it over `{{}}` interpolation for text-only content that changes frequently.
 
   
+
 ### Event Binding — `@event`
 
   
@@ -2846,6 +2907,7 @@ Modifiers chain with dots — no manual `e.preventDefault()` calls needed:
 > **Tip:** The `.outside` modifier installs a document-level listener (cleaned up on destroy) so clicks anywhere outside the element trigger the handler — ideal for dropdowns, modals, and popovers.
 
   
+
 ### z-model
 
   
@@ -2962,6 +3024,7 @@ $.component('signup-form', {
 ```
 
   
+
 ### z-ref
 
   
@@ -2989,6 +3052,7 @@ $.component('focus-input', {
 ```
 
   
+
 ### z-cloak
 
   
@@ -3010,6 +3074,7 @@ Prevents flash of uncompiled template. The attribute is removed once the compone
 > **Tip:** zQuery automatically injects the `[z-cloak]` CSS rule, so you usually don’t need to add it yourself.
 
   
+
 ### z-pre
 
   
@@ -3025,6 +3090,7 @@ Skip directive processing for an element and all its children:
 ```
 
   
+
 ### z-skip
 
   
@@ -3045,6 +3111,7 @@ Tell the morph engine to skip this subtree entirely during re-renders:
 > `z-to-top` and `z-link` are router attributes — see the **Router** documentation section for full usage, values, and examples.
 
   
+
 ### z-transition
 
   
@@ -3089,6 +3156,7 @@ Classes are removed automatically on `transitionend` or `animationend`. Works wi
 > **Tip:** See Components › Transitions for the component-level transition config alternative.
 
   
+
 ### Expression Context
 
   
@@ -3105,6 +3173,7 @@ Expressions inside directives are evaluated in a sandboxed scope with access to:
 | `$event` | `$event` | Native DOM event object (in `@event`) |
 
   
+
 ### External Templates
 
   
@@ -3137,6 +3206,7 @@ $.component('my-page', {
 ```
 
   
+
 ### Processing Order
 
   
@@ -3173,6 +3243,7 @@ Global state management with actions, getters, subscriptions, and middleware. In
 > **Data flow:** Component dispatches `action` → middleware pipeline → action mutates `state` → getters recompute → subscribers notified → UI updates
 
   
+
 ### Setup
 
   
@@ -3208,6 +3279,7 @@ const store = $.store({
 | `maxUndo` | number | Maximum undo checkpoint stack size (default `50`) |
 
   
+
 ### Dispatching Actions
 
   
@@ -3228,6 +3300,7 @@ const result = store.dispatch('compute');
 > **Tip:** `dispatch()` returns whatever the action function returns. This is useful for actions that compute a value or return a status.
 
   
+
 ### Reading State & Getters
 
   
@@ -3243,6 +3316,7 @@ console.log(store.getters.displayName);  // 'Guest'
 ```
 
   
+
 ### Subscriptions
 
   
@@ -3289,6 +3363,7 @@ unsubMulti();
 ```
 
   
+
 ### Multi-Key Subscriptions
 
   
@@ -3311,6 +3386,7 @@ store.dispatch('login', 'Alice');   // → callback does NOT fire
 > **Tip:** Multi-key subscriptions are implemented as filtered wildcard listeners — lightweight and efficient. The unsubscribe function works exactly like single-key subscriptions.
 
   
+
 ### Middleware
 
   
@@ -3361,6 +3437,7 @@ store
 ```
 
   
+
 ### Named Stores
 
   
@@ -3384,6 +3461,7 @@ const nope = $.getStore('nonexistent');  // null
 > **Tip:** If no name is passed to `$.store(config)`, the store is registered under `"default"`. Retrieve it with `$.getStore()` (no argument).
 
   
+
 ### Async Actions
 
   
@@ -3411,6 +3489,7 @@ await store.dispatch('fetchData', '/api/users');
 > **Tip:** Because `dispatch()` returns the action's return value, async actions naturally return a Promise you can `await`, chain with `.then()`, or ignore for fire-and-forget.
 
   
+
 ### Batch Updates
 
   
@@ -3448,6 +3527,7 @@ store.batch(state => {
 > **Tip:** Use `batch()` when updating multiple state keys inside a loop or complex handler. This prevents intermediate states from triggering wasted renders.
 
   
+
 ### Checkpoint / Undo / Redo
 
   
@@ -3504,6 +3584,7 @@ document.querySelector('#redo').addEventListener('click', () => {
 > **Tip:** The undo stack is capped at `maxUndo` (default 50). When exceeded, the oldest checkpoint is discarded. Set `maxUndo` in the store config to tune.
 
   
+
 ### State Utilities
 
   
@@ -3546,6 +3627,7 @@ console.log(store.history);
 > **Tip:** `store.reset()` with no arguments uses a deep copy of the original initial state you passed at store creation — no need to keep a reference to it yourself.
 
   
+
 ### Error Resilience
 
   
@@ -3563,6 +3645,7 @@ The store catches and reports errors in subscribers, actions, and middleware so 
 > **Tip:** All store errors use the `STORE_ACTION`, `STORE_SUBSCRIBE`, or `STORE_MIDDLEWARE` error codes. See the *Error Handling → All Error Codes* section for details.
 
   
+
 ### Using Store in Components
 
   
@@ -3596,6 +3679,7 @@ $.component('user-status', {
 > **Warning:** Always call the unsubscribe function in `destroyed()` to avoid memory leaks.
 
   
+
 ### connectStore()
 
   
@@ -3639,6 +3723,7 @@ $.component('file-list', {
 > **Tip:** Access connected store data in templates via `this.stores.app.files`. The connector uses multi-key subscriptions under the hood, so the component only re-renders when the listed keys change.
 
   
+
 ### Quick Reference
 
   
@@ -3674,6 +3759,7 @@ $.component('file-list', {
 A lightweight `fetch`-based HTTP client with automatic JSON parsing, interceptors, abort support, and a clean chainable API.
 
   
+
 ### Request Methods
 
   
@@ -3720,6 +3806,7 @@ console.log(check.headers); // { 'content-length': '1234', ... }
 ```
 
   
+
 ### Configuration
 
   
@@ -3759,6 +3846,7 @@ console.log(cfg.headers);  // { 'Content-Type': '...', 'Authorization': '...' }
 > **Tip:** Per-request config overrides defaults: `$.http.get('/api/data', null, { timeout: 10000 })`. Set `timeout: 0` to disable the timeout entirely.
 
   
+
 ### Response Object
 
   
@@ -3786,6 +3874,7 @@ console.log(res.response);   // raw fetch Response (for advanced use)
 ```
 
   
+
 ### Auto-Parsing
 
   
@@ -3817,6 +3906,7 @@ const url = URL.createObjectURL(img.data);
 ```
 
   
+
 ### Interceptors
 
   
@@ -3871,6 +3961,7 @@ $.http.clearInterceptors('response');
 ```
 
   
+
 ### Abort / Cancel
 
   
@@ -3903,6 +3994,7 @@ setTimeout(() => controller.abort(), 2000);
 | User calls `controller.abort()` | `Request aborted: GET /api/slow` |
 
   
+
 ### FormData & String Bodies
 
   
@@ -3934,6 +4026,7 @@ await $.http.post('/api/users', { name: 'Alice' });
 > **Tip:** For GET and HEAD requests, object data is serialized as query parameters instead of a request body.
 
   
+
 ### Error Handling
 
   
@@ -3973,6 +4066,7 @@ try {
 > **Tip:** The `err.response` property is only present for server errors (4xx/5xx). Network failures, timeouts, and aborts produce a plain `Error` without `.response`.
 
   
+
 ### Per-Request Options
 
   
@@ -4008,6 +4102,7 @@ await $.http.get('/api/me', null, {
 ```
 
   
+
 ### Parallel Requests
 
   
@@ -4037,6 +4132,7 @@ try {
 > **Tip:** `$.http.all()` is a convenience wrapper around `Promise.all` that keeps your HTTP operations in a single namespace.
 
   
+
 ### Raw Fetch Passthrough
 
   
@@ -4073,6 +4169,7 @@ Standalone reactivity primitives you can use anywhere — inside or outside comp
 > **Signal flow:** `$.signal()` / `$.reactive()` → `$.computed()` derives → `$.effect()` runs side-effects
 
   
+
 ### $.reactive()
 
   
@@ -4125,6 +4222,7 @@ $.reactive(null, fn);      // → null
 > **Tip:** `delete obj.key` triggers the callback with `(key, undefined, oldValue)` — useful for clearing optional properties.
 
   
+
 ### $.Signal
 
   
@@ -4148,6 +4246,7 @@ console.log(same instanceof $.Signal);   // true
 > **Tip:** `$.signal(val)` is the recommended shorthand. `$.Signal` is mainly useful for type checks and advanced patterns.
 
   
+
 ### $.signal()
 
   
@@ -4176,6 +4275,7 @@ unsub();  // unsubscribe
 | `.toString()` | Returns `String(.value)` |
 
   
+
 ### $.computed()
 
   
@@ -4209,6 +4309,7 @@ console.log(quadrupled.value);  // 12
 ```
 
   
+
 ### $.effect()
 
   
@@ -4245,6 +4346,7 @@ $.effect(() => {
 > **Tip:** Effects automatically clean up stale dependencies on each re-run. If a conditional branch stops reading a signal, the effect unsubscribes from it. This prevents memory leaks and unnecessary re-runs.
 
   
+
 ### $.batch()
 
   
@@ -4293,6 +4395,7 @@ console.log(result); // 300
 > **Tip:** Use `$.batch()` when updating multiple related signals in one operation — such as form resets or API response hydration — to avoid intermediate renders.
 
   
+
 ### $.untracked()
 
   
@@ -4327,6 +4430,7 @@ a.value = 2;    // effect re-runs → logs 22 (reads updated b)
 > **Tip:** Use `$.untracked()` to read "reference data" (e.g. a config signal) without subscribing to its changes. This is especially useful when one signal is used only for its current snapshot.
 
   
+
 ### Summary
 
   
@@ -4343,6 +4447,7 @@ a.value = 2;    // effect re-runs → logs 22 (reads updated b)
 > **Tip:** Use `signals` for individual values that change independently. Use `$.reactive()` when you have a config object or deeply nested state that needs unified change detection.
 
   
+
 ### How Auto-Tracking Works
 
   
@@ -4376,6 +4481,7 @@ a.value = 'A2';  // does NOT re-run (a is no longer tracked)
 > **Key concept:** Dependencies are dynamic. An effect only tracks signals it actually reads during its most recent execution. This is why `peek()` is useful — it reads a value without becoming a dependency.
 
   
+
 ### Error Resilience
 
   
@@ -4394,6 +4500,7 @@ All reactive callbacks are wrapped in try/catch. A single error never crashes th
 > **Tip:** Reactive errors use the `REACTIVE_CALLBACK`, `SIGNAL_CALLBACK`, and `EFFECT_EXEC` error codes. See the *Error Handling → All Error Codes* section for details.
 
   
+
 ### Quick Reference
 
   
@@ -4421,6 +4528,7 @@ All reactive callbacks are wrapped in try/catch. A single error never crashes th
 zQuery ships a jQuery-style `$()` selector that returns a `ZQueryCollection` — an array-like wrapper with chainable DOM manipulation methods, plus a handful of global helpers on `$` itself.
 
   
+
 ### $() Main Selector
 
   
@@ -4454,6 +4562,7 @@ $(document.querySelectorAll('input')).val('');
 ```
 
   
+
 ### Raw-Element Shortcuts
 
   
@@ -4493,6 +4602,7 @@ console.log(links.length);
 ```
 
   
+
 ### Multi-Element Shortcuts
 
   
@@ -4527,6 +4637,7 @@ $.children('sidebar').addClass('nav-item');
 ```
 
   
+
 ### Collection Methods
 
   
@@ -4849,6 +4960,7 @@ $(window).on('scroll', () => {
 ```
 
   
+
 ### Element Creation — `$.create()`
 
   
@@ -4888,6 +5000,7 @@ const rawEl = $.create('input', { type: 'text' })[0];
 Additional arguments after `attrs` are appended as children (strings become text nodes, elements are appended directly).
 
   
+
 ### Animations
 
   
@@ -4928,6 +5041,7 @@ $('.row.removing').remove();
 ```
 
   
+
 ### Form Helpers
 
   
@@ -4954,6 +5068,7 @@ $('form').eq(0).find('input, textarea').val('');
 ```
 
   
+
 ### DOM Ready & Plugins
 
   
@@ -4985,6 +5100,7 @@ $('#settings-form select').disable();
 ```
 
   
+
 ### Native DOM Equivalents
 
   
@@ -5024,6 +5140,7 @@ For raw elements (`$.id`, `$.class`, `$.qs`, `$.qsa`) you use the native DOM API
 Quality-of-life helpers available on the global `$` object. Every function is also a named export from `src/utils.js`, making them tree-shakeable when imported selectively.
 
   
+
 ### Function Utilities
 
   
@@ -5073,6 +5190,7 @@ lookup.clear(); // flush the cache
 > **Warning:** By default `$.memoize` uses only the **first argument** as cache key. For multi-argument functions, pass a custom key function as the second parameter.
 
   
+
 ### String Utilities
 
   
@@ -5121,6 +5239,7 @@ $.truncate('A really long sentence here', 15, '...');
 ```
 
   
+
 ### Object Utilities
 
   
@@ -5177,6 +5296,7 @@ $.isEmpty(false); // false
 > **Tip:** The fallback clone (when `structuredClone` is unavailable) manually handles `Date`, `RegExp`, `Map`, `Set`, `ArrayBuffer`, typed arrays, and circular references. It preserves `undefined` values and prototype chains — no data loss compared to the JSON round-trip approach.
 
   
+
 ### Array Utilities
 
   
@@ -5215,6 +5335,7 @@ $.groupBy(items, i => i.type);
 > **Tip:** `$.range` returns an empty array if `step` is `0` or goes in the wrong direction relative to start/end.
 
   
+
 ### Number Utilities
 
   
@@ -5233,6 +5354,7 @@ $.clamp(100, 0, 100); // 100 (boundary)
 ```
 
   
+
 ### Async Utilities
 
   
@@ -5275,6 +5397,7 @@ await $.timeout(longTask(), 5000, 'Task exceeded 5 s limit');
 > **Tip:** `$.timeout` automatically clears its internal timer via `.finally()`, so there is no risk of lingering timers.
 
   
+
 ### URL Utilities
 
   
@@ -5294,6 +5417,7 @@ $.param({ page: 2, sort: 'name' });
 ```
 
   
+
 ### Storage Wrappers
 
   
@@ -5329,6 +5453,7 @@ $.session.clear();
 > **Tip:** Values are JSON-serialized automatically. Unlike raw `localStorage.getItem()`, you get proper types back — numbers stay numbers, objects stay objects.
 
   
+
 ### Event Bus
 
   
@@ -5372,6 +5497,7 @@ formBus.clear(); // only clears formBus
 ```
 
   
+
 ### Global Helpers
 
   
@@ -5406,6 +5532,7 @@ styles.remove();
 ```
 
   
+
 ### Quick Reference
 
   
@@ -5432,6 +5559,7 @@ All 37 utility exports at a glance, grouped by category:
 During development, zQuery catches errors **before they bury themselves in the console** and shows them right in the browser as a full-screen overlay. Syntax mistakes, runtime crashes, and framework-level `ZQueryError` exceptions all appear in the same place — color-coded so you can tell at a glance what went wrong and where.
 
   
+
 ### What Gets Caught
 
   
@@ -5445,6 +5573,7 @@ The dev server watches for three categories of errors:
 | **ZQueryError** | Framework-level errors raised by the router, components, store, reactive system, etc. | A **color-coded error code badge**, the message, any context metadata (component name, directive, expression…), and a stack trace. |
 
   
+
 ### Syntax Error Code Frames
 
   
@@ -5465,6 +5594,7 @@ When a syntax error is caught on save, the overlay shows the surrounding source 
 Fix the error and save again — the overlay clears automatically and the page reloads.
 
   
+
 ### Framework Error Codes
 
   
@@ -5486,6 +5616,7 @@ Every `ZQueryError` carries a code prefixed by the subsystem that raised it. The
 Syntax/parse errors without a `ZQ_` code get a red badge; everything else defaults to orange.
 
   
+
 ### Context Metadata
 
   
@@ -5500,6 +5631,7 @@ When a `ZQueryError` includes a `context` object, its key/value pairs are shown 
 This tells you exactly which part of your app triggered the error without having to dig through a stack trace.
 
   
+
 ### Dismissing & Auto-Clear
 
   
@@ -5516,6 +5648,7 @@ The overlay disappears on its own when you fix the error and save — no manual 
 > **Production safety.** The error reporting script is **never** written to disk and is **not** included in `zquery bundle` builds. Your shipped code is completely clean.
 
   
+
 ### Programmatic Error Handling
 
   
@@ -5549,6 +5682,7 @@ $.onError(null);
 | `err.cause` | Error? | Original error if wrapping another |
 
   
+
 ### Error Utilities
 
   
@@ -5586,6 +5720,7 @@ $.validate(el, 'target');             // throws if null/undefined
 > **Tip:** `guardCallback` is used internally by zQuery for all lifecycle hooks and directive callbacks. `guardAsync` is the async equivalent — use it for fetch handlers, timers, or any async code where a rejection shouldn’t crash the entire flow.
 
   
+
 ### formatError()
 
   
@@ -5620,6 +5755,7 @@ const nested = $.formatError(new Error('outer', { cause: new TypeError('inner') 
 | `cause` | object \| null | Recursively formatted cause chain |
 
   
+
 ### guardAsync()
 
   
@@ -5646,6 +5782,7 @@ const data = await safeFetch('/api/data');
 > **Tip:** `guardAsync` returns `undefined` on failure, so always check the return value. The error is still reported to all `$.onError` handlers and logged to the console.
 
   
+
 ### All Error Codes
 
   
@@ -5694,6 +5831,7 @@ The full list of error codes available on `$.ErrorCode` (28 total, frozen at loa
 zQuery includes a lightweight SSR module for rendering components to HTML strings in **Node.js**. Use it for SEO, faster initial page loads, static site generation, or API-driven HTML responses. No DOM required — it runs entirely on the server.
 
   
+
 ### Overview
 
   
@@ -5726,6 +5864,7 @@ const html = await app.renderToString('hello-world');
 > **Node.js only.** The SSR module is a separate import (`zero-query/ssr`) and does not run in the browser. Your client-side app uses the normal `$` global as usual.
 
   
+
 ### SSR Scaffold
 
   
@@ -5781,6 +5920,7 @@ node server/index.js
 ```
 
   
+
 ### createSSRApp()
 
   
@@ -5808,6 +5948,7 @@ The returned `app` object has these methods:
 | `app.renderShell(shell, opts?)` | Render a component into an existing HTML shell template (your `index.html`) |
 
   
+
 ### Registering Components
 
   
@@ -5862,6 +6003,7 @@ app.component('user-card', {
 > **Validation:** Component names must be non-empty strings and definitions must be objects. Invalid arguments throw a `ZQueryError` with code `ZQ_SSR_COMPONENT`.
 
   
+
 ### renderToString()
 
   
@@ -5905,6 +6047,7 @@ const html = renderToString({
 ```
 
   
+
 ### renderPage()
 
   
@@ -5952,6 +6095,7 @@ res.send(page);
 | `head.og` | object | Open Graph `` tags — any key/value pairs |
 
   
+
 ### renderBatch()
 
   
@@ -5978,6 +6122,7 @@ const combined = results.join('\n');
 | `options` | object | Same options as `renderToString` (optional) |
 
   
+
 ### renderShell()
 
   
@@ -6052,6 +6197,7 @@ async function render(pathname) {
 ```
 
   
+
 ### Hydration
 
   
@@ -6070,6 +6216,7 @@ When the client-side app loads, it can detect these markers and take over the ex
 > **Tip:** Set `{ hydrate: false }` in render options for purely static HTML that doesn’t need client-side interactivity (e.g. email templates, static pages, RSS feeds).
 
   
+
 ### Error Handling in SSR
 
   
@@ -6111,6 +6258,7 @@ onError((err) => {
 ```
 
   
+
 ### escapeHtml()
 
   
@@ -6129,6 +6277,7 @@ const safe = escapeHtml('<script>alert("xss")</script>');
 This is the same function used internally by the SSR expression interpolator to prevent XSS in `{{...}}` output.
 
   
+
 ### matchRoute()
 
   
@@ -6172,6 +6321,7 @@ Uses the same matching rules as the client-side router: `:param` segments, `*` w
 zQuery applies defense-in-depth across templates, expressions, state utilities, routing, and SSR. This page summarizes the built-in protections and explains how to keep your app safe.
 
   
+
 ### Overview
 
   
@@ -6185,6 +6335,7 @@ zQuery applies defense-in-depth across templates, expressions, state utilities, 
 | `z-html` | Inserts raw HTML — only use with trusted content |
 
   
+
 ### Template Expression Escaping
 
   
@@ -6212,6 +6363,7 @@ state.name = '<img src=x onerror=alert(1)>';
 > Both `{{expression}}` and `z-text` are XSS-safe. Only `z-html` inserts raw HTML.
 
   
+
 ### z-html & Trusted HTML
 
   
@@ -6237,6 +6389,7 @@ The `z-html` directive sets `innerHTML` directly — equivalent to Vue’s `v-ht
 > **Tip:** If you need to render user HTML, sanitize it server-side (e.g. with DOMPurify) before storing it. Then use `z-html` only on the sanitized output.
 
   
+
 ### Expression Sandbox
 
   
@@ -6273,6 +6426,7 @@ encodeURIComponent, decodeURIComponent
 > **Tip:** The sandbox also blocks property access to `__defineGetter__` and other internal properties. If an expression tries to access a blocked identifier or property, it silently returns `undefined`.
 
   
+
 ### Prototype Pollution Prevention
 
   
@@ -6300,6 +6454,7 @@ $.setPath({}, 'user.name', 'Alice');        // { user: { name: 'Alice' } } ✓
 > **Why this matters:** If your app merges untrusted JSON (e.g. from an API or user input) into state objects, prototype pollution could inject properties onto `Object.prototype`, affecting every object in the application. The blocked-key guard prevents this attack vector.
 
   
+
 ### Route Link Validation
 
   
@@ -6319,9 +6474,10 @@ The `z-link` click handler rejects any value that looks like a protocol scheme. 
 ```
 
   
-> **Tip:** For external links, use a regular `` tag. `z-link` is designed exclusively for SPA route navigation.
+> **Tip:** For external links, use a regular `[` tag. `z-link` is designed exclusively for SPA route navigation.
 
   
+](https://...)
 ### SSR Error Sanitization
 
   
@@ -6349,6 +6505,7 @@ The actual error details (message, stack trace, file paths) are reported via `$.
 | XSS via title / description / OG values | All injected text is HTML-escaped via `escapeHtml()` |
 
   
+
 ### Best Practices
 
   
@@ -6453,6 +6610,7 @@ zQuery’s SSR already strips error details from HTML output. Apply the same pri
 > **Tip:** Following these practices plus the built-in protections gives you a strong defense-in-depth posture. The library handles the framework layer so you can focus on application-level validation.
 
   
+
 ### Quick Reference
 
   
@@ -6475,6 +6633,7 @@ zQuery’s SSR already strips error details from HTML output. Apply the same pri
 zQuery exposes runtime environment properties on the global `$` object for Electron, browser, and Node.js detection. These are set once at initialization and are read-only.
 
   
+
 ### Environment Properties
 
   
@@ -6491,6 +6650,7 @@ console.log($.platform);    // 'electron', 'browser', or 'node'
 ```
 
   
+
 ### Platform Detection
 
   
@@ -6524,6 +6684,7 @@ const API_BASE = $.platform === 'electron'
 > **Tip:** These properties are available immediately — no async detection or initialization needed. They are set when zQuery loads.
 
   
+
 ### Quick Reference
 
   
@@ -6540,6 +6701,7 @@ const API_BASE = $.platform === 'electron'
 zQuery ships a complete WebRTC client that speaks the wire protocol of `@zero-server/webrtc` — from a low-level `SignalingClient` + perfect-negotiation `Peer` up to a reactive multi-peer `Room` with composables, TURN credential rotation, SFrame end-to-end encryption, mediasoup & LiveKit SFU adapters, join-token decoding, and `getStats()` observability. The `z-stream` directive binds remote `MediaStream`s straight to `` / `` elements — no `URL.createObjectURL` dance.
 
   
+
 ### Overview
 
   
@@ -6558,6 +6720,7 @@ The WebRTC surface is layered — pick the level you need:
 > **Tip:** Want a working starting point? Run `npx zero-query create my-app --webrtc-demo` (alias `-w`) to scaffold a one-page video room with mic / camera / screen-share toggles, a reactive roster, and a chat data channel. The scaffold installs [zero-server](https://github.com/tonywied17/zero-server), launches the signaling + static server on `http://localhost:3000`, and opens your browser - one command, no extra setup. Camera and microphone stay off until the user opts in.
 
   
+
 ### Surface Status
 
   
@@ -6581,6 +6744,7 @@ Everything in the table below is shipping today. Green dots mean stable + tested
 | `WebRtcError` family (Signaling / Ice / Sdp / Turn / E2ee / Sfu) | Shipping | Stable string codes; flows through `$.onError` |
 
   
+
 ### Quick Start
 
   
@@ -6623,6 +6787,7 @@ $.component('video-room', {
 > **Tip:** `$.webrtc.join()` is the one-liner that bundles `new SignalingClient(…)` + `connect()` + `send('join')` + `Room` wiring. Use it whenever you don't need raw control of the JSEP loop.
 
   
+
 ### SignalingClient
 
   
@@ -6671,6 +6836,7 @@ client.close();
 > All signaling errors derive from `SignalingError`: `ZQ_WEBRTC_SIGNALING_BAD_URL`, `ZQ_WEBRTC_SIGNALING_BAD_HANDSHAKE`, `ZQ_WEBRTC_SIGNALING_BAD_FRAME`, `ZQ_WEBRTC_SIGNALING_NOT_CONNECTED`, `ZQ_WEBRTC_SIGNALING_CLOSED`.
 
   
+
 ### Peer (Perfect Negotiation)
 
   
@@ -6724,6 +6890,7 @@ signaling.on('peer-left', ({ id }) => peers.get(id)?.close());
 > **Tip:** mDNS (`*.local`) candidates are filtered before send, and trickled candidates are capped per-peer so we stay inside the server's `a=candidate:` ceiling.
 
   
+
 ### Room
 
   
@@ -6770,6 +6937,7 @@ await room.leave();
 | `room.leave()` | `Promise` | Send `leave`, close every peer and the socket. Idempotent |
 
   
+
 ### Reactive Composables
 
   
@@ -6821,6 +6989,7 @@ quality.dispose();
 > **Warning:** Forgetting `dispose()` on unmount leaks getStats intervals and signal subscriptions — `useConnectionQuality` in particular keeps a 2-second timer alive until disposed.
 
   
+
 ### z-stream Directive
 
   
@@ -6845,6 +7014,7 @@ tile.instance.state.stream = peerInfo.stream;
 > **Tip:** `z-stream` tolerates plain `MediaStream`s, anything with `.stream`, or any object that exposes `getTracks()`. Reassign the expression to `null` to detach without removing the element.
 
   
+
 ### TURN Credentials
 
   
@@ -6890,6 +7060,7 @@ turn.stop();               // cancel timer on unmount
 > All TURN errors derive from `TurnError`: `ZQ_WEBRTC_TURN_BAD_URL`, `ZQ_WEBRTC_TURN_NO_FETCH`, `ZQ_WEBRTC_TURN_NETWORK`, `ZQ_WEBRTC_TURN_HTTP`, `ZQ_WEBRTC_TURN_BAD_JSON`, `ZQ_WEBRTC_TURN_BAD_BODY`.
 
   
+
 ### End-to-End Encryption (SFrame)
 
   
@@ -6935,6 +7106,7 @@ import { deriveSFrameKey, SFrameContext, attachE2ee, join } from 'zero-query/web
 > All E2EE errors derive from `E2eeError`: `ZQ_WEBRTC_E2EE_NO_WEBCRYPTO`, `ZQ_WEBRTC_E2EE_NO_RANDOM`, `ZQ_WEBRTC_E2EE_BAD_PASSPHRASE`, `ZQ_WEBRTC_E2EE_BAD_SALT`, `ZQ_WEBRTC_E2EE_BAD_INPUT`, `ZQ_WEBRTC_E2EE_BAD_CTX`, `ZQ_WEBRTC_E2EE_NO_KEY`, `ZQ_WEBRTC_E2EE_SHORT_FRAME`, `ZQ_WEBRTC_E2EE_UNKNOWN_EPOCH`, `ZQ_WEBRTC_E2EE_AUTH_FAILED`.
 
   
+
 ### SFU Adapters
 
   
@@ -6971,6 +7143,7 @@ import { loadSfuAdapter } from 'zero-query/webrtc';
 > All SFU errors derive from `SfuError`: `ZQ_WEBRTC_SFU_UNKNOWN`, `ZQ_WEBRTC_SFU_PEER_MISSING`, `ZQ_WEBRTC_SFU_BAD_MODULE`, `ZQ_WEBRTC_SFU_DEVICE_FAILED`, `ZQ_WEBRTC_SFU_ROOM_FAILED`, `ZQ_WEBRTC_SFU_BAD_RTP_CAPS`, `ZQ_WEBRTC_SFU_BAD_URL`, `ZQ_WEBRTC_SFU_BAD_TOKEN`, `ZQ_WEBRTC_SFU_LOAD_FAILED`, `ZQ_WEBRTC_SFU_CONNECT_FAILED`, `ZQ_WEBRTC_SFU_NOT_LOADED`, `ZQ_WEBRTC_SFU_JOIN_UNAVAILABLE`.
 
   
+
 ### Join Tokens
 
   
@@ -7002,6 +7175,7 @@ import { decodeJoinToken, isJoinTokenExpired } from 'zero-query';
 > Errors derive from `WebRtcError`: `ZQ_WEBRTC_TOKEN_BAD_INPUT`, `ZQ_WEBRTC_TOKEN_BAD_SHAPE`, `ZQ_WEBRTC_TOKEN_BAD_PAYLOAD`.
 
   
+
 ### Observability (getStats)
 
   
@@ -7039,6 +7213,7 @@ import { samplePeerStats, createStatsSampler, classifyStats } from 'zero-query';
 > Errors derive from `WebRtcError`: `ZQ_WEBRTC_OBSERVE_BAD_PC`, `ZQ_WEBRTC_OBSERVE_GETSTATS_FAILED`.
 
   
+
 ### SDP + ICE Helpers
 
   
@@ -7083,6 +7258,7 @@ if (isMdnsHostname(c.address)) console.log('mDNS - skip');
 | `isPrivateIp / isLoopbackIp / isLinkLocalIp / isMdnsHostname` | `boolean` | — |
 
   
+
 ### Error Family
 
   
@@ -7121,6 +7297,7 @@ try {
 > **Tip:** Use `$.onError(handler)` to centralize WebRTC error reporting alongside HTTP / router / component errors. Every WebRTC error code starts with `ZQ_WEBRTC_` so a single prefix check picks them all out.
 
   
+
 ### Wire Protocol
 
   
