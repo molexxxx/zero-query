@@ -11,6 +11,7 @@
 
 const fs   = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 
 const { args, flag, option } = require('../../args');
 const { createServer }       = require('./server');
@@ -53,6 +54,30 @@ async function devServer() {
   const noIntercept = flag('no-intercept');
   const bundleMode  = flag('bundle', 'b');
   const root        = resolveRoot(htmlEntry);
+
+  // If the target project ships its own server (ssr / webrtc scaffolds),
+  // delegate to it instead of starting the static dev server. The bundled
+  // signaling/SSR server already serves the front-end on its own port,
+  // and the basic dev server has no WebSocket/signaling support, so
+  // running it here would silently break things like the webrtc demo.
+  // Skip the redirect when the user explicitly asked for --bundle, which
+  // is only meaningful for the static dev server.
+  const serverEntry = path.join(root, 'server', 'index.js');
+  if (!bundleMode && fs.existsSync(serverEntry)) {
+    const rel = path.relative(process.cwd(), root) || '.';
+    console.log(`\n  Detected project server at ${path.join(rel, 'server', 'index.js')}`);
+    console.log(`  Launching it instead of the static dev server.`);
+    console.log(`  (Pass --bundle / -b to force the static dev server.)\n`);
+    const child = spawn('node', ['server/index.js'], {
+      cwd:   root,
+      stdio: 'inherit',
+      shell: process.platform === 'win32',
+    });
+    process.on('SIGINT',  () => { child.kill(); process.exit(); });
+    process.on('SIGTERM', () => { child.kill(); process.exit(); });
+    child.on('exit', (code) => process.exit(code || 0));
+    return;
+  }
 
   // In bundle mode, build the app first then serve from dist/server/
   let serveRoot = root;

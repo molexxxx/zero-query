@@ -1,11 +1,11 @@
 /**
  * cli/commands/dev/server.js - HTTP server & SSE broadcasting
  *
- * Creates the zero-http app, serves static files, injects the
+ * Creates the @zero-server/sdk app, serves static files, injects the
  * error-overlay snippet into HTML responses, and manages the
  * SSE connection pool for live-reload events.
  *
- * Uses zero-http middleware:
+ * Uses @zero-server/sdk middleware:
  *   - helmet()   → security headers (relaxed CSP for dev inline scripts)
  *   - compress() → brotli/gzip/deflate response compression
  *   - cors()     → allow cross-origin requests in development
@@ -29,7 +29,7 @@ class SSEPool {
     this._clients = new Set();
   }
 
-  /** @param {import('zero-http').SSEStream} sse */
+  /** @param {import('@zero-server/sdk').SSEStream} sse */
   add(sse) {
     this._clients.add(sse);
     sse.on('close', () => this._clients.delete(sse));
@@ -57,7 +57,7 @@ class SSEPool {
 // ---------------------------------------------------------------------------
 
 /**
- * Prompt the user to auto-install zero-http when it isn't found.
+ * Prompt the user to auto-install @zero-server/sdk when it isn't found.
  * Resolves `true` if the user accepts, `false` otherwise.
  */
 function promptInstall() {
@@ -67,7 +67,7 @@ function promptInstall() {
   });
   return new Promise((resolve) => {
     rl.question(
-      '\n  The local dev server requires zero-http, which is not installed.\n' +
+      '\n  The local dev server requires @zero-server/sdk, which is not installed.\n' +
       '  This package is only used during development and is not needed\n' +
       '  for building, bundling, or production.\n' +
       '  Install it now? (y/n): ',
@@ -88,19 +88,19 @@ function promptInstall() {
  * @returns {Promise<{ app, pool: SSEPool, listen: Function }>}
  */
 async function createServer({ root, htmlEntry, port, noIntercept }) {
-  let zeroHttp;
+  let sdk;
   try {
-    zeroHttp = require('zero-http');
+    sdk = require('@zero-server/sdk');
   } catch {
     const ok = await promptInstall();
     if (!ok) {
-      console.error('\n  ✖ Cannot start dev server without zero-http.\n');
+      console.error('\n  ✖ Cannot start dev server without @zero-server/sdk.\n');
       process.exit(1);
     }
     const { execSync } = require('child_process');
-    console.log('\n  Installing zero-http...\n');
-    execSync('npm install zero-http --save-dev', { stdio: 'inherit' });
-    zeroHttp = require('zero-http');
+    console.log('\n  Installing @zero-server/sdk...\n');
+    execSync('npm install @zero-server/sdk --save-dev', { stdio: 'inherit' });
+    sdk = require('@zero-server/sdk');
   }
 
   const {
@@ -110,7 +110,7 @@ async function createServer({ root, htmlEntry, port, noIntercept }) {
     compress,
     cors,
     debug,
-  } = zeroHttp;
+  } = sdk;
 
   debug.level('silent');
 

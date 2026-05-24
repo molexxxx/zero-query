@@ -120,7 +120,7 @@ describe('SSEPool', () => {
 
 
 // ---------------------------------------------------------------------------
-// createServer tests (requires zero-http — integration)
+// createServer tests (requires @zero-server/sdk — integration)
 // ---------------------------------------------------------------------------
 
 describe('createServer', () => {
@@ -145,9 +145,9 @@ describe('createServer', () => {
     }
   });
 
-  // Check if zero-http is available before running integration tests
+  // Check if @zero-server/sdk is available before running integration tests
   let zeroHttpAvailable = false;
-  try { require('zero-http'); zeroHttpAvailable = true; } catch {}
+  try { require('@zero-server/sdk'); zeroHttpAvailable = true; } catch {}
 
   it('createServer is exported as a function', () => {
     expect(createServerFn).toBeTypeOf('function');
@@ -180,7 +180,7 @@ describe('createServer', () => {
 
   it.skipIf(!zeroHttpAvailable)('app has registered routes for SSE and devtools', async () => {
     const { app } = await createServerFn({ root: tmpRoot, htmlEntry: 'index.html', port: 0, noIntercept: true });
-    // The app should be a valid zero-http app with the ability to handle routes
+    // The app should be a valid @zero-server/sdk app with the ability to handle routes
     expect(app).toBeDefined();
     expect(app.listen).toBeTypeOf('function');
   });
@@ -196,7 +196,7 @@ describe('Dev server HTTP integration', () => {
   let tmpRoot, server, port;
 
   let zeroHttpAvailable = false;
-  try { require('zero-http'); zeroHttpAvailable = true; } catch {}
+  try { require('@zero-server/sdk'); zeroHttpAvailable = true; } catch {}
 
   beforeEach(async () => {
     vi.resetModules();
@@ -355,7 +355,7 @@ describe('Dev server HTTP integration', () => {
     expect(res.status).toBe(200);
     // The response should be compressed — check encoding header
     const enc = res.headers.get('content-encoding');
-    // Accept either br, gzip, or deflate depending on what zero-http negotiates
+    // Accept either br, gzip, or deflate depending on what @zero-server/sdk negotiates
     expect(['br', 'gzip', 'deflate']).toContain(enc);
   });
 
@@ -365,7 +365,7 @@ describe('Dev server HTTP integration', () => {
       headers: { 'Accept-Encoding': 'gzip, deflate, br' },
     });
     expect(res.status).toBe(200);
-    // Compression is applied — exact encoding depends on zero-http negotiation
+    // Compression is applied — exact encoding depends on @zero-server/sdk negotiation
     const text = await res.text();
     expect(text).toContain('margin: 0');
   });
