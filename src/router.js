@@ -48,7 +48,12 @@ class Router {
     this._mode = isFile ? 'hash' : (config.mode || 'history');
 
     // Keep-alive cache: component name → { container, instance }
+    // Map iteration order = insertion order, used for LRU eviction.
     this._keepAliveCache = new Map();
+    // Optional cap on cached keep-alive instances. null = unbounded (default).
+    this._keepAliveMax = (typeof config.keepAliveMax === 'number' && config.keepAliveMax > 0)
+      ? config.keepAliveMax
+      : null;
 
     // Base path for sub-path deployments
     // Priority: explicit config.base → window.__ZQ_BASE → <base href> tag
@@ -635,6 +640,9 @@ class Router {
       // Keep-alive: reuse cached instance
       if (isKeepAlive && componentName && this._keepAliveCache.has(componentName)) {
         const cached = this._keepAliveCache.get(componentName);
+        // Refresh LRU order: move to most-recently-used position
+        this._keepAliveCache.delete(componentName);
+        this._keepAliveCache.set(componentName, cached);
         // Hide all children, show the cached one
         [...this._el.children].forEach(c => { c.style.display = 'none'; });
         cached.container.style.display = '';
@@ -673,6 +681,7 @@ class Router {
 
         if (isKeepAlive) {
           this._keepAliveCache.set(componentName, { container, instance: this._instance });
+          this._evictKeepAliveLRU();
           // Call activated() on first mount
           if (this._instance._def.activated) {
             try { this._instance._def.activated.call(this._instance); }
@@ -739,6 +748,27 @@ class Router {
   }
 
   // --- Destroy -------------------------------------------------------------
+
+  /**
+   * @private Evict least-recently-used keep-alive entries beyond _keepAliveMax.
+   * The current route's component is preserved even if it would otherwise be
+   * the oldest entry, to avoid destroying the active view.
+   */
+  _evictKeepAliveLRU() {
+    if (this._keepAliveMax == null) return;
+    while (this._keepAliveCache.size > this._keepAliveMax) {
+      // Find oldest entry that isn't the currently-active component
+      let evictKey = null;
+      for (const key of this._keepAliveCache.keys()) {
+        if (key !== this._currentComponentName) { evictKey = key; break; }
+      }
+      if (evictKey == null) break;
+      const cached = this._keepAliveCache.get(evictKey);
+      this._keepAliveCache.delete(evictKey);
+      try { cached.instance.destroy(); } catch { /* swallow */ }
+      if (cached.container && cached.container.parentNode) cached.container.remove();
+    }
+  }
 
   destroy() {
     // Remove window/document event listeners to prevent memory leaks

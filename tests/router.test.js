@@ -2325,3 +2325,84 @@ describe('Router - z-active-route', () => {
     expect(docs.classList.contains('active')).toBe(false);
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// Keep-alive LRU cache
+// ---------------------------------------------------------------------------
+
+describe('Router - keep-alive LRU', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="app"></div>';
+    window.location.hash = '#/';
+    // Register fresh keep-alive components for each test
+    component('ka-a', { render: () => '<p>a</p>' });
+    component('ka-b', { render: () => '<p>b</p>' });
+    component('ka-c', { render: () => '<p>c</p>' });
+    component('ka-d', { render: () => '<p>d</p>' });
+  });
+
+  it('keepAliveMax evicts oldest cached instance when exceeded', async () => {
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      keepAliveMax: 2,
+      routes: [
+        { path: '/a', component: 'ka-a', keepAlive: true },
+        { path: '/b', component: 'ka-b', keepAlive: true },
+        { path: '/c', component: 'ka-c', keepAlive: true },
+      ],
+    });
+
+    router.navigate('/a'); await router._resolve();
+    router.navigate('/b'); await router._resolve();
+    expect(router._keepAliveCache.size).toBe(2);
+    expect(router._keepAliveCache.has('ka-a')).toBe(true);
+    expect(router._keepAliveCache.has('ka-b')).toBe(true);
+
+    router.navigate('/c'); await router._resolve();
+    // ka-a (oldest, not current) should be evicted
+    expect(router._keepAliveCache.size).toBe(2);
+    expect(router._keepAliveCache.has('ka-a')).toBe(false);
+    expect(router._keepAliveCache.has('ka-b')).toBe(true);
+    expect(router._keepAliveCache.has('ka-c')).toBe(true);
+  });
+
+  it('keepAliveMax default (unbounded) preserves all entries', async () => {
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      routes: [
+        { path: '/a', component: 'ka-a', keepAlive: true },
+        { path: '/b', component: 'ka-b', keepAlive: true },
+        { path: '/c', component: 'ka-c', keepAlive: true },
+        { path: '/d', component: 'ka-d', keepAlive: true },
+      ],
+    });
+    router.navigate('/a'); await router._resolve();
+    router.navigate('/b'); await router._resolve();
+    router.navigate('/c'); await router._resolve();
+    router.navigate('/d'); await router._resolve();
+    expect(router._keepAliveCache.size).toBe(4);
+  });
+
+  it('revisiting a cached route refreshes LRU order', async () => {
+    const router = createRouter({
+      el: '#app',
+      mode: 'hash',
+      keepAliveMax: 2,
+      routes: [
+        { path: '/a', component: 'ka-a', keepAlive: true },
+        { path: '/b', component: 'ka-b', keepAlive: true },
+        { path: '/c', component: 'ka-c', keepAlive: true },
+      ],
+    });
+    router.navigate('/a'); await router._resolve();
+    router.navigate('/b'); await router._resolve();
+    router.navigate('/a'); await router._resolve(); // touch a → now b is oldest
+    router.navigate('/c'); await router._resolve(); // should evict b, not a
+    expect(router._keepAliveCache.has('ka-a')).toBe(true);
+    expect(router._keepAliveCache.has('ka-b')).toBe(false);
+    expect(router._keepAliveCache.has('ka-c')).toBe(true);
+  });
+});
