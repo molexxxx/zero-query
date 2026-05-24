@@ -218,12 +218,28 @@ class Parser {
 
   // Main entry
   parse() {
+    this.depth = 0;
     const result = this.parseExpression(0);
     return result;
   }
 
   // Precedence climbing
   parseExpression(minPrec) {
+    // Cap nesting depth so a deeply parenthesised or recursive expression
+    // can’t stack-overflow the host. Threshold (96) is generous - real
+    // template expressions are flat - but stops pathological inputs cold.
+    if (++this.depth > 96) {
+      this.depth--;
+      throw new Error('Expression nesting depth exceeded (max 96)');
+    }
+    try {
+      return this._parseExpressionImpl(minPrec);
+    } finally {
+      this.depth--;
+    }
+  }
+
+  _parseExpressionImpl(minPrec) {
     let left = this.parseUnary();
 
     while (true) {
@@ -859,8 +875,18 @@ function _evalBinary(node, scope) {
 const _astCache = new Map();
 const _AST_CACHE_MAX = 512;
 
+// Maximum source length accepted by safeEval. Real template expressions
+// are tens of bytes; anything beyond 8 KB is almost certainly an attack
+// payload or accidental dump. Reject up front to avoid feeding the
+// tokenizer and parser unbounded input.
+const _EXPR_MAX_LEN = 8192;
+
 export function safeEval(expr, scope) {
   try {
+    if (typeof expr !== 'string') return undefined;
+    if (expr.length > _EXPR_MAX_LEN) {
+      throw new Error(`Expression exceeds max length (${_EXPR_MAX_LEN} bytes)`);
+    }
     const trimmed = expr.trim();
     if (!trimmed) return undefined;
 

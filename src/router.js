@@ -178,7 +178,13 @@ class Router {
       if (paramsAttr) {
         try {
           const params = JSON.parse(paramsAttr);
-          href = this._interpolateParams(href, params);
+          // Reject arrays, null, primitives - z-link-params must be a plain
+          // key/value object since we use it to interpolate :param placeholders.
+          if (typeof params !== 'object' || params === null || Array.isArray(params)) {
+            reportError(ErrorCode.ROUTER_RESOLVE, 'z-link-params must be a JSON object', { href, paramsAttr });
+          } else {
+            href = this._interpolateParams(href, params);
+          }
         } catch (err) {
           reportError(ErrorCode.ROUTER_RESOLVE, 'Malformed JSON in z-link-params', { href, paramsAttr }, err);
         }

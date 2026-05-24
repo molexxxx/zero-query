@@ -226,10 +226,16 @@ class Store {
   }
 
   /**
-   * Get current state snapshot (plain object)
+   * Get current state snapshot (plain object).
+   *
+   * Pass `{ clone: false }` to skip the structuredClone pass when the caller
+   * treats state as read-only. Big perf win for serialise/inspect paths that
+   * never mutate the returned value. Default remains a defensive deep copy.
    */
-  snapshot() {
-    return deepClone(this.state.__raw || this.state);
+  snapshot(opts) {
+    const raw = this.state.__raw || this.state;
+    if (opts && opts.clone === false) return raw;
+    return deepClone(raw);
   }
 
   /**
