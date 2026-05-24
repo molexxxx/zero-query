@@ -1,6 +1,6 @@
 // cli/commands/create.js - scaffold a new zQuery project
 //
-// Templates live in cli/scaffold/<variant>/ (default or minimal).
+// Templates live in cli/scaffold/<variant>/ (default, minimal, ssr, webrtc).
 // Reads template files, replaces {{NAME}} with the project name,
 // and writes them into the target directory.
 
@@ -25,6 +25,28 @@ function walkDir(dir, prefix = '') {
   return entries;
 }
 
+/**
+ * Open the given URL in the user's default browser. Best-effort, silent on
+ * failure (the server still prints the URL).
+ */
+function openBrowser(url) {
+  const cmd = process.platform === 'win32' ? 'start ""'
+            : process.platform === 'darwin' ? 'open' : 'xdg-open';
+  try { execSync(`${cmd} ${url}`, { stdio: 'ignore' }); } catch { /* ignore */ }
+}
+
+/**
+ * Spawn a long-running child process, wire SIGINT/SIGTERM to terminate it,
+ * and exit when it does. Used by every scaffold variant to launch the dev /
+ * SSR / signaling server right after install.
+ */
+function runAndExit(cmd, cmdArgs, cwd) {
+  const child = spawn(cmd, cmdArgs, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
+  process.on('SIGINT',  () => { child.kill(); process.exit(); });
+  process.on('SIGTERM', () => { child.kill(); process.exit(); });
+  child.on('exit', (code) => process.exit(code || 0));
+}
+
 function createProject(args) {
   // First positional arg after "create" is the target dir (skip flags)
   const dirArg = args.slice(1).find(a => !a.startsWith('-'));
@@ -38,7 +60,7 @@ function createProject(args) {
                 :                             'default';
 
   // Guard: refuse to overwrite existing files
-  const checkFiles = ['index.html', 'global.css', 'app', 'assets'];
+  const checkFiles = ['index.html', 'global.css', 'app', 'assets', 'package.json'];
   if (variant === 'ssr' || variant === 'webrtc') checkFiles.push('server');
   const conflicts = checkFiles.filter(f =>
     fs.existsSync(path.join(target, f))
@@ -76,79 +98,53 @@ function createProject(args) {
     console.log(`  ✓ ${rel}`);
   }
 
-  const devCmd = `npx zquery dev${target !== process.cwd() ? ` ${dirArg}` : ''}`;
-
   // Copy zquery.min.js from the package's pre-built dist into the project root
   // so file:// previews and the dev/SSR servers all serve the same minified
   // bundle that ships with the installed zero-query package. The dev server
   // also intercepts requests for "zquery.min.js" and will fall back to the
   // package copy if the file is missing, so this is a convenience for direct
   // file access (Open in Browser, etc.).
+  const zqRoot = path.resolve(__dirname, '..', '..');
   {
-    const zqRoot = path.resolve(__dirname, '..', '..');
-    const zqMin  = path.join(zqRoot, 'dist', 'zquery.min.js');
+    const zqMin = path.join(zqRoot, 'dist', 'zquery.min.js');
     if (fs.existsSync(zqMin)) {
       fs.copyFileSync(zqMin, path.join(target, 'zquery.min.js'));
       console.log(`  ✓ zquery.min.js`);
     }
   }
 
-  if (variant === 'ssr') {
-    console.log(`\n  Installing dependencies...\n`);
-    // Install zero-query from the same package that provides this CLI
-    // (works both in local dev and when installed from npm)
-    const zqRoot = path.resolve(__dirname, '..', '..');
-    try {
-      execSync(`npm install "${zqRoot}"`, { cwd: target, stdio: 'inherit' });
-    } catch {
-      console.error(`\n  ✗ npm install failed. Run it manually:\n\n    cd ${dirArg || '.'}\n    npm install\n    node server/index.js\n`);
-      process.exit(1);
-    }
-
-    // Copy zquery.min.js into the project root so the SSR server can serve it
-    const zqMin = path.join(target, 'node_modules', 'zero-query', 'dist', 'zquery.min.js');
-    if (fs.existsSync(zqMin)) {
-      fs.copyFileSync(zqMin, path.join(target, 'zquery.min.js'));
-      console.log(`  ✓ zquery.min.js`);
-    }
-
-    console.log(`\n  Starting SSR server...\n`);
-    const child = spawn('node', ['server/index.js'], { cwd: target, stdio: 'inherit' });
-
-    setTimeout(() => {
-      const open = process.platform === 'win32' ? 'start'
-                 : process.platform === 'darwin' ? 'open' : 'xdg-open';
-      try { execSync(`${open} http://localhost:3000`, { stdio: 'ignore' }); } catch {}
-    }, 500);
-
-    process.on('SIGINT',  () => { child.kill(); process.exit(); });
-    process.on('SIGTERM', () => { child.kill(); process.exit(); });
-    child.on('exit', (code) => process.exit(code || 0));
-    return; // keep process alive for the server
-  } else if (variant === 'webrtc') {
-    console.log(`\n  Installing dependencies...\n`);
+  // ---- Install dependencies (all variants ship a package.json) ----
+  console.log(`\n  Installing dependencies...\n`);
+  try {
     // Install zero-query from the same package that provides this CLI so
-    // local-dev and published-npm both work. Dev deps (@zero-server/sdk +
-    // @zero-server/webrtc) are declared in the scaffold's package.json and
-    // get installed by the same `npm install`. The server has its own
-    // install-prompt as a safety net.
-    const zqRoot = path.resolve(__dirname, '..', '..');
-    try {
-      execSync(`npm install "${zqRoot}"`, { cwd: target, stdio: 'inherit' });
-      execSync(`npm install`, { cwd: target, stdio: 'inherit' });
-    } catch {
-      console.error(`\n  ✗ npm install failed. Run it manually:\n\n    cd ${dirArg || '.'}\n    npm install\n    npm start\n`);
-      process.exit(1);
-    }
+    // local-dev and published-npm both work. Any extra devDependencies in
+    // the scaffold's package.json (e.g. @zero-server/* for webrtc) come in
+    // on the follow-up plain `npm install`.
+    execSync(`npm install "${zqRoot}"`, { cwd: target, stdio: 'inherit' });
+    execSync(`npm install`,            { cwd: target, stdio: 'inherit' });
+  } catch {
+    console.error(`\n  ✗ npm install failed. Run it manually:\n\n    cd ${dirArg || '.'}\n    npm install\n    npm start\n`);
+    process.exit(1);
+  }
 
-    // Refresh zquery.min.js from the installed package (preferred over the
-    // pre-copied one above so post-install rebuilds win).
+  // Refresh zquery.min.js from the freshly installed package (preferred
+  // over the pre-copied one above so post-install rebuilds win).
+  {
     const zqMin = path.join(target, 'node_modules', 'zero-query', 'dist', 'zquery.min.js');
     if (fs.existsSync(zqMin)) {
       fs.copyFileSync(zqMin, path.join(target, 'zquery.min.js'));
-      console.log(`  ✓ zquery.min.js`);
     }
+  }
 
+  // ---- Launch the right server for the variant ----
+  if (variant === 'ssr') {
+    console.log(`\n  Starting SSR server on http://localhost:3000 ...\n`);
+    setTimeout(() => openBrowser('http://localhost:3000'), 500);
+    runAndExit('node', ['server/index.js'], target);
+    return;
+  }
+
+  if (variant === 'webrtc') {
     console.log(`
   Camera, microphone, and screen-share are OFF by default - users opt in
   from inside the room. Optional env vars:
@@ -157,26 +153,19 @@ function createProject(args) {
 
   Starting WebRTC signaling + static server on http://localhost:3000 ...
 `);
-
-    const child = spawn('node', ['server/index.js'], { cwd: target, stdio: 'inherit' });
-
-    setTimeout(() => {
-      const open = process.platform === 'win32' ? 'start'
-                 : process.platform === 'darwin' ? 'open' : 'xdg-open';
-      try { execSync(`${open} http://localhost:3000`, { stdio: 'ignore' }); } catch {}
-    }, 500);
-
-    process.on('SIGINT',  () => { child.kill(); process.exit(); });
-    process.on('SIGTERM', () => { child.kill(); process.exit(); });
-    child.on('exit', (code) => process.exit(code || 0));
-    return; // keep process alive for the server
-  } else {
-    console.log(`
-  Done! Next steps:
-
-    ${devCmd}
-`);
+    setTimeout(() => openBrowser('http://localhost:3000'), 500);
+    runAndExit('node', ['server/index.js'], target);
+    return;
   }
+
+  // default / minimal: invoke the local zquery CLI's dev command. We point
+  // it at this same package's CLI entry so it works regardless of whether
+  // node_modules/.bin/zquery resolved a shim correctly (Windows .cmd quirks
+  // and all).
+  console.log(`\n  Starting dev server on http://localhost:3100 ...\n`);
+  setTimeout(() => openBrowser('http://localhost:3100'), 800);
+  const cliEntry = path.resolve(__dirname, '..', 'index.js');
+  runAndExit('node', [cliEntry, 'dev', target], target);
 }
 
 module.exports = createProject;

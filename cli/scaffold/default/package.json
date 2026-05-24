@@ -3,8 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "node server/index.js"
+    "start": "npx zquery dev",
+    "dev": "npx zquery dev",
+    "build": "npx zquery build",
+    "bundle": "npx zquery bundle"
   },
   "dependencies": {
     "zero-query": "latest"
