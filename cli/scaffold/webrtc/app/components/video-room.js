@@ -50,6 +50,12 @@ $.component('video-room', {
         hasMic:      true,
         hasCam:      true,
         hasShare:    true,
+
+        // Currently active rooms on the signaling hub - populated by
+        // GET /rtc/rooms so users can join an existing room with one click
+        // instead of guessing names.
+        availableRooms: [],
+        loadingRooms:   false,
     }),
 
     mounted() {
@@ -67,6 +73,7 @@ $.component('video-room', {
         this._peerStreams = new Map();
 
         this._probeDevices();
+        this._loadRooms();
     },
 
     async destroyed() {
@@ -90,6 +97,34 @@ $.component('video-room', {
             const hasShare = typeof navigator.mediaDevices.getDisplayMedia === 'function';
             this.setState({ hasMic, hasCam, hasShare });
         } catch (_) { /* non-fatal */ }
+    },
+
+    // ---- Rooms directory ------------------------------------------------
+
+    async _loadRooms() {
+        if (this.state.loadingRooms) return;
+        this.setState({ loadingRooms: true });
+        try {
+            const data = await this._fetchJSON('/rtc/rooms');
+            const rooms = Array.isArray(data && data.rooms) ? data.rooms.slice() : [];
+            rooms.sort((a, b) => (b.peerCount || 0) - (a.peerCount || 0) || String(a.name).localeCompare(String(b.name)));
+            this.setState({ availableRooms: rooms, loadingRooms: false });
+        } catch (_) {
+            // The endpoint may not exist on older servers - silently leave the list empty.
+            this.setState({ availableRooms: [], loadingRooms: false });
+        }
+    },
+
+    refreshRooms(e) {
+        if (e && e.preventDefault) e.preventDefault();
+        this._loadRooms();
+    },
+
+    pickRoom(e) {
+        const btn = e && e.currentTarget;
+        const name = btn && btn.getAttribute('data-room');
+        if (!name) return;
+        this.setState({ roomName: name });
     },
 
     // ---- Join / leave ----------------------------------------------------
@@ -148,6 +183,7 @@ $.component('video-room', {
             pinned:       null,
             status:       'Left the room. Click Join to reconnect.',
         });
+        this._loadRooms();
     },
 
     async _teardown() {
@@ -606,12 +642,27 @@ $.component('video-room', {
     },
 
     _renderLobby() {
-        const { roomName, displayName, status, error, connecting, hasMic, hasCam, hasShare } = this.state;
+        const { roomName, displayName, status, error, connecting, hasMic, hasCam, hasShare, availableRooms, loadingRooms } = this.state;
         const hint = [];
         if (!hasMic)   hint.push('no microphone detected');
         if (!hasCam)   hint.push('no camera detected');
         if (!hasShare) hint.push('screen sharing unavailable in this browser');
         const hintLine = hint.length ? `<div class="device-hint">${this._icon('alert', 14)}<span>${$.escapeHtml(hint.join(' · '))}</span></div>` : '';
+
+        const roomsBlock = availableRooms.length > 0
+            ? `<ul class="room-list">
+                  ${availableRooms.map((r) => {
+                      const active = r.name === roomName ? ' active' : '';
+                      const count  = (r.peerCount === 1) ? '1 peer' : (r.peerCount + ' peers');
+                      return `<li>
+                          <button type="button" class="room-pill${active}" data-room="${$.escapeHtml(r.name)}" @click="pickRoom" ${connecting ? 'disabled' : ''}>
+                              <span class="room-pill-name">#${$.escapeHtml(r.name)}</span>
+                              <span class="room-pill-count">${count}</span>
+                          </button>
+                      </li>`;
+                  }).join('')}
+              </ul>`
+            : `<p class="room-list-empty">${loadingRooms ? 'Loading\u2026' : 'No rooms yet \u2014 type a name below to start a new one.'}</p>`;
 
         return `
             <div class="lobby">
@@ -643,6 +694,15 @@ $.component('video-room', {
                         ${connecting ? 'Joining...' : 'Join room'}
                     </button>
                 </form>
+                <div class="rooms-section">
+                    <div class="rooms-head">
+                        <h2>Active rooms</h2>
+                        <button type="button" class="ghost" @click="refreshRooms" ${loadingRooms ? 'disabled' : ''}>
+                            ${loadingRooms ? 'Refreshing\u2026' : 'Refresh'}
+                        </button>
+                    </div>
+                    ${roomsBlock}
+                </div>
                 ${hintLine}
                 <p class="status ${error ? 'error' : ''}">
                     ${error ? $.escapeHtml(error) : $.escapeHtml(status)}

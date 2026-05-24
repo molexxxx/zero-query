@@ -171,6 +171,17 @@ async function main() {
         res.json({ iceServers: [{ urls }] });
     });
 
+    // ---- Rooms directory ----
+    // Lists every room the hub currently knows about so the lobby UI can
+    // offer a one-click join instead of forcing users to remember a name.
+    app.get('/rtc/rooms', (req, res) => {
+        const rooms = hub.rooms().map((r) => ({
+            name:      r.name,
+            peerCount: (typeof r.peers === 'function' ? r.peers() : []).length,
+        }));
+        res.json({ rooms });
+    });
+
     // ---- Listen ----
     app.listen(PORT, () => {
         console.log('\n  ⚡ WebRTC server → http://localhost:' + PORT);
