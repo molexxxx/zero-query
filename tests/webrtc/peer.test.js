@@ -147,22 +147,21 @@ describe('Peer (perfect negotiation)', () => {
         // queue depth matches the candidate count we trickled.
         expect(sig._iceQueue.length).toBe(3);
         expect(sig._iceQueue[0].target).toBe('peer_a');
-        expect(sig._iceQueue[0].candidate.candidate).toContain('typ host');
-        expect(sig._iceQueue[0].candidate.sdpMid).toBe('0');
-        expect(sig._iceQueue[0].candidate.sdpMLineIndex).toBe(0);
+        expect(typeof sig._iceQueue[0].candidate).toBe('string');
+        expect(sig._iceQueue[0].candidate).toContain('typ host');
         expect(sig._iceQueue[2].candidate).toBeNull();
         peer.close();
     });
 
-    it('drops mDNS (`.local`) candidates before sending', async () => {
+    it('forwards mDNS (`.local`) candidates so cross-browser LAN peers can connect', async () => {
         const sig = await makeOpenSignaling();
         const peer = new Peer('peer_a', sig, { RTCPeerConnection: FakeRTCPeerConnection });
 
         lastPc().fakeIceCandidate('candidate:1 1 udp 2122260223 abcd1234.local 5000 typ host');
         lastPc().fakeIceCandidate('candidate:2 1 udp 1686052607 198.51.100.1 5001 typ srflx');
 
-        expect(sig._iceQueue.length).toBe(1);
-        expect(sig._iceQueue[0].candidate.candidate).not.toContain('.local');
+        expect(sig._iceQueue.length).toBe(2);
+        expect(sig._iceQueue[0].candidate).toContain('.local');
         peer.close();
     });
 

@@ -125,16 +125,15 @@ $.component('video-room', {
         const name = btn && btn.getAttribute('data-room');
         if (!name) return;
         if (this.state.joined || this.state.connecting) return;
-        // Update the input field for visual feedback, then jump straight into
-        // join() so a click on a pill behaves like "join that room now"
-        // instead of just selecting the name.
+        // Pass the chosen name straight into join() so there's no reliance on
+        // setState/render timing - just go.
         this.setState({ roomName: name });
-        this.join();
+        this.join(null, name);
     },
 
     // ---- Join / leave ----------------------------------------------------
 
-    async join(e) {
+    async join(e, explicitRoom) {
         if (e && e.preventDefault) e.preventDefault();
         if (this.state.joined || this.state.connecting) return;
         if (!$.webrtc || typeof $.webrtc.join !== 'function') {
@@ -142,14 +141,21 @@ $.component('video-room', {
             return;
         }
 
+        const roomName = (typeof explicitRoom === 'string' && explicitRoom)
+            ? explicitRoom
+            : this.state.roomName;
+        if (this.state.roomName !== roomName) {
+            this.setState({ roomName });
+        }
+
         this.setState({ connecting: true, error: '', status: 'Connecting to signaling server...' });
 
         try {
-            const meta = await this._fetchJSON('/rtc/token/' + encodeURIComponent(this.state.roomName));
+            const meta = await this._fetchJSON('/rtc/token/' + encodeURIComponent(roomName));
             const ice  = await this._fetchJSON('/rtc/turn').catch(() => null);
 
             this._room = await $.webrtc.join(meta.wsUrl || this._defaultWsUrl(), {
-                room:       this.state.roomName,
+                room:       roomName,
                 token:      meta.token || undefined,
                 iceServers: (ice && ice.iceServers) || undefined,
             });
@@ -159,7 +165,7 @@ $.component('video-room', {
             this.setState({
                 joined:     true,
                 connecting: false,
-                status:     'Joined "' + this.state.roomName + '" as a viewer. Turn on the devices you actually want to share.',
+                status:     'Joined "' + roomName + '" as a viewer. Turn on the devices you actually want to share.',
             });
         } catch (err) {
             this.setState({
