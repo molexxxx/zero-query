@@ -3866,10 +3866,26 @@ const webrtc = {
 
 
 // ---------------------------------------------------------------------------
+// Host-object passthrough
+// ---------------------------------------------------------------------------
+// The reactive proxy is meant for plain data: state bags, arrays, nested
+// records. Wrapping host/native objects (MediaStream, RTCPeerConnection,
+// Blob, Map, Date, etc.) breaks them - the proxy receiver is not the real
+// underlying object, so any internal-slot method call throws
+// "Illegal invocation" in the browser. Only proxy values whose prototype is
+// Object.prototype/null (plain objects) or that are Arrays.
+function _isProxyable(value) {
+  if (value === null || typeof value !== 'object') return false;
+  if (Array.isArray(value)) return true;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+// ---------------------------------------------------------------------------
 // Deep reactive proxy
 // ---------------------------------------------------------------------------
 function reactive(target, onChange, _path = '') {
-  if (typeof target !== 'object' || target === null) return target;
+  if (!_isProxyable(target)) return target;
   if (typeof onChange !== 'function') {
     reportError(ErrorCode.REACTIVE_CALLBACK, 'reactive() onChange must be a function', { received: typeof onChange });
     onChange = () => {};
@@ -3883,7 +3899,7 @@ function reactive(target, onChange, _path = '') {
       if (key === '__raw') return obj;
 
       const value = obj[key];
-      if (typeof value === 'object' && value !== null) {
+      if (_isProxyable(value)) {
         // Return cached proxy or create new one
         if (proxyCache.has(value)) return proxyCache.get(value);
         const childProxy = new Proxy(value, handler);
@@ -10435,7 +10451,7 @@ $.E2eeError          = E2eeError;
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.2.0';
 $.libSize   = '~130 KB';
-$.unitTests = {"passed":2532,"failed":0,"total":2532,"suites":620,"duration":7093,"ok":true};
+$.unitTests = {"passed":2534,"failed":0,"total":2534,"suites":620,"duration":6816,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

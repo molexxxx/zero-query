@@ -1,176 +1,302 @@
-// video-room.js - Mini-Discord style room: video tiles + screen share + chat.
+// video-room.js - Mini-Discord style room over zero-server signaling.
 //
-// Backed by app/lib/room.js (BroadcastChannel signaling) so multiple tabs
-// on the same browser form a working mesh room with no server at all.
-
-import { LocalRoom } from '../lib/room.js';
+// Joins a real WebRTC mesh room via `$.webrtc.join()` against the
+// SignalingHub running in server/index.js. The user picks a room name and
+// joins as a viewer first - no camera, no microphone, no screen capture
+// runs until they explicitly click a Start button. Each control acquires
+// (or releases) exactly the media it owns, so granting "Start mic" never
+// turns on the camera and vice-versa.
 
 $.component('video-room', {
     state: () => ({
-        // Pre-join form ----------------------------------------------------
+        // Pre-join form
         roomName:    'lobby',
         displayName: 'User-' + Math.random().toString(36).slice(2, 6),
-        // Live state -------------------------------------------------------
+        // Live state
         joined:      false,
-        status:      'Pick a room + name and click Join. Open this URL in a second tab to see a peer appear.',
+        connecting:  false,
+        status:      'Pick a room name and join. The camera and mic stay off until you turn them on.',
         error:       '',
-        // Local media ------------------------------------------------------
-        localStream: null,
-        micOn:       true,
-        camOn:       true,
+        // Local publishing flags
+        micOn:       false,
+        camOn:       false,
+        micMuted:    false,
+        camMuted:    false,
         sharing:     false,
-        // Roster + chat ----------------------------------------------------
-        peers:       [],            // [{ id, name, stream }]
-        messages:    [],            // [{ from, name, text, t, mine }]
+        // Live MediaStream refs (passed through reactive() unchanged because
+        // the proxy only wraps plain objects / arrays).
+        micStream:    null,
+        camStream:    null,
+        screenStream: null,
+        // Roster (each entry also holds the remote MediaStream for z-stream)
+        peers:       [],
+        // Chat history
+        messages:    [],
         draft:       '',
     }),
 
     mounted() {
+        // Room/data-channel handles live on the instance; MediaStreams live
+        // in state so z-stream bindings can resolve them by name.
         this._room        = null;
-        this._cameraTrack = null;   // original camera video track (kept while screen sharing)
-        this._screenStream = null;  // current display-media stream (cleared on stop)
+        this._chat        = null;
+        this._cameraTrack = null;
+        this._unsubs      = [];
     },
 
     async destroyed() {
         await this._teardown();
     },
 
-    // ---- Pre-join form bindings -----------------------------------------
+    // ---- Form bindings ---------------------------------------------------
 
     setRoom(e) { this.setState({ roomName:    e.target.value }); },
     setName(e) { this.setState({ displayName: e.target.value }); },
+    setDraft(e) { this.setState({ draft:      e.target.value }); },
 
     // ---- Join / leave ----------------------------------------------------
 
-    async join() {
-        if (this.state.joined) return;
-        this.setState({ status: 'Requesting camera + microphone...', error: '' });
-
-        let stream = null;
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        } catch (err) {
-            // Joining without media is still useful (viewer + chat only).
-            this.setState({ status: 'No camera/mic - joining as viewer.', error: '' });
+    async join(e) {
+        if (e && e.preventDefault) e.preventDefault();
+        if (this.state.joined || this.state.connecting) return;
+        if (!$.webrtc || typeof $.webrtc.join !== 'function') {
+            this.setState({ error: '$.webrtc.join is unavailable - build zquery.min.js with the webrtc bundle.' });
+            return;
         }
 
-        const cam = stream && stream.getVideoTracks()[0];
-        if (cam) this._cameraTrack = cam;
+        this.setState({ connecting: true, error: '', status: 'Connecting to signaling server...' });
 
-        this._room = new LocalRoom(this.state.roomName, { displayName: this.state.displayName });
-        this._room.on('peers',  (peers)  => this._onPeers(peers));
-        this._room.on('chat',   (msg)    => this._onChat(msg));
-        this._room.on('status', (status) => this.setState({ status }));
-        this._room.on('error',  (err)    => this.setState({ error: String(err && err.message || err) }));
-        this._room.join(stream);
+        try {
+            // Pull a fresh join token + the server's preferred ws url.
+            const meta = await this._fetchJSON('/rtc/token/' + encodeURIComponent(this.state.roomName));
+            const ice  = await this._fetchJSON('/rtc/turn');
 
-        this.setState({
-            joined:      true,
-            localStream: stream,
-            micOn:       !!(stream && stream.getAudioTracks()[0]),
-            camOn:       !!cam,
-            sharing:     false,
-        });
+            this._room = await $.webrtc.join(meta.wsUrl || this._defaultWsUrl(), {
+                room:       this.state.roomName,
+                token:      meta.token || undefined,
+                iceServers: (ice && ice.iceServers) || undefined,
+            });
+
+            this._wireRoom(this._room);
+
+            this.setState({
+                joined:     true,
+                connecting: false,
+                status:     'Joined "' + this.state.roomName + '" as a viewer. Start your mic or camera when ready.',
+            });
+        } catch (err) {
+            this.setState({
+                connecting: false,
+                error:      'Could not join: ' + (err && err.message ? err.message : String(err)),
+            });
+        }
     },
 
     async leave() {
         await this._teardown();
         this.setState({
-            joined:      false,
-            localStream: null,
-            peers:       [],
-            messages:    [],
-            sharing:     false,
-            status:      'Left the room. Click Join to reconnect.',
+            joined:       false,
+            connecting:   false,
+            micOn:        false,
+            camOn:        false,
+            micMuted:     false,
+            camMuted:     false,
+            sharing:      false,
+            micStream:    null,
+            camStream:    null,
+            screenStream: null,
+            peers:        [],
+            messages:     [],
+            status:       'Left the room. Click Join to reconnect.',
         });
     },
 
     async _teardown() {
-        if (this._room) { try { this._room.leave(); } catch (_) {} this._room = null; }
-        if (this._screenStream) {
-            for (const t of this._screenStream.getTracks()) { try { t.stop(); } catch (_) {} }
-            this._screenStream = null;
+        for (const off of this._unsubs) { try { off(); } catch (_) {} }
+        this._unsubs = [];
+
+        if (this._room) {
+            try { await this._room.leave(); } catch (_) {}
+            this._room = null;
         }
-        if (this.state.localStream) {
-            for (const t of this.state.localStream.getTracks()) { try { t.stop(); } catch (_) {} }
-        }
+        // Read raw values to avoid touching the reactive proxy while we
+        // shut things down.
+        const raw = this.state.__raw || this.state;
+        this._stopStream(raw.screenStream);
+        this._stopStream(raw.camStream);
+        this._stopStream(raw.micStream);
         this._cameraTrack = null;
+        this._chat        = null;
     },
 
-    // ---- Mic / cam toggles ----------------------------------------------
-
-    toggleMic() {
-        const stream = this.state.localStream;
+    _stopStream(stream) {
         if (!stream) return;
-        const next = !this.state.micOn;
-        for (const t of stream.getAudioTracks()) t.enabled = next;
-        this.setState({ micOn: next });
+        for (const t of stream.getTracks()) { try { t.stop(); } catch (_) {} }
     },
 
-    toggleCam() {
-        const stream = this.state.localStream;
+    // ---- Room wiring ----------------------------------------------------
+
+    _wireRoom(room) {
+        // Initial roster snapshot.
+        this._refreshPeers(room);
+
+        // Re-render whenever the room's peer map changes.
+        this._unsubs.push(room.peers.subscribe(() => this._refreshPeers(room)));
+
+        this._unsubs.push(room.on('peer-joined', ({ peerId }) => {
+            this.setState({ status: 'Peer joined: ' + peerId });
+            this._refreshPeers(room);
+        }));
+        this._unsubs.push(room.on('peer-left', ({ peerId }) => {
+            this.setState({ status: 'Peer left: ' + peerId });
+            this._refreshPeers(room);
+        }));
+        this._unsubs.push(room.on('error', (err) => {
+            this.setState({ error: String(err && err.message || err) });
+        }));
+
+        // Multiplexed text-chat data channel - opens on every peer.
+        this._chat = room.dataChannel('chat');
+        this._unsubs.push(this._chat.on('message', (raw, peerId) => {
+            try {
+                const msg = JSON.parse(typeof raw === 'string' ? raw : new TextDecoder().decode(raw));
+                this._appendChat({ from: peerId, name: msg.name || peerId, text: String(msg.text || ''), mine: false });
+            } catch (_) { /* ignore malformed */ }
+        }));
+    },
+
+    _refreshPeers(room) {
+        const list = [];
+        const map = room.peers.peek();
+        for (const info of map.values()) {
+            list.push({ id: info.id, name: info.id, stream: info.stream });
+        }
+        this.setState({ peers: list });
+    },
+
+    // ---- Mic ------------------------------------------------------------
+
+    async startMic() {
+        if (this.state.micStream || !this._room) return;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            await this._room.publish(stream);
+            this.setState({ micStream: stream, micOn: true, micMuted: false, error: '', status: 'Microphone is live.' });
+        } catch (err) {
+            this.setState({ error: 'Microphone denied or unavailable.' });
+        }
+    },
+
+    async stopMic() {
+        const stream = this.state.micStream;
+        if (!stream || !this._room) return;
+        try { await this._room.unpublish(stream); } catch (_) {}
+        this._stopStream(stream);
+        this.setState({ micStream: null, micOn: false, micMuted: false, status: 'Microphone stopped.' });
+    },
+
+    toggleMute() {
+        const stream = this.state.micStream;
         if (!stream) return;
-        const next = !this.state.camOn;
-        for (const t of stream.getVideoTracks()) t.enabled = next;
-        this.setState({ camOn: next });
+        const next = !this.state.micMuted;
+        for (const t of stream.getAudioTracks()) t.enabled = !next;
+        this.setState({ micMuted: next });
     },
 
-    // ---- Screen share ----------------------------------------------------
+    // ---- Camera ---------------------------------------------------------
 
-    async toggleShare() {
-        if (!this._room) return;
-        if (this.state.sharing) {
-            // Stop sharing: revert every peer to the camera track.
-            if (this._screenStream) {
-                for (const t of this._screenStream.getTracks()) { try { t.stop(); } catch (_) {} }
-                this._screenStream = null;
-            }
-            await this._room.replaceVideoTrack(this._cameraTrack || null);
-            this.setState({ sharing: false, status: 'Stopped sharing screen.' });
+    async startCam() {
+        if (this.state.camStream || !this._room) return;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            this._cameraTrack = stream.getVideoTracks()[0] || null;
+            await this._room.publish(stream);
+            this.setState({ camStream: stream, camOn: true, camMuted: false, error: '', status: 'Camera is live.' });
+        } catch (err) {
+            this.setState({ error: 'Camera denied or unavailable.' });
+        }
+    },
+
+    async stopCam() {
+        const stream = this.state.camStream;
+        if (!stream || !this._room) return;
+        if (this.state.sharing) await this.stopShare();
+        try { await this._room.unpublish(stream); } catch (_) {}
+        this._stopStream(stream);
+        this._cameraTrack = null;
+        this.setState({ camStream: null, camOn: false, camMuted: false, status: 'Camera stopped.' });
+    },
+
+    toggleCamMute() {
+        const stream = this.state.camStream;
+        if (!stream) return;
+        const next = !this.state.camMuted;
+        for (const t of stream.getVideoTracks()) t.enabled = !next;
+        this.setState({ camMuted: next });
+    },
+
+    // ---- Screen share ---------------------------------------------------
+
+    async startShare() {
+        if (this.state.sharing || !this._room) return;
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getDisplayMedia !== 'function') {
+            this.setState({ error: 'Screen capture is not supported in this browser.' });
             return;
         }
-
         try {
             const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-            this._screenStream = stream;
-            const shareTrack = stream.getVideoTracks()[0];
-            // When the user clicks the browser's native "Stop sharing", flip back.
-            shareTrack.onended = () => { if (this.state.sharing) this.toggleShare(); };
-            await this._room.replaceVideoTrack(shareTrack);
-            this.setState({ sharing: true, status: 'Sharing your screen.' });
+            const track  = stream.getVideoTracks()[0];
+            if (!track) throw new Error('No video track from getDisplayMedia');
+            // Native browser "Stop sharing" button.
+            track.onended = () => { if (this.state.sharing) this.stopShare(); };
+            await this._room.publish(stream);
+            this.setState({ screenStream: stream, sharing: true, error: '', status: 'Sharing your screen.' });
         } catch (err) {
             this.setState({ error: 'Screen share denied or unavailable.' });
         }
     },
 
-    // ---- Roster + chat ---------------------------------------------------
-
-    _onPeers(peersMap) {
-        const list = Array.from(peersMap.values()).map((p) => ({
-            id: p.id, name: p.name, stream: p.stream,
-        }));
-        this.setState({ peers: list });
+    async stopShare() {
+        const stream = this.state.screenStream;
+        if (!stream) return;
+        try { await this._room.unpublish(stream); } catch (_) {}
+        this._stopStream(stream);
+        this.setState({ screenStream: null, sharing: false, status: 'Stopped sharing screen.' });
     },
 
-    _onChat(msg) {
-        const mine = this._room && msg.from === this._room.id;
-        const next = this.state.messages.concat([{ ...msg, mine }]);
-        // Cap history so a long-running room doesn't grow forever.
-        if (next.length > 200) next.splice(0, next.length - 200);
-        this.setState({ messages: next });
-    },
-
-    setDraft(e) { this.setState({ draft: e.target.value }); },
+    // ---- Chat -----------------------------------------------------------
 
     sendChat(e) {
         if (e && e.preventDefault) e.preventDefault();
         const text = (this.state.draft || '').trim();
-        if (!text || !this._room) return;
-        this._room.sendChat(text);
+        if (!text || !this._chat) return;
+        const payload = JSON.stringify({ name: this.state.displayName, text });
+        try { this._chat.send(payload); } catch (_) {}
+        this._appendChat({ from: 'me', name: this.state.displayName, text, mine: true });
         this.setState({ draft: '' });
     },
 
-    // ---- Render ----------------------------------------------------------
+    _appendChat(msg) {
+        const next = this.state.messages.concat([msg]);
+        if (next.length > 200) next.splice(0, next.length - 200);
+        this.setState({ messages: next });
+    },
+
+    // ---- Helpers --------------------------------------------------------
+
+    async _fetchJSON(url) {
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!res.ok) throw new Error(url + ' → HTTP ' + res.status);
+        return res.json();
+    },
+
+    _defaultWsUrl() {
+        if (typeof location === 'undefined') return 'ws://localhost:3000/rtc';
+        const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return proto + '//' + location.host + '/rtc';
+    },
+
+    // ---- Render ---------------------------------------------------------
 
     render() {
         if (!this.state.joined) return this._renderLobby();
@@ -178,27 +304,35 @@ $.component('video-room', {
     },
 
     _renderLobby() {
-        const { roomName, displayName, status, error } = this.state;
+        const { roomName, displayName, status, error, connecting } = this.state;
         return `
             <div class="lobby">
                 <h1>zQuery WebRTC Demo</h1>
                 <p class="lead">
-                    A mini, no-backend room. Signaling runs over
-                    <code>BroadcastChannel</code>, so opening this page in
-                    multiple tabs / windows gives you a working mesh call
-                    with audio, video, screen share, and chat &mdash; no
-                    server required.
+                    Mesh video call powered by
+                    <code>$.webrtc.join()</code> against a
+                    <a href="https://github.com/tonywied17/zero-server" target="_blank" rel="noopener">zero-server</a>
+                    <code>SignalingHub</code>. Open this page on a second device
+                    (or in another browser) and join the same room to see a peer
+                    appear.
+                </p>
+                <p class="lead">
+                    <strong>Camera and microphone are off by default.</strong>
+                    Join the room first; then turn on the devices you actually
+                    want to share.
                 </p>
                 <form class="join-form" @submit="join">
                     <label>
                         Room
-                        <input type="text" value="${$.escapeHtml(roomName)}" @input="setRoom" placeholder="lobby" />
+                        <input type="text" value="${$.escapeHtml(roomName)}" @input="setRoom" placeholder="lobby" ${connecting ? 'disabled' : ''} />
                     </label>
                     <label>
                         Your name
-                        <input type="text" value="${$.escapeHtml(displayName)}" @input="setName" placeholder="display name" />
+                        <input type="text" value="${$.escapeHtml(displayName)}" @input="setName" placeholder="display name" ${connecting ? 'disabled' : ''} />
                     </label>
-                    <button type="button" class="primary" @click="join">Join room</button>
+                    <button type="submit" class="primary" ${connecting ? 'disabled' : ''}>
+                        ${connecting ? 'Joining...' : 'Join room'}
+                    </button>
                 </form>
                 <p class="status ${error ? 'error' : ''}">
                     ${error ? $.escapeHtml(error) : $.escapeHtml(status)}
@@ -208,9 +342,12 @@ $.component('video-room', {
     },
 
     _renderRoom() {
-        const { localStream, peers, status, error, micOn, camOn, sharing, messages, draft, displayName, roomName } = this.state;
+        const {
+            peers, status, error, displayName, roomName,
+            micOn, camOn, micMuted, camMuted, sharing, messages, draft,
+        } = this.state;
 
-        const peerCount = peers.length + 1; // include self
+        const peerCount = peers.length + 1;
         const peerTiles = peers.map((p, i) => `
             <div class="tile">
                 <video z-stream="peers[${i}].stream" autoplay playsinline></video>
@@ -225,6 +362,9 @@ $.component('video-room', {
             </div>
         `).join('');
 
+        // Self-tile prefers the screen stream when sharing, else the camera.
+        const selfBinding = sharing ? 'screenStream' : 'camStream';
+
         return `
             <div class="room">
                 <aside class="sidebar">
@@ -234,7 +374,7 @@ $.component('video-room', {
                     </div>
                     <div class="roster">
                         <div class="roster-row me">
-                            <span class="dot ${micOn ? 'on' : 'off'}"></span>
+                            <span class="dot ${micOn && !micMuted ? 'on' : 'off'}"></span>
                             ${$.escapeHtml(displayName)} <small>(you)</small>
                         </div>
                         ${peers.map((p) => `
@@ -250,23 +390,29 @@ $.component('video-room', {
                 <section class="stage">
                     <div class="tiles">
                         <div class="tile self">
-                            <video z-stream="localStream" autoplay playsinline muted></video>
-                            <div class="label">You${sharing ? ' &middot; sharing' : ''}</div>
-                            ${!camOn && !sharing ? '<div class="camoff">Camera off</div>' : ''}
+                            ${camOn || sharing
+                                ? `<video z-stream="${selfBinding}" autoplay playsinline muted></video>`
+                                : '<div class="camoff">Camera off</div>'}
+                            <div class="label">You${sharing ? ' · sharing' : ''}${camMuted ? ' · paused' : ''}</div>
                         </div>
                         ${peerTiles}
                     </div>
 
                     <div class="controls">
-                        <button class="${micOn ? '' : 'off'}" @click="toggleMic">
-                            ${micOn ? '🎤 Mute' : '🔇 Unmute'}
-                        </button>
-                        <button class="${camOn ? '' : 'off'}" @click="toggleCam">
-                            ${camOn ? '📷 Stop video' : '🚫 Start video'}
-                        </button>
-                        <button class="${sharing ? 'active' : ''}" @click="toggleShare">
-                            ${sharing ? '🛑 Stop share' : '🖥️ Share screen'}
-                        </button>
+                        ${micOn
+                            ? `<button class="${micMuted ? 'off' : ''}" @click="toggleMute">${micMuted ? '🔇 Unmute' : '🎤 Mute'}</button>
+                               <button class="off" @click="stopMic">⏹ Stop mic</button>`
+                            : `<button class="primary" @click="startMic">🎤 Start mic</button>`}
+
+                        ${camOn
+                            ? `<button class="${camMuted ? 'off' : ''}" @click="toggleCamMute">${camMuted ? '🚫 Resume' : '📷 Pause'}</button>
+                               <button class="off" @click="stopCam">⏹ Stop camera</button>`
+                            : `<button class="primary" @click="startCam">📷 Start camera</button>`}
+
+                        ${sharing
+                            ? `<button class="active" @click="stopShare">🛑 Stop sharing</button>`
+                            : `<button @click="startShare">🖥️ Share screen</button>`}
+
                         <div class="status-inline ${error ? 'error' : ''}">
                             ${error ? $.escapeHtml(error) : $.escapeHtml(status)}
                         </div>
@@ -280,7 +426,7 @@ $.component('video-room', {
                     </div>
                     <form class="chat-form" @submit="sendChat">
                         <input type="text" value="${$.escapeHtml(draft)}" @input="setDraft" placeholder="Message #${$.escapeHtml(roomName)}" />
-                        <button type="button" class="primary" @click="sendChat">Send</button>
+                        <button type="submit" class="primary">Send</button>
                     </form>
                 </aside>
             </div>
@@ -289,7 +435,7 @@ $.component('video-room', {
 
     updated() {
         // Auto-scroll chat to the latest message after each render.
-        const log = this.$el && this.$el.querySelector ? this.$el.querySelector('#chat-log') : null;
+        const log = this._el && this._el.querySelector ? this._el.querySelector('#chat-log') : null;
         if (log) log.scrollTop = log.scrollHeight;
     },
 });
