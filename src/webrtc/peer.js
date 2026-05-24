@@ -253,11 +253,12 @@ export class Peer {
         this.pc.onicecandidate = (event) => {
             if (this.closed) return;
             const candidate = event && event.candidate;
-            // End-of-candidates marker (null) -> always forward.
-            if (!candidate) {
-                this.signaling.send('ice', { target: this.id, candidate: null });
-                return;
-            }
+            // End-of-candidates: the @zero-server/webrtc SignalingHub rejects
+            // any ice frame whose `candidate` is not a non-empty string
+            // (BAD_FRAME -> counts toward the protocol-error budget that can
+            // disconnect the peer). Browsers infer end-of-candidates from
+            // iceGatheringState anyway, so we simply drop the marker.
+            if (!candidate) return;
             const cand = typeof candidate === 'string' ? candidate : candidate.candidate;
             if (!cand) return;
             // NOTE: do NOT filter mDNS (.local) candidates. Firefox emits them by
@@ -362,12 +363,17 @@ export class Peer {
             }
             // Older zero-query clients relayed only the bare `a=candidate:` string,
             // which browsers reject with "missing values for both sdpMid and
-            // sdpMLineIndex". Newer clients send a full init dict - normalize both.
+            // sdpMLineIndex". Pass sdpMLineIndex:0 and leave sdpMid null so
+            // the browser binds the candidate to the first (and, under
+            // bundlePolicy:'max-bundle', only) m-section. Passing sdpMid:''
+            // is NOT equivalent to omitting it - the browser treats empty
+            // string as a real mid and fails with "Failed to execute
+            // 'addIceCandidate'" because no m-section has mid="".
             const init = (typeof candidate === 'string')
-                ? { candidate, sdpMid: '', sdpMLineIndex: 0 }
+                ? { candidate, sdpMid: null, sdpMLineIndex: 0 }
                 : {
                     candidate:        candidate.candidate,
-                    sdpMid:           candidate.sdpMid != null ? candidate.sdpMid : '',
+                    sdpMid:           candidate.sdpMid != null ? candidate.sdpMid : null,
                     sdpMLineIndex:    candidate.sdpMLineIndex != null ? candidate.sdpMLineIndex : 0,
                     usernameFragment: candidate.usernameFragment != null ? candidate.usernameFragment : undefined,
                 };

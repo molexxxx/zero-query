@@ -121,7 +121,11 @@ $.component('video-room', {
     },
 
     pickRoom(e) {
-        const btn = e && e.currentTarget;
+        // zero-query @click is delegated (one listener on the component root),
+        // so e.currentTarget is that root - NOT the room-card button. Walk up
+        // from the actual click target to find the button carrying data-room.
+        const target = e && e.target;
+        const btn = target && target.closest && target.closest('[data-room]');
         const name = btn && btn.getAttribute('data-room');
         if (!name) return;
         if (this.state.joined || this.state.connecting) return;

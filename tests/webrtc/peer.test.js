@@ -130,26 +130,23 @@ describe('Peer (perfect negotiation)', () => {
     // Outbound: ICE trickle
     // -----------------------------------------------------------------------
 
-    it('forwards trickled ICE candidates as `ice` frames addressed to peerId', async () => {
+    it('forwards trickled ICE candidates as `ice` frames addressed to peerId, dropping the null EOC marker', async () => {
         const sig = await makeOpenSignaling();
         const peer = new Peer('peer_a', sig, { RTCPeerConnection: FakeRTCPeerConnection });
 
         lastPc().fakeIceCandidate('candidate:1 1 udp 2122260223 192.0.2.1 5000 typ host');
         lastPc().fakeIceCandidate('candidate:2 1 udp 1686052607 198.51.100.1 5001 typ srflx');
-        lastPc().fakeIceCandidate(null); // end-of-candidates
+        lastPc().fakeIceCandidate(null); // end-of-candidates - dropped on the floor
 
-        // Bypass coalesce window by reading the queued frames directly: we know
-        // signaling.js batches ICE per 200ms - flush by advancing real time...
-        // ... or simpler: assert the queue has populated by reading send calls
-        // once the timer flushes. Use synchronous expectation on _iceQueue.
-        // The SignalingClient buffers ice frames; we don't want to wait timers
-        // here, so just verify a deterministic side-effect: at minimum the
-        // queue depth matches the candidate count we trickled.
-        expect(sig._iceQueue.length).toBe(3);
+        // The SignalingHub rejects ice frames whose candidate is not a
+        // non-empty string (BAD_FRAME, counted against the protocol-error
+        // budget), so the EOC marker must NOT reach the wire. Browsers infer
+        // end-of-candidates from iceGatheringState anyway.
+        expect(sig._iceQueue.length).toBe(2);
         expect(sig._iceQueue[0].target).toBe('peer_a');
         expect(typeof sig._iceQueue[0].candidate).toBe('string');
         expect(sig._iceQueue[0].candidate).toContain('typ host');
-        expect(sig._iceQueue[2].candidate).toBeNull();
+        expect(sig._iceQueue[1].candidate).toContain('typ srflx');
         peer.close();
     });
 
@@ -175,13 +172,12 @@ describe('Peer (perfect negotiation)', () => {
         for (let i = 0; i < 10; i++) {
             lastPc().fakeIceCandidate(`candidate:${i} 1 udp 2122260223 192.0.2.${i} 5000 typ host`);
         }
-        // EOC marker is always allowed past the cap.
+        // EOC marker is dropped (server rejects null candidates as BAD_FRAME).
         lastPc().fakeIceCandidate(null);
 
         const iceFrames = sig._iceQueue;
-        const nonNull = iceFrames.filter((f) => f.candidate !== null);
-        expect(nonNull.length).toBe(3);
-        expect(iceFrames.some((f) => f.candidate === null)).toBe(true);
+        expect(iceFrames.length).toBe(3);
+        expect(iceFrames.every((f) => typeof f.candidate === 'string' && f.candidate.length > 0)).toBe(true);
         peer.close();
     });
 
@@ -237,7 +233,7 @@ describe('Peer (perfect negotiation)', () => {
         expect(lastPc().addIceCandidateCalls).toHaveLength(2);
         expect(lastPc().addIceCandidateCalls[0]).toEqual({
             candidate:     'candidate:7 1 udp 1 192.0.2.7 5000 typ host',
-            sdpMid:        '',
+            sdpMid:        null,
             sdpMLineIndex: 0,
         });
         expect(lastPc().addIceCandidateCalls[1]).toBeNull();
