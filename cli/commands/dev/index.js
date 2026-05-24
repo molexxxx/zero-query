@@ -71,10 +71,25 @@ async function devServer() {
     const child = spawn('node', ['server/index.js'], {
       cwd:   root,
       stdio: 'inherit',
-      shell: process.platform === 'win32',
     });
-    process.on('SIGINT',  () => { child.kill(); process.exit(); });
-    process.on('SIGTERM', () => { child.kill(); process.exit(); });
+
+    // On Windows, child.kill() can leave grandchildren behind; use taskkill
+    // /T to bring down the full process tree so Ctrl-C actually frees the
+    // port. Elsewhere SIGINT is enough.
+    const isWin = process.platform === 'win32';
+    let killing = false;
+    const killChild = () => {
+      if (killing || child.exitCode !== null) return;
+      killing = true;
+      if (isWin) {
+        try { require('child_process').execSync(`taskkill /PID ${child.pid} /T /F`, { stdio: 'ignore' }); }
+        catch { try { child.kill(); } catch { /* swallow */ } }
+      } else {
+        try { child.kill('SIGINT'); } catch { /* swallow */ }
+      }
+    };
+    process.on('SIGINT',  () => { killChild(); process.exit(); });
+    process.on('SIGTERM', () => { killChild(); process.exit(); });
     child.on('exit', (code) => process.exit(code || 0));
     return;
   }
