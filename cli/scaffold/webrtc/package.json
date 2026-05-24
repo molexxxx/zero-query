@@ -4,7 +4,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server/index.js",
-    "dev": "npx zquery dev"
+    "dev": "node server/index.js"
   },
   "dependencies": {
     "zero-query": "latest"
