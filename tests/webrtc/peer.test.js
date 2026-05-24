@@ -196,7 +196,7 @@ describe('Peer (perfect negotiation)', () => {
         fakeSockets[0].fakeMessage({ type: 'offer', from: 'peer_a', sdp: 'remote-sdp-blob' });
         // setRemoteDescription + setLocalDescription are awaited inside the
         // handler; yield two microtasks.
-        await Promise.resolve(); await Promise.resolve();
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
 
         expect(lastPc().setRemoteCalls).toHaveLength(1);
         expect(lastPc().setRemoteCalls[0]).toEqual({ type: 'offer', sdp: 'remote-sdp-blob' });
@@ -214,7 +214,7 @@ describe('Peer (perfect negotiation)', () => {
         // Pretend we previously offered.
         lastPc().signalingState = 'have-local-offer';
         fakeSockets[0].fakeMessage({ type: 'answer', from: 'peer_a', sdp: 'remote-answer-sdp' });
-        await Promise.resolve(); await Promise.resolve();
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
 
         expect(lastPc().setRemoteCalls).toHaveLength(1);
         expect(lastPc().setRemoteCalls[0].type).toBe('answer');
@@ -229,7 +229,10 @@ describe('Peer (perfect negotiation)', () => {
 
         fakeSockets[0].fakeMessage({ type: 'ice', from: 'peer_a', candidate: 'candidate:7 1 udp 1 192.0.2.7 5000 typ host' });
         fakeSockets[0].fakeMessage({ type: 'ice', from: 'peer_a', candidate: null });
-        await Promise.resolve(); await Promise.resolve();
+        // The peer serializes remote events through an internal microtask chain;
+        // drain it before asserting.
+        await peer._opChain;
+        await peer._opChain;
 
         expect(lastPc().addIceCandidateCalls).toHaveLength(2);
         expect(lastPc().addIceCandidateCalls[0]).toEqual({
@@ -247,7 +250,7 @@ describe('Peer (perfect negotiation)', () => {
 
         fakeSockets[0].fakeMessage({ type: 'offer', from: 'peer_b', sdp: 'other' });
         fakeSockets[0].fakeMessage({ type: 'ice',   from: 'peer_b', candidate: 'foo' });
-        await Promise.resolve(); await Promise.resolve();
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
 
         expect(lastPc().setRemoteCalls).toHaveLength(0);
         expect(lastPc().addIceCandidateCalls).toHaveLength(0);
@@ -268,7 +271,7 @@ describe('Peer (perfect negotiation)', () => {
         // Simulate an in-flight local offer.
         peer.makingOffer = true;
         fakeSockets[0].fakeMessage({ type: 'offer', from: 'peer_a', sdp: 'collide' });
-        await Promise.resolve(); await Promise.resolve();
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
 
         expect(peer.ignoreOffer).toBe(true);
         expect(lastPc().setRemoteCalls).toHaveLength(0);
@@ -285,7 +288,7 @@ describe('Peer (perfect negotiation)', () => {
 
         peer.makingOffer = true;
         fakeSockets[0].fakeMessage({ type: 'offer', from: 'peer_a', sdp: 'collide' });
-        await Promise.resolve(); await Promise.resolve();
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
 
         expect(peer.ignoreOffer).toBe(false);
         expect(lastPc().setRemoteCalls).toHaveLength(1);
@@ -305,7 +308,7 @@ describe('Peer (perfect negotiation)', () => {
         peer.ignoreOffer = true;
         lastPc().failNextAddIce = new Error('stale');
         fakeSockets[0].fakeMessage({ type: 'ice', from: 'peer_a', candidate: 'candidate:foo' });
-        await Promise.resolve(); await Promise.resolve();
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
 
         expect(errors).toHaveLength(0);
         peer.close();
@@ -372,7 +375,7 @@ describe('Peer (perfect negotiation)', () => {
 
         // Further inbound frames must not touch the (closed) PC.
         fakeSockets[0].fakeMessage({ type: 'offer', from: 'peer_a', sdp: 'late' });
-        await Promise.resolve(); await Promise.resolve();
+        await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
         expect(lastPc().setRemoteCalls).toHaveLength(0);
     });
 });
