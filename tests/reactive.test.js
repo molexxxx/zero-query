@@ -484,6 +484,31 @@ describe('reactive - edge cases', () => {
     r.a = 2;
     expect(r.__raw.a).toBe(2);
   });
+
+  it('host/class instances are passed through unchanged', () => {
+    // Plain objects and arrays are proxied; class instances (host objects
+    // like MediaStream, RTCPeerConnection, Map, Date, Blob) are not -
+    // wrapping them in a Proxy breaks internal-slot method calls with
+    // "Illegal invocation".
+    class Host {
+      constructor() { this.value = 1; }
+      method() { return this.value; }
+    }
+    const host = new Host();
+    const r = reactive({ host }, () => {});
+    expect(r.host).toBe(host);
+    expect(r.host.method()).toBe(1);
+  });
+
+  it('Map / Set / Date are not wrapped', () => {
+    const m = new Map();
+    const s = new Set();
+    const d = new Date();
+    const r = reactive({ m, s, d }, () => {});
+    expect(r.m).toBe(m);
+    expect(r.s).toBe(s);
+    expect(r.d).toBe(d);
+  });
 });
 
 
