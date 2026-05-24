@@ -220,9 +220,17 @@ function htmlToMarkdown(html) {
   md = md.replace(/<div class="file-tree">[\s\S]*?<\/div>(?:\s*<\/div>)*/g, '');
 
   // ---- Pass 5: Convert headings ----
-  md = md.replace(/<h2[^>]*>([\s\S]*?)<\/h2>/g, (_, c) => '\n## ' + unesc(inlineMd(c)).trim() + '\n');
-  md = md.replace(/<h3[^>]*>([\s\S]*?)<\/h3>/g, (_, c) => '\n### ' + unesc(inlineMd(c)).trim() + '\n');
-  md = md.replace(/<h4[^>]*>([\s\S]*?)<\/h4>/g, (_, c) => '\n#### ' + unesc(inlineMd(c)).trim() + '\n');
+  // Preserve `id` attributes by emitting an explicit HTML anchor before the
+  // heading so cross-section duplicate titles (e.g. "Overview") still resolve
+  // to unique anchors in the rendered Markdown TOC.
+  const headingRepl = (level) => (_, attrs, c) => {
+    const idMatch = /\bid="([^"]+)"/.exec(attrs || '');
+    const anchor  = idMatch ? `<a id="${idMatch[1]}"></a>\n` : '';
+    return '\n' + anchor + '#'.repeat(level) + ' ' + unesc(inlineMd(c)).trim() + '\n';
+  };
+  md = md.replace(/<h2([^>]*)>([\s\S]*?)<\/h2>/g, headingRepl(2));
+  md = md.replace(/<h3([^>]*)>([\s\S]*?)<\/h3>/g, headingRepl(3));
+  md = md.replace(/<h4([^>]*)>([\s\S]*?)<\/h4>/g, headingRepl(4));
 
   // ---- Pass 6: Convert lists ----
   md = md.replace(/<ul>([\s\S]*?)<\/ul>/g, (_, content) => {
@@ -298,14 +306,19 @@ function slugify(text) {
 function buildToc(sections) {
   const lines = [];
   for (const section of sections) {
-    // Get the section title from the first <h2> in content
+    // Get the section title from the first <h2> in content, preferring an
+    // explicit `id` attribute when present so the TOC link is stable and
+    // unique across sections.
     const html = section.content();
-    const h2Match = html.match(/<h2[^>]*>([\s\S]*?)<\/h2>/);
-    const title = h2Match ? unesc(inlineMd(h2Match[1])).trim() : section.label;
-    lines.push(`- [${title}](#${slugify(title)})`);
+    const h2Match = html.match(/<h2([^>]*)>([\s\S]*?)<\/h2>/);
+    const title  = h2Match ? unesc(inlineMd(h2Match[2])).trim() : section.label;
+    const h2Id   = h2Match && /\bid="([^"]+)"/.exec(h2Match[1] || '');
+    const anchor = h2Id ? h2Id[1] : (section.id || slugify(title));
+    lines.push(`- [${title}](#${anchor})`);
     for (const h of section.headings) {
       const hText = unesc(h.text);
-      lines.push(`  - [${hText}](#${slugify(hText)})`);
+      const hAnchor = h.id || slugify(hText);
+      lines.push(`  - [${hText}](#${hAnchor})`);
     }
   }
   return lines.join('\n');
