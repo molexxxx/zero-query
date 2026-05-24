@@ -43,20 +43,32 @@
 
 The fastest way to develop with zQuery is via the built-in **CLI dev server** with **live-reload**. It serves your ES modules as-is and automatically resolves the library - no manual downloads required.
 
+Pick a scaffold flavor &mdash; every variant auto-installs, auto-starts, and opens your browser:
+
 ```bash
-npx zero-query create my-app
+# Default: full sidebar layout, router, demo components, responsive styles
+npx zero-query create my-app                    # → http://localhost:3100
+
+# Minimal: lightweight 3-page starter
+npx zero-query create my-app --minimal          # → http://localhost:3100   (alias: -m)
+
+# SSR: Node.js server-side rendering project
+npx zero-query create my-app --ssr              # → http://localhost:3000   (alias: -s)
+
+# WebRTC: one-page video room backed by zero-server
+npx zero-query create my-app --webrtc-demo      # → http://localhost:3000   (alias: -w)
 ```
 
-That's it. One command scaffolds the project, installs dependencies, starts the dev server, and opens your browser to <http://localhost:3100>. To restart later:
+That's it. One command scaffolds the project, installs dependencies, starts the server, and opens the browser. To restart later:
 
 ```bash
 cd my-app
 npm run dev      # or: npm start
 ```
 
-> **Tip:** Stay in the project root (where `node_modules` lives) instead of `cd`-ing into `my-app`. This keeps `index.d.ts` accessible to your IDE for full type/intellisense support.
+> **Tip:** For the default and minimal variants, you can stay in the project root (where `node_modules` lives) instead of `cd`-ing into `my-app`. This keeps `index.d.ts` accessible to your IDE for full type/intellisense support.
 
-The `create` command generates a ready-to-run project with a sidebar layout, router, multiple components (including folder components with external templates and styles), and responsive styles. Use `--minimal` (or `-m`) for a lightweight 3-page starter. Use `--ssr` (or `-s`) for a Node.js server-side rendering project (auto-launches on port 3000). Use `--webrtc-demo` (or `-w`) for a one-page video room backed by [zero-server](https://github.com/tonywied17/zero-server) (also port 3000). Every variant auto-installs, auto-starts, and opens the browser. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
+The default scaffold ships a sidebar layout, router, multiple components (including folder components with external templates and styles), and responsive styles. The SSR variant runs a Node.js server that renders pages to HTML strings. The WebRTC variant is wired to [zero-server](https://github.com/tonywied17/zero-server) for signaling + TURN. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
 
 #### Error Overlay
 
