@@ -39,7 +39,7 @@ function createProject(args) {
 
   // Guard: refuse to overwrite existing files
   const checkFiles = ['index.html', 'global.css', 'app', 'assets'];
-  if (variant === 'ssr') checkFiles.push('server');
+  if (variant === 'ssr' || variant === 'webrtc') checkFiles.push('server');
   const conflicts = checkFiles.filter(f =>
     fs.existsSync(path.join(target, f))
   );
@@ -125,6 +125,47 @@ function createProject(args) {
     process.on('SIGTERM', () => { child.kill(); process.exit(); });
     child.on('exit', (code) => process.exit(code || 0));
     return; // keep process alive for the server
+  } else if (variant === 'webrtc') {
+    console.log(`\n  Installing dependencies...\n`);
+    // Install zero-query from the same package that provides this CLI so
+    // local-dev and published-npm both work. Dev deps (@zero-server/sdk +
+    // @zero-server/webrtc) are declared in the scaffold's package.json and
+    // get installed by the same `npm install`. The server has its own
+    // install-prompt as a safety net.
+    const zqRoot = path.resolve(__dirname, '..', '..');
+    try {
+      execSync(`npm install "${zqRoot}"`, { cwd: target, stdio: 'inherit' });
+      execSync(`npm install`, { cwd: target, stdio: 'inherit' });
+    } catch {
+      console.error(`\n  ✗ npm install failed. Run it manually:\n\n    cd ${dirArg || '.'}\n    npm install\n    node server/index.js\n`);
+      process.exit(1);
+    }
+
+    // Refresh zquery.min.js from the installed package (preferred over the
+    // pre-copied one above so post-install rebuilds win).
+    const zqMin = path.join(target, 'node_modules', 'zero-query', 'dist', 'zquery.min.js');
+    if (fs.existsSync(zqMin)) {
+      fs.copyFileSync(zqMin, path.join(target, 'zquery.min.js'));
+      console.log(`  ✓ zquery.min.js`);
+    }
+
+    console.log(`
+  Done! The WebRTC demo needs the signaling server running. In one terminal:
+
+    cd ${dirArg || '.'}
+    node server/index.js
+
+  Then in another terminal serve the static client:
+
+    ${devCmd}
+
+  Notes:
+    - Camera, microphone, and screen-share are OFF by default. Users opt-in
+      from inside the room.
+    - Set WEBRTC_JWT_SECRET to enforce signed join tokens.
+    - Set TURN_SECRET + TURN_URLS to issue time-limited TURN credentials.
+`);
+    return;
   } else {
     console.log(`
   Done! Next steps:

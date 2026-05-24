@@ -283,11 +283,17 @@ export class ZQueryCollection {
       });
     }
     if (value === undefined) return this.first()?.getAttribute(name);
-    return this.each((_, el) => el.setAttribute(name, value));
+    // Fast path: tight loop, no closure allocation, no `each` overhead.
+    // Mirrors the addClass/removeClass single-name fast path.
+    const els = this.elements;
+    for (let i = 0; i < els.length; i++) els[i].setAttribute(name, value);
+    return this;
   }
 
   removeAttr(name) {
-    return this.each((_, el) => el.removeAttribute(name));
+    const els = this.elements;
+    for (let i = 0; i < els.length; i++) els[i].removeAttribute(name);
+    return this;
   }
 
   prop(name, value) {
@@ -852,7 +858,9 @@ export function queryAll(selector, context) {
 // Quick-ref shortcuts, on $ namespace)
 // ---------------------------------------------------------------------------
 query.id       = (id) => document.getElementById(id);
-query.class    = (name) => document.querySelector(`.${name}`);
+// Escape the class name so callers can safely pass identifiers containing
+// dots, colons, leading digits, etc. without breaking the selector.
+query.class    = (name) => document.querySelector(`.${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(name) : name}`);
 query.classes  = (name) => new ZQueryCollection(Array.from(document.getElementsByClassName(name)));
 query.tag      = (name) => new ZQueryCollection(Array.from(document.getElementsByTagName(name)));
 Object.defineProperty(query, 'name', {

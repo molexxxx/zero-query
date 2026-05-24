@@ -1,0 +1,16 @@
+{
+  "name": "{{NAME}}",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "npx zquery dev"
+  },
+  "dependencies": {
+    "zero-query": "latest"
+  },
+  "devDependencies": {
+    "@zero-server/sdk": "^0.9.8",
+    "@zero-server/webrtc": "^0.9.8"
+  }
+}

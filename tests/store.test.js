@@ -232,6 +232,16 @@ describe('Store - snapshot & replaceState', () => {
     expect(store.state.a).toBe(1); // original unchanged
   });
 
+  it('snapshot({ clone: false }) skips the deep copy (read-only fast path)', () => {
+    const store = createStore('snap-noclone', { state: { a: 1, nested: { b: 2 } } });
+    const snap = store.snapshot({ clone: false });
+    // Same reference to the underlying nested object (no cloning happened)
+    expect(snap.nested).toBe((store.state.__raw || store.state).nested);
+    // Default still clones
+    const cloned = store.snapshot();
+    expect(cloned.nested).not.toBe((store.state.__raw || store.state).nested);
+  });
+
   it('replaceState replaces entire state', () => {
     const store = createStore('replace-1', { state: { x: 1, y: 2 } });
     store.replaceState({ x: 10, z: 30 });

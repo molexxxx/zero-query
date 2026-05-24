@@ -130,7 +130,6 @@ function buildLibrary() {
   // --- Generate API.md before zipping --------------------------------------
   const root = process.cwd();
   try {
-    const buildApi = require('./build-api');
     // buildApi() is async (dynamic imports), so we run it synchronously via
     // a child process to keep the build function synchronous.
     execSync('node cli/commands/build-api.js', {

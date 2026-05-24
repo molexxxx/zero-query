@@ -271,7 +271,6 @@ function minifyHTML(html) {
   html = html.replace(/>\s+</g, (m, offset) => {
     const before = html.slice(Math.max(0, offset - 80), offset + 1);
     const after  = html.slice(offset + m.length - 1, offset + m.length + 40);
-    const inlineTags = /\b(a|span|strong|em|b|i|code|small|sub|sup|abbr|label)\b/i;
     const closingInline = /<\/\s*(a|span|strong|em|b|i|code|small|sub|sup|abbr|label)\s*>$/i.test(before);
     const openingInline = /^<(a|span|strong|em|b|i|code|small|sub|sup|abbr|label)[\s>]/i.test(after);
     return (closingInline || openingInline) ? '> <' : '><';
@@ -1058,7 +1057,6 @@ function bundleApp() {
     // pre-built dist/zquery.min.js that ships with the package.
     const pkgRoot    = path.resolve(__dirname, '..', '..');
     const pkgSrcDir  = path.join(pkgRoot, 'src');
-    const pkgMinFile = path.join(pkgRoot, 'dist', 'zquery.min.js');
     const isInstalled = /[\\/]node_modules[\\/]/.test(pkgRoot);
 
     if (!isInstalled && fs.existsSync(pkgSrcDir) && fs.existsSync(path.join(pkgRoot, 'index.js'))) {
