@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v1.2.15
+ * zQuery (zeroQuery) v1.2.17
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -1869,8 +1869,11 @@ class Room {
         }
 
         // Pre-existing data channels: open the same label on the new peer.
+        // Only the lexicographically-smaller peer ID creates; the other side
+        // adopts via `ondatachannel`. Avoids glare where both ends create
+        // duplicate channels and never see each other's messages.
         for (const wrap of this._channels.values()) {
-            try { wrap._openOnPeer(peerId, peer); }
+            try { wrap._openOnPeer(peerId, peer, this.self); }
             catch (err) { this._emit('error', err); }
         }
 
@@ -1993,7 +1996,7 @@ class Room {
         this._channels.set(label, wrap);
 
         for (const [peerId, info] of this.peers.peek()) {
-            try { wrap._openOnPeer(peerId, info.peer); }
+            try { wrap._openOnPeer(peerId, info.peer, this.self); }
             catch (err) { this._emit('error', err); }
         }
         return wrap;
@@ -2098,10 +2101,18 @@ class _RoomDataChannel {
         this._onOpen    = new Set();
     }
 
-    /** Open the channel on a freshly-joined peer. */
-    _openOnPeer(peerId, peer) {
+    /**
+     * Open the channel on a freshly-joined peer.
+     * Glare avoidance: only the peer with the lexicographically smaller ID
+     * actually creates the channel; the other side waits for the remote's
+     * `ondatachannel` event and adopts it via `_adoptIncoming`.
+     */
+    _openOnPeer(peerId, peer, selfId) {
         if (this.closed) return;
         if (this._byPeer.has(peerId)) return;
+        // Glare guard: if we have a selfId and ours is not smaller, wait for
+        // the remote to create the channel.
+        if (typeof selfId === 'string' && selfId >= peerId) return;
         const dc = peer.createDataChannel(this.label, this.opts);
         this._attach(peerId, dc);
     }
@@ -10489,9 +10500,9 @@ $.TurnError          = TurnError;
 $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
-$.version   = '1.2.15';
+$.version   = '1.2.17';
 $.libSize   = '~130 KB';
-$.unitTests = {"passed":2534,"failed":0,"total":2534,"suites":620,"duration":6204,"ok":true};
+$.unitTests = {"passed":2535,"failed":0,"total":2535,"suites":620,"duration":6187,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

@@ -10,7 +10,7 @@
     "zero-query": "latest"
   },
   "devDependencies": {
-    "@zero-server/sdk": "^0.9.9",
-    "@zero-server/webrtc": "^0.9.9"
+    "@zero-server/sdk": "^0.9.10",
+    "@zero-server/webrtc": "^0.9.10"
   }
 }
