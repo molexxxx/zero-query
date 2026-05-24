@@ -6555,7 +6555,7 @@ The WebRTC surface is layered — pick the level you need:
 | **Hardening** | `SFrameContext`, `attachE2ee`, TURN refresher | You need E2EE and rotating TURN credentials. |
 
   
-> **Tip:** Want a working starting point? Run `npx zero-query create my-app --webrtc-demo` (alias `-w`) to scaffold a one-page video room with local + remote tiles, mic/cam controls, and a status overlay.
+> **Tip:** Want a working starting point? Run `npx zero-query create my-app --webrtc-demo` (alias `-w`) to scaffold a one-page video room with mic / camera / screen-share toggles, a reactive roster, and a chat data channel. The scaffold installs [zero-server](https://github.com/tonywied17/zero-server), launches the signaling + static server on `http://localhost:3000`, and opens your browser - one command, no extra setup. Camera and microphone stay off until the user opts in.
 
   
 ### Surface Status
