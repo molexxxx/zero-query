@@ -218,12 +218,28 @@ class Parser {
 
   // Main entry
   parse() {
+    this.depth = 0;
     const result = this.parseExpression(0);
     return result;
   }
 
   // Precedence climbing
   parseExpression(minPrec) {
+    // Cap nesting depth so a deeply parenthesised or recursive expression
+    // can’t stack-overflow the host. Threshold (96) is generous - real
+    // template expressions are flat - but stops pathological inputs cold.
+    if (++this.depth > 96) {
+      this.depth--;
+      throw new Error('Expression nesting depth exceeded (max 96)');
+    }
+    try {
+      return this._parseExpressionImpl(minPrec);
+    } finally {
+      this.depth--;
+    }
+  }
+
+  _parseExpressionImpl(minPrec) {
     let left = this.parseUnary();
 
     while (true) {
@@ -550,13 +566,6 @@ class Parser {
 // ---------------------------------------------------------------------------
 
 /** Safe property access whitelist for built-in prototypes */
-const SAFE_ARRAY_METHODS = new Set([
-  'length', 'map', 'filter', 'find', 'findIndex', 'some', 'every',
-  'reduce', 'reduceRight', 'forEach', 'includes', 'indexOf', 'lastIndexOf',
-  'join', 'slice', 'concat', 'flat', 'flatMap', 'reverse', 'sort',
-  'fill', 'keys', 'values', 'entries', 'at', 'toString',
-]);
-
 const SAFE_STRING_METHODS = new Set([
   'length', 'charAt', 'charCodeAt', 'includes', 'indexOf', 'lastIndexOf',
   'slice', 'substring', 'trim', 'trimStart', 'trimEnd', 'toLowerCase',
@@ -568,18 +577,6 @@ const SAFE_STRING_METHODS = new Set([
 const SAFE_NUMBER_METHODS = new Set([
   'toFixed', 'toPrecision', 'toString', 'valueOf',
 ]);
-
-const SAFE_OBJECT_METHODS = new Set([
-  'hasOwnProperty', 'toString', 'valueOf',
-]);
-
-const SAFE_MATH_PROPS = new Set([
-  'PI', 'E', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'SQRT2', 'SQRT1_2',
-  'abs', 'ceil', 'floor', 'round', 'trunc', 'max', 'min', 'pow',
-  'sqrt', 'sign', 'random', 'log', 'log2', 'log10',
-]);
-
-const SAFE_JSON_PROPS = new Set(['parse', 'stringify']);
 
 /**
  * Check if property access is safe
@@ -878,8 +875,18 @@ function _evalBinary(node, scope) {
 const _astCache = new Map();
 const _AST_CACHE_MAX = 512;
 
+// Maximum source length accepted by safeEval. Real template expressions
+// are tens of bytes; anything beyond 8 KB is almost certainly an attack
+// payload or accidental dump. Reject up front to avoid feeding the
+// tokenizer and parser unbounded input.
+const _EXPR_MAX_LEN = 8192;
+
 export function safeEval(expr, scope) {
   try {
+    if (typeof expr !== 'string') return undefined;
+    if (expr.length > _EXPR_MAX_LEN) {
+      throw new Error(`Expression exceeds max length (${_EXPR_MAX_LEN} bytes)`);
+    }
     const trimmed = expr.trim();
     if (!trimmed) return undefined;
 

@@ -806,6 +806,52 @@ describe('SSRApp - renderShell', () => {
     expect(html).not.toContain('data-zq-ssr');
   });
 
+  it('replaces meta description regardless of attribute spacing, order, or quoting', async () => {
+    const variantShell = `<!DOCTYPE html>
+<html><head>
+  <title>T</title>
+  <meta   name="description"   content="orig multi-space">
+</head><body><z-outlet></z-outlet></body></html>`;
+    const html = await app.renderShell(variantShell, { component: 'test-page', description: 'New' });
+    expect(html).toContain('<meta name="description" content="New">');
+    expect(html).not.toContain('orig multi-space');
+
+    const reversedShell = `<!DOCTYPE html>
+<html><head>
+  <title>T</title>
+  <meta content="orig reversed" name="description">
+</head><body><z-outlet></z-outlet></body></html>`;
+    const html2 = await app.renderShell(reversedShell, { component: 'test-page', description: 'New2' });
+    expect(html2).toContain('<meta name="description" content="New2">');
+    expect(html2).not.toContain('orig reversed');
+
+    const selfClosingShell = `<!DOCTYPE html>
+<html><head>
+  <title>T</title>
+  <meta name='description' content='orig single quoted' />
+</head><body><z-outlet></z-outlet></body></html>`;
+    const html3 = await app.renderShell(selfClosingShell, { component: 'test-page', description: 'New3' });
+    expect(html3).toContain('<meta name="description" content="New3">');
+    expect(html3).not.toContain('orig single quoted');
+  });
+
+  it('replaces og:* meta tags regardless of attribute order / quoting', async () => {
+    const variantShell = `<!DOCTYPE html>
+<html><head>
+  <title>T</title>
+  <meta content="orig og title" property="og:title">
+  <meta  property='og:type'  content='website' />
+</head><body><z-outlet></z-outlet></body></html>`;
+    const html = await app.renderShell(variantShell, {
+      component: 'test-page',
+      og: { title: 'New OG', type: 'article' },
+    });
+    expect(html).toContain('<meta property="og:title" content="New OG">');
+    expect(html).toContain('<meta property="og:type" content="article">');
+    expect(html).not.toContain('orig og title');
+    expect(html).not.toContain("content='website'");
+  });
+
   it('handles a missing component gracefully', async () => {
     const html = await app.renderShell(shell, { component: 'nonexistent' });
     expect(html).toContain('<!-- SSR error:');

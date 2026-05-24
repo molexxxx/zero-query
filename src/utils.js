@@ -10,25 +10,35 @@
 // ---------------------------------------------------------------------------
 
 /**
- * Debounce - delays execution until after `ms` of inactivity
+ * Debounce - delays execution until after `ms` of inactivity.
+ * Optional `{ signal }` aborts any pending invocation and prevents future ones.
  */
-export function debounce(fn, ms = 250) {
+export function debounce(fn, ms = 250, opts = {}) {
   let timer;
+  const signal = opts.signal;
   const debounced = (...args) => {
+    if (signal && signal.aborted) return;
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), ms);
   };
   debounced.cancel = () => clearTimeout(timer);
+  if (signal) {
+    if (signal.aborted) debounced.cancel();
+    else signal.addEventListener('abort', debounced.cancel, { once: true });
+  }
   return debounced;
 }
 
 /**
- * Throttle - limits execution to once per `ms`
+ * Throttle - limits execution to once per `ms`.
+ * Optional `{ signal }` aborts any pending trailing call and prevents future ones.
  */
-export function throttle(fn, ms = 250) {
+export function throttle(fn, ms = 250, opts = {}) {
   let last = 0;
   let timer;
-  return (...args) => {
+  const signal = opts.signal;
+  const throttled = (...args) => {
+    if (signal && signal.aborted) return;
     const now = Date.now();
     const remaining = ms - (now - last);
     clearTimeout(timer);
@@ -39,6 +49,12 @@ export function throttle(fn, ms = 250) {
       timer = setTimeout(() => { last = Date.now(); fn(...args); }, remaining);
     }
   };
+  throttled.cancel = () => clearTimeout(timer);
+  if (signal) {
+    if (signal.aborted) throttled.cancel();
+    else signal.addEventListener('abort', throttled.cancel, { once: true });
+  }
+  return throttled;
 }
 
 /**
@@ -363,6 +379,9 @@ export function chunk(arr, size) {
 }
 
 export function groupBy(arr, keyFn) {
+  // Prefer the native Object.groupBy (Node 21+, all evergreens) when available -
+  // it returns a null-prototype object which is safer for use as a lookup map.
+  if (typeof Object.groupBy === 'function') return Object.groupBy(arr, keyFn);
   const result = {};
   for (const item of arr) {
     const k = keyFn(item);

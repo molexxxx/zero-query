@@ -1054,3 +1054,34 @@ describe('safeEval - edge cases', () => {
     expect(eval_('obj.hasOwnProperty("a")', { obj })).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Security caps (length + depth)
+// ---------------------------------------------------------------------------
+describe('safeEval - input caps', () => {
+  it('returns undefined and does not throw on huge inputs (>8KB)', () => {
+    const huge = 'a'.repeat(9000);
+    expect(eval_(huge)).toBeUndefined();
+  });
+
+  it('handles deeply nested parens without stack overflow', () => {
+    const deep = '('.repeat(500) + '1' + ')'.repeat(500);
+    // Either returns undefined (depth cap rejected it) or returns 1.
+    // Critical thing is: no host stack overflow / hang.
+    const result = eval_(deep);
+    expect(result === undefined || result === 1).toBe(true);
+  });
+
+  it('rejects non-string input quietly', () => {
+    expect(eval_(null)).toBeUndefined();
+    expect(eval_(undefined)).toBeUndefined();
+    expect(eval_(42)).toBeUndefined();
+  });
+
+  it('still evaluates long but flat expressions (left-associative chains)', () => {
+    // 200 additions = 1+1+1+...+1. Pratt parsing keeps this at O(1) depth.
+    const expr = Array(200).fill('1').join('+');
+    expect(eval_(expr)).toBe(200);
+  });
+});
+

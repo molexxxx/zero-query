@@ -62,6 +62,27 @@ describe('debounce', () => {
     vi.advanceTimersByTime(20);
     expect(fn).toHaveBeenCalledOnce();
   });
+
+  it('cancels pending invocation when AbortSignal aborts', () => {
+    const fn = vi.fn();
+    const ctrl = new AbortController();
+    const debounced = debounce(fn, 100, { signal: ctrl.signal });
+    debounced('x');
+    vi.advanceTimersByTime(50);
+    ctrl.abort();
+    vi.advanceTimersByTime(200);
+    expect(fn).not.toHaveBeenCalled();
+  });
+
+  it('ignores calls after AbortSignal aborts', () => {
+    const fn = vi.fn();
+    const ctrl = new AbortController();
+    const debounced = debounce(fn, 100, { signal: ctrl.signal });
+    ctrl.abort();
+    debounced('x');
+    vi.advanceTimersByTime(200);
+    expect(fn).not.toHaveBeenCalled();
+  });
 });
 
 
@@ -594,6 +615,19 @@ describe('bus (EventBus)', () => {
 // ===========================================================================
 
 describe('throttle - edge cases', () => {
+  it('cancels trailing call when AbortSignal aborts', () => {
+    vi.useFakeTimers();
+    const fn = vi.fn();
+    const ctrl = new AbortController();
+    const throttled = throttle(fn, 100, { signal: ctrl.signal });
+    throttled('a');
+    expect(fn).toHaveBeenCalledTimes(1);
+    throttled('b');
+    ctrl.abort();
+    vi.advanceTimersByTime(200);
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
   it('fires trailing call after wait period', async () => {
     vi.useFakeTimers();
     const fn = vi.fn();

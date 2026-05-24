@@ -22,6 +22,7 @@
 
 import { safeEval } from './expression.js';
 import { reportError, ErrorCode, ZQueryError } from './errors.js';
+import { escapeHtml as _escapeHtml } from './utils.js';
 
 // ---------------------------------------------------------------------------
 // SSR Component renderer
@@ -115,12 +116,8 @@ const SSR_RESERVED = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
-// HTML escaping for SSR output
+// HTML escaping for SSR output (re-uses utils.escapeHtml)
 // ---------------------------------------------------------------------------
-const _escapeMap = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-function _escapeHtml(str) {
-  return str.replace(/[&<>"']/g, c => _escapeMap[c]);
-}
 
 // ---------------------------------------------------------------------------
 // SSR App - component registry + renderer
@@ -343,10 +340,15 @@ class SSRApp {
     // Replace <meta name="description">
     if (description != null) {
       const safeDesc = _escapeHtml(description);
-      html = html.replace(
-        /<meta\s+name="description"\s+content="[^"]*">/,
-        () => `<meta name="description" content="${safeDesc}">`
-      );
+      // Permissive: match any <meta ...> whose attributes contain
+      // name="description" (any attribute order, single or double quotes,
+      // additional attributes, optional self-closing slash, any whitespace).
+      const descPattern = /<meta\b[^>]*\bname\s*=\s*["']description["'][^>]*\/?>/i;
+      if (descPattern.test(html)) {
+        html = html.replace(descPattern, () => `<meta name="description" content="${safeDesc}">`);
+      } else {
+        html = html.replace('</head>', () => `<meta name="description" content="${safeDesc}">\n</head>`);
+      }
     }
 
     // Replace Open Graph meta tags
@@ -358,7 +360,8 @@ class SSRApp {
         const escaped = _escapeHtml(String(value));
         // Escape key for use in RegExp to prevent ReDoS
         const escapedKey = safeKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const pattern = new RegExp(`<meta\\s+property="og:${escapedKey}"\\s+content="[^"]*">`);
+        // Permissive pattern (any attribute order / quoting / extra attrs / self-closing).
+        const pattern = new RegExp(`<meta\\b[^>]*\\bproperty\\s*=\\s*["']og:${escapedKey}["'][^>]*\\/?>`, 'i');
         if (pattern.test(html)) {
           html = html.replace(pattern, () => `<meta property="og:${safeKey}" content="${escaped}">`);
         } else {
@@ -411,7 +414,7 @@ export function renderToString(definition, props = {}) {
  * @returns {string}
  */
 export function escapeHtml(str) {
-  return _escapeHtml(String(str));
+  return _escapeHtml(str);
 }
 
 // Re-export matchRoute so SSR servers can import from 'zero-query/ssr'

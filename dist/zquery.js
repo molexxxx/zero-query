@@ -3257,7 +3257,7 @@ function _base64UrlDecode(segment) {
         return new TextDecoder().decode(bytes);
     }
     // Node fallback.
-    // eslint-disable-next-line no-undef
+     
     return Buffer.from(b64, 'base64').toString('utf8');
 }
 
@@ -3866,10 +3866,26 @@ const webrtc = {
 
 
 // ---------------------------------------------------------------------------
+// Host-object passthrough
+// ---------------------------------------------------------------------------
+// The reactive proxy is meant for plain data: state bags, arrays, nested
+// records. Wrapping host/native objects (MediaStream, RTCPeerConnection,
+// Blob, Map, Date, etc.) breaks them - the proxy receiver is not the real
+// underlying object, so any internal-slot method call throws
+// "Illegal invocation" in the browser. Only proxy values whose prototype is
+// Object.prototype/null (plain objects) or that are Arrays.
+function _isProxyable(value) {
+  if (value === null || typeof value !== 'object') return false;
+  if (Array.isArray(value)) return true;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+// ---------------------------------------------------------------------------
 // Deep reactive proxy
 // ---------------------------------------------------------------------------
 function reactive(target, onChange, _path = '') {
-  if (typeof target !== 'object' || target === null) return target;
+  if (!_isProxyable(target)) return target;
   if (typeof onChange !== 'function') {
     reportError(ErrorCode.REACTIVE_CALLBACK, 'reactive() onChange must be a function', { received: typeof onChange });
     onChange = () => {};
@@ -3883,7 +3899,7 @@ function reactive(target, onChange, _path = '') {
       if (key === '__raw') return obj;
 
       const value = obj[key];
-      if (typeof value === 'object' && value !== null) {
+      if (_isProxyable(value)) {
         // Return cached proxy or create new one
         if (proxyCache.has(value)) return proxyCache.get(value);
         const childProxy = new Proxy(value, handler);
@@ -4896,11 +4912,17 @@ class ZQueryCollection {
       });
     }
     if (value === undefined) return this.first()?.getAttribute(name);
-    return this.each((_, el) => el.setAttribute(name, value));
+    // Fast path: tight loop, no closure allocation, no `each` overhead.
+    // Mirrors the addClass/removeClass single-name fast path.
+    const els = this.elements;
+    for (let i = 0; i < els.length; i++) els[i].setAttribute(name, value);
+    return this;
   }
 
   removeAttr(name) {
-    return this.each((_, el) => el.removeAttribute(name));
+    const els = this.elements;
+    for (let i = 0; i < els.length; i++) els[i].removeAttribute(name);
+    return this;
   }
 
   prop(name, value) {
@@ -5465,7 +5487,9 @@ function queryAll(selector, context) {
 // Quick-ref shortcuts, on $ namespace)
 // ---------------------------------------------------------------------------
 query.id       = (id) => document.getElementById(id);
-query.class    = (name) => document.querySelector(`.${name}`);
+// Escape the class name so callers can safely pass identifiers containing
+// dots, colons, leading digits, etc. without breaking the selector.
+query.class    = (name) => document.querySelector(`.${typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(name) : name}`);
 query.classes  = (name) => new ZQueryCollection(Array.from(document.getElementsByClassName(name)));
 query.tag      = (name) => new ZQueryCollection(Array.from(document.getElementsByTagName(name)));
 Object.defineProperty(query, 'name', {
@@ -5754,12 +5778,28 @@ class Parser {
 
   // Main entry
   parse() {
+    this.depth = 0;
     const result = this.parseExpression(0);
     return result;
   }
 
   // Precedence climbing
   parseExpression(minPrec) {
+    // Cap nesting depth so a deeply parenthesised or recursive expression
+    // can’t stack-overflow the host. Threshold (96) is generous - real
+    // template expressions are flat - but stops pathological inputs cold.
+    if (++this.depth > 96) {
+      this.depth--;
+      throw new Error('Expression nesting depth exceeded (max 96)');
+    }
+    try {
+      return this._parseExpressionImpl(minPrec);
+    } finally {
+      this.depth--;
+    }
+  }
+
+  _parseExpressionImpl(minPrec) {
     let left = this.parseUnary();
 
     while (true) {
@@ -6086,13 +6126,6 @@ class Parser {
 // ---------------------------------------------------------------------------
 
 /** Safe property access whitelist for built-in prototypes */
-const SAFE_ARRAY_METHODS = new Set([
-  'length', 'map', 'filter', 'find', 'findIndex', 'some', 'every',
-  'reduce', 'reduceRight', 'forEach', 'includes', 'indexOf', 'lastIndexOf',
-  'join', 'slice', 'concat', 'flat', 'flatMap', 'reverse', 'sort',
-  'fill', 'keys', 'values', 'entries', 'at', 'toString',
-]);
-
 const SAFE_STRING_METHODS = new Set([
   'length', 'charAt', 'charCodeAt', 'includes', 'indexOf', 'lastIndexOf',
   'slice', 'substring', 'trim', 'trimStart', 'trimEnd', 'toLowerCase',
@@ -6104,18 +6137,6 @@ const SAFE_STRING_METHODS = new Set([
 const SAFE_NUMBER_METHODS = new Set([
   'toFixed', 'toPrecision', 'toString', 'valueOf',
 ]);
-
-const SAFE_OBJECT_METHODS = new Set([
-  'hasOwnProperty', 'toString', 'valueOf',
-]);
-
-const SAFE_MATH_PROPS = new Set([
-  'PI', 'E', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'SQRT2', 'SQRT1_2',
-  'abs', 'ceil', 'floor', 'round', 'trunc', 'max', 'min', 'pow',
-  'sqrt', 'sign', 'random', 'log', 'log2', 'log10',
-]);
-
-const SAFE_JSON_PROPS = new Set(['parse', 'stringify']);
 
 /**
  * Check if property access is safe
@@ -6414,8 +6435,18 @@ function _evalBinary(node, scope) {
 const _astCache = new Map();
 const _AST_CACHE_MAX = 512;
 
+// Maximum source length accepted by safeEval. Real template expressions
+// are tens of bytes; anything beyond 8 KB is almost certainly an attack
+// payload or accidental dump. Reject up front to avoid feeding the
+// tokenizer and parser unbounded input.
+const _EXPR_MAX_LEN = 8192;
+
 function safeEval(expr, scope) {
   try {
+    if (typeof expr !== 'string') return undefined;
+    if (expr.length > _EXPR_MAX_LEN) {
+      throw new Error(`Expression exceeds max length (${_EXPR_MAX_LEN} bytes)`);
+    }
     const trimmed = expr.trim();
     if (!trimmed) return undefined;
 
@@ -6649,6 +6680,10 @@ class Component {
     this._updateQueued = false;
     this._listeners = [];
     this._watchCleanups = [];
+    // Elements that have scheduled debounce/throttle timers under this
+    // component instance. Tracked so destroy() can clear them even if the
+    // element is detached from the subtree before teardown.
+    this._timerEls = new Set();
 
     // Refs map
     this.refs = {};
@@ -6673,15 +6708,21 @@ class Component {
     if (definition.props && typeof definition.props === 'object' && !Array.isArray(definition.props)) {
       // Reactive props with type coercion and defaults
       this.props = this._resolveReactiveProps(definition.props, props);
-      // MutationObserver to re-read props when parent re-renders and changes attributes
+      // MutationObserver to re-read props when parent re-renders and changes attributes.
+      // attributeFilter limits callbacks to the declared prop names (plus their
+      // dynamic `:name` aliases) — unrelated attribute churn no longer fires.
+      const propNames = Object.keys(definition.props);
+      const filter = [];
+      for (const n of propNames) {
+        filter.push(n.toLowerCase());
+        filter.push(':' + n.toLowerCase());
+      }
       this._propObserver = new MutationObserver((mutations) => {
         if (this._destroyed) return;
         let changed = false;
         for (const mut of mutations) {
           if (mut.type === 'attributes') {
             const attrName = mut.attributeName;
-            // Skip internal attributes
-            if (attrName.startsWith('z-') || attrName.startsWith('@') || attrName.startsWith(':') || attrName.startsWith('data-zq')) continue;
             // Check if this is a defined prop (attribute names are lowercase)
             const propName = attrName.startsWith(':') ? attrName.slice(1) : attrName;
             if (propName in definition.props) {
@@ -6694,7 +6735,7 @@ class Component {
           this._scheduleUpdate();
         }
       });
-      this._propObserver.observe(el, { attributes: true });
+      this._propObserver.observe(el, { attributes: true, attributeFilter: filter });
     } else {
       // Legacy: frozen props from parent
       this.props = Object.freeze({ ...props });
@@ -6976,44 +7017,60 @@ class Component {
 
     // Apply scoped styles on first render
     if (!this._mounted && combinedStyles) {
-      const scopeAttr = `z-s${this._uid}`;
-      this._el.setAttribute(scopeAttr, '');
-      let noScopeDepth = 0;   // brace depth at which a no-scope @-rule started (0 = none active)
-      let braceDepth = 0;     // overall brace depth
-      const scoped = combinedStyles.replace(/([^{}]+)\{|\}/g, (match, selector) => {
-        if (match === '}') {
-          if (noScopeDepth > 0 && braceDepth <= noScopeDepth) noScopeDepth = 0;
-          braceDepth--;
-          return match;
-        }
-        braceDepth++;
-        const trimmed = selector.trim();
-        // Don't scope @-rules themselves
-        if (trimmed.startsWith('@')) {
-          // @keyframes and @font-face contain non-selector content - skip scoping inside them
-          if (/^@(keyframes|font-face)\b/.test(trimmed)) {
-            noScopeDepth = braceDepth;
-          }
-          return match;
-        }
-        // Inside @keyframes or @font-face - don't scope inner rules
-        if (noScopeDepth > 0 && braceDepth > noScopeDepth) {
-          return match;
-        }
-        return selector.split(',').map(s => `[${scopeAttr}] ${s.trim()}`).join(', ') + ' {';
-      });
-      const styleEl = document.createElement('style');
-      styleEl.textContent = scoped;
-      styleEl.setAttribute('data-zq-component', this._def._name || '');
-      styleEl.setAttribute('data-zq-scope', scopeAttr);
-      if (this._def._resolvedStyleUrls) {
-        styleEl.setAttribute('data-zq-style-urls', this._def._resolvedStyleUrls.join(' '));
-        if (this._def.styles) {
-          styleEl.setAttribute('data-zq-inline', this._def.styles);
-        }
+      const def = this._def;
+      // Use a stable per-definition scope attr so all instances share one
+      // <style> tag (ref-counted). Anonymous defs fall back to per-instance
+      // scoping for safety.
+      let scopeAttr = def._scopeAttr;
+      if (!scopeAttr) {
+        scopeAttr = def._name ? `z-s-${def._name}` : `z-s${this._uid}`;
+        def._scopeAttr = scopeAttr;
       }
-      document.head.appendChild(styleEl);
-      this._styleEl = styleEl;
+      this._el.setAttribute(scopeAttr, '');
+      this._scopeAttr = scopeAttr;
+
+      if (def._styleEl && def._styleEl.isConnected) {
+        // Already injected by a previous instance — just bump refcount.
+        def._styleRefCount = (def._styleRefCount || 0) + 1;
+      } else {
+        let noScopeDepth = 0;   // brace depth at which a no-scope @-rule started (0 = none active)
+        let braceDepth = 0;     // overall brace depth
+        const scoped = combinedStyles.replace(/([^{}]+)\{|\}/g, (match, selector) => {
+          if (match === '}') {
+            if (noScopeDepth > 0 && braceDepth <= noScopeDepth) noScopeDepth = 0;
+            braceDepth--;
+            return match;
+          }
+          braceDepth++;
+          const trimmed = selector.trim();
+          // Don't scope @-rules themselves
+          if (trimmed.startsWith('@')) {
+            // @keyframes and @font-face contain non-selector content - skip scoping inside them
+            if (/^@(keyframes|font-face)\b/.test(trimmed)) {
+              noScopeDepth = braceDepth;
+            }
+            return match;
+          }
+          // Inside @keyframes or @font-face - don't scope inner rules
+          if (noScopeDepth > 0 && braceDepth > noScopeDepth) {
+            return match;
+          }
+          return selector.split(',').map(s => `[${scopeAttr}] ${s.trim()}`).join(', ') + ' {';
+        });
+        const styleEl = document.createElement('style');
+        styleEl.textContent = scoped;
+        styleEl.setAttribute('data-zq-component', def._name || '');
+        styleEl.setAttribute('data-zq-scope', scopeAttr);
+        if (def._resolvedStyleUrls) {
+          styleEl.setAttribute('data-zq-style-urls', def._resolvedStyleUrls.join(' '));
+          if (def.styles) {
+            styleEl.setAttribute('data-zq-inline', def.styles);
+          }
+        }
+        document.head.appendChild(styleEl);
+        def._styleEl = styleEl;
+        def._styleRefCount = 1;
+      }
     }
 
     // -- Focus preservation ----------------------------------------
@@ -7222,7 +7279,7 @@ class Component {
         });
 
         let stoppedAt = null; // Track elements that called .stop
-        for (const { selector, methodExpr, modifiers, el, matched } of hits) {
+        for (const { methodExpr, modifiers, el, matched } of hits) {
 
           // In delegated events, .stop should prevent ancestor bindings from
           // firing - stopPropagation alone only stops real DOM bubbling.
@@ -7316,6 +7373,7 @@ class Component {
             clearTimeout(timers[event]);
             timers[event] = setTimeout(() => invoke(e), ms);
             _debounceTimers.set(el, timers);
+            this._timerEls.add(el);
             continue;
           }
 
@@ -7328,6 +7386,7 @@ class Component {
             invoke(e);
             timers[event] = setTimeout(() => { timers[event] = null; }, ms);
             _throttleTimers.set(el, timers);
+            this._timerEls.add(el);
             continue;
           }
 
@@ -7410,10 +7469,15 @@ class Component {
         : isEditable ? 'input' : 'input';
 
       // -- Handler: read DOM → write to reactive state -------------
-      // Skip if already bound (morph preserves existing elements,
-      // so re-binding would stack duplicate listeners)
-      if (el._zqModelBound) return;
-      el._zqModelBound = true;
+      // Remove any previously-bound z-model listener on this element so
+      // re-runs (re-render, keyed reconciliation, modifier change) replace
+      // instead of stacking. A boolean "already bound" flag is not enough:
+      // if the bound state key / modifiers ever change, the stale handler
+      // would keep writing to the old key.
+      if (el._zqModelUnbind) {
+        try { el._zqModelUnbind(); } catch { /* ignore */ }
+        el._zqModelUnbind = null;
+      }
 
       const handler = () => {
         let val;
@@ -7435,12 +7499,18 @@ class Component {
 
       if (hasDebounce) {
         let timer = null;
-        el.addEventListener(event, () => {
+        const debounced = () => {
           clearTimeout(timer);
           timer = setTimeout(handler, debounceMs);
-        });
+        };
+        el.addEventListener(event, debounced);
+        el._zqModelUnbind = () => {
+          el.removeEventListener(event, debounced);
+          clearTimeout(timer);
+        };
       } else {
         el.addEventListener(event, handler);
+        el._zqModelUnbind = () => el.removeEventListener(event, handler);
       }
     });
   }
@@ -7665,19 +7735,20 @@ class Component {
       }
     });
 
-    // -- z-bind:attr / :attr (dynamic attribute binding) -----------
-    // Use TreeWalker instead of querySelectorAll('*') - avoids
-    // creating a flat array of every single descendant element.
-    // TreeWalker visits nodes lazily; FILTER_REJECT skips z-pre subtrees
-    // at the walker level (faster than per-node closest('[z-pre]') checks).
+    // -- Single TreeWalker pass for z-bind/:attr, z-class, z-style,
+    //    z-stream, z-cloak. One walk amortises the cost across five
+    //    directives that used to issue separate querySelectorAll calls.
+    //    FILTER_REJECT on z-pre subtrees skips per-node closest() checks.
     const walker = document.createTreeWalker(this._el, NodeFilter.SHOW_ELEMENT, {
       acceptNode(n) {
         return n.hasAttribute('z-pre') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
       }
     });
+    const hasMediaStream = typeof MediaStream !== 'undefined';
     let node;
     while ((node = walker.nextNode())) {
       const attrs = node.attributes;
+      // z-bind:* / :* — iterate attrs once (reverse to allow remove)
       for (let i = attrs.length - 1; i >= 0; i--) {
         const attr = attrs[i];
         let attrName;
@@ -7688,71 +7759,67 @@ class Component {
         const val = this._evalExpr(attr.value);
         node.removeAttribute(attr.name);
         if (val === false || val === null || val === undefined) {
-          node.removeAttribute(attrName);
+          node.toggleAttribute(attrName, false);
         } else if (val === true) {
-          node.setAttribute(attrName, '');
+          node.toggleAttribute(attrName, true);
         } else {
           node.setAttribute(attrName, String(val));
         }
       }
+
+      // z-class
+      if (node.hasAttribute('z-class')) {
+        const val = this._evalExpr(node.getAttribute('z-class'));
+        if (typeof val === 'string') {
+          val.split(/\s+/).filter(Boolean).forEach(c => node.classList.add(c));
+        } else if (Array.isArray(val)) {
+          val.filter(Boolean).forEach(c => node.classList.add(String(c)));
+        } else if (val && typeof val === 'object') {
+          for (const [cls, active] of Object.entries(val)) {
+            node.classList.toggle(cls, !!active);
+          }
+        }
+        node.removeAttribute('z-class');
+      }
+
+      // z-style
+      if (node.hasAttribute('z-style')) {
+        const val = this._evalExpr(node.getAttribute('z-style'));
+        if (typeof val === 'string') {
+          node.style.cssText += ';' + val;
+        } else if (val && typeof val === 'object') {
+          for (const [prop, v] of Object.entries(val)) {
+            node.style[prop] = v;
+          }
+        }
+        node.removeAttribute('z-style');
+      }
+
+      // z-stream → MediaStream → <video>/<audio>.srcObject
+      if (node.hasAttribute('z-stream')) {
+        const val = this._evalExpr(node.getAttribute('z-stream'));
+        if (val == null) {
+          node.srcObject = null;
+        } else if (hasMediaStream && val instanceof MediaStream) {
+          node.srcObject = val;
+        } else if (val && typeof val.getTracks === 'function') {
+          // Accept duck-typed stream objects (test fakes, polyfills).
+          node.srcObject = val;
+        } else {
+          node.srcObject = null;
+        }
+        node.removeAttribute('z-stream');
+      }
+
+      // z-cloak (just strip)
+      if (node.hasAttribute('z-cloak')) {
+        node.removeAttribute('z-cloak');
+      }
     }
-
-    // -- z-class (dynamic class binding) ---------------------------
-    this._el.querySelectorAll('[z-class]').forEach(el => {
-      if (el.closest('[z-pre]')) return;
-      const val = this._evalExpr(el.getAttribute('z-class'));
-      if (typeof val === 'string') {
-        val.split(/\s+/).filter(Boolean).forEach(c => el.classList.add(c));
-      } else if (Array.isArray(val)) {
-        val.filter(Boolean).forEach(c => el.classList.add(String(c)));
-      } else if (val && typeof val === 'object') {
-        for (const [cls, active] of Object.entries(val)) {
-          el.classList.toggle(cls, !!active);
-        }
-      }
-      el.removeAttribute('z-class');
-    });
-
-    // -- z-style (dynamic inline styles) ---------------------------
-    this._el.querySelectorAll('[z-style]').forEach(el => {
-      if (el.closest('[z-pre]')) return;
-      const val = this._evalExpr(el.getAttribute('z-style'));
-      if (typeof val === 'string') {
-        el.style.cssText += ';' + val;
-      } else if (val && typeof val === 'object') {
-        for (const [prop, v] of Object.entries(val)) {
-          el.style[prop] = v;
-        }
-      }
-      el.removeAttribute('z-style');
-    });
-
-    // -- z-stream (assign MediaStream to <video>/<audio>.srcObject) -
-    this._el.querySelectorAll('[z-stream]').forEach(el => {
-      if (el.closest('[z-pre]')) return;
-      const val = this._evalExpr(el.getAttribute('z-stream'));
-      const hasMediaStream = typeof MediaStream !== 'undefined';
-      if (val == null) {
-        el.srcObject = null;
-      } else if (hasMediaStream && val instanceof MediaStream) {
-        el.srcObject = val;
-      } else if (val && typeof val.getTracks === 'function') {
-        // Accept duck-typed stream objects (test fakes, polyfills).
-        el.srcObject = val;
-      } else {
-        el.srcObject = null;
-      }
-      el.removeAttribute('z-stream');
-    });
 
     // z-html and z-text are now pre-expanded at string level (before
     // morph) via _expandContentDirectives(), so the diff engine can
     // properly diff their content instead of clearing + re-injecting.
-
-    // -- z-cloak (remove after render) -----------------------------
-    this._el.querySelectorAll('[z-cloak]').forEach(el => {
-      el.removeAttribute('z-cloak');
-    });
   }
 
   // ---------------------------------------------------------------------------
@@ -7884,21 +7951,34 @@ class Component {
     this._delegatedEvents = null;
     this._eventBindings = null;
     // Clear any pending debounce/throttle timers to prevent stale closures.
-    // Timers are keyed by individual child elements, so iterate all descendants.
-    const allEls = this._el.querySelectorAll('*');
-    allEls.forEach(child => {
-      const dTimers = _debounceTimers.get(child);
-      if (dTimers) {
-        for (const key in dTimers) clearTimeout(dTimers[key]);
-        _debounceTimers.delete(child);
+    // Use the per-instance _timerEls set so detached elements (removed by
+    // z-if / z-for / keyed reconciliation before destroy) are still cleaned.
+    if (this._timerEls) {
+      this._timerEls.forEach(child => {
+        const dTimers = _debounceTimers.get(child);
+        if (dTimers) {
+          for (const key in dTimers) clearTimeout(dTimers[key]);
+          _debounceTimers.delete(child);
+        }
+        const tTimers = _throttleTimers.get(child);
+        if (tTimers) {
+          for (const key in tTimers) clearTimeout(tTimers[key]);
+          _throttleTimers.delete(child);
+        }
+      });
+      this._timerEls.clear();
+    }
+    if (this._scopeAttr) {
+      const def = this._def;
+      if (def && def._styleEl && def._scopeAttr === this._scopeAttr) {
+        def._styleRefCount = (def._styleRefCount || 1) - 1;
+        if (def._styleRefCount <= 0) {
+          def._styleEl.remove();
+          def._styleEl = null;
+          def._styleRefCount = 0;
+        }
       }
-      const tTimers = _throttleTimers.get(child);
-      if (tTimers) {
-        for (const key in tTimers) clearTimeout(tTimers[key]);
-        _throttleTimers.delete(child);
-      }
-    });
-    if (this._styleEl) this._styleEl.remove();
+    }
     _instances.delete(this._el);
     this._el.innerHTML = '';
   }
@@ -8217,7 +8297,12 @@ class Router {
     this._mode = isFile ? 'hash' : (config.mode || 'history');
 
     // Keep-alive cache: component name → { container, instance }
+    // Map iteration order = insertion order, used for LRU eviction.
     this._keepAliveCache = new Map();
+    // Optional cap on cached keep-alive instances. null = unbounded (default).
+    this._keepAliveMax = (typeof config.keepAliveMax === 'number' && config.keepAliveMax > 0)
+      ? config.keepAliveMax
+      : null;
 
     // Base path for sub-path deployments
     // Priority: explicit config.base → window.__ZQ_BASE → <base href> tag
@@ -8342,7 +8427,13 @@ class Router {
       if (paramsAttr) {
         try {
           const params = JSON.parse(paramsAttr);
-          href = this._interpolateParams(href, params);
+          // Reject arrays, null, primitives - z-link-params must be a plain
+          // key/value object since we use it to interpolate :param placeholders.
+          if (typeof params !== 'object' || params === null || Array.isArray(params)) {
+            reportError(ErrorCode.ROUTER_RESOLVE, 'z-link-params must be a JSON object', { href, paramsAttr });
+          } else {
+            href = this._interpolateParams(href, params);
+          }
         } catch (err) {
           reportError(ErrorCode.ROUTER_RESOLVE, 'Malformed JSON in z-link-params', { href, paramsAttr }, err);
         }
@@ -8564,7 +8655,6 @@ class Router {
     if (this._mode === 'hash') {
       // Hash mode: stash the substate in a global - hashchange will check.
       // We still push a history entry via a sentinel hash suffix.
-      const current = window.location.hash || '#/';
       window.history.pushState(
         { [_ZQ_STATE_KEY]: 'substate', key, data },
         '',
@@ -8805,6 +8895,9 @@ class Router {
       // Keep-alive: reuse cached instance
       if (isKeepAlive && componentName && this._keepAliveCache.has(componentName)) {
         const cached = this._keepAliveCache.get(componentName);
+        // Refresh LRU order: move to most-recently-used position
+        this._keepAliveCache.delete(componentName);
+        this._keepAliveCache.set(componentName, cached);
         // Hide all children, show the cached one
         [...this._el.children].forEach(c => { c.style.display = 'none'; });
         cached.container.style.display = '';
@@ -8843,6 +8936,7 @@ class Router {
 
         if (isKeepAlive) {
           this._keepAliveCache.set(componentName, { container, instance: this._instance });
+          this._evictKeepAliveLRU();
           // Call activated() on first mount
           if (this._instance._def.activated) {
             try { this._instance._def.activated.call(this._instance); }
@@ -8909,6 +9003,27 @@ class Router {
   }
 
   // --- Destroy -------------------------------------------------------------
+
+  /**
+   * @private Evict least-recently-used keep-alive entries beyond _keepAliveMax.
+   * The current route's component is preserved even if it would otherwise be
+   * the oldest entry, to avoid destroying the active view.
+   */
+  _evictKeepAliveLRU() {
+    if (this._keepAliveMax == null) return;
+    while (this._keepAliveCache.size > this._keepAliveMax) {
+      // Find oldest entry that isn't the currently-active component
+      let evictKey = null;
+      for (const key of this._keepAliveCache.keys()) {
+        if (key !== this._currentComponentName) { evictKey = key; break; }
+      }
+      if (evictKey == null) break;
+      const cached = this._keepAliveCache.get(evictKey);
+      this._keepAliveCache.delete(evictKey);
+      try { cached.instance.destroy(); } catch { /* swallow */ }
+      if (cached.container && cached.container.parentNode) cached.container.remove();
+    }
+  }
 
   destroy() {
     // Remove window/document event listeners to prevent memory leaks
@@ -9041,6 +9156,7 @@ function getRouter() {
 
 
 
+
 class Store {
   constructor(config = {}) {
     this._subscribers = new Map();   // key → Set<fn>
@@ -9059,7 +9175,7 @@ class Store {
 
     // Store initial state for reset
     const initial = typeof config.state === 'function' ? config.state() : { ...(config.state || {}) };
-    this._initialState = JSON.parse(JSON.stringify(initial));
+    this._initialState = deepClone(initial);
 
     this.state = reactive(initial, (key, value, old) => {
       if (this._batching) {
@@ -9121,7 +9237,7 @@ class Store {
    * Save a snapshot for undo. Call before making changes you want to be undoable.
    */
   checkpoint() {
-    const snap = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    const snap = deepClone(this.state.__raw || this.state);
     this._undoStack.push(snap);
     if (this._undoStack.length > this._maxUndo) {
       this._undoStack.splice(0, this._undoStack.length - this._maxUndo);
@@ -9135,7 +9251,7 @@ class Store {
    */
   undo() {
     if (this._undoStack.length === 0) return false;
-    const current = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    const current = deepClone(this.state.__raw || this.state);
     this._redoStack.push(current);
     const prev = this._undoStack.pop();
     this.replaceState(prev);
@@ -9148,7 +9264,7 @@ class Store {
    */
   redo() {
     if (this._redoStack.length === 0) return false;
-    const current = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    const current = deepClone(this.state.__raw || this.state);
     this._undoStack.push(current);
     const next = this._redoStack.pop();
     this.replaceState(next);
@@ -9238,10 +9354,16 @@ class Store {
   }
 
   /**
-   * Get current state snapshot (plain object)
+   * Get current state snapshot (plain object).
+   *
+   * Pass `{ clone: false }` to skip the structuredClone pass when the caller
+   * treats state as read-only. Big perf win for serialise/inspect paths that
+   * never mutate the returned value. Default remains a defensive deep copy.
    */
-  snapshot() {
-    return JSON.parse(JSON.stringify(this.state.__raw || this.state));
+  snapshot(opts) {
+    const raw = this.state.__raw || this.state;
+    if (opts && opts.clone === false) return raw;
+    return deepClone(raw);
   }
 
   /**
@@ -9274,7 +9396,7 @@ class Store {
    * Reset state to initial values. If no argument, resets to the original state.
    */
   reset(initialState) {
-    this.replaceState(initialState || JSON.parse(JSON.stringify(this._initialState)));
+    this.replaceState(initialState || deepClone(this._initialState));
     this._history = [];
     this._undoStack = [];
     this._redoStack = [];
@@ -9587,25 +9709,35 @@ const http = {
 // ---------------------------------------------------------------------------
 
 /**
- * Debounce - delays execution until after `ms` of inactivity
+ * Debounce - delays execution until after `ms` of inactivity.
+ * Optional `{ signal }` aborts any pending invocation and prevents future ones.
  */
-function debounce(fn, ms = 250) {
+function debounce(fn, ms = 250, opts = {}) {
   let timer;
+  const signal = opts.signal;
   const debounced = (...args) => {
+    if (signal && signal.aborted) return;
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), ms);
   };
   debounced.cancel = () => clearTimeout(timer);
+  if (signal) {
+    if (signal.aborted) debounced.cancel();
+    else signal.addEventListener('abort', debounced.cancel, { once: true });
+  }
   return debounced;
 }
 
 /**
- * Throttle - limits execution to once per `ms`
+ * Throttle - limits execution to once per `ms`.
+ * Optional `{ signal }` aborts any pending trailing call and prevents future ones.
  */
-function throttle(fn, ms = 250) {
+function throttle(fn, ms = 250, opts = {}) {
   let last = 0;
   let timer;
-  return (...args) => {
+  const signal = opts.signal;
+  const throttled = (...args) => {
+    if (signal && signal.aborted) return;
     const now = Date.now();
     const remaining = ms - (now - last);
     clearTimeout(timer);
@@ -9616,6 +9748,12 @@ function throttle(fn, ms = 250) {
       timer = setTimeout(() => { last = Date.now(); fn(...args); }, remaining);
     }
   };
+  throttled.cancel = () => clearTimeout(timer);
+  if (signal) {
+    if (signal.aborted) throttled.cancel();
+    else signal.addEventListener('abort', throttled.cancel, { once: true });
+  }
+  return throttled;
 }
 
 /**
@@ -9940,6 +10078,9 @@ function chunk(arr, size) {
 }
 
 function groupBy(arr, keyFn) {
+  // Prefer the native Object.groupBy (Node 21+, all evergreens) when available -
+  // it returns a null-prototype object which is safer for use as a lookup map.
+  if (typeof Object.groupBy === 'function') return Object.groupBy(arr, keyFn);
   const result = {};
   for (const item of arr) {
     const k = keyFn(item);
@@ -10309,8 +10450,8 @@ $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.2.0';
-$.libSize   = '~129 KB';
-$.unitTests = {"passed":2508,"failed":0,"total":2508,"suites":617,"duration":6209,"ok":true};
+$.libSize   = '~130 KB';
+$.unitTests = {"passed":2534,"failed":0,"total":2534,"suites":620,"duration":6816,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

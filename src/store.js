@@ -26,7 +26,8 @@
  */
 
 import { reactive } from './reactive.js';
-import { reportError, ErrorCode, ZQueryError } from './errors.js';
+import { reportError, ErrorCode } from './errors.js';
+import { deepClone } from './utils.js';
 
 class Store {
   constructor(config = {}) {
@@ -46,7 +47,7 @@ class Store {
 
     // Store initial state for reset
     const initial = typeof config.state === 'function' ? config.state() : { ...(config.state || {}) };
-    this._initialState = JSON.parse(JSON.stringify(initial));
+    this._initialState = deepClone(initial);
 
     this.state = reactive(initial, (key, value, old) => {
       if (this._batching) {
@@ -108,7 +109,7 @@ class Store {
    * Save a snapshot for undo. Call before making changes you want to be undoable.
    */
   checkpoint() {
-    const snap = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    const snap = deepClone(this.state.__raw || this.state);
     this._undoStack.push(snap);
     if (this._undoStack.length > this._maxUndo) {
       this._undoStack.splice(0, this._undoStack.length - this._maxUndo);
@@ -122,7 +123,7 @@ class Store {
    */
   undo() {
     if (this._undoStack.length === 0) return false;
-    const current = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    const current = deepClone(this.state.__raw || this.state);
     this._redoStack.push(current);
     const prev = this._undoStack.pop();
     this.replaceState(prev);
@@ -135,7 +136,7 @@ class Store {
    */
   redo() {
     if (this._redoStack.length === 0) return false;
-    const current = JSON.parse(JSON.stringify(this.state.__raw || this.state));
+    const current = deepClone(this.state.__raw || this.state);
     this._undoStack.push(current);
     const next = this._redoStack.pop();
     this.replaceState(next);
@@ -225,10 +226,16 @@ class Store {
   }
 
   /**
-   * Get current state snapshot (plain object)
+   * Get current state snapshot (plain object).
+   *
+   * Pass `{ clone: false }` to skip the structuredClone pass when the caller
+   * treats state as read-only. Big perf win for serialise/inspect paths that
+   * never mutate the returned value. Default remains a defensive deep copy.
    */
-  snapshot() {
-    return JSON.parse(JSON.stringify(this.state.__raw || this.state));
+  snapshot(opts) {
+    const raw = this.state.__raw || this.state;
+    if (opts && opts.clone === false) return raw;
+    return deepClone(raw);
   }
 
   /**
@@ -261,7 +268,7 @@ class Store {
    * Reset state to initial values. If no argument, resets to the original state.
    */
   reset(initialState) {
-    this.replaceState(initialState || JSON.parse(JSON.stringify(this._initialState)));
+    this.replaceState(initialState || deepClone(this._initialState));
     this._history = [];
     this._undoStack = [];
     this._redoStack = [];

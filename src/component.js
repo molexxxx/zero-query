@@ -190,6 +190,10 @@ class Component {
     this._updateQueued = false;
     this._listeners = [];
     this._watchCleanups = [];
+    // Elements that have scheduled debounce/throttle timers under this
+    // component instance. Tracked so destroy() can clear them even if the
+    // element is detached from the subtree before teardown.
+    this._timerEls = new Set();
 
     // Refs map
     this.refs = {};
@@ -214,15 +218,21 @@ class Component {
     if (definition.props && typeof definition.props === 'object' && !Array.isArray(definition.props)) {
       // Reactive props with type coercion and defaults
       this.props = this._resolveReactiveProps(definition.props, props);
-      // MutationObserver to re-read props when parent re-renders and changes attributes
+      // MutationObserver to re-read props when parent re-renders and changes attributes.
+      // attributeFilter limits callbacks to the declared prop names (plus their
+      // dynamic `:name` aliases) — unrelated attribute churn no longer fires.
+      const propNames = Object.keys(definition.props);
+      const filter = [];
+      for (const n of propNames) {
+        filter.push(n.toLowerCase());
+        filter.push(':' + n.toLowerCase());
+      }
       this._propObserver = new MutationObserver((mutations) => {
         if (this._destroyed) return;
         let changed = false;
         for (const mut of mutations) {
           if (mut.type === 'attributes') {
             const attrName = mut.attributeName;
-            // Skip internal attributes
-            if (attrName.startsWith('z-') || attrName.startsWith('@') || attrName.startsWith(':') || attrName.startsWith('data-zq')) continue;
             // Check if this is a defined prop (attribute names are lowercase)
             const propName = attrName.startsWith(':') ? attrName.slice(1) : attrName;
             if (propName in definition.props) {
@@ -235,7 +245,7 @@ class Component {
           this._scheduleUpdate();
         }
       });
-      this._propObserver.observe(el, { attributes: true });
+      this._propObserver.observe(el, { attributes: true, attributeFilter: filter });
     } else {
       // Legacy: frozen props from parent
       this.props = Object.freeze({ ...props });
@@ -517,44 +527,60 @@ class Component {
 
     // Apply scoped styles on first render
     if (!this._mounted && combinedStyles) {
-      const scopeAttr = `z-s${this._uid}`;
-      this._el.setAttribute(scopeAttr, '');
-      let noScopeDepth = 0;   // brace depth at which a no-scope @-rule started (0 = none active)
-      let braceDepth = 0;     // overall brace depth
-      const scoped = combinedStyles.replace(/([^{}]+)\{|\}/g, (match, selector) => {
-        if (match === '}') {
-          if (noScopeDepth > 0 && braceDepth <= noScopeDepth) noScopeDepth = 0;
-          braceDepth--;
-          return match;
-        }
-        braceDepth++;
-        const trimmed = selector.trim();
-        // Don't scope @-rules themselves
-        if (trimmed.startsWith('@')) {
-          // @keyframes and @font-face contain non-selector content - skip scoping inside them
-          if (/^@(keyframes|font-face)\b/.test(trimmed)) {
-            noScopeDepth = braceDepth;
-          }
-          return match;
-        }
-        // Inside @keyframes or @font-face - don't scope inner rules
-        if (noScopeDepth > 0 && braceDepth > noScopeDepth) {
-          return match;
-        }
-        return selector.split(',').map(s => `[${scopeAttr}] ${s.trim()}`).join(', ') + ' {';
-      });
-      const styleEl = document.createElement('style');
-      styleEl.textContent = scoped;
-      styleEl.setAttribute('data-zq-component', this._def._name || '');
-      styleEl.setAttribute('data-zq-scope', scopeAttr);
-      if (this._def._resolvedStyleUrls) {
-        styleEl.setAttribute('data-zq-style-urls', this._def._resolvedStyleUrls.join(' '));
-        if (this._def.styles) {
-          styleEl.setAttribute('data-zq-inline', this._def.styles);
-        }
+      const def = this._def;
+      // Use a stable per-definition scope attr so all instances share one
+      // <style> tag (ref-counted). Anonymous defs fall back to per-instance
+      // scoping for safety.
+      let scopeAttr = def._scopeAttr;
+      if (!scopeAttr) {
+        scopeAttr = def._name ? `z-s-${def._name}` : `z-s${this._uid}`;
+        def._scopeAttr = scopeAttr;
       }
-      document.head.appendChild(styleEl);
-      this._styleEl = styleEl;
+      this._el.setAttribute(scopeAttr, '');
+      this._scopeAttr = scopeAttr;
+
+      if (def._styleEl && def._styleEl.isConnected) {
+        // Already injected by a previous instance — just bump refcount.
+        def._styleRefCount = (def._styleRefCount || 0) + 1;
+      } else {
+        let noScopeDepth = 0;   // brace depth at which a no-scope @-rule started (0 = none active)
+        let braceDepth = 0;     // overall brace depth
+        const scoped = combinedStyles.replace(/([^{}]+)\{|\}/g, (match, selector) => {
+          if (match === '}') {
+            if (noScopeDepth > 0 && braceDepth <= noScopeDepth) noScopeDepth = 0;
+            braceDepth--;
+            return match;
+          }
+          braceDepth++;
+          const trimmed = selector.trim();
+          // Don't scope @-rules themselves
+          if (trimmed.startsWith('@')) {
+            // @keyframes and @font-face contain non-selector content - skip scoping inside them
+            if (/^@(keyframes|font-face)\b/.test(trimmed)) {
+              noScopeDepth = braceDepth;
+            }
+            return match;
+          }
+          // Inside @keyframes or @font-face - don't scope inner rules
+          if (noScopeDepth > 0 && braceDepth > noScopeDepth) {
+            return match;
+          }
+          return selector.split(',').map(s => `[${scopeAttr}] ${s.trim()}`).join(', ') + ' {';
+        });
+        const styleEl = document.createElement('style');
+        styleEl.textContent = scoped;
+        styleEl.setAttribute('data-zq-component', def._name || '');
+        styleEl.setAttribute('data-zq-scope', scopeAttr);
+        if (def._resolvedStyleUrls) {
+          styleEl.setAttribute('data-zq-style-urls', def._resolvedStyleUrls.join(' '));
+          if (def.styles) {
+            styleEl.setAttribute('data-zq-inline', def.styles);
+          }
+        }
+        document.head.appendChild(styleEl);
+        def._styleEl = styleEl;
+        def._styleRefCount = 1;
+      }
     }
 
     // -- Focus preservation ----------------------------------------
@@ -763,7 +789,7 @@ class Component {
         });
 
         let stoppedAt = null; // Track elements that called .stop
-        for (const { selector, methodExpr, modifiers, el, matched } of hits) {
+        for (const { methodExpr, modifiers, el, matched } of hits) {
 
           // In delegated events, .stop should prevent ancestor bindings from
           // firing - stopPropagation alone only stops real DOM bubbling.
@@ -857,6 +883,7 @@ class Component {
             clearTimeout(timers[event]);
             timers[event] = setTimeout(() => invoke(e), ms);
             _debounceTimers.set(el, timers);
+            this._timerEls.add(el);
             continue;
           }
 
@@ -869,6 +896,7 @@ class Component {
             invoke(e);
             timers[event] = setTimeout(() => { timers[event] = null; }, ms);
             _throttleTimers.set(el, timers);
+            this._timerEls.add(el);
             continue;
           }
 
@@ -951,10 +979,15 @@ class Component {
         : isEditable ? 'input' : 'input';
 
       // -- Handler: read DOM → write to reactive state -------------
-      // Skip if already bound (morph preserves existing elements,
-      // so re-binding would stack duplicate listeners)
-      if (el._zqModelBound) return;
-      el._zqModelBound = true;
+      // Remove any previously-bound z-model listener on this element so
+      // re-runs (re-render, keyed reconciliation, modifier change) replace
+      // instead of stacking. A boolean "already bound" flag is not enough:
+      // if the bound state key / modifiers ever change, the stale handler
+      // would keep writing to the old key.
+      if (el._zqModelUnbind) {
+        try { el._zqModelUnbind(); } catch { /* ignore */ }
+        el._zqModelUnbind = null;
+      }
 
       const handler = () => {
         let val;
@@ -976,12 +1009,18 @@ class Component {
 
       if (hasDebounce) {
         let timer = null;
-        el.addEventListener(event, () => {
+        const debounced = () => {
           clearTimeout(timer);
           timer = setTimeout(handler, debounceMs);
-        });
+        };
+        el.addEventListener(event, debounced);
+        el._zqModelUnbind = () => {
+          el.removeEventListener(event, debounced);
+          clearTimeout(timer);
+        };
       } else {
         el.addEventListener(event, handler);
+        el._zqModelUnbind = () => el.removeEventListener(event, handler);
       }
     });
   }
@@ -1206,19 +1245,20 @@ class Component {
       }
     });
 
-    // -- z-bind:attr / :attr (dynamic attribute binding) -----------
-    // Use TreeWalker instead of querySelectorAll('*') - avoids
-    // creating a flat array of every single descendant element.
-    // TreeWalker visits nodes lazily; FILTER_REJECT skips z-pre subtrees
-    // at the walker level (faster than per-node closest('[z-pre]') checks).
+    // -- Single TreeWalker pass for z-bind/:attr, z-class, z-style,
+    //    z-stream, z-cloak. One walk amortises the cost across five
+    //    directives that used to issue separate querySelectorAll calls.
+    //    FILTER_REJECT on z-pre subtrees skips per-node closest() checks.
     const walker = document.createTreeWalker(this._el, NodeFilter.SHOW_ELEMENT, {
       acceptNode(n) {
         return n.hasAttribute('z-pre') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
       }
     });
+    const hasMediaStream = typeof MediaStream !== 'undefined';
     let node;
     while ((node = walker.nextNode())) {
       const attrs = node.attributes;
+      // z-bind:* / :* — iterate attrs once (reverse to allow remove)
       for (let i = attrs.length - 1; i >= 0; i--) {
         const attr = attrs[i];
         let attrName;
@@ -1229,71 +1269,67 @@ class Component {
         const val = this._evalExpr(attr.value);
         node.removeAttribute(attr.name);
         if (val === false || val === null || val === undefined) {
-          node.removeAttribute(attrName);
+          node.toggleAttribute(attrName, false);
         } else if (val === true) {
-          node.setAttribute(attrName, '');
+          node.toggleAttribute(attrName, true);
         } else {
           node.setAttribute(attrName, String(val));
         }
       }
+
+      // z-class
+      if (node.hasAttribute('z-class')) {
+        const val = this._evalExpr(node.getAttribute('z-class'));
+        if (typeof val === 'string') {
+          val.split(/\s+/).filter(Boolean).forEach(c => node.classList.add(c));
+        } else if (Array.isArray(val)) {
+          val.filter(Boolean).forEach(c => node.classList.add(String(c)));
+        } else if (val && typeof val === 'object') {
+          for (const [cls, active] of Object.entries(val)) {
+            node.classList.toggle(cls, !!active);
+          }
+        }
+        node.removeAttribute('z-class');
+      }
+
+      // z-style
+      if (node.hasAttribute('z-style')) {
+        const val = this._evalExpr(node.getAttribute('z-style'));
+        if (typeof val === 'string') {
+          node.style.cssText += ';' + val;
+        } else if (val && typeof val === 'object') {
+          for (const [prop, v] of Object.entries(val)) {
+            node.style[prop] = v;
+          }
+        }
+        node.removeAttribute('z-style');
+      }
+
+      // z-stream → MediaStream → <video>/<audio>.srcObject
+      if (node.hasAttribute('z-stream')) {
+        const val = this._evalExpr(node.getAttribute('z-stream'));
+        if (val == null) {
+          node.srcObject = null;
+        } else if (hasMediaStream && val instanceof MediaStream) {
+          node.srcObject = val;
+        } else if (val && typeof val.getTracks === 'function') {
+          // Accept duck-typed stream objects (test fakes, polyfills).
+          node.srcObject = val;
+        } else {
+          node.srcObject = null;
+        }
+        node.removeAttribute('z-stream');
+      }
+
+      // z-cloak (just strip)
+      if (node.hasAttribute('z-cloak')) {
+        node.removeAttribute('z-cloak');
+      }
     }
-
-    // -- z-class (dynamic class binding) ---------------------------
-    this._el.querySelectorAll('[z-class]').forEach(el => {
-      if (el.closest('[z-pre]')) return;
-      const val = this._evalExpr(el.getAttribute('z-class'));
-      if (typeof val === 'string') {
-        val.split(/\s+/).filter(Boolean).forEach(c => el.classList.add(c));
-      } else if (Array.isArray(val)) {
-        val.filter(Boolean).forEach(c => el.classList.add(String(c)));
-      } else if (val && typeof val === 'object') {
-        for (const [cls, active] of Object.entries(val)) {
-          el.classList.toggle(cls, !!active);
-        }
-      }
-      el.removeAttribute('z-class');
-    });
-
-    // -- z-style (dynamic inline styles) ---------------------------
-    this._el.querySelectorAll('[z-style]').forEach(el => {
-      if (el.closest('[z-pre]')) return;
-      const val = this._evalExpr(el.getAttribute('z-style'));
-      if (typeof val === 'string') {
-        el.style.cssText += ';' + val;
-      } else if (val && typeof val === 'object') {
-        for (const [prop, v] of Object.entries(val)) {
-          el.style[prop] = v;
-        }
-      }
-      el.removeAttribute('z-style');
-    });
-
-    // -- z-stream (assign MediaStream to <video>/<audio>.srcObject) -
-    this._el.querySelectorAll('[z-stream]').forEach(el => {
-      if (el.closest('[z-pre]')) return;
-      const val = this._evalExpr(el.getAttribute('z-stream'));
-      const hasMediaStream = typeof MediaStream !== 'undefined';
-      if (val == null) {
-        el.srcObject = null;
-      } else if (hasMediaStream && val instanceof MediaStream) {
-        el.srcObject = val;
-      } else if (val && typeof val.getTracks === 'function') {
-        // Accept duck-typed stream objects (test fakes, polyfills).
-        el.srcObject = val;
-      } else {
-        el.srcObject = null;
-      }
-      el.removeAttribute('z-stream');
-    });
 
     // z-html and z-text are now pre-expanded at string level (before
     // morph) via _expandContentDirectives(), so the diff engine can
     // properly diff their content instead of clearing + re-injecting.
-
-    // -- z-cloak (remove after render) -----------------------------
-    this._el.querySelectorAll('[z-cloak]').forEach(el => {
-      el.removeAttribute('z-cloak');
-    });
   }
 
   // ---------------------------------------------------------------------------
@@ -1425,21 +1461,34 @@ class Component {
     this._delegatedEvents = null;
     this._eventBindings = null;
     // Clear any pending debounce/throttle timers to prevent stale closures.
-    // Timers are keyed by individual child elements, so iterate all descendants.
-    const allEls = this._el.querySelectorAll('*');
-    allEls.forEach(child => {
-      const dTimers = _debounceTimers.get(child);
-      if (dTimers) {
-        for (const key in dTimers) clearTimeout(dTimers[key]);
-        _debounceTimers.delete(child);
+    // Use the per-instance _timerEls set so detached elements (removed by
+    // z-if / z-for / keyed reconciliation before destroy) are still cleaned.
+    if (this._timerEls) {
+      this._timerEls.forEach(child => {
+        const dTimers = _debounceTimers.get(child);
+        if (dTimers) {
+          for (const key in dTimers) clearTimeout(dTimers[key]);
+          _debounceTimers.delete(child);
+        }
+        const tTimers = _throttleTimers.get(child);
+        if (tTimers) {
+          for (const key in tTimers) clearTimeout(tTimers[key]);
+          _throttleTimers.delete(child);
+        }
+      });
+      this._timerEls.clear();
+    }
+    if (this._scopeAttr) {
+      const def = this._def;
+      if (def && def._styleEl && def._scopeAttr === this._scopeAttr) {
+        def._styleRefCount = (def._styleRefCount || 1) - 1;
+        if (def._styleRefCount <= 0) {
+          def._styleEl.remove();
+          def._styleEl = null;
+          def._styleRefCount = 0;
+        }
       }
-      const tTimers = _throttleTimers.get(child);
-      if (tTimers) {
-        for (const key in tTimers) clearTimeout(tTimers[key]);
-        _throttleTimers.delete(child);
-      }
-    });
-    if (this._styleEl) this._styleEl.remove();
+    }
     _instances.delete(this._el);
     this._el.innerHTML = '';
   }

@@ -646,3 +646,48 @@ describe('http.getConfig', () => {
     expect(http.getConfig().baseURL).toBe('https://updated.com');
   });
 });
+
+
+// ===========================================================================
+// Content-Type parsing — regression: text/html must NOT be JSON.parsed
+// ===========================================================================
+
+describe('http - Content-Type parsing', () => {
+  function mockTextResponse(contentType, body) {
+    const jsonSpy = vi.fn(() => Promise.reject(new Error('json() should not be called for ' + contentType)));
+    fetchSpy = vi.fn(() => Promise.resolve({
+      ok: true,
+      status: 200,
+      statusText: 'OK',
+      headers: {
+        get: (h) => h.toLowerCase() === 'content-type' ? contentType : null,
+        entries: () => [['content-type', contentType]],
+      },
+      json: jsonSpy,
+      text: () => Promise.resolve(body),
+      blob: () => Promise.resolve(new Blob([body])),
+    }));
+    globalThis.fetch = fetchSpy;
+    return jsonSpy;
+  }
+
+  it('text/html; charset=utf-8 → returns raw text, does not call .json()', async () => {
+    const jsonSpy = mockTextResponse('text/html; charset=utf-8', '<html><body>hi</body></html>');
+    const result = await http.get('https://example.com/page');
+    expect(result.data).toBe('<html><body>hi</body></html>');
+    expect(jsonSpy).not.toHaveBeenCalled();
+  });
+
+  it('text/plain → returns raw text', async () => {
+    const jsonSpy = mockTextResponse('text/plain', 'plain text payload');
+    const result = await http.get('https://example.com/file.txt');
+    expect(result.data).toBe('plain text payload');
+    expect(jsonSpy).not.toHaveBeenCalled();
+  });
+
+  it('application/json; charset=utf-8 → returns parsed JSON', async () => {
+    mockFetch({ ok: true });
+    const result = await http.get('https://api.test.com/x');
+    expect(result.data).toEqual({ ok: true });
+  });
+});
