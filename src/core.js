@@ -283,11 +283,17 @@ export class ZQueryCollection {
       });
     }
     if (value === undefined) return this.first()?.getAttribute(name);
-    return this.each((_, el) => el.setAttribute(name, value));
+    // Fast path: tight loop, no closure allocation, no `each` overhead.
+    // Mirrors the addClass/removeClass single-name fast path.
+    const els = this.elements;
+    for (let i = 0; i < els.length; i++) els[i].setAttribute(name, value);
+    return this;
   }
 
   removeAttr(name) {
-    return this.each((_, el) => el.removeAttribute(name));
+    const els = this.elements;
+    for (let i = 0; i < els.length; i++) els[i].removeAttribute(name);
+    return this;
   }
 
   prop(name, value) {

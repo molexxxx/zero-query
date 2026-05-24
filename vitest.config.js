@@ -5,5 +5,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     include: ['tests/**/*.test.js'],
+    benchmark: {
+      include: ['tests/**/*.bench.js'],
+    },
   },
 });
