@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v1.2.10
+ * zQuery (zeroQuery) v1.2.12
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -1391,7 +1391,14 @@ class Peer {
         }
 
         const rtcConfig = Object.assign(
-            { iceServers: options.iceServers || [] },
+            {
+                iceServers:   options.iceServers || [],
+                // Force every m-section onto a single ICE/DTLS transport so
+                // trickled ICE candidates can be safely re-applied on the
+                // remote side with sdpMid='0' / sdpMLineIndex=0 (the wire
+                // protocol relays only the bare candidate string).
+                bundlePolicy: 'max-bundle',
+            },
             options.rtcConfig || {}
         );
 
@@ -1559,22 +1566,18 @@ class Peer {
             }
             const cand = typeof candidate === 'string' ? candidate : candidate.candidate;
             if (!cand) return;
-            // Drop mDNS candidates - servers / non-mDNS peers can't resolve them.
-            if (cand.indexOf('.local') !== -1) return;
+            // NOTE: do NOT filter mDNS (.local) candidates. Firefox emits them by
+            // default for privacy and browsers can resolve each other's mDNS
+            // hostnames on the same LAN - dropping them strands cross-browser
+            // peer-to-peer on the same machine with zero usable candidates.
             if (this._sentCandidates >= this._maxIceCandidates) return;
             this._sentCandidates++;
-            // Browsers REQUIRE sdpMid or sdpMLineIndex when re-applying a candidate
-            // with addIceCandidate(); ship the full init dict so the remote peer
-            // can reconstruct it exactly.
-            const init = (typeof candidate === 'object' && candidate)
-                ? {
-                    candidate:        cand,
-                    sdpMid:           candidate.sdpMid != null ? candidate.sdpMid : null,
-                    sdpMLineIndex:    candidate.sdpMLineIndex != null ? candidate.sdpMLineIndex : null,
-                    usernameFragment: candidate.usernameFragment != null ? candidate.usernameFragment : null,
-                }
-                : { candidate: cand, sdpMid: null, sdpMLineIndex: null, usernameFragment: null };
-            this.signaling.send('ice', { target: this.id, candidate: init });
+            // The SignalingHub wire protocol requires `candidate` to be a bare
+            // string (the `a=candidate:` line). sdpMid/sdpMLineIndex are
+            // reconstructed on the receive side using BUNDLE defaults (we set
+            // bundlePolicy: 'max-bundle' so every candidate funnels to the
+            // first m-section anyway).
+            this.signaling.send('ice', { target: this.id, candidate: cand });
         };
 
         this.pc.ontrack = (event) => {
@@ -10473,9 +10476,9 @@ $.TurnError          = TurnError;
 $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
-$.version   = '1.2.10';
+$.version   = '1.2.12';
 $.libSize   = '~130 KB';
-$.unitTests = {"passed":2534,"failed":0,"total":2534,"suites":620,"duration":6131,"ok":true};
+$.unitTests = {"passed":2534,"failed":0,"total":2534,"suites":620,"duration":6149,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------
