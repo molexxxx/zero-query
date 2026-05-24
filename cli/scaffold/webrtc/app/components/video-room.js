@@ -660,64 +660,83 @@ $.component('video-room', {
         if (!hasShare) hint.push('screen sharing unavailable in this browser');
         const hintLine = hint.length ? `<div class="device-hint">${this._icon('alert', 14)}<span>${$.escapeHtml(hint.join(' · '))}</span></div>` : '';
 
+        const totalPeers = availableRooms.reduce((n, r) => n + (r.peerCount || 0), 0);
+        const liveBadge  = `<span class="live-dot" aria-hidden="true"></span>
+                            <span>${availableRooms.length} ${availableRooms.length === 1 ? 'room' : 'rooms'} · ${totalPeers} online</span>`;
+
         const roomsBlock = availableRooms.length > 0
             ? `<ul class="room-list">
                   ${availableRooms.map((r) => {
-                      const active = r.name === roomName ? ' active' : '';
-                      const count  = (r.peerCount === 1) ? '1 peer' : (r.peerCount + ' peers');
+                      const active   = r.name === roomName ? ' active' : '';
+                      const isAlone  = (r.peerCount || 0) <= 1;
+                      const count    = (r.peerCount === 1) ? '1 here' : ((r.peerCount || 0) + ' here');
+                      const dots     = Math.min(r.peerCount || 0, 4);
+                      const dotsHtml = Array.from({ length: dots }).map((_, i) =>
+                          `<span class="pip pip-${i % 3}"></span>`
+                      ).join('') || '<span class="pip pip-empty"></span>';
                       return `<li>
-                          <button type="button" class="room-pill${active}" data-room="${$.escapeHtml(r.name)}" @click="pickRoom" ${connecting ? 'disabled' : ''}>
-                              <span class="room-pill-name">#${$.escapeHtml(r.name)}</span>
-                              <span class="room-pill-count">${count}</span>
+                          <button type="button" class="room-card${active}" data-room="${$.escapeHtml(r.name)}" @click="pickRoom" ${connecting ? 'disabled' : ''}>
+                              <span class="room-card-pips">${dotsHtml}</span>
+                              <span class="room-card-body">
+                                  <span class="room-card-name">#${$.escapeHtml(r.name)}</span>
+                                  <span class="room-card-count">${count}</span>
+                              </span>
+                              <span class="room-card-cta">${isAlone ? 'be the first' : 'jump in'} →</span>
                           </button>
                       </li>`;
                   }).join('')}
               </ul>`
-            : `<p class="room-list-empty">${loadingRooms ? 'Loading\u2026' : 'No rooms yet \u2014 type a name below to start a new one.'}</p>`;
+            : `<div class="room-list-empty">
+                  ${loadingRooms ? 'Looking for live rooms\u2026' : 'No live rooms right now. Type a name below and start one.'}
+               </div>`;
 
         return `
-            <div class="lobby">
-                <h1>zQuery WebRTC Demo</h1>
-                <p class="lead">
-                    Mesh video call powered by <code>$.webrtc.join()</code> against a
-                    <a href="https://github.com/tonywied17/zero-server" target="_blank" rel="noopener">zero-server</a>
-                    <code>SignalingHub</code>. Open this page on a second device (or in another
-                    browser window) and join the same room to see a peer appear. Each call
-                    supports up to a handful of peers in a full mesh; for larger meetings
-                    swap in an SFU.
-                </p>
-                <p class="lead">
-                    <strong>Mic, camera, and screen share are off by default.</strong>
-                    Join first - then enable the devices you actually want to share.
-                    Screen share will prompt you to choose a screen / window / tab and,
-                    on Chromium-based browsers, also lets you include tab or system audio.
-                </p>
-                <form class="join-form" @submit="join">
-                    <label>
-                        Room
-                        <input type="text" value="${$.escapeHtml(roomName)}" @input="setRoom" placeholder="lobby" ${connecting ? 'disabled' : ''} />
-                    </label>
-                    <label>
-                        Your name
-                        <input type="text" value="${$.escapeHtml(displayName)}" @input="setName" placeholder="display name" ${connecting ? 'disabled' : ''} />
-                    </label>
-                    <button type="submit" class="primary" ${connecting ? 'disabled' : ''}>
-                        ${connecting ? 'Joining...' : 'Join room'}
-                    </button>
-                </form>
-                <div class="rooms-section">
-                    <div class="rooms-head">
-                        <h2>Active rooms</h2>
-                        <button type="button" class="ghost" @click="refreshRooms" ${loadingRooms ? 'disabled' : ''}>
-                            ${loadingRooms ? 'Refreshing\u2026' : 'Refresh'}
-                        </button>
+            <div class="lobby-shell">
+                <div class="lobby-bg" aria-hidden="true"></div>
+                <div class="lobby">
+                    <div class="lobby-hero">
+                        <span class="eyebrow">${liveBadge}</span>
+                        <h1>Spin up a room. Share whatever.</h1>
+                        <p class="lead">
+                            A no-signup mesh call wired straight into
+                            <code>$.webrtc.join()</code> on top of
+                            <a href="https://github.com/tonywied17/zero-server" target="_blank" rel="noopener">zero-server</a>.
+                            Drop a name, send the link to a friend, and you'll be on a peer-to-peer
+                            video call in two clicks. Camera, mic, and screen share are <em>off</em>
+                            until you say so.
+                        </p>
                     </div>
-                    ${roomsBlock}
+
+                    <form class="join-form" @submit="join">
+                        <label>
+                            <span class="field-label">Room</span>
+                            <span class="field-prefix">#</span>
+                            <input class="has-prefix" type="text" value="${$.escapeHtml(roomName)}" @input="setRoom" placeholder="lobby" autocomplete="off" spellcheck="false" ${connecting ? 'disabled' : ''} />
+                        </label>
+                        <label>
+                            <span class="field-label">Your name</span>
+                            <input type="text" value="${$.escapeHtml(displayName)}" @input="setName" placeholder="how should peers see you?" autocomplete="off" ${connecting ? 'disabled' : ''} />
+                        </label>
+                        <button type="submit" class="primary join-btn" ${connecting ? 'disabled' : ''}>
+                            ${connecting ? 'Connecting...' : 'Join room'}
+                        </button>
+                    </form>
+
+                    <div class="rooms-section">
+                        <div class="rooms-head">
+                            <h2>Live right now</h2>
+                            <button type="button" class="ghost" @click="refreshRooms" ${loadingRooms ? 'disabled' : ''}>
+                                ${loadingRooms ? 'Refreshing\u2026' : 'Refresh'}
+                            </button>
+                        </div>
+                        ${roomsBlock}
+                    </div>
+
+                    ${hintLine}
+                    <p class="status ${error ? 'error' : ''}">
+                        ${error ? $.escapeHtml(error) : $.escapeHtml(status)}
+                    </p>
                 </div>
-                ${hintLine}
-                <p class="status ${error ? 'error' : ''}">
-                    ${error ? $.escapeHtml(error) : $.escapeHtml(status)}
-                </p>
             </div>
         `;
     },
