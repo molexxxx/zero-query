@@ -1,5 +1,5 @@
 /**
- * zQuery (zeroQuery) v1.2.8
+ * zQuery (zeroQuery) v1.2.9
  * Lightweight Frontend Library
  * https://github.com/tonywied17/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
@@ -1323,7 +1323,7 @@ class SignalingClient {
  * Wire-protocol mapping (mirrors @zero-server/webrtc):
  *   - outgoing `offer`  -> `{ type: 'offer',  target, sdp }`   (sdp is the string)
  *   - outgoing `answer` -> `{ type: 'answer', target, sdp }`
- *   - outgoing `ice`    -> `{ type: 'ice',    target, candidate }`  (raw a=candidate: line or null)
+ *   - outgoing `ice`    -> `{ type: 'ice',    target, candidate }`  (RTCIceCandidateInit-shaped dict or null for EOC)
  *   - incoming filtered by `msg.from === this.id`.
  *
  * Server-side constraints honored here:
@@ -1563,7 +1563,18 @@ class Peer {
             if (cand.indexOf('.local') !== -1) return;
             if (this._sentCandidates >= this._maxIceCandidates) return;
             this._sentCandidates++;
-            this.signaling.send('ice', { target: this.id, candidate: cand });
+            // Browsers REQUIRE sdpMid or sdpMLineIndex when re-applying a candidate
+            // with addIceCandidate(); ship the full init dict so the remote peer
+            // can reconstruct it exactly.
+            const init = (typeof candidate === 'object' && candidate)
+                ? {
+                    candidate:        cand,
+                    sdpMid:           candidate.sdpMid != null ? candidate.sdpMid : null,
+                    sdpMLineIndex:    candidate.sdpMLineIndex != null ? candidate.sdpMLineIndex : null,
+                    usernameFragment: candidate.usernameFragment != null ? candidate.usernameFragment : null,
+                }
+                : { candidate: cand, sdpMid: null, sdpMLineIndex: null, usernameFragment: null };
+            this.signaling.send('ice', { target: this.id, candidate: init });
         };
 
         this.pc.ontrack = (event) => {
@@ -1639,7 +1650,8 @@ class Peer {
     }
 
     /**
-     * @param {string|null} candidate - raw `a=candidate:` line or `null` for EOC.
+     * @param {string|object|null} candidate - raw `a=candidate:` line, a full
+     *   `RTCIceCandidateInit`-shaped dict, or `null` for end-of-candidates.
      * @private
      */
     async _onRemoteCandidate(candidate) {
@@ -1649,7 +1661,19 @@ class Peer {
                 await this.pc.addIceCandidate(null);
                 return;
             }
-            await this.pc.addIceCandidate({ candidate });
+            // Older zero-query clients relayed only the bare `a=candidate:` string,
+            // which browsers reject with "missing values for both sdpMid and
+            // sdpMLineIndex". Newer clients send a full init dict - normalize both.
+            const init = (typeof candidate === 'string')
+                ? { candidate, sdpMid: '', sdpMLineIndex: 0 }
+                : {
+                    candidate:        candidate.candidate,
+                    sdpMid:           candidate.sdpMid != null ? candidate.sdpMid : '',
+                    sdpMLineIndex:    candidate.sdpMLineIndex != null ? candidate.sdpMLineIndex : 0,
+                    usernameFragment: candidate.usernameFragment != null ? candidate.usernameFragment : undefined,
+                };
+            if (!init.candidate) return;
+            await this.pc.addIceCandidate(init);
         } catch (err) {
             // The W3C pattern: suppress errors while we're explicitly ignoring an offer.
             if (this.ignoreOffer) return;
@@ -10449,9 +10473,9 @@ $.TurnError          = TurnError;
 $.E2eeError          = E2eeError;
 
 // --- Meta ------------------------------------------------------------------
-$.version   = '1.2.8';
+$.version   = '1.2.9';
 $.libSize   = '~130 KB';
-$.unitTests = {"passed":2534,"failed":0,"total":2534,"suites":620,"duration":6058,"ok":true};
+$.unitTests = {"passed":2534,"failed":0,"total":2534,"suites":620,"duration":6157,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

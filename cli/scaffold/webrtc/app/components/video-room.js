@@ -124,7 +124,12 @@ $.component('video-room', {
         const btn = e && e.currentTarget;
         const name = btn && btn.getAttribute('data-room');
         if (!name) return;
+        if (this.state.joined || this.state.connecting) return;
+        // Update the input field for visual feedback, then jump straight into
+        // join() so a click on a pill behaves like "join that room now"
+        // instead of just selecting the name.
         this.setState({ roomName: name });
+        this.join();
     },
 
     // ---- Join / leave ----------------------------------------------------

@@ -247,7 +247,11 @@ export class FakeRTCPeerConnection {
      */
     fakeIceCandidate(candidate) {
         if (typeof this.onicecandidate === 'function') {
-            this.onicecandidate({ candidate: candidate ? { candidate } : null });
+            this.onicecandidate({
+                candidate: candidate
+                    ? { candidate, sdpMid: '0', sdpMLineIndex: 0, usernameFragment: 'ufrag' }
+                    : null,
+            });
         }
     }
 
