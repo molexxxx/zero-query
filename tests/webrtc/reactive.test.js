@@ -146,22 +146,22 @@ describe('useDataChannel()', () => {
     beforeEach(() => { resetFakeSockets(); resetFakePeerConnections(); });
 
     it('buffers inbound messages into messages.value', async () => {
-        const room = await makeRoom();
-        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'peer_a' });
+        const room = await makeRoom('aaa_self');
+        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'zzz_a' });
         const dc = useDataChannel(room, 'chat');
-        const aDc = room.peers.peek().get('peer_a').pc.dataChannelCalls[0];
+        const aDc = room.peers.peek().get('zzz_a').pc.dataChannelCalls[0];
         aDc.onmessage({ data: 'hi' });
         aDc.onmessage({ data: 'there' });
         expect(dc.messages.value.map((m) => m.data)).toEqual(['hi', 'there']);
-        expect(dc.messages.value[0].from).toBe('peer_a');
+        expect(dc.messages.value[0].from).toBe('zzz_a');
         dc.close();
     });
 
     it('history option caps the buffer length', async () => {
-        const room = await makeRoom();
-        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'peer_a' });
+        const room = await makeRoom('aaa_self');
+        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'zzz_a' });
         const dc = useDataChannel(room, 'chat', { history: 2 });
-        const aDc = room.peers.peek().get('peer_a').pc.dataChannelCalls[0];
+        const aDc = room.peers.peek().get('zzz_a').pc.dataChannelCalls[0];
         aDc.onmessage({ data: '1' });
         aDc.onmessage({ data: '2' });
         aDc.onmessage({ data: '3' });
@@ -170,10 +170,10 @@ describe('useDataChannel()', () => {
     });
 
     it('send() forwards to the room wrapper', async () => {
-        const room = await makeRoom();
-        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'peer_a' });
+        const room = await makeRoom('aaa_self');
+        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'zzz_a' });
         const dc = useDataChannel(room, 'chat');
-        const aDc = room.peers.peek().get('peer_a').pc.dataChannelCalls[0];
+        const aDc = room.peers.peek().get('zzz_a').pc.dataChannelCalls[0];
         const sends = [];
         aDc.send = (d) => sends.push(d);
         dc.send('go');

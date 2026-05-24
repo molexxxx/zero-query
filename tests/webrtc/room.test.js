@@ -204,32 +204,50 @@ describe('Room (dataChannel multiplex)', () => {
         expect(a).toBe(b);
     });
 
-    it('opens the channel on every existing peer + every late joiner', async () => {
-        const room = await makeRoom('self_z');
-        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'peer_a' });
+    it('opens the channel on every existing peer + every late joiner (self is lex-smaller)', async () => {
+        const room = await makeRoom('aaa_self');
+        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'zzz_b' });
         const dc = room.dataChannel('chat', { ordered: true });
 
-        const a = room.peers.peek().get('peer_a').pc;
+        const a = room.peers.peek().get('zzz_b').pc;
         expect(a.dataChannelCalls).toHaveLength(1);
         expect(a.dataChannelCalls[0].label).toBe('chat');
 
-        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'peer_b' });
-        const b = room.peers.peek().get('peer_b').pc;
+        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'zzz_c' });
+        const b = room.peers.peek().get('zzz_c').pc;
         expect(b.dataChannelCalls).toHaveLength(1);
         expect(b.dataChannelCalls[0].label).toBe('chat');
         void dc;
     });
 
-    it('send() broadcasts to every per-peer channel', async () => {
+    it('glare guard: lex-larger self waits for ondatachannel instead of creating', async () => {
         const room = await makeRoom('self_z');
         fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'peer_a' });
-        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'peer_b' });
+        const dc = room.dataChannel('chat');
+
+        // self_z >= peer_a, so we do NOT create the channel locally.
+        const pc = room.peers.peek().get('peer_a').pc;
+        expect(pc.dataChannelCalls).toHaveLength(0);
+
+        // When the remote opens its channel, we adopt it and route events.
+        const received = [];
+        dc.on('message', (data, from) => received.push({ data, from }));
+        const fakeDc = { label: 'chat', onmessage: null, send() {} };
+        pc.fakeDataChannel(fakeDc);
+        fakeDc.onmessage({ data: 'hi' });
+        expect(received).toEqual([{ data: 'hi', from: 'peer_a' }]);
+    });
+
+    it('send() broadcasts to every per-peer channel', async () => {
+        const room = await makeRoom('aaa_self');
+        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'zzz_b' });
+        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'zzz_c' });
         const dc = room.dataChannel('chat');
 
         const sendsA = [];
         const sendsB = [];
-        const aPc = room.peers.peek().get('peer_a').pc;
-        const bPc = room.peers.peek().get('peer_b').pc;
+        const aPc = room.peers.peek().get('zzz_b').pc;
+        const bPc = room.peers.peek().get('zzz_c').pc;
         aPc.dataChannelCalls[0].send = (d) => sendsA.push(d);
         bPc.dataChannelCalls[0].send = (d) => sendsB.push(d);
 
@@ -239,16 +257,16 @@ describe('Room (dataChannel multiplex)', () => {
     });
 
     it('on("message") fans-in from every peer with (data, peerId)', async () => {
-        const room = await makeRoom('self_z');
-        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'peer_a' });
+        const room = await makeRoom('aaa_self');
+        fakeSockets[0].fakeMessage({ type: 'peer-joined', id: 'zzz_b' });
         const dc = room.dataChannel('chat');
         const received = [];
         dc.on('message', (data, from) => received.push({ data, from }));
 
-        const aDc = room.peers.peek().get('peer_a').pc.dataChannelCalls[0];
+        const aDc = room.peers.peek().get('zzz_b').pc.dataChannelCalls[0];
         // The wrapper attached an onmessage handler in tests (no addEventListener on the stub).
         aDc.onmessage({ data: 'ping' });
-        expect(received).toEqual([{ data: 'ping', from: 'peer_a' }]);
+        expect(received).toEqual([{ data: 'ping', from: 'zzz_b' }]);
     });
 });
 
