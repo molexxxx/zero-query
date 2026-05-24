@@ -247,6 +247,24 @@ my-app/                          ← SSR scaffold (npx zquery create my-app --ss
 
 Components in `app/components/` export plain definition objects - the client registers them with `$.component()`, the server with `app.component()`. The scaffold includes a blog with param-based routing (`/blog/:slug`), per-route SEO metadata, JSON API endpoints (`/api/posts`), and `window.__SSR_DATA__` hydration. The `--ssr` flag handles everything automatically - installs dependencies, starts the server at `http://localhost:3000`, and opens the browser.
 
+Use `--webrtc-demo` (`-w`) for a one-page video room backed by [zero-server](https://github.com/tonywied17/zero-server):
+
+```
+my-app/                          ← webrtc scaffold (npx zquery create my-app --webrtc-demo)
+  index.html                     ← single-page video room shell
+  global.css
+  package.json                   ← declares @zero-server/sdk + @zero-server/webrtc deps
+  app/
+    app.js                       ← boots the room component
+    components/
+      video-room.js              ← join controls, peer grid, z-stream bindings
+  server/
+    index.js                     ← signaling + static server (zero-server-backed)
+  assets/
+```
+
+The signaling server is a thin wrapper around `@zero-server/webrtc` that issues join tokens, relays SDP/ICE, and serves the static client. Set `WEBRTC_JWT_SECRET`, `TURN_SECRET`, and `TURN_URLS` env vars to enable TURN. The `--webrtc-demo` flag installs all deps (zQuery + the two `@zero-server` packages), starts the signaling + static server at `http://localhost:3000`, and opens the browser.
+
 - One component per file inside `components/`.
 - Names **must contain a hyphen** (Web Component convention): `home-page`, `app-counter`, etc.
 - Components with external templates or styles can use a subfolder (e.g. `contacts/contacts.js` + `contacts.html` + `contacts.css`).
