@@ -550,13 +550,6 @@ class Parser {
 // ---------------------------------------------------------------------------
 
 /** Safe property access whitelist for built-in prototypes */
-const SAFE_ARRAY_METHODS = new Set([
-  'length', 'map', 'filter', 'find', 'findIndex', 'some', 'every',
-  'reduce', 'reduceRight', 'forEach', 'includes', 'indexOf', 'lastIndexOf',
-  'join', 'slice', 'concat', 'flat', 'flatMap', 'reverse', 'sort',
-  'fill', 'keys', 'values', 'entries', 'at', 'toString',
-]);
-
 const SAFE_STRING_METHODS = new Set([
   'length', 'charAt', 'charCodeAt', 'includes', 'indexOf', 'lastIndexOf',
   'slice', 'substring', 'trim', 'trimStart', 'trimEnd', 'toLowerCase',
@@ -568,18 +561,6 @@ const SAFE_STRING_METHODS = new Set([
 const SAFE_NUMBER_METHODS = new Set([
   'toFixed', 'toPrecision', 'toString', 'valueOf',
 ]);
-
-const SAFE_OBJECT_METHODS = new Set([
-  'hasOwnProperty', 'toString', 'valueOf',
-]);
-
-const SAFE_MATH_PROPS = new Set([
-  'PI', 'E', 'LN2', 'LN10', 'LOG2E', 'LOG10E', 'SQRT2', 'SQRT1_2',
-  'abs', 'ceil', 'floor', 'round', 'trunc', 'max', 'min', 'pow',
-  'sqrt', 'sign', 'random', 'log', 'log2', 'log10',
-]);
-
-const SAFE_JSON_PROPS = new Set(['parse', 'stringify']);
 
 /**
  * Check if property access is safe
