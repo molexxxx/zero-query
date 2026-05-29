@@ -6,7 +6,7 @@
 
 <p align="center">
 
-<a href="https://github.com/tonywied17/zero-query/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-ci-zquery.svg?v=46868692" alt="CI"></a>
+<a href="https://github.com/tonywied17/zero-query/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-ci-zquery.svg?v=ebad6a56" alt="CI"></a>
 <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-npm-zquery.svg?v=ee4fa5ad" alt="npm version"></a>
 <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-dm-zquery.svg?v=bc452467" alt="npm downloads"></a>
 <a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-github-zquery.svg?v=889e15da" alt="GitHub"></a>
