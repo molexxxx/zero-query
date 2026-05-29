@@ -6,13 +6,13 @@
 
 <p align="center">
 
-<a href="https://github.com/tonywied17/zero-query/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-ci-zquery.svg" alt="CI"></a>
-<a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-npm-zquery.svg" alt="npm version"></a>
-<a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-dm-zquery.svg" alt="npm downloads"></a>
-<a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-github-zquery.svg" alt="GitHub"></a>
-<a href="https://opensource.org/licenses/MIT"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-license-zquery.svg" alt="License"></a>
-<a href="package.json"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-deps-zquery.svg" alt="Dependencies"></a>
-<a href="https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-vscode-zquery.svg" alt="VS Code Extension"></a>
+<a href="https://github.com/tonywied17/zero-query/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-ci-zquery.svg?v=46868692" alt="CI"></a>
+<a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-npm-zquery.svg?v=ee4fa5ad" alt="npm version"></a>
+<a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-dm-zquery.svg?v=bc452467" alt="npm downloads"></a>
+<a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-github-zquery.svg?v=889e15da" alt="GitHub"></a>
+<a href="https://opensource.org/licenses/MIT"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-license-zquery.svg?v=2c4e05dc" alt="License"></a>
+<a href="package.json"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-deps-zquery.svg?v=40171899" alt="Dependencies"></a>
+<a href="https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-vscode-zquery.svg?v=47668a26" alt="VS Code Extension"></a>
 
 </p>
 
