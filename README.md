@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/tonywied17/zero-query/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-ci-zquery.svg?v=98190e4c" alt="CI"></a>
+  <a href="https://github.com/tonywied17/zero-query/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-ci-zquery.svg?v=46868692" alt="CI"></a>
   <a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-tests-zquery.svg?v=55515b3f" alt="tests"></a>
   <a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-coverage-zquery.svg?v=cb73d0b8" alt="coverage"></a>
   <a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-github-zquery.svg?v=889e15da" alt="GitHub"></a>
