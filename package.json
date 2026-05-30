@@ -67,6 +67,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@vitest/coverage-v8": "^4.1.7",
     "@zero-server/sdk": "^0.9.8",
     "esbuild": "^0.27.7",
     "eslint": "^9.39.4",

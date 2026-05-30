@@ -10502,7 +10502,7 @@ $.E2eeError          = E2eeError;
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.3.0';
 $.libSize   = '~130 KB';
-$.unitTests = {"passed":2535,"failed":0,"total":2535,"suites":620,"duration":6665,"ok":true};
+$.unitTests = {"passed":2535,"failed":0,"total":2535,"suites":620,"duration":6341,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------
