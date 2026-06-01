@@ -5,17 +5,17 @@
 <h1 align="center">zQuery</h1>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-package-name-zquery.svg?v=5f639fb6" alt="npm package"></a>
-  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-npm-zquery.svg?v=ee4fa5ad" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-dm-zquery.svg?v=bc452467" alt="npm downloads"></a>
+  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-package-name-zquery.svg?v=0ece60fd" alt="npm package"></a>
+  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-npm-zquery.svg?v=2816255d" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-dm-zquery.svg?v=8535045f" alt="npm downloads"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/tonywied17/zero-query/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-ci-zquery.svg?v=46868692" alt="CI"></a>
-  <a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-tests-zquery.svg?v=55515b3f" alt="tests"></a>
-  <a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-coverage-zquery.svg?v=cb73d0b8" alt="coverage"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-license-zquery.svg?v=2c4e05dc" alt="License"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-vscode-zquery.svg?v=47668a26" alt="VS Code Extension"></a>
+  <a href="https://github.com/tonywied17/zero-query/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-ci-zquery.svg?v=6e3db266" alt="CI"></a>
+  <a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-tests-zquery.svg?v=307f0419" alt="tests"></a>
+  <a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-coverage-zquery.svg?v=f953ed5d" alt="coverage"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-license-zquery.svg?v=9e929988" alt="License"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-vscode-zquery.svg?v=4da0be8c" alt="VS Code Extension"></a>
 </p>
 
 > **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit - all in a single ~108 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
