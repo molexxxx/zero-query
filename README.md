@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-package-name-zquery.svg?v=7a51b269" alt="npm package"></a>
   <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-npm-zquery.svg?v=6baa3dbe" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-dm-zquery.svg?v=798985a4" alt="npm downloads"></a>
+  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-dm-zquery.svg?v=23646f6e" alt="npm downloads"></a>
 </p>
 
 <p align="center">
