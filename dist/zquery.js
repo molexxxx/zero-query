@@ -1,7 +1,7 @@
 /**
  * zQuery (zeroQuery) v1.3.1
  * Lightweight Frontend Library
- * https://github.com/tonywied17/zero-query
+ * https://github.com/molexxxx/zero-query
  * (c) 2026 Anthony Wiedman - MIT License
  */
 (function(global) {
@@ -10309,7 +10309,7 @@ function timeout(promise, ms, message) {
  * │  jQuery-like selectors · Reactive components            │
  * │  SPA router · State management · Zero dependencies      │
  * │                                                         │
- * │  https://github.com/tonywied17/zero-query              │
+ * │  https://github.com/molexxxx/zero-query              │
  * └---------------------------------------------------------┘
  */
 
@@ -10520,7 +10520,7 @@ $.E2eeError          = E2eeError;
 // --- Meta ------------------------------------------------------------------
 $.version   = '1.3.1';
 $.libSize   = '~130 KB';
-$.unitTests = {"passed":2566,"failed":0,"total":2566,"suites":628,"duration":7761,"ok":true};
+$.unitTests = {"passed":2566,"failed":0,"total":2566,"suites":628,"duration":7139,"ok":true};
 $.meta      = {};              // populated at build time by CLI bundler
 
 // --- Environment detection -------------------------------------------------

@@ -5,7 +5,7 @@
  * │  jQuery-like selectors · Reactive components            │
  * │  SPA router · State management · Zero dependencies      │
  * │                                                         │
- * │  https://github.com/tonywied17/zero-query              │
+ * │  https://github.com/molexxxx/zero-query              │
  * └---------------------------------------------------------┘
  */
 

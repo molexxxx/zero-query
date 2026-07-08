@@ -46,7 +46,7 @@ export const aboutPage = {
         <ul style="padding-left:1.2rem; line-height:2.2; list-style:none;">
           <li>📄 <a href="https://z-query.com" target="_blank" rel="noopener">zQuery Website</a></li>
           <li>📦 <a href="https://www.npmjs.com/package/zero-query" target="_blank" rel="noopener">npm — zero-query</a></li>
-          <li>🛠️ <a href="https://github.com/tonywied17/zero-query" target="_blank" rel="noopener">GitHub Repository</a></li>
+          <li>🛠️ <a href="https://github.com/molexxxx/zero-query" target="_blank" rel="noopener">GitHub Repository</a></li>
           <li>📖 <a href="https://z-query.com/docs" target="_blank" rel="noopener">Documentation</a></li>
         </ul>
       </div>

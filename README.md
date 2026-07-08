@@ -5,17 +5,17 @@
 <h1 align="center">zQuery</h1>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-package-name-zquery.svg?v=7a51b269" alt="npm package"></a>
-  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-npm-zquery.svg?v=6baa3dbe" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-dm-zquery.svg?v=23646f6e" alt="npm downloads"></a>
+  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/zero-query-package-name-zquery.svg?v=7a51b269" alt="npm package"></a>
+  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/zero-query-npm-zquery.svg?v=6baa3dbe" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/zero-query"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/zero-query-dm-zquery.svg?v=23646f6e" alt="npm downloads"></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/tonywied17/zero-query/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-ci-zquery.svg?v=29af6360" alt="CI"></a>
-  <a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-tests-zquery.svg?v=fa09e3d4" alt="tests"></a>
-  <a href="https://github.com/tonywied17/zero-query"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-coverage-zquery.svg?v=a969c52b" alt="coverage"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-license-zquery.svg?v=73a9f288" alt="License"></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code"><img src="https://raw.githubusercontent.com/tonywied17/tonywied17/main/.github/badges/zero-query-vscode-zquery.svg?v=a2c589fa" alt="VS Code Extension"></a>
+  <a href="https://github.com/molexxxx/zero-query/actions/workflows/ci.yml"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/zero-query-ci-zquery.svg?v=29af6360" alt="CI"></a>
+  <a href="https://github.com/molexxxx/zero-query"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/zero-query-tests-zquery.svg?v=fa09e3d4" alt="tests"></a>
+  <a href="https://github.com/molexxxx/zero-query"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/zero-query-coverage-zquery.svg?v=a969c52b" alt="coverage"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/zero-query-license-zquery.svg?v=73a9f288" alt="License"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=zQuery.zquery-vs-code"><img src="https://raw.githubusercontent.com/molexxxx/molexxxx/main/.github/badges/zero-query-vscode-zquery.svg?v=a2c589fa" alt="VS Code Extension"></a>
 </p>
 
 > **Lightweight, zero-dependency frontend library that combines jQuery-style DOM manipulation with a modern reactive component system, SPA router, global state management, HTTP client, and utility toolkit - all in a single ~108 KB minified browser bundle. Works out of the box with ES modules. An optional CLI bundler is available for single-file production builds.**
@@ -70,7 +70,7 @@ npm run dev      # or: npm start
 
 > **Tip:** For the default and minimal variants, you can stay in the project root (where `node_modules` lives) instead of `cd`-ing into `my-app`. This keeps `index.d.ts` accessible to your IDE for full type/intellisense support.
 
-The default scaffold ships a sidebar layout, router, multiple components (including folder components with external templates and styles), and responsive styles. The SSR variant runs a Node.js server that renders pages to HTML strings. The WebRTC variant is wired to [zero-server](https://github.com/tonywied17/zero-server) for signaling + TURN. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
+The default scaffold ships a sidebar layout, router, multiple components (including folder components with external templates and styles), and responsive styles. The SSR variant runs a Node.js server that renders pages to HTML strings. The WebRTC variant is wired to [zero-server](https://github.com/molexxxx/zero-server) for signaling + TURN. The dev server watches for file changes, hot-swaps CSS in-place, full-reloads on other changes, and handles SPA fallback routing.
 
 #### Error Overlay
 
@@ -86,10 +86,10 @@ A compact expandable toolbar appears in the bottom-right corner. In its **collap
 
 ### Alternative: Manual Setup (No npm)
 
-If you prefer **zero tooling**, download `dist/zquery.min.js` from the [dist/ folder](https://github.com/tonywied17/zero-query/tree/main/dist) and drop it into your project root or `assets/scripts/`. Then open `index.html` directly in a browser - no Node.js required.
+If you prefer **zero tooling**, download `dist/zquery.min.js` from the [dist/ folder](https://github.com/molexxxx/zero-query/tree/main/dist) and drop it into your project root or `assets/scripts/`. Then open `index.html` directly in a browser - no Node.js required.
 
 ```bash
-git clone https://github.com/tonywied17/zero-query.git
+git clone https://github.com/molexxxx/zero-query.git
 cd zero-query
 npx zquery build
 # → dist/zquery.min.js  (~108 KB)
@@ -249,7 +249,7 @@ my-app/                          ← SSR scaffold (npx zquery create my-app --ss
 
 Components in `app/components/` export plain definition objects - the client registers them with `$.component()`, the server with `app.component()`. The scaffold includes a blog with param-based routing (`/blog/:slug`), per-route SEO metadata, JSON API endpoints (`/api/posts`), and `window.__SSR_DATA__` hydration. The `--ssr` flag handles everything automatically - installs dependencies, starts the server at `http://localhost:3000`, and opens the browser.
 
-Use `--webrtc-demo` (`-w`) for a one-page video room backed by [zero-server](https://github.com/tonywied17/zero-server):
+Use `--webrtc-demo` (`-w`) for a one-page video room backed by [zero-server](https://github.com/molexxxx/zero-server):
 
 ```
 my-app/                          ← webrtc scaffold (npx zquery create my-app --webrtc-demo)
@@ -421,4 +421,4 @@ The official **[zQuery for VS Code](https://marketplace.visualstudio.com/items?i
 
 ## License
 
-MIT - [Anthony Wiedman / Molex](https://github.com/tonywied17)
+MIT - [Anthony Wiedman / Molex](https://github.com/molexxxx)

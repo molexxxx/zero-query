@@ -99,7 +99,7 @@ function buildLibrary() {
   indexCode = indexCode.replace(/^export\s*\{[\s\S]*?\};\s*$/gm, '');
   indexCode = indexCode.replace(/^export\s+(default\s+)?/gm, '');
 
-  const banner = `/**\n * zQuery (zeroQuery) v${VERSION}\n * Lightweight Frontend Library\n * https://github.com/tonywied17/zero-query\n * (c) ${new Date().getFullYear()} Anthony Wiedman - MIT License\n */`;
+  const banner = `/**\n * zQuery (zeroQuery) v${VERSION}\n * Lightweight Frontend Library\n * https://github.com/molexxxx/zero-query\n * (c) ${new Date().getFullYear()} Anthony Wiedman - MIT License\n */`;
 
   const bundle = `${banner}\n(function(global) {\n  'use strict';\n\n${parts.join('\n\n')}\n\n// --- index.js (assembly) ${'-'.repeat(42)}\n${indexCode.trim().replace("'__VERSION__'", `'${VERSION}'`)}\n\n})(typeof window !== 'undefined' ? window : globalThis);\n`;
 

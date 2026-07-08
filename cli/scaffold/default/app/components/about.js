@@ -191,7 +191,7 @@ $.component('about-page', {
         <h3><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="var(--accent)" style="width:20px;height:20px;vertical-align:-4px;margin-right:0.25rem;"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"/></svg> Next Steps</h3>
         <ul class="next-steps">
           <li>Read the <a href="https://z-query.com/docs" target="_blank" rel="noopener">full documentation</a></li>
-          <li>Explore the <a href="https://github.com/tonywied17/zero-query" target="_blank" rel="noopener">source on GitHub</a></li>
+          <li>Explore the <a href="https://github.com/molexxxx/zero-query" target="_blank" rel="noopener">source on GitHub</a></li>
           <li>Run <code>npx zquery bundle</code> to build for production</li>
           <li>Run <code>npx zquery dev</code> for live-reload development</li>
         </ul>

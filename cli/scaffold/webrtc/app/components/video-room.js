@@ -704,7 +704,7 @@ $.component('video-room', {
                         <p class="lead">
                             A no-signup mesh call wired straight into
                             <code>$.webrtc.join()</code> on top of
-                            <a href="https://github.com/tonywied17/zero-server" target="_blank" rel="noopener">zero-server</a>.
+                            <a href="https://github.com/molexxxx/zero-server" target="_blank" rel="noopener">zero-server</a>.
                             Drop a name, send the link to a friend, and you'll be on a peer-to-peer
                             video call in two clicks. Camera, mic, and screen share are <em>off</em>
                             until you say so.

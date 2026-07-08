@@ -57,7 +57,7 @@ $.component('about-page', {
         <h3>Next Steps</h3>
         <ul class="next-steps">
           <li>Read the <a href="https://z-query.com/docs" target="_blank" rel="noopener">full documentation</a></li>
-          <li>Explore the <a href="https://github.com/tonywied17/zero-query" target="_blank" rel="noopener">source on GitHub</a></li>
+          <li>Explore the <a href="https://github.com/molexxxx/zero-query" target="_blank" rel="noopener">source on GitHub</a></li>
           <li>Run <code>npx zquery bundle</code> to build for production</li>
           <li>Run <code>npx zquery dev</code> for live-reload development</li>
           <li>Try <code>npx zquery create my-app</code> for the full-featured scaffold</li>
