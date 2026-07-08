@@ -1782,7 +1782,7 @@ $.morphElement($.id('panel'), newEl);
 > **Tip:** When you use `$()` to set `.html()` on a component root, auto-morph kicks in automatically — no manual call needed.
 
   
-**Auto-Key Detection:** zQuery automatically detects `z-key` attributes in child lists and switches to keyed reconciliation. If any child has `z-key`, the entire sibling group is reconciled as a keyed list.
+**Auto-Key Detection:** zQuery automatically detects reconciliation keys in child lists and switches to keyed reconciliation. Keys come from `z-key` first, then fall back to `id`, `data-id`, or `data-key`. If any child carries a key, the entire sibling group is reconciled as a keyed list - unless two siblings resolve to the same key (for example, delegation buttons in one row sharing a `data-id`), in which case that list falls back to positional morphing.
 
   
 
@@ -2267,7 +2267,7 @@ __CODEBLOCK_24__
 > **Tip:** When you use `$()` to set `.html()` on a component root, auto-morph kicks in automatically — no manual call needed.
 
   
-**Auto-Key Detection:** zQuery automatically detects `z-key` attributes in child lists and switches to keyed reconciliation. If any child has `z-key`, the entire sibling group is reconciled as a keyed list.
+**Auto-Key Detection:** zQuery automatically detects reconciliation keys in child lists and switches to keyed reconciliation. Keys come from `z-key` first, then fall back to `id`, `data-id`, or `data-key`. If any child carries a key, the entire sibling group is reconciled as a keyed list - unless two siblings resolve to the same key (for example, delegation buttons in one row sharing a `data-id`), in which case that list falls back to positional morphing.
 
   
 
@@ -4811,7 +4811,10 @@ $('#root').empty().html('<div>fresh</div>');
 > **Tip:** **Auto-Morph:** When you call `.html()` on an element that already has children, zQuery runs the morph algorithm instead of a raw innerHTML swap. This preserves focus, scroll position, CSS transitions, and event listeners. Use `.morph()` for explicit morph control, or `.empty().html()` to opt out.
 
   
-**Auto-Key Detection:** When morphing a list of children, if *any* child has a `z-key` attribute, the entire sibling group is reconciled using keyed LIS-based reorder. Otherwise, children are patched pairwise.
+**Auto-Key Detection:** When morphing a list of children, if *any* child carries a reconciliation key, the entire sibling group is reconciled using keyed LIS-based reorder. Otherwise, children are patched pairwise. Keys come from `z-key` first, then fall back to the element's `id`, `data-id`, or `data-key` - so keyed reconciliation activates automatically for lists that already carry stable ids.
+
+  
+**Duplicate-key fallback:** Keyed reconciliation requires keys to be unique among siblings. If two siblings resolve to the same key - common when several delegation buttons in one row share a `data-id` - that child list falls back to positional (pairwise) morphing, which stays well-defined for colliding sets. Use an explicit unique `z-key` when you need keyed identity for reorder-heavy lists.
 
   
 #### CSS & Dimensions
@@ -5883,20 +5886,20 @@ That’s it — one command. The SSR server starts at `http://localhost:3000` an
 The generated project:
 
   
-- [index.html](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/index.html)client HTML shell (meta tags, z-link nav)
-- [global.css](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/global.css)dark theme styles
-- [package.json](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/package.json)
-- [app.js](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/app/app.js)client entry — imports & registers shared components
-- [routes.js](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/app/routes.js)shared route definitions
-- [home.js](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/app/components/home.js)
-- [about.js](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/app/components/about.js)
-- [not-found.js](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/app/components/not-found.js)
-- [index.js](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/app/components/blog/index.js)blog list (/blog)
-- [post.js](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/app/components/blog/post.js)blog detail (/blog/:slug)
-▶[server](https://github.com/tonywied17/zero-query/tree/main/cli/scaffold/ssr/server)Node.js SSR server
-- [index.js](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/server/index.js)SSR HTTP server with JSON API
-- [posts.js](https://github.com/tonywied17/zero-query/blob/main/cli/scaffold/ssr/server/data/posts.js)sample blog data
-▶[assets](https://github.com/tonywied17/zero-query/tree/main/cli/scaffold/ssr/assets)
+- [index.html](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/index.html)client HTML shell (meta tags, z-link nav)
+- [global.css](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/global.css)dark theme styles
+- [package.json](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/package.json)
+- [app.js](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/app/app.js)client entry — imports & registers shared components
+- [routes.js](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/app/routes.js)shared route definitions
+- [home.js](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/app/components/home.js)
+- [about.js](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/app/components/about.js)
+- [not-found.js](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/app/components/not-found.js)
+- [index.js](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/app/components/blog/index.js)blog list (/blog)
+- [post.js](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/app/components/blog/post.js)blog detail (/blog/:slug)
+▶[server](https://github.com/molexxxx/zero-query/tree/main/cli/scaffold/ssr/server)Node.js SSR server
+- [index.js](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/server/index.js)SSR HTTP server with JSON API
+- [posts.js](https://github.com/molexxxx/zero-query/blob/main/cli/scaffold/ssr/server/data/posts.js)sample blog data
+▶[assets](https://github.com/molexxxx/zero-query/tree/main/cli/scaffold/ssr/assets)
   
 Components in `app/components/` export plain definition objects. The client registers them with `$.component()`, the server with `app.component()` — same files, same definitions, two runtimes. The scaffold includes:
 
@@ -6596,7 +6599,7 @@ The `z-link` directive is for SPA route paths. For external URLs, use standard a
 <a z-link="/settings">Settings</a>
 
 <!-- External link: use regular href -->
-<a href="https://github.com/tonywied17/zero-query"
+<a href="https://github.com/molexxxx/zero-query"
    target="_blank" rel="noopener">GitHub</a>
 ```
 
@@ -6717,7 +6720,7 @@ The WebRTC surface is layered — pick the level you need:
 | **Hardening** | `SFrameContext`, `attachE2ee`, TURN refresher | You need E2EE and rotating TURN credentials. |
 
   
-> **Tip:** Want a working starting point? Run `npx zero-query create my-app --webrtc-demo` (alias `-w`) to scaffold a one-page video room with mic / camera / screen-share toggles, a reactive roster, and a chat data channel. The scaffold installs [zero-server](https://github.com/tonywied17/zero-server), launches the signaling + static server on `http://localhost:3000`, and opens your browser - one command, no extra setup. Camera and microphone stay off until the user opts in.
+> **Tip:** Want a working starting point? Run `npx zero-query create my-app --webrtc-demo` (alias `-w`) to scaffold a one-page video room with mic / camera / screen-share toggles, a reactive roster, and a chat data channel. The scaffold installs [zero-server](https://github.com/molexxxx/zero-server), launches the signaling + static server on `http://localhost:3000`, and opens your browser - one command, no extra setup. Camera and microphone stay off until the user opts in.
 
   
 

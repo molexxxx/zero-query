@@ -129,15 +129,33 @@ function _morphChildren(oldParent, newParent) {
   if (hasKeys) {
     oldKeyMap = new Map();
     newKeyMap = new Map();
+    // Duplicate keys among siblings (common with auto-keys: several
+    // buttons sharing one data-id for event delegation) make keyed
+    // reconciliation ill-defined - it drops and duplicates nodes.
+    // Positional morphing is always correct for colliding sets, so
+    // bail out to the unkeyed path on the first duplicate.
+    let duplicate = false;
     for (let i = 0; i < oldLen; i++) {
       const key = _getKey(oldChildren[i]);
-      if (key != null) oldKeyMap.set(key, i);
+      if (key != null) {
+        if (oldKeyMap.has(key)) { duplicate = true; break; }
+        oldKeyMap.set(key, i);
+      }
     }
-    for (let i = 0; i < newLen; i++) {
-      const key = _getKey(newChildren[i]);
-      if (key != null) newKeyMap.set(key, i);
+    if (!duplicate) {
+      for (let i = 0; i < newLen; i++) {
+        const key = _getKey(newChildren[i]);
+        if (key != null) {
+          if (newKeyMap.has(key)) { duplicate = true; break; }
+          newKeyMap.set(key, i);
+        }
+      }
     }
-    _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, newKeyMap);
+    if (duplicate) {
+      _morphChildrenUnkeyed(oldParent, oldChildren, newChildren);
+    } else {
+      _morphChildrenKeyed(oldParent, oldChildren, newChildren, oldKeyMap, newKeyMap);
+    }
   } else {
     _morphChildrenUnkeyed(oldParent, oldChildren, newChildren);
   }

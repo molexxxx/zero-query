@@ -617,6 +617,93 @@ describe('morph - keyed edge cases', () => {
 
 
 // ---------------------------------------------------------------------------
+// Duplicate-key collision fallback
+//
+// Auto-keys (id / data-id / data-key) can collide among siblings - the
+// canonical case is event delegation, where several action buttons in one
+// row all carry data-id="<record-id>". Duplicate keys make keyed
+// reconciliation ill-defined (later keyMap entries overwrite earlier ones,
+// so nodes get dropped, duplicated, and reordered). _morphChildren detects
+// a duplicate on either side and falls back to positional morphing, which
+// is always well-defined for colliding sets.
+// ---------------------------------------------------------------------------
+
+describe('morph - duplicate-key collision fallback', () => {
+  it('morphs delegation buttons sharing one data-id without drops or dupes', () => {
+    // Faithful to the molexcloud uploads-row repro: a row-actions span whose
+    // buttons all carry the same data-id for event delegation. Growing the
+    // button set must produce exactly the new buttons, in order, once each.
+    const root = el('<span><button data-id="42">scrap</button></span>');
+    morph(
+      root,
+      '<span>' +
+        '<button data-id="42">pause</button>' +
+        '<button data-id="42">resume</button>' +
+        '<button data-id="42">scrap</button>' +
+        '<button data-id="42">link</button>' +
+      '</span>'
+    );
+    const buttons = [...root.querySelector('span').children];
+    expect(buttons.map(b => b.textContent)).toEqual(['pause', 'resume', 'scrap', 'link']);
+    // Every button carries the shared id, none dropped, none duplicated
+    expect(buttons.every(b => b.dataset.id === '42')).toBe(true);
+  });
+
+  it('shrinks a shared-data-id button set positionally', () => {
+    const root = el(
+      '<span>' +
+        '<button data-id="7">pause</button>' +
+        '<button data-id="7">resume</button>' +
+        '<button data-id="7">scrap</button>' +
+      '</span>'
+    );
+    morph(
+      root,
+      '<span>' +
+        '<button data-id="7">scrap</button>' +
+        '<button data-id="7">link</button>' +
+      '</span>'
+    );
+    const buttons = [...root.querySelector('span').children];
+    expect(buttons.map(b => b.textContent)).toEqual(['scrap', 'link']);
+  });
+
+  it('falls back cleanly when explicit z-key values collide', () => {
+    const root = el('<div z-key="dup">A</div><div z-key="dup">B</div>');
+    morph(
+      root,
+      '<div z-key="dup">X</div><div z-key="dup">Y</div><div z-key="dup">Z</div>'
+    );
+    // Positional morph: exact new content, no drops/dupes despite the collision
+    expect([...root.children].map(c => c.textContent)).toEqual(['X', 'Y', 'Z']);
+    expect(root.children.length).toBe(3);
+  });
+
+  it('falls back when the collision is only on the new side', () => {
+    const root = el('<div data-id="1">A</div><div data-id="2">B</div>');
+    morph(root, '<div data-id="9">X</div><div data-id="9">Y</div>');
+    expect([...root.children].map(c => c.textContent)).toEqual(['X', 'Y']);
+    expect(root.children.length).toBe(2);
+  });
+
+  it('still uses the keyed path (preserving identity) when data-ids are unique', () => {
+    // Contrast case: unique data-ids keep the LIS-optimised keyed path, so
+    // node identity survives a reorder rather than being positionally rebuilt.
+    const root = el(
+      '<li data-id="1">One</li><li data-id="2">Two</li><li data-id="3">Three</li>'
+    );
+    const ref1 = root.children[0];
+    const ref2 = root.children[1];
+    const ref3 = root.children[2];
+    morph(root, '<li data-id="3">Three</li><li data-id="1">One</li><li data-id="2">Two</li>');
+    expect(root.children[0]).toBe(ref3);
+    expect(root.children[1]).toBe(ref1);
+    expect(root.children[2]).toBe(ref2);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
 // Boolean attribute morphing
 // ---------------------------------------------------------------------------
 
