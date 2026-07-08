@@ -57,10 +57,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tonywied17/zero-query.git"
+    "url": "git+https://github.com/molexxxx/zero-query.git"
   },
   "bugs": {
-    "url": "https://github.com/tonywied17/zero-query/issues"
+    "url": "https://github.com/molexxxx/zero-query/issues"
   },
   "homepage": "https://z-query.com/docs",
   "publishConfig": {
